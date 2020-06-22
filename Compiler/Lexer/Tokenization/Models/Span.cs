@@ -6,6 +6,11 @@ namespace Compiler.Lexer.Tokenization.Models
     /// <summary>
     ///     A value representing a span of characters in a schema.
     /// </summary>
+    /// <remarks>
+    ///     This structure uses a zero-based index to represent the matrix of a file, however most GUI text editors (such as
+    ///     VSCode)
+    ///     will show the cursor position as being off by one from what is stored here.
+    /// </remarks>
     public readonly struct Span : IEquatable<Span>, IComparable<Span>
     {
         /// <summary>

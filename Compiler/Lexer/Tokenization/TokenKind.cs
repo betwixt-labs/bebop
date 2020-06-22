@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using Compiler.Lexer.Tokenization.Attributes;
+﻿using Compiler.Lexer.Tokenization.Attributes;
 
 namespace Compiler.Lexer.Tokenization
 {
@@ -36,7 +35,7 @@ namespace Compiler.Lexer.Tokenization
         Package,
 
         /// <summary>
-        ///     The 'package' keyword which is reserved by the compiler
+        ///     The 'deprecated' keyword which is reserved by the compiler
         /// </summary>
         [Keyword("deprecated")]
         Deprecated,
@@ -65,7 +64,6 @@ namespace Compiler.Lexer.Tokenization
         ///     Any numerical literal token.
         /// </summary>
         Number,
-        RealLiteral,
         EndOfFile,
 
     #endregion
