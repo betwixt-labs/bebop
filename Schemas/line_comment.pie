@@ -1,0 +1,23 @@
+package djj;
+
+
+
+
+message MediaMessage {
+    VideoCodecs codec = 0; 
+    string friendlyName = 1 [deprecated];
+    VideoData data = 2;
+}
+  
+
+struct VideoData {
+  float timestamp;
+  uint width;
+  uint height;
+  byte[] fragment;
+}
+
+enum VideoCodec {
+    H264 = 0;
+    H265 = 1;
+}

@@ -1,0 +1,20 @@
+package the.more.you.know;
+
+enum VideoCodec {
+  H264 = 0;
+  H265 = 1;
+}
+
+struct VideoData {
+  float timestamp;
+  uint width;
+  uint height;
+  byte[] fragment;
+}
+
+
+message MediaMessage {
+  VideoCodec codec = 0; 
+  string friendlyName = 1 [deprecated];
+  VideoData data = 2;
+}
