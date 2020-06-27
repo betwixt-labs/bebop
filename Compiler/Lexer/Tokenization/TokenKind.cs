@@ -7,7 +7,6 @@ namespace Compiler.Lexer.Tokenization
     /// </summary>
     public enum TokenKind : ushort
     {
-
     #region Keywords
 
         /// <summary>
@@ -40,6 +39,12 @@ namespace Compiler.Lexer.Tokenization
         [Keyword("deprecated")]
         Deprecated,
 
+        /// <summary>
+        ///     The 'map' keyword which is reserved by the compiler
+        /// </summary>
+        [Keyword("map")]
+        Map,
+
     #endregion
 
 
@@ -71,40 +76,87 @@ namespace Compiler.Lexer.Tokenization
 
     #region Symbols
 
+        /// <summary>
+        ///     <![CDATA[ ( ]]>
+        /// </summary>
         [Symbol('(')]
         OpenParenthesis,
 
+        /// <summary>
+        ///     <![CDATA[ ) ]]>
+        /// </summary>
         [Symbol(')')]
         CloseParenthesis,
 
+        /// <summary>
+        ///     <![CDATA[ < ]]>
+        /// </summary>
+        [Symbol('<')]
+        OpenCaret,
 
+        /// <summary>
+        ///     <![CDATA[ > ]]>
+        /// </summary>
+        [Symbol('>')]
+        CloseCaret,
+
+        /// <summary>
+        ///     <![CDATA[ { }]]>
+        /// </summary>
         [Symbol('{')]
         OpenBrace,
 
+        /// <summary>
+        ///     <![CDATA[ }]]>
+        /// </summary>
         [Symbol('}')]
         CloseBrace,
 
+        /// <summary>
+        ///     <![CDATA[ [ ]]>
+        /// </summary>
         [Symbol('[')]
         OpenBracket,
 
+        /// <summary>
+        ///     <![CDATA[ ] ]]>
+        /// </summary>
         [Symbol(']')]
         CloseBracket,
 
+        /// <summary>
+        ///     <![CDATA[ : ]]>
+        /// </summary>
         [Symbol(':')]
         Colon,
 
+        /// <summary>
+        ///     <![CDATA[ ; ]]>
+        /// </summary>
         [Symbol(';')]
         Semicolon,
 
+        /// <summary>
+        ///     <![CDATA[ , ]]>
+        /// </summary>
         [Symbol(',')]
         Comma,
 
+        /// <summary>
+        ///     <![CDATA[ . ]]>
+        /// </summary>
         [Symbol('.')]
         Dot,
 
+        /// <summary>
+        ///     <![CDATA[ ? ]]>
+        /// </summary>
         [Symbol('?')]
         QuestionMark,
 
+        /// <summary>
+        ///     <![CDATA[ / ]]>
+        /// </summary>
         [Symbol('/')]
         Slash,
 
