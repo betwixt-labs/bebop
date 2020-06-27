@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using Compiler.IO.Interfaces;
@@ -59,17 +60,13 @@ namespace Compiler.Lexer.Tokenization
                 if (scan.HasValue)
                 {
                     // set the tokens end position 
-                    CurrentTokenPosition = CurrentTokenPosition.OffSet(_reader.CurrentPosition - startPos + 1);
-                    yield return await Task.FromResult(new Token(scan.Value.Kind,
-                        scan.Value.Lexeme,
-                        CurrentTokenPosition,
-                        TokenCount));
+                    yield return await Task.FromResult(scan.Value);
                     TokenCount++;
                 }
                 else
                 {
                     // adjust the column when we skip passed whitespace or unknown characters 
-                    CurrentTokenPosition = CurrentTokenPosition.NextColumn;
+                    CurrentTokenPosition = CurrentTokenPosition.OffSet(1);
                 }
             }
             ++TokenCount;
