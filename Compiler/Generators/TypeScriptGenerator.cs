@@ -17,24 +17,14 @@ namespace Compiler.Generators
             _schema = schema;
         }
 
+        public string CompileEncode(IDefinition definition)
+        {
+            return string.Empty;
+        }
+
         public string CompileDecode(IDefinition definition)
         {
-            const string tab = "    ";
-            var builder = new StringBuilder();
-            builder.AppendLine("      if (!(view instanceof PierogiView)) {");
-            builder.AppendLine("        view = new PierogiView(view);");
-            builder.AppendLine("      }");
-            builder.AppendLine("");
-            if (definition.Kind == AggregateKind.Message)
-            {
-                builder.AppendLine($"      let message: I{definition.Name} = {{}};");
-                builder.AppendLine("      while (true) {");
-                builder.AppendLine("        switch (view.readUint()) {");
-                builder.AppendLine("          case 0:");
-                builder.AppendLine("            return message;");
-                builder.AppendLine("");
-            }
-            foreach (var field in definition.Fields)
+            string Code(IField field)
             {
                 var code = field.TypeCode switch
                 {
@@ -62,7 +52,39 @@ namespace Compiler.Generators
                         code = $"{f.Name}.decode(view)";
                     }
                 }
+                return code;
+            }
 
+            var builder = new StringBuilder();
+            builder.AppendLine("      if (!(view instanceof PierogiView)) {");
+            builder.AppendLine("        view = new PierogiView(view);");
+            builder.AppendLine("      }");
+            builder.AppendLine("");
+            if (definition.Kind == AggregateKind.Message)
+            {
+                builder.AppendLine($"      let message: I{definition.Name} = {{}};");
+                builder.AppendLine("      while (true) {");
+                builder.AppendLine("        switch (view.readUint()) {");
+                builder.AppendLine("          case 0:");
+                builder.AppendLine("            return message;");
+                builder.AppendLine("");
+            } else if (definition.Kind == AggregateKind.Struct)
+            {
+                builder.AppendLine($"      var message: I{definition.Name};");
+                builder.AppendLine($"      message = (() => {{ }}) as unknown as I{definition.Name};");
+                builder.AppendLine("");
+            }
+            var indent  = definition.Kind switch
+            {
+                AggregateKind.Struct => "      ",
+                AggregateKind.Message => "            ",
+                _ => "   "
+            };
+            foreach (var field in definition.Fields)
+            {
+
+                var code = Code(field);
+                
                 if (definition.Kind == AggregateKind.Message)
                 {
                     builder.AppendLine($"          case {field.ConstantValue}:");
@@ -73,25 +95,25 @@ namespace Compiler.Generators
                     {
                         if ((ScalarType) field.TypeCode == ScalarType.Byte)
                         {
-                            builder.AppendLine($"            view.readBytes();");
+                            builder.AppendLine($"{indent}view.readBytes();");
                         }
                         else
                         {
-                            builder.AppendLine($"            var length = view.readUint();");
-                            builder.AppendLine($"            while (length-- > 0) {code};");
+                            builder.AppendLine($"{indent}var length = view.readUint();");
+                            builder.AppendLine($"{indent}while (length-- > 0) {code};");
                         }
                     }
                     else
                     {
                         if ((ScalarType) field.TypeCode == ScalarType.Byte)
                         {
-                            builder.AppendLine($"            message.{field.Name.ToCamelCase()} = view.readBytes();");
+                            builder.AppendLine($"{indent}message.{field.Name.ToCamelCase()} = view.readBytes();");
                         }
                         else
                         {
-                            builder.AppendLine($"            var length = bb.readUint();");
-                            builder.AppendLine($"            message.{field.Name.ToCamelCase()} = [];");
-                            builder.AppendLine($"            while (length-- > 0) message.{field.Name.ToCamelCase()}.push({code});");
+                            builder.AppendLine($"{indent}var length = view.readUint();");
+                            builder.AppendLine($"{indent}message.{field.Name.ToCamelCase()} = [];");
+                            builder.AppendLine($"{indent}while (length-- > 0) message.{field.Name.ToCamelCase()}.push({code});");
                         }
                     }
                 }
@@ -99,11 +121,11 @@ namespace Compiler.Generators
                 {
                     if (field.IsDeprecated)
                     {
-                        builder.AppendLine($"            {code};");
+                        builder.AppendLine($"{indent}{code};");
                     }
                     else
                     {
-                        builder.AppendLine($"            message.{field.Name.ToCamelCase()} = {code};");
+                        builder.AppendLine($"{indent}message.{field.Name.ToCamelCase()} = {code};");
                     }
                 }
 
@@ -118,13 +140,18 @@ namespace Compiler.Generators
                 builder.AppendLine("          default:");
                 builder.AppendLine("            throw new Error(\"Attempted to parse invalid message\");");
                 builder.AppendLine("        }");
+                builder.AppendLine("      }");
+                builder.AppendLine("    }");
+                builder.AppendLine("  };");
             }
             else
             {
-                builder.AppendLine("  return result;");
+                builder.AppendLine("      return message;");
+                builder.AppendLine("    }");
+                builder.AppendLine("  };");
             }
     
-            return builder.ToString().TrimEnd();
+            return builder.ToString();
         }
 
         public string Compile()
@@ -143,8 +170,17 @@ namespace Compiler.Generators
                         ScalarType.String => field.IsArray ? "string[]" : "string",
                         _ => string.Empty
                     },
-                    _ => _schema.Definitions.ElementAt(field.TypeCode).Name
+                    _ => string.Empty
                 };
+                if (string.IsNullOrWhiteSpace(type))
+                {
+                    var f = _schema.Definitions.ElementAt(field.TypeCode);
+                    type = f.Kind != AggregateKind.Enum ? $"I{f.Name}" : f.Name;
+                    if (field.IsArray)
+                    {
+                        type = $"{type}[]";
+                    }
+                }
                 return type;
             }
 
@@ -182,35 +218,25 @@ namespace Compiler.Generators
                     builder.AppendLine("  }");
                     builder.AppendLine("");
 
-                    builder.AppendLine($"  export const {definition.Name} implements I{definition.Name} {{");
-                    for (var i = 0; i < definition.Fields.Count; i++)
-                    {
-                        var field = definition.Fields.ElementAt(i);
-
-                        var type = Type(field);
-                        builder.AppendLine($"    {field.Name.ToCamelCase()}{(definition.Kind == AggregateKind.Message ? "?" : definition.Kind == AggregateKind.Struct ? "!" : "")}: {type}");
-                    }
+                    builder.AppendLine($"  export const {definition.Name} = {{");
                     builder.AppendLine("");
-                    builder.AppendLine($"    public static encode(message: I{definition.Name}): Uint8Array {{");
-                    builder.AppendLine("");
-                    builder.AppendLine("      }");
+                    builder.AppendLine($"    encode(message: I{definition.Name}): Uint8Array {{");
+                    builder.AppendLine(CompileEncode(definition));
+                    builder.AppendLine("      },");
                     builder.AppendLine("");
 
-                    builder.AppendLine($"    public static decode(view: PierogiView | Uint8Array): I{definition.Name} {{");
+                    builder.AppendLine($"    decode(view: PierogiView | Uint8Array): I{definition.Name} {{");
                     builder.AppendLine(CompileDecode(definition));
-                    builder.AppendLine("      }");
-                    builder.AppendLine("    }");
                 }
             }
             if (!string.IsNullOrWhiteSpace(_schema.Package))
             {
-                builder.AppendLine("  }");
+                builder.AppendLine("}");
             }
-            builder.AppendLine("}");
             builder.AppendLine("");
 
             
-            return builder.ToString();
+            return builder.ToString().TrimEnd();
         }
     }
 }
