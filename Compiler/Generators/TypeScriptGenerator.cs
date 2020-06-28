@@ -19,7 +19,90 @@ namespace Compiler.Generators
 
         public string CompileEncode(IDefinition definition)
         {
-            return string.Empty;
+            string Code(IField field)
+            {
+                var code = field.TypeCode switch
+                {
+                    _ when field.TypeCode < 0 => (ScalarType)field.TypeCode switch
+                    {
+                        ScalarType.Bool => $"view.writeByte(message.{field.Name.ToCamelCase()};",
+                        ScalarType.Byte => $"view.writeByte(message.{field.Name.ToCamelCase()};",
+                        ScalarType.UInt => $"view.writeUint(message.{field.Name.ToCamelCase()}",
+                        ScalarType.Int => $"view.writeInt(message.{field.Name.ToCamelCase()}",
+                        ScalarType.Float => $"view.writeFloat(message.{field.Name.ToCamelCase()}",
+                        ScalarType.String => $"view.writeString(message.{field.Name.ToCamelCase()}",
+                        ScalarType.Guid => $"view.writeGuid(message.{field.Name.ToCamelCase()}",
+                        _ => string.Empty
+                    },
+                    _ => string.Empty
+                };
+                if (string.IsNullOrWhiteSpace(code))
+                {
+                    var f = _schema.Definitions.ElementAt(field.TypeCode);
+                    if (f.Kind == AggregateKind.Enum)
+                    {
+                        code = $"var encoded = {f.Name}[message.{field.Name.ToCamelCase()}] as unknown  as number; " +
+                            $"if (encoded === void 0) throw new Error(\"\"); " + 
+                            $"view.writeUint(encoded";
+                    }
+                    else
+                    {
+                        code = $"{f.Name}.encode(message.{field.Name.ToCamelCase()}, view";
+                    }
+                }
+                return code;
+            }
+
+            var builder = new StringBuilder();
+            builder.AppendLine("      var isTopLevel = !view;");
+            builder.AppendLine("      if (isTopLevel) view = new PierogiView();");
+            foreach (var field in definition.Fields)
+            {
+                if (field.IsDeprecated)
+                {
+                    continue;
+                }
+                var code = Code(field);
+                builder.AppendLine("");
+                builder.AppendLine($"      if (message.{field.Name.ToCamelCase()} != null) {{");
+                if (definition.Kind == AggregateKind.Message)
+                {
+                    builder.AppendLine($"        view.writeUint({field.ConstantValue});");
+                }
+                if (field.IsArray)
+                {
+                    if ((ScalarType) field.TypeCode == ScalarType.Byte)
+                    {
+                        builder.AppendLine($"        view.writeBytes(message.{field.Name.ToCamelCase()});");
+                    }
+                    else
+                    {
+                        builder.AppendLine($"        view.writeUint(message.{field.Name.ToCamelCase()}.length);");
+                        builder.AppendLine($"        for (var i = 0; i < message.{field.Name.ToCamelCase()}.length; i++) {{");
+                        builder.AppendLine($"          {code}[i]);");
+                        builder.AppendLine("        }");
+                    }
+                }
+                else
+                {
+                    builder.AppendLine($"        {code});");
+                }
+
+                if (definition.Kind == AggregateKind.Struct)
+                {
+                    builder.AppendLine("      } else {");
+                    builder.AppendLine($"        throw new Error(\"Missing required field {field.Name.ToCamelCase()}\");");
+                }
+                builder.AppendLine("      }");
+            }
+            if (definition.Kind == AggregateKind.Message)
+            {
+                builder.AppendLine("      view.writeUint(0);");
+            }
+            builder.AppendLine("");
+            builder.AppendLine("      if (isTopLevel) return view.toUint8Array();");
+         
+            return builder.ToString();
         }
 
         public string CompileDecode(IDefinition definition)
@@ -32,10 +115,11 @@ namespace Compiler.Generators
                     {
                         ScalarType.Bool => "!!view.readByte()",
                         ScalarType.Byte => "view.readByte()",
-                        ScalarType.UInt => "view.readInt()",
-                        ScalarType.Int => "view.readUint()",
+                        ScalarType.UInt => "view.readUint()",
+                        ScalarType.Int => "view.readInt()",
                         ScalarType.Float => "view.readFloat()",
                         ScalarType.String => "view.readString()",
+                        ScalarType.Guid => "view.readGuid()",
                         _ => string.Empty
                     },
                     _ => string.Empty
@@ -168,6 +252,7 @@ namespace Compiler.Generators
                         ScalarType.Int => field.IsArray ? "number[]" : "number",
                         ScalarType.Float => field.IsArray ? "number[]" : "number",
                         ScalarType.String => field.IsArray ? "string[]" : "string",
+                        ScalarType.Guid => field.IsArray ? "string[]" : "string",
                         _ => string.Empty
                     },
                     _ => string.Empty
@@ -220,9 +305,9 @@ namespace Compiler.Generators
 
                     builder.AppendLine($"  export const {definition.Name} = {{");
                     builder.AppendLine("");
-                    builder.AppendLine($"    encode(message: I{definition.Name}): Uint8Array {{");
+                    builder.AppendLine($"    encode(message: I{definition.Name}, view: PierogiView): Uint8Array | void {{");
                     builder.AppendLine(CompileEncode(definition));
-                    builder.AppendLine("      },");
+                    builder.AppendLine("    },");
                     builder.AppendLine("");
 
                     builder.AppendLine($"    decode(view: PierogiView | Uint8Array): I{definition.Name} {{");
