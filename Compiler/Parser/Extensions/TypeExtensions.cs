@@ -19,7 +19,6 @@ namespace Compiler.Parser.Extensions
             {"string", (int) ScalarType.String},
             {"guid", (int) ScalarType.Guid}
         };
-
         public static int FindToken(this Token[] tokens, Func<KeyValuePair<Token, int>, bool> predicate)
         {
             try
