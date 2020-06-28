@@ -1,4 +1,4 @@
-package the.more.you.know;
+package the_more_you_know;
 
 enum VideoCodec {
   H264 = 0;
@@ -6,7 +6,7 @@ enum VideoCodec {
 }
 
 struct VideoData {
-  float timestamp;
+  float timestamps;
   uint width;
   uint height;
   byte[] fragment;

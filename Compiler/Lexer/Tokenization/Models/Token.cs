@@ -27,6 +27,11 @@ namespace Compiler.Lexer.Tokenization.Models
         /// </summary>
         public int Index { get; }
 
+        /// <summary>
+        /// The overall length of the token <see cref="Lexeme"/>
+        /// </summary>
+        public uint Length { get; }
+
 
         /// <summary>
         ///     Create a new lexical token instance
@@ -41,7 +46,15 @@ namespace Compiler.Lexer.Tokenization.Models
             Lexeme = lexeme;
             Position = position;
             Index = index;
+            Length = (uint) (Lexeme?.Length ?? 0);
         }
+
+        /// <summary>
+        /// Updates the position of the current token
+        /// </summary>
+        /// <param name="position">the new span to assign the current token</param>
+        public Token UpdatePosition(Span position) => new Token(Kind, Lexeme, position, Index);
+
 
         public override int GetHashCode() => HashCode.Combine((int) Kind, Lexeme, Position);
 

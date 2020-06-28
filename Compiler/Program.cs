@@ -10,7 +10,7 @@ namespace Compiler
     {
         static async Task Main(string[] args)
         {
-            var parser = new SchemaParser("C:\\Users\\Andrew\\source\\repos\\PierogivNext\\Schemas\\sample.pie");
+            var parser = new SchemaParser("C:\\Users\\Andrew\\PierogiVNext\\Schemas\\sample.pie");
             var watch = System.Diagnostics.Stopwatch.StartNew();
 
             await parser.Evaluate();

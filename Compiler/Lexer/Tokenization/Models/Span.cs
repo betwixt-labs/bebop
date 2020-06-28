@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Text.Json.Serialization;
 
 namespace Compiler.Lexer.Tokenization.Models
 {
@@ -16,6 +17,7 @@ namespace Compiler.Lexer.Tokenization.Models
         /// <summary>
         ///     Creates an empty span starting and ending at column 0 of line 0.
         /// </summary>
+        [JsonIgnore]
         public static Span Empty => new Span(0, 0);
 
         /// <summary>
@@ -25,6 +27,7 @@ namespace Compiler.Lexer.Tokenization.Models
         /// <param name="column">The start/end document column.</param>
         public Span(int line, int column) : this(line, column, line, column)
         {
+           
         }
 
         /// <summary>
@@ -71,39 +74,47 @@ namespace Compiler.Lexer.Tokenization.Models
         ///     Extends the span to the next line. Returns a new Span with the same start position, ending on next line at column
         ///     0.
         /// </summary>
+        [JsonIgnore]
         public Span NextLine => new Span(StartLine, StartColumn, EndLine + 1, 0);
 
         /// <summary>
         ///     Returns a new span starting on the next line, at column 0
         /// </summary>
+        [JsonIgnore]
         public Span NewLine => new Span(EndLine + 1, 0, EndLine + 1, 0);
 
         /// <summary>
         ///     Extends the span to the next column. Returns a new Span with the same start position, ending on the same line at
         ///     the next column.
         /// </summary>
+        [JsonIgnore]
         public Span NextColumn => new Span(StartLine, StartColumn, EndLine, EndColumn + 1);
 
         /// <summary>
         ///     Returns a new span starting on the same line, at the next column.
         /// </summary>
+        [JsonIgnore]
         public Span Next => new Span(EndLine, EndColumn + 1);
 
         /// <summary>
         ///     Returns a new span with the same start position, ending on the same line at the previous column.
         /// </summary>
+        [JsonIgnore]
         public Span PreviousColumn => new Span(StartLine, StartColumn, EndLine, EndColumn - 1);
 
         /// <summary>
         ///     Returns a new span starting at the end of the current position.
         /// </summary>
+        [JsonIgnore]
         public Span End => new Span(EndLine, EndColumn);
 
-        public Span OffSet(int columns, int lines = 0) => new Span(StartLine + lines,
-            StartColumn + columns,
-            EndLine + lines,
-            EndColumn + columns);
 
+        public Span SetEndColumn(uint offset) => new Span(StartLine,
+            StartColumn,
+            EndLine,
+            (int) (EndColumn + offset));
+
+   
         public Span Combine(Span other) => Combine(this, other);
 
         public static Span Combine(params Span[] a)

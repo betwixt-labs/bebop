@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Compiler.IO.Interfaces;
 using Compiler.Lexer.Extensions;
@@ -12,6 +14,9 @@ namespace Compiler.Lexer.Tokenization
     public class Tokenizer : ITokenizer
     {
         private ISchemaReader _reader;
+        /// <summary> The position of all newlines in the buffer, in ascending order. </summary>
+        /// <remarks> Used for <see cref="UpdateTokenPosition"/></remarks>
+        public List<int> Newlines { get; private set; }
 
         protected int TokenCount { get; private set; }
 
@@ -29,7 +34,40 @@ namespace Compiler.Lexer.Tokenization
         /// <param name="reader"></param>
         public void AssignReader<T>(T reader) where T : ISchemaReader
         {
+            Newlines = new List<int>();
             _reader = reader;
+        }
+
+        /// <summary>
+        /// Updates the current token line and column based on the <paramref name="currentPosition"/> provided
+        /// </summary>
+        /// <param name="currentPosition"></param>
+        public void UpdateTokenPosition(int currentPosition)
+        {
+            var lastLine = 0;
+            var b = Newlines.Count;
+
+            if (b == 0 || currentPosition < Newlines[0])
+            {
+                CurrentTokenPosition = new Span(0, currentPosition);
+                return;
+            }
+
+            var last = Newlines[b - 1];
+            if (currentPosition > last)
+            {
+                CurrentTokenPosition = new Span(b, currentPosition - last - 1);
+                return;
+            }
+
+            while (lastLine  < b)
+            {
+                var m = (lastLine + b) / 2;
+                var v = Newlines[m];
+                if (currentPosition <= v) b = m;
+                else lastLine = m;
+            }
+            CurrentTokenPosition = new Span(lastLine + 1, currentPosition - Newlines[lastLine] - 1);
         }
 
         /// <summary>
@@ -42,9 +80,12 @@ namespace Compiler.Lexer.Tokenization
             TokenCount = 0;
             while (_reader != null && _reader.Peek() > 0)
             {
+
+           
                 var current = _reader.GetChar();
                 var next = _reader.PeekChar();
-                var startPos = _reader.CurrentPosition;
+               
+
                 if (current.IsLineEnding(next))
                 {
                     // when the schema is encoded using CRLF we need to skip ahead another byte
@@ -53,20 +94,19 @@ namespace Compiler.Lexer.Tokenization
                         _reader.GetChar();
                     }
                     CurrentTokenPosition = CurrentTokenPosition.NewLine;
+                    Newlines.Add(_reader.CurrentPosition - 1);
                     continue;
                 }
+                UpdateTokenPosition(_reader.CurrentPosition - 1);
+                
                 var scan = TryScan(current);
-
+              
                 if (scan.HasValue)
                 {
-                    // set the tokens end position 
-                    yield return await Task.FromResult(scan.Value);
+                    // updates the tokens end column
+                    CurrentTokenPosition = CurrentTokenPosition.SetEndColumn(scan.Value.Length);
+                    yield return await Task.FromResult(scan.Value.UpdatePosition(CurrentTokenPosition));
                     TokenCount++;
-                }
-                else
-                {
-                    // adjust the column when we skip passed whitespace or unknown characters 
-                    CurrentTokenPosition = CurrentTokenPosition.OffSet(1);
                 }
             }
             ++TokenCount;
