@@ -40,9 +40,13 @@ namespace Compiler.Meta
                 {
                     if (definition.Kind != AggregateKind.Struct)
                     {
-                        if (field.ConstantValue < 0)
+                        if (definition.Kind == AggregateKind.Message && field.ConstantValue <= 0)
                         {
-                            throw FailFast.InvalidField(field, "may only contain positive field ids", SourceFile);
+                            throw FailFast.InvalidField(field, "Message members must start at 1", SourceFile);
+                        }
+                        if (definition.Kind == AggregateKind.Enum && field.ConstantValue < 0)
+                        {
+                            throw FailFast.InvalidField(field, "Enum members must start at 0", SourceFile);
                         }
                         if (definition.Fields.Count(f => f.ConstantValue == field.ConstantValue) > 1)
                         {
