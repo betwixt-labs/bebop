@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Compiler.Meta.Interfaces;
+﻿using Compiler.Meta.Interfaces;
 
 namespace Compiler.Meta
 {
@@ -13,7 +10,7 @@ namespace Compiler.Meta
             in uint column,
             in bool isArray,
             in bool isDeprecated,
-            in uint constantValue)
+            in int constantValue)
         {
             Name = name;
             TypeCode = type;
@@ -30,6 +27,6 @@ namespace Compiler.Meta
         public uint Column { get; }
         public bool IsArray { get; }
         public bool IsDeprecated { get; }
-        public uint ConstantValue { get; }
+        public int ConstantValue { get; }
     }
 }

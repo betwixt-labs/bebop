@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
+﻿using System.Collections.Generic;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
 using Compiler.IO.Interfaces;
 using Compiler.Lexer.Extensions;
@@ -137,7 +134,7 @@ namespace Compiler.Lexer.Tokenization
         private bool IsNumber(char surrogate, out Token token)
         {
             token = default;
-            if (!surrogate.IsDecimalDigit())
+            if (surrogate != '-' && !surrogate.IsDecimalDigit())
             {
                 return false;
             }
@@ -244,6 +241,10 @@ namespace Compiler.Lexer.Tokenization
             if (surrogate == '/' && _reader.PeekChar() == '/')
             {
                 return ReadLineComment(out token);
+            }
+            if (IsNumber(surrogate, out token))
+            {
+                return true;
             }
             if (TokenizerExtensions.TryGetSymbol(surrogate, out var kind))
             {

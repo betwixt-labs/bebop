@@ -164,8 +164,13 @@ namespace Compiler.Lexer.Tokenization
         ///     The assignment operator '='.
         /// </summary>
         [Symbol('=')]
-        Eq
+        Eq,
+        /// <summary>
+        ///      <![CDATA[ - ]]>
+        /// </summary>
+        [Symbol('-')]
+        Hyphen
 
-    #endregion
+        #endregion
     }
 }

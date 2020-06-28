@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using System.Text.Json;
 using System.Threading.Tasks;
 using Compiler.Exceptions;
 using Compiler.Lexer;
@@ -18,20 +15,28 @@ namespace Compiler.Parser
     public class SchemaParser
     {
         private readonly SchemaLexer _lexer;
+        private readonly string _schemaPath;
         private List<IDefinition> _definitions;
         private uint _index;
         private string _package;
         private Token[] _tokens;
-        private readonly string _schemaPath;
 
         public SchemaParser(string file)
         {
-          
             _lexer = new SchemaLexer();
             _lexer.CreateFileHandle(file);
             _schemaPath = file;
         }
 
+        /// <summary>
+        ///     Gets the <see cref="Token"/> at the current <see name="_index"/>
+        /// </summary>
+        private Token CurrentToken => _tokens[_index];
+
+        /// <summary>
+        ///     Walks the contents of a schema and turns it's body into characters into <see cref="Token"/> instances
+        /// </summary>
+        /// <returns></returns>
         private async Task Tokenize()
         {
             var collection = new List<Token>();
@@ -42,17 +47,30 @@ namespace Compiler.Parser
             _tokens = collection.ToArray();
         }
 
-        private Token CurrentToken => _tokens[_index];
-
+        /// <summary>
+        ///     Peeks a token at the specified <paramref name="index"/>
+        /// </summary>
+        /// <param name="index"></param>
+        /// <returns></returns>
         private Token PeekToken(uint index) => _tokens[index];
 
-        private Token RebaseToken(uint index)
+        /// <summary>
+        ///     Sets the current token stream position to the specified <paramref name="index"/>
+        /// </summary>
+        /// <param name="index"></param>
+        /// <returns></returns>
+        private Token Base(uint index)
         {
             _index = index;
             return _tokens[index];
         }
 
-
+        /// <summary>
+        ///     If the <see cref="CurrentToken"/> matches the specified <paramref name="kind"/>, advance the token stream
+        ///     <see cref="_index"/> forward
+        /// </summary>
+        /// <param name="kind">The <see cref="TokenKind"/> to eat</param>
+        /// <returns></returns>
         private bool Eat(TokenKind kind)
         {
             if (CurrentToken.Kind == kind)
@@ -63,30 +81,26 @@ namespace Compiler.Parser
             return false;
         }
 
+        /// <summary>
+        ///     If the <see cref="CurrentToken"/> matches the specified <paramref name="kind"/>, advance the token stream
+        ///     <see cref="_index"/> forward.
+        ///     Otherwise throw a <see cref="UnexpectedTypeException"/>
+        /// </summary>
+        /// <param name="kind">The <see cref="TokenKind"/> to eat</param>
+        /// <returns></returns>
         private void Expect(TokenKind kind)
         {
             if (!Eat(kind))
             {
-                throw ExpectedTypeException(kind);
+                throw FailFast.ExpectedTypeException(kind, CurrentToken, _schemaPath);
             }
         }
 
-        private UnexpectedTypeException ExpectedTypeException(TokenKind expected)
-        {
-            return new UnexpectedTypeException(expected.ToString(), $"{CurrentToken.Lexeme} ({CurrentToken.Kind})", CurrentToken.Position.StartLine, CurrentToken.Position.StartColumn, _schemaPath);
-        }
-        private TypeUndefinedException UndefinedTypeException(in Token definitionToken)
-        {
-            return new TypeUndefinedException(CurrentToken.ToString(), $"{definitionToken.Lexeme} ({definitionToken.Kind})", CurrentToken.Position.StartLine, CurrentToken.Position.StartColumn, _schemaPath);
-        }
 
-        private UnsupportedOperationException UnsupportedException(TokenKind declaration, TokenKind required)
-        {
-            return new UnsupportedOperationException($"The \"{declaration}\" declaration may only be applied to \"{required}\" fields", CurrentToken.Position.StartLine, CurrentToken.Position.StartColumn, _schemaPath);
-        }
-
-        
-
+        /// <summary>
+        ///     Evaluates a schema and parses it into a <see cref="ISchema"/> object
+        /// </summary>
+        /// <returns></returns>
         public async Task<ISchema> Evaluate()
         {
             await Tokenize();
@@ -110,20 +124,20 @@ namespace Compiler.Parser
                     _ when Eat(TokenKind.Enum) => AggregateKind.Enum,
                     _ when Eat(TokenKind.Struct) => AggregateKind.Struct,
                     _ when Eat(TokenKind.Message) => AggregateKind.Message,
-                    _ => throw ExpectedTypeException(TokenKind.Message)
+                    _ => throw FailFast.ExpectedTypeException(TokenKind.Message, CurrentToken, _schemaPath)
                 };
-                DefineAggregate(CurrentToken, kind);
+                DeclareAggregateType(CurrentToken, kind);
             }
-            return new PierogiSchema(_package, _definitions);
+            return new PierogiSchema(_schemaPath, _package, _definitions);
         }
 
 
         /// <summary>
-        /// Defines an aggregate type and adds it to the <see cref="_definitions"/> collection
+        ///     Declares an aggregate data structure and adds it to the <see cref="_definitions"/> collection
         /// </summary>
         /// <param name="definitionToken">The token that begins the type to define.</param>
         /// <param name="kind">The <see cref="AggregateKind"/> the type will represents.</param>
-        private void DefineAggregate(Token definitionToken, AggregateKind kind)
+        private void DeclareAggregateType(Token definitionToken, AggregateKind kind)
         {
             var fields = new List<IField>();
             Expect(TokenKind.Identifier);
@@ -133,14 +147,22 @@ namespace Compiler.Parser
                 var typeCode = 0;
                 var isArray = false;
                 var isDeprecated = false;
-                uint value = 0;
-               
+                var value = 0;
+
                 if (kind != AggregateKind.Enum)
                 {
-                    typeCode = GetTypeCode(CurrentToken);
-                    if (typeCode == -1)
+                    if (!CurrentToken.Lexeme.Equals(definitionToken.Lexeme))
                     {
-                        throw UndefinedTypeException(definitionToken);
+                        typeCode = GetTypeCode(CurrentToken);
+                        if (typeCode == -1)
+                        {
+                            throw FailFast.UndefinedTypeException(CurrentToken, definitionToken, _schemaPath);
+                        }
+                    }
+                    else
+                    {
+                        // there is a self-nested field, so let's define this definition and set the type code to the next index
+                        typeCode = _definitions.Count;
                     }
 
                     Expect(TokenKind.Identifier);
@@ -153,27 +175,29 @@ namespace Compiler.Parser
 
                 var fieldName = CurrentToken.Lexeme;
 
-                var fieldLine = (uint)CurrentToken.Position.StartLine;
-                var fieldCol = (uint)CurrentToken.Position.StartColumn;
+                var fieldLine = (uint) CurrentToken.Position.StartLine;
+                var fieldCol = (uint) CurrentToken.Position.StartColumn;
 
                 Expect(TokenKind.Identifier);
 
                 if (kind != AggregateKind.Struct)
                 {
                     Expect(TokenKind.Eq);
-                    value = uint.Parse(CurrentToken.Lexeme);
+                    value = int.Parse(CurrentToken.Lexeme);
                     Expect(TokenKind.Number);
                 }
                 if (Eat(TokenKind.OpenBracket))
                 {
                     if (kind != AggregateKind.Message)
                     {
-                        throw UnsupportedException(TokenKind.Deprecated, TokenKind.Message);
+                        throw FailFast.UnsupportedException(TokenKind.Deprecated,
+                            TokenKind.Message,
+                            CurrentToken,
+                            _schemaPath);
                     }
                     Expect(TokenKind.Deprecated);
                     Expect(TokenKind.CloseBracket);
                     isDeprecated = true;
-                    
                 }
 
                 Expect(TokenKind.Semicolon);
@@ -185,15 +209,15 @@ namespace Compiler.Parser
                 d.Line == definitionToken.Position.StartLine))
             {
                 _definitions.Add(new Definition(definitionToken.Lexeme,
-                    (uint)definitionToken.Position.StartLine,
-                    (uint)definitionToken.Position.StartColumn,
+                    (uint) definitionToken.Position.StartLine,
+                    (uint) definitionToken.Position.StartColumn,
                     kind,
                     fields));
             }
-
         }
+
         /// <summary>
-        /// Searches for a type code, defining dependency types where necessary 
+        ///     Searches for a type code, defining dependency types where necessary
         /// </summary>
         /// <param name="currentToken">the token that reflects the type to derive a code from.</param>
         /// <returns>A type code or -1 if none was found.</returns>
@@ -210,7 +234,9 @@ namespace Compiler.Parser
             }
             var currentField = _index;
             AggregateKind? kind = null;
-            var startIndex = _tokens.FindToken(t => t.Key.IsAggregateKind(out kind) && PeekToken((uint)(t.Value + 1)).Lexeme.Equals(currentToken.Lexeme));
+            var startIndex = _tokens.FindToken(t
+                => t.Key.IsAggregateKind(out kind) &&
+                PeekToken((uint) (t.Value + 1)).Lexeme.Equals(currentToken.Lexeme));
             if (startIndex == -1)
             {
                 return -1;
@@ -219,10 +245,10 @@ namespace Compiler.Parser
             {
                 return -1;
             }
-            var rebase = RebaseToken((uint)startIndex + 1);
+            var rebase = Base((uint) startIndex + 1);
             Debug.Assert(kind != null, nameof(kind) + " != null");
-            DefineAggregate(rebase, kind.Value);
-            RebaseToken(currentField);
+            DeclareAggregateType(rebase, kind.Value);
+            Base(currentField);
             return _definitions.FindIndex(definition => definition.Name.Equals(CurrentToken.Lexeme));
         }
     }

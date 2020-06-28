@@ -12,8 +12,8 @@
         public string Name { get; }
 
         /// <summary>
-        ///     Indicates whether the current member is a <see cref="ScalarType"/> or
-        ///     <see cref="AggregateKind"/>.
+        ///     Indicates either the <see cref="ScalarType"/> or
+        ///     a defined <see cref="AggregateKind"/>.
         /// </summary>
         public int TypeCode { get; }
 
@@ -45,6 +45,6 @@
         ///     <see cref="AggregateKind.Message"/> a unique index.
         ///     It will be zero for <see cref="AggregateKind.Struct"/>.
         /// </remarks>
-        public uint ConstantValue { get; }
+        public int ConstantValue { get; }
     }
 }

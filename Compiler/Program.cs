@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Compiler.Lexer;
-using Compiler.Lexer.Tokenization;
 using Compiler.Parser;
 
 namespace Compiler
@@ -13,9 +11,8 @@ namespace Compiler
             var parser = new SchemaParser("C:\\Users\\Andrew\\PierogiVNext\\Schemas\\sample.pie");
             var watch = System.Diagnostics.Stopwatch.StartNew();
 
-            await parser.Evaluate();
-          
-           
+            var schema = await parser.Evaluate();
+            schema.Validate();
             watch.Stop();
             var elapsedMs = watch.ElapsedMilliseconds;
             Console.WriteLine(elapsedMs);

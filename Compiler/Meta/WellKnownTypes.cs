@@ -1,5 +1,15 @@
-﻿namespace Compiler.Meta
+﻿using System.Collections.Generic;
+
+namespace Compiler.Meta
 {
+    public static class ReservedTypes
+    {
+        public static HashSet<string> Identifiers = new HashSet<string>
+        {
+            "package",
+            "PierogiDataView"
+        };
+    }
     /// <summary>
     ///     Pierogi scalar types are aligned with native types found in most programming languages. All scalar types support
     ///     being used as an array.

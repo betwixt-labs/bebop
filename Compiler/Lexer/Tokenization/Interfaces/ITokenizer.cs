@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using Compiler.IO.Interfaces;
 using Compiler.Lexer.Tokenization.Models;
 
