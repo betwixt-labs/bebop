@@ -100,7 +100,7 @@ namespace Compiler.Generators
                 builder.AppendLine("      view.writeUint(0);");
             }
             builder.AppendLine("");
-            builder.AppendLine("      if (isTopLevel) return view.toUint8Array();");
+            builder.AppendLine("      if (isTopLevel) return view.toArray();");
          
             return builder.ToString();
         }
