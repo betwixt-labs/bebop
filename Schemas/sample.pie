@@ -7,14 +7,13 @@ enum VideoCodec {
 
 struct VideoData {
   float timestamps;
-  uint width;
-  uint height;
+  uint   width;
+  uint   height;
   byte[] fragment;
 }
 
 
 message MediaMessage {
-  VideoCodec codec = 0; 
-  string friendlyName = 1 [deprecated];
+  VideoCodec codec = 1;
   VideoData data = 2;
 }
