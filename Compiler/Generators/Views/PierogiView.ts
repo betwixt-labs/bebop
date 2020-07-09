@@ -138,6 +138,10 @@ export class PierogiView {
         return String.fromCharCode(...result);
     }
 
+    skip(amount: number) {
+        this.index += amount;
+    }
+
     readGuidByte(): number {
         let a = this.readByte();
         if (a === -1) throw new Error("Expected any character");

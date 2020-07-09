@@ -19,39 +19,7 @@ namespace Compiler.Generators
 
         public string CompileEncode(IDefinition definition)
         {
-            string Code(IField field)
-            {
-                var code = field.TypeCode switch
-                {
-                    _ when field.TypeCode < 0 => (ScalarType)field.TypeCode switch
-                    {
-                        ScalarType.Bool => $"view.writeByte(message.{field.Name.ToCamelCase()};",
-                        ScalarType.Byte => $"view.writeByte(message.{field.Name.ToCamelCase()};",
-                        ScalarType.UInt => $"view.writeUint(message.{field.Name.ToCamelCase()}",
-                        ScalarType.Int => $"view.writeInt(message.{field.Name.ToCamelCase()}",
-                        ScalarType.Float => $"view.writeFloat(message.{field.Name.ToCamelCase()}",
-                        ScalarType.String => $"view.writeString(message.{field.Name.ToCamelCase()}",
-                        ScalarType.Guid => $"view.writeGuid(message.{field.Name.ToCamelCase()}",
-                        _ => string.Empty
-                    },
-                    _ => string.Empty
-                };
-                if (string.IsNullOrWhiteSpace(code))
-                {
-                    var f = _schema.Definitions.ElementAt(field.TypeCode);
-                    if (f.Kind == AggregateKind.Enum)
-                    {
-                        code = $"var encoded = {f.Name}[message.{field.Name.ToCamelCase()}] as unknown as number; " +
-                            $"if (encoded === void 0) throw new Error(\"\"); " + 
-                            $"view.writeUint(encoded";
-                    }
-                    else
-                    {
-                        code = $"{f.Name}.encode(message.{field.Name.ToCamelCase()}, view";
-                    }
-                }
-                return code;
-            }
+            
 
             var builder = new StringBuilder();
             builder.AppendLine("      var isTopLevel = !view;");
@@ -62,7 +30,7 @@ namespace Compiler.Generators
                 {
                     continue;
                 }
-                var code = Code(field);
+                var code = GetWriteCode(field);
                 builder.AppendLine("");
                 builder.AppendLine($"      if (message.{field.Name.ToCamelCase()} != null) {{");
                 if (definition.Kind == AggregateKind.Message)
@@ -77,9 +45,10 @@ namespace Compiler.Generators
                     }
                     else
                     {
+                       
                         builder.AppendLine($"        view.writeUint(message.{field.Name.ToCamelCase()}.length);");
                         builder.AppendLine($"        for (var i = 0; i < message.{field.Name.ToCamelCase()}.length; i++) {{");
-                        builder.AppendLine($"          {code}[i]);");
+                        builder.AppendLine($"          {(field.TypeCode >= 0 && (AggregateKind) field.TypeCode == AggregateKind.Enum ? $"{code});" : $"{code}[i]);")}");
                         builder.AppendLine("        }");
                     }
                 }
@@ -122,16 +91,7 @@ namespace Compiler.Generators
                 builder.AppendLine("");
             } else if (definition.Kind == AggregateKind.Struct)
             {
-                if (definition.IsReadOnly)
-                {
-                    builder.AppendLine($"      var message: I{definition.Name} = {{");
-                }
-                else
-                {
-                    builder.AppendLine($"      var message: I{definition.Name};");
-                    builder.AppendLine($"      message = (() => {{ }}) as unknown as I{definition.Name};");
-                    builder.AppendLine("");
-                }
+                builder.AppendLine($"      var message: I{definition.Name} = {{");
             }
             var indent  = definition.Kind switch
             {
@@ -142,7 +102,7 @@ namespace Compiler.Generators
             foreach (var field in definition.Fields)
             {
 
-                var code = GetFieldCode(field);
+                var code = GetReadCode(field);
                 
                 if (definition.Kind == AggregateKind.Message)
                 {
@@ -164,9 +124,9 @@ namespace Compiler.Generators
                     }
                     else
                     {
-                        if ((ScalarType) field.TypeCode == ScalarType.Byte)
+                        if ((ScalarType)field.TypeCode == ScalarType.Byte)
                         {
-                            if (definition.Kind == AggregateKind.Struct && definition.IsReadOnly)
+                            if (definition.Kind == AggregateKind.Struct)
                             {
                                 builder.AppendLine($"          {field.Name.ToCamelCase()}: view.readBytes(),");
                             }
@@ -174,11 +134,11 @@ namespace Compiler.Generators
                             {
                                 builder.AppendLine($"{indent}message.{field.Name.ToCamelCase()} = view.readBytes();");
                             }
-                           
+
                         }
                         else
                         {
-                            if (definition.Kind == AggregateKind.Struct && definition.IsReadOnly)
+                            if (definition.Kind == AggregateKind.Struct)
                             {
                                 builder.AppendLine($"          {field.Name.ToCamelCase()}: (");
                                 builder.AppendLine($"               () => {{");
@@ -191,11 +151,11 @@ namespace Compiler.Generators
                             }
                             else
                             {
-                                builder.AppendLine($"{indent}var length = view.readUint();");
-                                builder.AppendLine($"{indent}message.{field.Name.ToCamelCase()} = [];");
+                                builder.AppendLine($"{indent}let length = view.readUint();");
+                                builder.AppendLine($"{indent}message.{field.Name.ToCamelCase()} = new Array<{GetTsType(field, false)}>(length);");
                                 builder.AppendLine($"{indent}while (length-- > 0) message.{field.Name.ToCamelCase()}.push({code});");
                             }
-                            
+
                         }
                     }
                 }
@@ -207,7 +167,7 @@ namespace Compiler.Generators
                     }
                     else
                     {
-                        if (definition.Kind == AggregateKind.Struct && definition.IsReadOnly)
+                        if (definition.Kind == AggregateKind.Struct)
                         {
                             builder.AppendLine($"          {field.Name.ToCamelCase()}: {code},");
                         }
@@ -236,7 +196,7 @@ namespace Compiler.Generators
             }
             else
             {
-                if (definition.Kind == AggregateKind.Struct && definition.IsReadOnly)
+                if (definition.Kind == AggregateKind.Struct)
                 {
                     builder.AppendLine("      };");
                     builder.AppendLine("");
@@ -249,7 +209,41 @@ namespace Compiler.Generators
             return builder.ToString();
         }
 
-        private string GetFieldCode(in IField field)
+        string GetWriteCode(IField field)
+        {
+            var code = field.TypeCode switch
+            {
+                _ when field.TypeCode < 0 => (ScalarType)field.TypeCode switch
+                {
+                    ScalarType.Bool => $"view.writeByte(message.{field.Name.ToCamelCase()};",
+                    ScalarType.Byte => $"view.writeByte(message.{field.Name.ToCamelCase()};",
+                    ScalarType.UInt => $"view.writeUint(message.{field.Name.ToCamelCase()}",
+                    ScalarType.Int => $"view.writeInt(message.{field.Name.ToCamelCase()}",
+                    ScalarType.Float => $"view.writeFloat(message.{field.Name.ToCamelCase()}",
+                    ScalarType.String => $"view.writeString(message.{field.Name.ToCamelCase()}",
+                    ScalarType.Guid => $"view.writeGuid(message.{field.Name.ToCamelCase()}",
+                    _ => string.Empty
+                },
+                _ => string.Empty
+            };
+            if (string.IsNullOrWhiteSpace(code))
+            {
+                var f = _schema.Definitions.ElementAt(field.TypeCode);
+                if (f.Kind == AggregateKind.Enum)
+                {
+                    code = $"var encoded = message.{field.Name.ToCamelCase()}[i] as number; " +
+                        $"if (encoded === void 0) throw new Error(\"\"); " +
+                        $"view.writeUint(encoded";
+                }
+                else
+                {
+                    code = $"{f.Name}.encode(message.{field.Name.ToCamelCase()}, view";
+                }
+            }
+            return code;
+        }
+
+        private string GetReadCode(in IField field)
         {
             var code = field.TypeCode switch
             {
