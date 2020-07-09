@@ -5,7 +5,7 @@ enum VideoCodec {
   H265 = 1;
 }
 
-struct VideoData {
+readonly struct VideoData {
   float timestamps;
   uint   width;
   uint   height;
@@ -14,6 +14,6 @@ struct VideoData {
 
 
 message MediaMessage {
-  VideoCodec codec = 1;
+  VideoCodec codec = 1 [deprecated("test")];
   VideoData data = 2;
 }

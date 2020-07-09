@@ -32,6 +32,11 @@ namespace Compiler.Lexer.Tokenization
         /// </summary>
         [Keyword("package")]
         Package,
+        /// <summary>
+        ///     The 'readonly' keyword which is reserved by the compiler
+        /// </summary>
+        [Keyword("readonly")]
+        ReadOnly,
 
         /// <summary>
         ///     The 'deprecated' keyword which is reserved by the compiler

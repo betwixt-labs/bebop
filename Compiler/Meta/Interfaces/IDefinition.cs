@@ -25,6 +25,10 @@ namespace Compiler.Meta.Interfaces
         /// </summary>
         public AggregateKind Kind { get; }
         /// <summary>
+        /// Declares that a structure type is immutable. Only valid for <see cref="AggregateKind.Struct"/>
+        /// </summary>
+        public bool IsReadOnly { get; }
+        /// <summary>
         /// A collection of all <see cref="IField"/> 
         /// </summary>
         public ICollection<IField> Fields { get; }

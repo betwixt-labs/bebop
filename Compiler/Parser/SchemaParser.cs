@@ -107,8 +107,7 @@ namespace Compiler.Parser
             _index = 0;
             _definitions = new List<IDefinition>();
             _package = string.Empty;
-
-
+            
             if (Eat(TokenKind.Package))
             {
                 _package = CurrentToken.Lexeme;
@@ -116,9 +115,10 @@ namespace Compiler.Parser
                 Expect(TokenKind.Semicolon);
             }
 
-
+            
             while (_index < _tokens.Length && !Eat(TokenKind.EndOfFile))
             {
+                var isReadOnly = Eat(TokenKind.ReadOnly);
                 var kind = CurrentToken switch
                 {
                     _ when Eat(TokenKind.Enum) => AggregateKind.Enum,
@@ -126,7 +126,14 @@ namespace Compiler.Parser
                     _ when Eat(TokenKind.Message) => AggregateKind.Message,
                     _ => throw FailFast.ExpectedTypeException(TokenKind.Message, CurrentToken, _schemaPath)
                 };
-                DeclareAggregateType(CurrentToken, kind);
+                if (isReadOnly && kind != AggregateKind.Struct)
+                {
+                    throw FailFast.UnsupportedException(TokenKind.ReadOnly,
+                        TokenKind.Struct,
+                        CurrentToken,
+                        _schemaPath);
+                }
+                DeclareAggregateType(CurrentToken, kind, isReadOnly);
             }
             return new PierogiSchema(_schemaPath, _package, _definitions);
         }
@@ -137,7 +144,8 @@ namespace Compiler.Parser
         /// </summary>
         /// <param name="definitionToken">The token that begins the type to define.</param>
         /// <param name="kind">The <see cref="AggregateKind"/> the type will represents.</param>
-        private void DeclareAggregateType(Token definitionToken, AggregateKind kind)
+        /// <param name="isReadOnly"></param>
+        private void DeclareAggregateType(Token definitionToken, AggregateKind kind, bool isReadOnly)
         {
             var fields = new List<IField>();
             Expect(TokenKind.Identifier);
@@ -146,7 +154,7 @@ namespace Compiler.Parser
             {
                 var typeCode = 0;
                 var isArray = false;
-                var isDeprecated = false;
+                DeprecatedAttribute? deprecatedAttribute = null;
                 var value = 0;
 
                 if (kind != AggregateKind.Enum)
@@ -196,19 +204,23 @@ namespace Compiler.Parser
                             _schemaPath);
                     }
                     Expect(TokenKind.Deprecated);
+                    Expect(TokenKind.OpenParenthesis);
+                    var message = CurrentToken.Lexeme;
+                    Expect(TokenKind.StringExpandable);
+                    Expect(TokenKind.CloseParenthesis);
                     Expect(TokenKind.CloseBracket);
-                    isDeprecated = true;
+                    deprecatedAttribute = new DeprecatedAttribute(message);
                 }
 
                 Expect(TokenKind.Semicolon);
-                fields.Add(new Field(fieldName, typeCode, fieldLine, fieldCol, isArray, isDeprecated, value));
+                fields.Add(new Field(fieldName, typeCode, fieldLine, fieldCol, isArray, deprecatedAttribute, value));
             }
 
             if (!_definitions.Any(d
                 => d.Name.Equals(definitionToken.Lexeme) && d.Column == definitionToken.Position.StartColumn &&
                 d.Line == definitionToken.Position.StartLine))
             {
-                _definitions.Add(new Definition(definitionToken.Lexeme,
+                _definitions.Add(new Definition(definitionToken.Lexeme, isReadOnly,
                     (uint) definitionToken.Position.StartLine,
                     (uint) definitionToken.Position.StartColumn,
                     kind,
@@ -247,7 +259,8 @@ namespace Compiler.Parser
             }
             var rebase = Base((uint) startIndex + 1);
             Debug.Assert(kind != null, nameof(kind) + " != null");
-            DeclareAggregateType(rebase, kind.Value);
+            // ReSharper disable once PossibleInvalidOperationException
+            DeclareAggregateType(rebase, kind.Value, PeekToken((uint) (startIndex - 1)).Kind == TokenKind.ReadOnly);
             Base(currentField);
             return _definitions.FindIndex(definition => definition.Name.Equals(CurrentToken.Lexeme));
         }

@@ -5,13 +5,14 @@ namespace Compiler.Meta
 {
     public readonly struct Definition : IDefinition
     {
-        public Definition(string name,
+        public Definition(string name, bool isReadOnly,
             in uint line,
             in uint column,
             AggregateKind kind,
             ICollection<IField> fields)
         {
             Name = name;
+            IsReadOnly = isReadOnly;
             Line = line;
             Column = column;
             Kind = kind;
@@ -22,6 +23,7 @@ namespace Compiler.Meta
         public uint Line { get; }
         public uint Column { get; }
         public AggregateKind Kind { get; }
+        public bool IsReadOnly { get; }
         public ICollection<IField> Fields { get; }
     }
 }
