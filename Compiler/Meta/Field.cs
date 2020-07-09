@@ -9,7 +9,7 @@ namespace Compiler.Meta
             in uint line,
             in uint column,
             in bool isArray,
-            in bool isDeprecated,
+            in DeprecatedAttribute? deprecatedAttribute,
             in int constantValue)
         {
             Name = name;
@@ -17,7 +17,7 @@ namespace Compiler.Meta
             Line = line;
             Column = column;
             IsArray = isArray;
-            IsDeprecated = isDeprecated;
+            DeprecatedAttribute = deprecatedAttribute;
             ConstantValue = constantValue;
         }
 
@@ -26,7 +26,7 @@ namespace Compiler.Meta
         public uint Line { get; }
         public uint Column { get; }
         public bool IsArray { get; }
-        public bool IsDeprecated { get; }
+        public DeprecatedAttribute? DeprecatedAttribute { get; }
         public int ConstantValue { get; }
     }
 }

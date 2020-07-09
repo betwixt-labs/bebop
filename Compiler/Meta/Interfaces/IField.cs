@@ -35,7 +35,7 @@
         /// <summary>
         ///     Indicates if the member has been marked as no longer recommended for use.
         /// </summary>
-        public bool IsDeprecated { get; }
+        public DeprecatedAttribute? DeprecatedAttribute { get; }
 
         /// <summary>
         ///     A literal value associated with the member.

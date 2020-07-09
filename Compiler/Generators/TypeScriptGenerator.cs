@@ -58,7 +58,7 @@ namespace Compiler.Generators
             builder.AppendLine("      if (isTopLevel) view = new PierogiView();");
             foreach (var field in definition.Fields)
             {
-                if (field.IsDeprecated)
+                if (field.DeprecatedAttribute.HasValue)
                 {
                     continue;
                 }
@@ -175,7 +175,7 @@ namespace Compiler.Generators
                 }
                 if (field.IsArray)
                 {
-                    if (field.IsDeprecated)
+                    if (field.DeprecatedAttribute.HasValue)
                     {
                         if ((ScalarType) field.TypeCode == ScalarType.Byte)
                         {
@@ -203,7 +203,7 @@ namespace Compiler.Generators
                 }
                 else
                 {
-                    if (field.IsDeprecated)
+                    if (field.DeprecatedAttribute.HasValue)
                     {
                         builder.AppendLine($"{indent}{code};");
                     }
@@ -298,6 +298,12 @@ namespace Compiler.Generators
                         var field = definition.Fields.ElementAt(i);
 
                         var type = Type(field);
+                        if (field.DeprecatedAttribute.HasValue && !string.IsNullOrWhiteSpace(field.DeprecatedAttribute.Value.Message))
+                        {
+                            builder.AppendLine("    /**");
+                            builder.AppendLine($"    * @deprecated {field.DeprecatedAttribute.Value.Message}");
+                            builder.AppendLine($"    */");
+                        }
                         builder.AppendLine($"    {field.Name.ToCamelCase()}{(definition.Kind == AggregateKind.Message ? "?" : "")}: {type}");
                     }
                     builder.AppendLine("  }");
