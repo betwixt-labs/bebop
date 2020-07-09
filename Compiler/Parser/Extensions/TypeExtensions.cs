@@ -4,6 +4,7 @@ using System.Linq;
 using Compiler.Lexer.Tokenization;
 using Compiler.Lexer.Tokenization.Models;
 using Compiler.Meta;
+using Compiler.Meta.Interfaces;
 
 namespace Compiler.Parser.Extensions
 {
@@ -33,6 +34,7 @@ namespace Compiler.Parser.Extensions
                 return -1;
             }
         }
+
 
         public static bool IsAggregateKind(this Token token, out AggregateKind? kind)
         {

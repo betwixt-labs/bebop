@@ -41,7 +41,7 @@ namespace Compiler.Generators
                     var f = _schema.Definitions.ElementAt(field.TypeCode);
                     if (f.Kind == AggregateKind.Enum)
                     {
-                        code = $"var encoded = {f.Name}[message.{field.Name.ToCamelCase()}] as unknown  as number; " +
+                        code = $"var encoded = {f.Name}[message.{field.Name.ToCamelCase()}] as unknown as number; " +
                             $"if (encoded === void 0) throw new Error(\"\"); " + 
                             $"view.writeUint(encoded";
                     }
@@ -107,38 +107,6 @@ namespace Compiler.Generators
 
         public string CompileDecode(IDefinition definition)
         {
-            string Code(IField field)
-            {
-                var code = field.TypeCode switch
-                {
-                    _ when field.TypeCode < 0 => (ScalarType) field.TypeCode switch
-                    {
-                        ScalarType.Bool => "!!view.readByte()",
-                        ScalarType.Byte => "view.readByte()",
-                        ScalarType.UInt => "view.readUint()",
-                        ScalarType.Int => "view.readInt()",
-                        ScalarType.Float => "view.readFloat()",
-                        ScalarType.String => "view.readString()",
-                        ScalarType.Guid => "view.readGuid()",
-                        _ => string.Empty
-                    },
-                    _ => string.Empty
-                };
-                if (string.IsNullOrWhiteSpace(code))
-                {
-                    var f = _schema.Definitions.ElementAt(field.TypeCode);
-                    if (f.Kind == AggregateKind.Enum)
-                    {
-                        code = $"view.readUint() as {f.Name}";
-                    }
-                    else
-                    {
-                        code = $"{f.Name}.decode(view)";
-                    }
-                }
-                return code;
-            }
-
             var builder = new StringBuilder();
             builder.AppendLine("      if (!(view instanceof PierogiView)) {");
             builder.AppendLine("        view = new PierogiView(view);");
@@ -154,9 +122,16 @@ namespace Compiler.Generators
                 builder.AppendLine("");
             } else if (definition.Kind == AggregateKind.Struct)
             {
-                builder.AppendLine($"      var message: I{definition.Name};");
-                builder.AppendLine($"      message = (() => {{ }}) as unknown as I{definition.Name};");
-                builder.AppendLine("");
+                if (definition.IsReadOnly)
+                {
+                    builder.AppendLine($"      var message: I{definition.Name} = {{");
+                }
+                else
+                {
+                    builder.AppendLine($"      var message: I{definition.Name};");
+                    builder.AppendLine($"      message = (() => {{ }}) as unknown as I{definition.Name};");
+                    builder.AppendLine("");
+                }
             }
             var indent  = definition.Kind switch
             {
@@ -167,7 +142,7 @@ namespace Compiler.Generators
             foreach (var field in definition.Fields)
             {
 
-                var code = Code(field);
+                var code = GetFieldCode(field);
                 
                 if (definition.Kind == AggregateKind.Message)
                 {
@@ -179,7 +154,7 @@ namespace Compiler.Generators
                     {
                         if ((ScalarType) field.TypeCode == ScalarType.Byte)
                         {
-                            builder.AppendLine($"{indent}view.readBytes();");
+                            builder.AppendLine($"      view.readBytes();");
                         }
                         else
                         {
@@ -191,13 +166,36 @@ namespace Compiler.Generators
                     {
                         if ((ScalarType) field.TypeCode == ScalarType.Byte)
                         {
-                            builder.AppendLine($"{indent}message.{field.Name.ToCamelCase()} = view.readBytes();");
+                            if (definition.Kind == AggregateKind.Struct && definition.IsReadOnly)
+                            {
+                                builder.AppendLine($"          {field.Name.ToCamelCase()}: view.readBytes(),");
+                            }
+                            else
+                            {
+                                builder.AppendLine($"{indent}message.{field.Name.ToCamelCase()} = view.readBytes();");
+                            }
+                           
                         }
                         else
                         {
-                            builder.AppendLine($"{indent}var length = view.readUint();");
-                            builder.AppendLine($"{indent}message.{field.Name.ToCamelCase()} = [];");
-                            builder.AppendLine($"{indent}while (length-- > 0) message.{field.Name.ToCamelCase()}.push({code});");
+                            if (definition.Kind == AggregateKind.Struct && definition.IsReadOnly)
+                            {
+                                builder.AppendLine($"          {field.Name.ToCamelCase()}: (");
+                                builder.AppendLine($"               () => {{");
+                                builder.AppendLine($"                   let length = view.readUint();");
+                                builder.AppendLine($"                   const collection = new Array<{GetTsType(field, false)}>(length);");
+                                builder.AppendLine($"                   while (length-- > 0) collection.push({code});");
+                                builder.AppendLine($"                   return collection;");
+                                builder.AppendLine($"               }}");
+                                builder.AppendLine($"           )(),");
+                            }
+                            else
+                            {
+                                builder.AppendLine($"{indent}var length = view.readUint();");
+                                builder.AppendLine($"{indent}message.{field.Name.ToCamelCase()} = [];");
+                                builder.AppendLine($"{indent}while (length-- > 0) message.{field.Name.ToCamelCase()}.push({code});");
+                            }
+                            
                         }
                     }
                 }
@@ -209,7 +207,15 @@ namespace Compiler.Generators
                     }
                     else
                     {
-                        builder.AppendLine($"{indent}message.{field.Name.ToCamelCase()} = {code};");
+                        if (definition.Kind == AggregateKind.Struct && definition.IsReadOnly)
+                        {
+                            builder.AppendLine($"          {field.Name.ToCamelCase()}: {code},");
+                        }
+                        else
+                        {
+                            builder.AppendLine($"{indent}message.{field.Name.ToCamelCase()} = {code};");
+                        }
+                        
                     }
                 }
 
@@ -230,6 +236,11 @@ namespace Compiler.Generators
             }
             else
             {
+                if (definition.Kind == AggregateKind.Struct && definition.IsReadOnly)
+                {
+                    builder.AppendLine("      };");
+                    builder.AppendLine("");
+                }
                 builder.AppendLine("      return message;");
                 builder.AppendLine("    }");
                 builder.AppendLine("  };");
@@ -238,38 +249,71 @@ namespace Compiler.Generators
             return builder.ToString();
         }
 
+        private string GetFieldCode(in IField field)
+        {
+            var code = field.TypeCode switch
+            {
+                _ when field.TypeCode < 0 => (ScalarType)field.TypeCode switch
+                {
+                    ScalarType.Bool => "!!view.readByte()",
+                    ScalarType.Byte => "view.readByte()",
+                    ScalarType.UInt => "view.readUint()",
+                    ScalarType.Int => "view.readInt()",
+                    ScalarType.Float => "view.readFloat()",
+                    ScalarType.String => "view.readString()",
+                    ScalarType.Guid => "view.readGuid()",
+                    _ => string.Empty
+                },
+                _ => string.Empty
+            };
+            if (string.IsNullOrWhiteSpace(code))
+            {
+                var f = _schema.Definitions.ElementAt(field.TypeCode);
+                if (f.Kind == AggregateKind.Enum)
+                {
+                    code = $"view.readUint() as {f.Name}";
+                }
+                else
+                {
+                    code = $"{f.Name}.decode(view)";
+                }
+            }
+            return code;
+        }
+
+
+        private string GetTsType(in IField field, bool formatArray = true)
+        {
+            var type = field.TypeCode switch
+            {
+                _ when field.TypeCode < 0 => (ScalarType)field.TypeCode switch
+                {
+                    ScalarType.Bool => formatArray && field.IsArray ? "boolean[]" : "boolean",
+                    ScalarType.Byte => formatArray && field.IsArray ? "Uint8Array" : "number",
+                    ScalarType.UInt => formatArray && field.IsArray ? "number[]" : "number",
+                    ScalarType.Int => formatArray && field.IsArray ? "number[]" : "number",
+                    ScalarType.Float => formatArray && field.IsArray ? "number[]" : "number",
+                    ScalarType.String => formatArray && field.IsArray ? "string[]" : "string",
+                    ScalarType.Guid => formatArray && field.IsArray ? "string[]" : "string",
+                    _ => string.Empty
+                },
+                _ => string.Empty
+            };
+            if (string.IsNullOrWhiteSpace(type))
+            {
+                var f = _schema.Definitions.ElementAt(field.TypeCode);
+                type = f.Kind != AggregateKind.Enum ? $"I{f.Name}" : f.Name;
+                if (formatArray && field.IsArray)
+                {
+                    type = $"{type}[]";
+                }
+            }
+            return type;
+        }
+
         public string Compile()
         {
-            string Type(IField field)
-            {
-                var type = field.TypeCode switch
-                {
-                    _ when field.TypeCode < 0 => (ScalarType) field.TypeCode switch
-                    {
-                        ScalarType.Bool => field.IsArray ? "boolean[]" : "boolean",
-                        ScalarType.Byte => field.IsArray ? "Uint8Array" : "number",
-                        ScalarType.UInt => field.IsArray ? "number[]" : "number",
-                        ScalarType.Int => field.IsArray ? "number[]" : "number",
-                        ScalarType.Float => field.IsArray ? "number[]" : "number",
-                        ScalarType.String => field.IsArray ? "string[]" : "string",
-                        ScalarType.Guid => field.IsArray ? "string[]" : "string",
-                        _ => string.Empty
-                    },
-                    _ => string.Empty
-                };
-                if (string.IsNullOrWhiteSpace(type))
-                {
-                    var f = _schema.Definitions.ElementAt(field.TypeCode);
-                    type = f.Kind != AggregateKind.Enum ? $"I{f.Name}" : f.Name;
-                    if (field.IsArray)
-                    {
-                        type = $"{type}[]";
-                    }
-                }
-                return type;
-            }
 
-           
             var builder = new StringBuilder();
             if (!string.IsNullOrWhiteSpace(_schema.Package))
             {
@@ -285,7 +329,7 @@ namespace Compiler.Generators
                     {
                         var field = definition.Fields.ElementAt(i);
                         builder.AppendLine(
-                            $"    {field.Name} = {field.ConstantValue}{(i + 1 < definition.Fields.Count ? "," : "")}");
+                            $"      {field.Name} = {field.ConstantValue}{(i + 1 < definition.Fields.Count ? "," : "")}");
                     }
                     builder.AppendLine("  }");
                 }
@@ -297,14 +341,14 @@ namespace Compiler.Generators
                     {
                         var field = definition.Fields.ElementAt(i);
 
-                        var type = Type(field);
+                        var type = GetTsType(field);
                         if (field.DeprecatedAttribute.HasValue && !string.IsNullOrWhiteSpace(field.DeprecatedAttribute.Value.Message))
                         {
                             builder.AppendLine("    /**");
                             builder.AppendLine($"    * @deprecated {field.DeprecatedAttribute.Value.Message}");
                             builder.AppendLine($"    */");
                         }
-                        builder.AppendLine($"    {field.Name.ToCamelCase()}{(definition.Kind == AggregateKind.Message ? "?" : "")}: {type}");
+                        builder.AppendLine($"       {(definition.IsReadOnly ? "readonly" : "")} {field.Name.ToCamelCase()}{(definition.Kind == AggregateKind.Message ? "?" : "")}: {type}");
                     }
                     builder.AppendLine("  }");
                     builder.AppendLine("");
