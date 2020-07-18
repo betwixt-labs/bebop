@@ -259,12 +259,18 @@ export class PierogiView {
         } while (value);
     }
 
+    writeEnum(value: any): void {
+        var encoded = value as number;
+        if (encoded === void 0) throw new Error("Couldn't convert enum value");
+        this.writeUint(encoded);
+    }
+
     writeInt(value: number): void {
         this.writeUint((value << 1) ^ (value >> 31));
     }
 
     /**
-     * Writes a length-prefixed null-terminated string using UTF-8 encoding.
+     * Writes a null-terminated string using UTF-8 encoding.
      * This method first writes the length of the string as
      * a variable-length unsigned integer, and then writes that many characters to the buffer.
      * @param value
