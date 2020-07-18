@@ -8,15 +8,15 @@ using Compiler.Meta.Interfaces;
 
 namespace Compiler.Generators
 {
-    public class TypeScriptGenerator
+    public class TypeScriptGenerator : IGenerator
     {
-        private readonly ISchema _schema;
+        private ISchema _schema;
 
-        public TypeScriptGenerator(ISchema schema)
-        {
-            _schema = schema;
-        }
-
+        /// <summary>
+        /// Generate the body of the <c>encode</c> function for the given <see cref="IDefinition"/>.
+        /// </summary>
+        /// <param name="definition">The definition to generate code for.</param>
+        /// <returns>The generated TypeScript <c>encode</c> function body.</returns>
         public string CompileEncode(IDefinition definition)
         {
             
@@ -48,13 +48,13 @@ namespace Compiler.Generators
                        
                         builder.AppendLine($"        view.writeUint(message.{field.Name.ToCamelCase()}.length);");
                         builder.AppendLine($"        for (var i = 0; i < message.{field.Name.ToCamelCase()}.length; i++) {{");
-                        builder.AppendLine($"          {(field.TypeCode >= 0 && (AggregateKind) field.TypeCode == AggregateKind.Enum ? $"{code});" : $"{code}[i]);")}");
+                        builder.AppendLine($"          {code}");
                         builder.AppendLine("        }");
                     }
                 }
                 else
                 {
-                    builder.AppendLine($"        {code});");
+                    builder.AppendLine($"        {code}");
                 }
 
                 if (definition.Kind == AggregateKind.Struct)
@@ -74,6 +74,11 @@ namespace Compiler.Generators
             return builder.ToString();
         }
 
+        /// <summary>
+        /// Generate the body of the <c>decode</c> function for the given <see cref="IDefinition"/>.
+        /// </summary>
+        /// <param name="definition">The definition to generate code for.</param>
+        /// <returns>The generated TypeScript <c>decode</c> function body.</returns>
         public string CompileDecode(IDefinition definition)
         {
             var builder = new StringBuilder();
@@ -209,40 +214,46 @@ namespace Compiler.Generators
             return builder.ToString();
         }
 
+        /// <summary>
+        /// Generate a "write" call for the given <see cref="IField"/>.
+        /// </summary>
+        /// <param name="field">The field to generate code for.</param>
+        /// <returns>The generated "write" call.</returns>
         string GetWriteCode(IField field)
         {
-            var code = field.TypeCode switch
+            var method = field.TypeCode switch 
             {
                 _ when field.TypeCode < 0 => (ScalarType)field.TypeCode switch
                 {
-                    ScalarType.Bool => $"view.writeByte(message.{field.Name.ToCamelCase()};",
-                    ScalarType.Byte => $"view.writeByte(message.{field.Name.ToCamelCase()};",
-                    ScalarType.UInt => $"view.writeUint(message.{field.Name.ToCamelCase()}",
-                    ScalarType.Int => $"view.writeInt(message.{field.Name.ToCamelCase()}",
-                    ScalarType.Float => $"view.writeFloat(message.{field.Name.ToCamelCase()}",
-                    ScalarType.String => $"view.writeString(message.{field.Name.ToCamelCase()}",
-                    ScalarType.Guid => $"view.writeGuid(message.{field.Name.ToCamelCase()}",
+                    ScalarType.Bool => "writeByte",
+                    ScalarType.Byte => "writeByte",
+                    ScalarType.UInt => "writeUint",
+                    ScalarType.Int => "writeInt",
+                    ScalarType.Float => "writeFloat",
+                    ScalarType.String => "writeString",
+                    ScalarType.Guid => "writeGuid",
                     _ => string.Empty
                 },
-                _ => string.Empty
+                _ => _schema.Definitions.ElementAt(field.TypeCode) switch
+                {
+                    var f when f.Kind == AggregateKind.Enum => "writeEnum",
+                    var f => "encode",
+                },
             };
-            if (string.IsNullOrWhiteSpace(code))
-            {
-                var f = _schema.Definitions.ElementAt(field.TypeCode);
-                if (f.Kind == AggregateKind.Enum)
-                {
-                    code = $"var encoded = message.{field.Name.ToCamelCase()}[i] as number; " +
-                        $"if (encoded === void 0) throw new Error(\"\"); " +
-                        $"view.writeUint(encoded";
-                }
-                else
-                {
-                    code = $"{f.Name}.encode(message.{field.Name.ToCamelCase()}, view";
-                }
-            }
+            var index = field.IsArray ? "[i]" : "";
+            var fieldName = $"message.{field.Name.ToCamelCase()}";
+            var code =
+                method == "encode"
+                    ? $"{_schema.Definitions.ElementAt(field.TypeCode).Name}.encode({fieldName}{index}, view);"
+                    : $"view.{method}({fieldName}{index});";
             return code;
         }
 
+        /// <summary>
+        /// Generate a "read" call for the given <see cref="IField"/>.
+        /// </summary>
+        /// <param name="field">The field to generate code for.</param>
+        /// <returns>The generated "read" call.</returns>
         private string GetReadCode(in IField field)
         {
             var code = field.TypeCode switch
@@ -276,6 +287,12 @@ namespace Compiler.Generators
         }
 
 
+        /// <summary>
+        /// Generate a TypeScript type name for the given <see cref="IField"/>.
+        /// </summary>
+        /// <param name="field">The field to generate code for.</param>
+        /// <param name="formatArray">If set to "false", omit the "[]" from array type names.</param>
+        /// <returns>The TypeScript type name.</returns>
         private string GetTsType(in IField field, bool formatArray = true)
         {
             var type = field.TypeCode switch
@@ -305,8 +322,13 @@ namespace Compiler.Generators
             return type;
         }
 
-        public string Compile()
+        /// <summary>
+        /// Generate code for a Pierogi schema.
+        /// </summary>
+        /// <returns>The generated code.</returns>
+        public string Compile(ISchema schema)
         {
+            _schema = schema;
 
             var builder = new StringBuilder();
             if (!string.IsNullOrWhiteSpace(_schema.Package))
@@ -339,10 +361,10 @@ namespace Compiler.Generators
                         if (field.DeprecatedAttribute.HasValue && !string.IsNullOrWhiteSpace(field.DeprecatedAttribute.Value.Message))
                         {
                             builder.AppendLine("    /**");
-                            builder.AppendLine($"    * @deprecated {field.DeprecatedAttribute.Value.Message}");
-                            builder.AppendLine($"    */");
+                            builder.AppendLine($"     * @deprecated {field.DeprecatedAttribute.Value.Message}");
+                            builder.AppendLine($"     */");
                         }
-                        builder.AppendLine($"       {(definition.IsReadOnly ? "readonly" : "")} {field.Name.ToCamelCase()}{(definition.Kind == AggregateKind.Message ? "?" : "")}: {type}");
+                        builder.AppendLine($"    {(definition.IsReadOnly ? "readonly " : "")}{field.Name.ToCamelCase()}{(definition.Kind == AggregateKind.Message ? "?" : "")}: {type}");
                     }
                     builder.AppendLine("  }");
                     builder.AppendLine("");

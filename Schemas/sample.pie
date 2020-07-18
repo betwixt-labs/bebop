@@ -12,8 +12,14 @@ readonly struct VideoData {
   byte[] fragment;
 }
 
+message MyMessage {
+  uint cats = 1;
+  uint dogs = 2;
+}
 
 message MediaMessage {
-  VideoCodec codec = 1 [deprecated("test")];
-  VideoData data = 2;
+  VideoCodec[] codecs = 1;
+  VideoCodec otherCodec = 2;
+  VideoData data = 3;
+  MyMessage mine = 4 [deprecated("why")];
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Compiler.Generators;
@@ -10,7 +11,7 @@ namespace Compiler
     {
         static async Task Main(string[] args)
         {
-            var parser = new SchemaParser("C:\\Users\\Andrew\\PierogiVNext\\Schemas\\sample.pie");
+            var parser = new SchemaParser("/Users/lynn/code/PierogiVNext/Schemas/sample.pie");
             var watch = System.Diagnostics.Stopwatch.StartNew();
 
             var schema = await parser.Evaluate();
@@ -24,7 +25,7 @@ namespace Compiler
                 WriteIndented = true
             }));
 
-            Console.WriteLine(new TypeScriptGenerator(schema).Compile());
+            File.WriteAllText("/Users/lynn/code/PierogiVNext/Schemas/Output/Sample.ts", new TypeScriptGenerator().Compile(schema));
             Console.WriteLine("Hello World!");
         }
     }
