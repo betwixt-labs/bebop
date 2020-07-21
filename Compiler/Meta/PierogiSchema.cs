@@ -52,8 +52,7 @@ namespace Compiler.Meta
                         {
                             throw FailFast.InvalidField(field, "contains duplicate field ids", SourceFile);
                         }
-                       
-                        if (field.ConstantValue > definition.Fields.Count)
+                        if (definition.Kind == AggregateKind.Message && field.ConstantValue > definition.Fields.Count)
                         {
                             throw FailFast.InvalidField(field, "contains a field id that is greater than the total definition members", SourceFile);
                         }

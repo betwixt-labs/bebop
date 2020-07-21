@@ -8,7 +8,7 @@ const guidByteOrder = [3, 2, 1, 0, 5, 4, 7, 6, 8, 9, 10, 11, 12, 13, 14, 15];
  */
 export class PierogiView {
 
-    private data: Uint8Array;
+    private buffer: Uint8Array;
     private index: number;
     length: number;
 
@@ -16,25 +16,25 @@ export class PierogiView {
         if (data && !(data instanceof Uint8Array)) {
             throw new Error("data is not a Uint8Array");
         }
-        this.data = data || new Uint8Array(256);
+        this.buffer = data || new Uint8Array(256);
         this.index = 0;
         this.length = data ? data.length : 0;
     }
 
     toArray(): Uint8Array {
-        return this.data.subarray(0, this.length);
+        return this.buffer.subarray(0, this.length);
     }
 
     readByte(): number {
-        if (this.index + 1 > this.data.length) {
+        if (this.index + 1 > this.buffer.length) {
             throw new Error("Index out of bounds");
         }
-        return this.data[this.index++];
+        return this.buffer[this.index++];
     }
 
     readFloat(): number {
         const index = this.index;
-        const data = this.data;
+        const data = this.buffer;
         const length = data.length;
 
         // use a single byte to store zero
@@ -104,11 +104,33 @@ export class PierogiView {
         return result;
     }
 
+
+    // let array = [0];
+    // array[0] = 1;
+    // uint
+    // int 
+    // bool
+    // writeUint
+    // writeInt
+    // writeBool
+    // view.toArray()
     private growBy(amount: number): void {
-        if (this.length + amount > this.data.length) {
+
+        // Packet ID 9163
+      //  Resource ID	61453
+      //  TTL	32
+      //  Use Cache	true
+      //  Access Key	BCF130D0634B49AE
+
+        let d = new DataView(new Uint8Array(1));
+        d.setUint32(0, 4);
+        d.setUint32(4, 8);
+
+
+        if (this.length + amount > this.buffer.length) {
             const data = new Uint8Array(this.length + amount << 1);
-            data.set(this.data);
-            this.data = data;
+            data.set(this.buffer);
+            this.buffer = data;
         }
         this.length += amount;
     }
@@ -178,11 +200,11 @@ export class PierogiView {
         const length = this.readUint();
         const start = this.index;
         const end = start + length;
-        if (end > this.data.length) {
+        if (end > this.buffer.length) {
             throw new Error("Read array out of bounds");
         }
         this.index = end;
-        const result = this.data.subarray(start, end);
+        const result = this.buffer.subarray(start, end);
         return result;
     }
 
@@ -206,7 +228,7 @@ export class PierogiView {
     writeByte(value: number): void {
         const index = this.length;
         this.growBy(1);
-        this.data[index] = value;
+        this.buffer[index] = value;
     }
 
     writeGuid(value: string): void {
@@ -223,7 +245,7 @@ export class PierogiView {
         this.writeUint(value.length);
         const index = this.length;
         this.growBy(value.length);
-        this.data.set(value, index);
+        this.buffer.set(value, index);
     }
 
     writeFloat(value: number): void {
@@ -244,7 +266,7 @@ export class PierogiView {
 
         // Endian-independent 32-bit write
         this.growBy(4);
-        const data = this.data;
+        const data = this.buffer;
         data[index] = bits;
         data[index + 1] = bits >> 8;
         data[index + 2] = bits >> 16;
@@ -252,6 +274,7 @@ export class PierogiView {
     }
 
     writeUint(value: number): void {
+        
         do {
             const byte = value & 127;
             value >>>= 7;

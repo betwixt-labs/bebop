@@ -28,6 +28,13 @@ namespace Compiler.Parser
             _schemaPath = file;
         }
 
+        public SchemaParser(string file, string schema)
+        {
+            _lexer = new SchemaLexer();
+            _lexer.CreateMemoryHandle(schema);
+            _schemaPath = file;
+        }
+
         /// <summary>
         ///     Gets the <see cref="Token"/> at the current <see name="_index"/>
         /// </summary>
@@ -161,11 +168,12 @@ namespace Compiler.Parser
                 {
                     if (!CurrentToken.Lexeme.Equals(definitionToken.Lexeme))
                     {
-                        typeCode = GetTypeCode(CurrentToken);
-                        if (typeCode == -1)
+                        var result = DetermineType(CurrentToken);
+                        if (!result.HasValue)
                         {
                             throw FailFast.UndefinedTypeException(CurrentToken, definitionToken, _schemaPath);
                         }
+                        typeCode = result.Value;
                     }
                     else
                     {
@@ -229,11 +237,11 @@ namespace Compiler.Parser
         }
 
         /// <summary>
-        ///     Searches for a type code, defining dependency types where necessary
+        ///     Attempts to determine the type code for the <paramref name="currentToken"/>, defining dependency types where necessary
         /// </summary>
         /// <param name="currentToken">the token that reflects the type to derive a code from.</param>
-        /// <returns>A type code or -1 if none was found.</returns>
-        private int GetTypeCode(Token currentToken)
+        /// <returns>A type code or null if none was found.</returns>
+        private int? DetermineType(Token currentToken)
         {
             if (currentToken.TryParseType(out var typeCode))
             {
@@ -251,18 +259,19 @@ namespace Compiler.Parser
                 PeekToken((uint) (t.Value + 1)).Lexeme.Equals(currentToken.Lexeme));
             if (startIndex == -1)
             {
-                return -1;
+                return null;
             }
             if (!kind.HasValue)
             {
-                return -1;
+                return null;
             }
             var rebase = Base((uint) startIndex + 1);
             Debug.Assert(kind != null, nameof(kind) + " != null");
             // ReSharper disable once PossibleInvalidOperationException
             DeclareAggregateType(rebase, kind.Value, PeekToken((uint) (startIndex - 1)).Kind == TokenKind.ReadOnly);
             Base(currentField);
-            return _definitions.FindIndex(definition => definition.Name.Equals(CurrentToken.Lexeme));
+            typeCode = _definitions.FindIndex(definition => definition.Name.Equals(CurrentToken.Lexeme));
+            return typeCode == -1 ? null : typeCode;
         }
     }
 }

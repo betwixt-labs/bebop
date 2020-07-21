@@ -22,8 +22,8 @@ namespace Compiler.Generators
             
 
             var builder = new StringBuilder();
-            builder.AppendLine("      var isTopLevel = !view;");
-            builder.AppendLine("      if (isTopLevel) view = new PierogiView();");
+            builder.AppendLine("      var source = !view;");
+            builder.AppendLine("      if (source) view = new PierogiView();");
             foreach (var field in definition.Fields)
             {
                 if (field.DeprecatedAttribute.HasValue)
@@ -69,7 +69,7 @@ namespace Compiler.Generators
                 builder.AppendLine("      view.writeUint(0);");
             }
             builder.AppendLine("");
-            builder.AppendLine("      if (isTopLevel) return view.toArray();");
+            builder.AppendLine("      if (source) return view.toArray();");
          
             return builder.ToString();
         }
@@ -237,7 +237,7 @@ namespace Compiler.Generators
                 _ => _schema.Definitions.ElementAt(field.TypeCode) switch
                 {
                     var f when f.Kind == AggregateKind.Enum => "writeEnum",
-                    var f => "encode",
+                    _  => "encode",
                 },
             };
             var index = field.IsArray ? "[i]" : "";

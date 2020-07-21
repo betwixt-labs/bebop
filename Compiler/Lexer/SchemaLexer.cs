@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using Compiler.IO;
 using Compiler.Lexer.Interfaces;
 using Compiler.Lexer.Tokenization;
@@ -18,6 +19,16 @@ namespace Compiler.Lexer
         public void Dispose()
         {
             Tokenizer?.Dispose();
+        }
+
+        public override void CreateMemoryHandle(string schema)
+        {
+            if (string.IsNullOrWhiteSpace(schema))
+            {
+                throw new ArgumentNullException(nameof(schema));
+            }
+           
+            Tokenizer.AssignReader(new SchemaReader(new MemoryStream(Encoding.UTF8.GetBytes(schema))));
         }
 
         public override void CreateFileHandle(string schemaFile)

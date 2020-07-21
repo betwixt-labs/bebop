@@ -9,6 +9,7 @@ namespace Compiler.Lexer.Interfaces
     public abstract class LexerBase<TTokenizer> where TTokenizer : ITokenizer
     {
         private protected TTokenizer Tokenizer { get; set; }
+        public abstract void CreateMemoryHandle(string schema);
         public abstract void CreateFileHandle(string schemaFile);
         public abstract IAsyncEnumerable<Token> NextToken();
     }

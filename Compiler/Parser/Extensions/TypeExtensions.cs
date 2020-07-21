@@ -10,7 +10,7 @@ namespace Compiler.Parser.Extensions
 {
     public static class TypeExtensions
     {
-        private static readonly Dictionary<string, int> TypeIndex = new Dictionary<string, int>
+        private static readonly Dictionary<string, int?> TypeIndex = new Dictionary<string, int?>
         {
             {"bool", (int) ScalarType.Bool},
             {"byte", (int) ScalarType.Byte},
@@ -54,13 +54,13 @@ namespace Compiler.Parser.Extensions
             };
         }
 
-        public static bool TryParseType(this Token token, out int typeCode)
+        public static bool TryParseType(this Token token, out int? typeCode)
         {
             if (TypeIndex.TryGetValue(token.Lexeme, out typeCode))
             {
                 return true;
             }
-            typeCode = default;
+            typeCode = null;
             return false;
         }
     }

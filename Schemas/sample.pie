@@ -1,25 +1,20 @@
-package the_more_you_know;
+package sample;
 
-enum VideoCodec {
-  H264 = 0;
-  H265 = 1;
+enum Realm {
+  Gielinor = 0;
+  Azeroth = 1;
 }
 
-readonly struct VideoData {
-  float timestamps;
-  uint   width;
-  uint   height;
-  byte[] fragment;
+readonly struct Player {
+  int x;
+  int y;
+  uint health;
+  byte[] avatar;
 }
 
-message MyMessage {
-  uint cats = 1;
-  uint dogs = 2;
-}
-
-message MediaMessage {
-  VideoCodec[] codecs = 1;
-  VideoCodec otherCodec = 2;
-  VideoData data = 3;
-  MyMessage mine = 4 [deprecated("why")];
+message MobInfo {
+  Player player = 1;
+  uint creationTime = 2;
+  float attackPower = 3;
+  int priority = 4 [deprecated("why")];
 }
