@@ -149,7 +149,7 @@ namespace Compiler.Generators
                                 builder.AppendLine($"               () => {{");
                                 builder.AppendLine($"                   let length = view.readUint();");
                                 builder.AppendLine($"                   const collection = new Array<{GetTsType(field, false)}>(length);");
-                                builder.AppendLine($"                   while (length-- > 0) collection.push({code});");
+                                builder.AppendLine($"                   for (var i = 0; i < length; i++) collection[i] = {code};");
                                 builder.AppendLine($"                   return collection;");
                                 builder.AppendLine($"               }}");
                                 builder.AppendLine($"           )(),");
@@ -158,7 +158,7 @@ namespace Compiler.Generators
                             {
                                 builder.AppendLine($"{indent}let length = view.readUint();");
                                 builder.AppendLine($"{indent}message.{field.Name.ToCamelCase()} = new Array<{GetTsType(field, false)}>(length);");
-                                builder.AppendLine($"{indent}while (length-- > 0) message.{field.Name.ToCamelCase()}.push({code});");
+                                builder.AppendLine($"{indent}for (var i = 0; i < length; i++) message.{field.Name.ToCamelCase()}[i] = {code};");
                             }
 
                         }
@@ -210,7 +210,7 @@ namespace Compiler.Generators
                 builder.AppendLine("    }");
                 builder.AppendLine("  };");
             }
-    
+
             return builder.ToString();
         }
 
