@@ -15,7 +15,27 @@ namespace Compiler
 {
     class Program
     {
-        static async Task Main(string[] args)
+        static void Usage()
+        {
+            Console.Error.WriteLine("usage:\n");
+            Console.Error.WriteLine("    pierogic --server         Run a WebSocket server on localhost.");
+            Console.Error.WriteLine("");
+        }
+
+        static async Task<int> Main(string[] args)
+        {
+            switch (args.Length > 1 ? args[1] : null)
+            {
+                case "--server":
+                    await RunWebServer();
+                    return 0;
+                default:
+                    Usage();
+                    return 1;
+            }
+        }
+
+        static async Task RunWebServer()
         {
             var cancellation = new CancellationTokenSource();
 
@@ -100,17 +120,17 @@ namespace Compiler
                 }
                 catch (Exception acceptError)
                 {
-                  //  Log.Error("An error occurred while accepting client.", acceptError);
+                    //  Log.Error("An error occurred while accepting client.", acceptError);
                 }
             }
 
-          //  Log.Warning("Server has stopped accepting new clients.");
+            //  Log.Warning("Server has stopped accepting new clients.");
         }
 
         private static async Task EchoAllIncomingMessagesAsync(WebSocket webSocket, CancellationToken cancellation)
         {
-          //  Log.Warning("Client '" + webSocket.RemoteEndpoint + "' connected.");
-           // var sw = new Stopwatch();
+            //  Log.Warning("Client '" + webSocket.RemoteEndpoint + "' connected.");
+            // var sw = new Stopwatch();
             try
             {
                 while (webSocket.IsConnected && !cancellation.IsCancellationRequested)
@@ -124,15 +144,15 @@ namespace Compiler
                         try
                         {
                             var parser = new SchemaParser("ErrorSchema", messageText);
-                              var schema = await parser.Evaluate();
-                              schema.Validate();
-                              await webSocket.WriteStringAsync(new TypeScriptGenerator().Compile(schema), cancellationToken: cancellation);
+                            var schema = await parser.Evaluate();
+                            schema.Validate();
+                            await webSocket.WriteStringAsync(new TypeScriptGenerator().Compile(schema), cancellationToken: cancellation);
                         }
                         catch (Exception ex)
                         {
-                              await webSocket.WriteStringAsync(ex.Message, cancellationToken: cancellation);
+                            await webSocket.WriteStringAsync(ex.Message, cancellationToken: cancellation);
                         }
-                        
+
                     }
                     catch (TaskCanceledException)
                     {
@@ -152,11 +172,11 @@ namespace Compiler
 
         private static void TaskScheduler_UnobservedTaskException(object sender, UnobservedTaskExceptionEventArgs e)
         {
-           
+
         }
         private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
         {
-            
+
         }
     }
 }
