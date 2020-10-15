@@ -12,10 +12,9 @@
         public string Name { get; }
 
         /// <summary>
-        ///     Indicates either the <see cref="ScalarType"/> or
-        ///     a defined <see cref="AggregateKind"/>.
+        ///     The type of this field: a scalar, array, or defined type (enum/message/struct).
         /// </summary>
-        public int TypeCode { get; }
+        public IType Type { get; }
 
         /// <summary>
         ///     The line coordinate where the member was found.
@@ -26,11 +25,6 @@
         ///     The column coordinate where the member begins.
         /// </summary>
         public uint Column { get; }
-
-        /// <summary>
-        ///     Indicates whether the member is declared as an array.
-        /// </summary>
-        public bool IsArray { get; }
 
         /// <summary>
         ///     Indicates if the member has been marked as no longer recommended for use.

@@ -19,7 +19,7 @@ namespace Compiler.Generators
         /// <returns>The generated TypeScript <c>encode</c> function body.</returns>
         public string CompileEncode(IDefinition definition)
         {
-            
+
 
             var builder = new StringBuilder();
             builder.AppendLine("      var source = !view;");
@@ -37,15 +37,14 @@ namespace Compiler.Generators
                 {
                     builder.AppendLine($"        view.writeUint({field.ConstantValue});");
                 }
-                if (field.IsArray)
+                if (field.Type is ArrayType at)
                 {
-                    if ((ScalarType) field.TypeCode == ScalarType.Byte)
+                    if (at.IsBytes())
                     {
                         builder.AppendLine($"        view.writeBytes(message.{field.Name.ToCamelCase()});");
                     }
                     else
                     {
-                       
                         builder.AppendLine($"        view.writeUint(message.{field.Name.ToCamelCase()}.length);");
                         builder.AppendLine($"        for (var i = 0; i < message.{field.Name.ToCamelCase()}.length; i++) {{");
                         builder.AppendLine($"          {code}");
@@ -70,7 +69,7 @@ namespace Compiler.Generators
             }
             builder.AppendLine("");
             builder.AppendLine("      if (source) return view.toArray();");
-         
+
             return builder.ToString();
         }
 
@@ -94,11 +93,12 @@ namespace Compiler.Generators
                 builder.AppendLine("          case 0:");
                 builder.AppendLine("            return message;");
                 builder.AppendLine("");
-            } else if (definition.Kind == AggregateKind.Struct)
+            }
+            else if (definition.Kind == AggregateKind.Struct)
             {
                 builder.AppendLine($"      var message: I{definition.Name} = {{");
             }
-            var indent  = definition.Kind switch
+            var indent = definition.Kind switch
             {
                 AggregateKind.Struct => "      ",
                 AggregateKind.Message => "            ",
@@ -108,16 +108,16 @@ namespace Compiler.Generators
             {
 
                 var code = GetReadCode(field);
-                
+
                 if (definition.Kind == AggregateKind.Message)
                 {
                     builder.AppendLine($"          case {field.ConstantValue}:");
                 }
-                if (field.IsArray)
+                if (field.Type is ArrayType at)
                 {
                     if (field.DeprecatedAttribute.HasValue)
                     {
-                        if ((ScalarType) field.TypeCode == ScalarType.Byte)
+                        if (at.IsBytes())
                         {
                             builder.AppendLine($"      view.readBytes();");
                         }
@@ -129,7 +129,7 @@ namespace Compiler.Generators
                     }
                     else
                     {
-                        if ((ScalarType)field.TypeCode == ScalarType.Byte)
+                        if (at.IsBytes())
                         {
                             if (definition.Kind == AggregateKind.Struct)
                             {
@@ -148,7 +148,7 @@ namespace Compiler.Generators
                                 builder.AppendLine($"          {field.Name.ToCamelCase()}: (");
                                 builder.AppendLine($"               () => {{");
                                 builder.AppendLine($"                   let length = view.readUint();");
-                                builder.AppendLine($"                   const collection = new Array<{GetTsType(field, false)}>(length);");
+                                builder.AppendLine($"                   const collection = new {GetTsType(field.Type)}(length);");
                                 builder.AppendLine($"                   for (var i = 0; i < length; i++) collection[i] = {code};");
                                 builder.AppendLine($"                   return collection;");
                                 builder.AppendLine($"               }}");
@@ -157,7 +157,7 @@ namespace Compiler.Generators
                             else
                             {
                                 builder.AppendLine($"{indent}let length = view.readUint();");
-                                builder.AppendLine($"{indent}message.{field.Name.ToCamelCase()} = new Array<{GetTsType(field, false)}>(length);");
+                                builder.AppendLine($"{indent}message.{field.Name.ToCamelCase()} = new {GetTsType(field.Type)}(length);");
                                 builder.AppendLine($"{indent}for (var i = 0; i < length; i++) message.{field.Name.ToCamelCase()}[i] = {code};");
                             }
 
@@ -180,7 +180,7 @@ namespace Compiler.Generators
                         {
                             builder.AppendLine($"{indent}message.{field.Name.ToCamelCase()} = {code};");
                         }
-                        
+
                     }
                 }
 
@@ -221,30 +221,40 @@ namespace Compiler.Generators
         /// <returns>The generated "write" call.</returns>
         string GetWriteCode(IField field)
         {
-            var method = field.TypeCode switch 
+            IType t = field.Type;
+            var isArray = false;
+            if (t is ArrayType at)
             {
-                _ when field.TypeCode < 0 => (ScalarType)field.TypeCode switch
+                t = at.MemberType;
+                isArray = true;
+                if (t is ArrayType) throw new NotSupportedException("nested array");
+            }
+
+            var method = t switch
+            {
+                ScalarType st => st.BaseType switch
                 {
-                    ScalarType.Bool => "writeByte",
-                    ScalarType.Byte => "writeByte",
-                    ScalarType.UInt => "writeUint",
-                    ScalarType.Int => "writeInt",
-                    ScalarType.Float => "writeFloat",
-                    ScalarType.String => "writeString",
-                    ScalarType.Guid => "writeGuid",
-                    _ => string.Empty
+                    BaseType.Bool => "writeByte",
+                    BaseType.Byte => "writeByte",
+                    BaseType.UInt => "writeUint",
+                    BaseType.Int => "writeInt",
+                    BaseType.Float => "writeFloat",
+                    BaseType.String => "writeString",
+                    BaseType.Guid => "writeGuid",
+                    _ => string.Empty,
                 },
-                _ => _schema.Definitions.ElementAt(field.TypeCode) switch
+                DefinedType dt => _schema.Definitions[dt.Name].Kind switch
                 {
-                    var f when f.Kind == AggregateKind.Enum => "writeEnum",
-                    _  => "encode",
+                    AggregateKind.Enum => "writeEnum",
+                    _ => "encode",
                 },
+                _ => string.Empty,
             };
-            var index = field.IsArray ? "[i]" : "";
+            var index = isArray ? "[i]" : "";
             var fieldName = $"message.{field.Name.ToCamelCase()}";
             var code =
                 method == "encode"
-                    ? $"{_schema.Definitions.ElementAt(field.TypeCode).Name}.encode({fieldName}{index}, view);"
+                    ? $"{(t as DefinedType).Name}.encode({fieldName}{index}, view);"
                     : $"view.{method}({fieldName}{index});";
             return code;
         }
@@ -256,24 +266,34 @@ namespace Compiler.Generators
         /// <returns>The generated "read" call.</returns>
         private string GetReadCode(in IField field)
         {
-            var code = field.TypeCode switch
+            IType t = field.Type;
+            var isArray = false;
+            if (t is ArrayType at)
             {
-                _ when field.TypeCode < 0 => (ScalarType)field.TypeCode switch
+                t = at.MemberType;
+                isArray = true;
+                if (t is ArrayType) throw new NotSupportedException("nested array");
+            }
+
+
+            var code = t switch
+            {
+                ScalarType st => st.BaseType switch
                 {
-                    ScalarType.Bool => "!!view.readByte()",
-                    ScalarType.Byte => "view.readByte()",
-                    ScalarType.UInt => "view.readUint()",
-                    ScalarType.Int => "view.readInt()",
-                    ScalarType.Float => "view.readFloat()",
-                    ScalarType.String => "view.readString()",
-                    ScalarType.Guid => "view.readGuid()",
+                    BaseType.Bool => "!!view.readByte()",
+                    BaseType.Byte => "view.readByte()",
+                    BaseType.UInt => "view.readUint()",
+                    BaseType.Int => "view.readInt()",
+                    BaseType.Float => "view.readFloat()",
+                    BaseType.String => "view.readString()",
+                    BaseType.Guid => "view.readGuid()",
                     _ => string.Empty
                 },
                 _ => string.Empty
             };
             if (string.IsNullOrWhiteSpace(code))
             {
-                var f = _schema.Definitions.ElementAt(field.TypeCode);
+                var f = _schema.Definitions[(t as DefinedType).Name];
                 if (f.Kind == AggregateKind.Enum)
                 {
                     code = $"view.readUint() as {f.Name}";
@@ -288,38 +308,36 @@ namespace Compiler.Generators
 
 
         /// <summary>
-        /// Generate a TypeScript type name for the given <see cref="IField"/>.
+        /// Generate a TypeScript type name for the given <see cref="IType"/>.
         /// </summary>
-        /// <param name="field">The field to generate code for.</param>
-        /// <param name="formatArray">If set to "false", omit the "[]" from array type names.</param>
+        /// <param name="type">The field type to generate code for.</param>
         /// <returns>The TypeScript type name.</returns>
-        private string GetTsType(in IField field, bool formatArray = true)
+        private string GetTsType(in IType type)
         {
-            var type = field.TypeCode switch
+            switch (type)
             {
-                _ when field.TypeCode < 0 => (ScalarType)field.TypeCode switch
-                {
-                    ScalarType.Bool => formatArray && field.IsArray ? "boolean[]" : "boolean",
-                    ScalarType.Byte => formatArray && field.IsArray ? "Uint8Array" : "number",
-                    ScalarType.UInt => formatArray && field.IsArray ? "number[]" : "number",
-                    ScalarType.Int => formatArray && field.IsArray ? "number[]" : "number",
-                    ScalarType.Float => formatArray && field.IsArray ? "number[]" : "number",
-                    ScalarType.String => formatArray && field.IsArray ? "string[]" : "string",
-                    ScalarType.Guid => formatArray && field.IsArray ? "string[]" : "string",
-                    _ => string.Empty
-                },
-                _ => string.Empty
-            };
-            if (string.IsNullOrWhiteSpace(type))
-            {
-                var f = _schema.Definitions.ElementAt(field.TypeCode);
-                type = f.Kind != AggregateKind.Enum ? $"I{f.Name}" : f.Name;
-                if (formatArray && field.IsArray)
-                {
-                    type = $"{type}[]";
-                }
+                case ScalarType st:
+                    switch (st.BaseType)
+                    {
+                        case BaseType.Bool:
+                            return "boolean";
+                        case BaseType.Byte:
+                        case BaseType.UInt:
+                        case BaseType.Int:
+                        case BaseType.Float:
+                            return "number";
+                        case BaseType.String:
+                        case BaseType.Guid:
+                            return "string";
+                    }
+                    break;
+                case ArrayType at:
+                    return at.IsBytes() ? "Uint8Array" : $"Array<{GetTsType(at.MemberType)}>";
+                case DefinedType dt:
+                    var isEnum = _schema.Definitions[dt.Name].Kind == AggregateKind.Enum;
+                    return (isEnum ? "" : "I") + dt.Name;
             }
-            return type;
+            throw new InvalidOperationException($"GetTsType: {type}");
         }
 
         /// <summary>
@@ -336,7 +354,7 @@ namespace Compiler.Generators
                 builder.AppendLine($"export namespace {_schema.Package} {{");
             }
 
-            foreach (var definition in _schema.Definitions)
+            foreach (var definition in _schema.Definitions.Values)
             {
                 if (definition.Kind == AggregateKind.Enum)
                 {
@@ -357,7 +375,7 @@ namespace Compiler.Generators
                     {
                         var field = definition.Fields.ElementAt(i);
 
-                        var type = GetTsType(field);
+                        var type = GetTsType(field.Type);
                         if (field.DeprecatedAttribute.HasValue && !string.IsNullOrWhiteSpace(field.DeprecatedAttribute.Value.Message))
                         {
                             builder.AppendLine("    /**");
@@ -386,7 +404,7 @@ namespace Compiler.Generators
             }
             builder.AppendLine("");
 
-            
+
             return builder.ToString().TrimEnd();
         }
     }

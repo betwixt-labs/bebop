@@ -11,15 +11,10 @@ namespace Compiler.Meta
         };
     }
     /// <summary>
-    ///     Pierogi scalar types are aligned with native types found in most programming languages. All scalar types support
-    ///     being used as an array.
+    ///     Pierogi base types are aligned with native types found in most programming languages.
     /// </summary>
-    /// <remarks>
-    ///     A scalar type can only contain a "single" value whereas an <see cref="AggregateKind"/> can be constructed from
-    ///     multiple scalars (and possibly references to other aggregate kinds).
-    /// </remarks>
     // ReSharper disable once EnumUnderlyingTypeIsInt
-    public enum ScalarType : int
+    public enum BaseType : int
     {
         /// <summary>
         ///     A simple type representing Boolean values of true or false.
@@ -68,15 +63,6 @@ namespace Compiler.Meta
     /// <summary>
     ///     Aggregate kinds are data structures that can be constructed from multiple <see cref="ScalarType"/> members, and references to other aggregate kinds.
     /// </summary>
-    /// <remarks>
-    ///     Wikipedia says, "In type theory, a kind is the type of a type constructor or, less commonly, the type of a
-    ///     higher-order type operator. A kind system is essentially a simply typed lambda calculus 'one level up,' endowed
-    ///     with a primitive type, denoted * and called 'type', which is the kind of any (monomorphic) data type."
-    ///     <para/>
-    ///     In layman's terms, a kind is an arity specifier, and the members defined in an <see cref="AggregateKind"/> make up
-    ///     an actual Type.
-    ///     <para/>
-    /// </remarks>
     public enum AggregateKind : uint
     {
         /// <summary>

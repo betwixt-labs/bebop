@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
@@ -16,7 +17,8 @@ namespace Compiler.Parser
     {
         private readonly SchemaLexer _lexer;
         private readonly string _schemaPath;
-        private List<IDefinition> _definitions;
+        private Dictionary<string, IDefinition> _definitions;
+        private HashSet<(Token, Token)> _typeReferences;
         private uint _index;
         private string _package;
         private Token[] _tokens;
@@ -112,7 +114,8 @@ namespace Compiler.Parser
         {
             await Tokenize();
             _index = 0;
-            _definitions = new List<IDefinition>();
+            _definitions = new Dictionary<string, IDefinition>();
+            _typeReferences = new HashSet<(Token, Token)>();
             _package = string.Empty;
             
             if (Eat(TokenKind.Package))
@@ -142,6 +145,13 @@ namespace Compiler.Parser
                 }
                 DeclareAggregateType(CurrentToken, kind, isReadOnly);
             }
+            foreach (var (typeToken, definitionToken) in _typeReferences)
+            {
+                if (!_definitions.ContainsKey(typeToken.Lexeme))
+                {
+                    throw FailFast.UndefinedTypeException(typeToken, definitionToken, _schemaPath);
+                }
+            }
             return new PierogiSchema(_schemaPath, _package, _definitions);
         }
 
@@ -149,7 +159,7 @@ namespace Compiler.Parser
         /// <summary>
         ///     Declares an aggregate data structure and adds it to the <see cref="_definitions"/> collection
         /// </summary>
-        /// <param name="definitionToken">The token that begins the type to define.</param>
+        /// <param name="definitionToken">The token that names the type to define.</param>
         /// <param name="kind">The <see cref="AggregateKind"/> the type will represents.</param>
         /// <param name="isReadOnly"></param>
         private void DeclareAggregateType(Token definitionToken, AggregateKind kind, bool isReadOnly)
@@ -159,33 +169,23 @@ namespace Compiler.Parser
             Expect(TokenKind.OpenBrace);
             while (!Eat(TokenKind.CloseBrace))
             {
-                var typeCode = 0;
-                var isArray = false;
+                IType type = new ScalarType(BaseType.Int); // for enums
                 DeprecatedAttribute? deprecatedAttribute = null;
                 var value = 0;
 
                 if (kind != AggregateKind.Enum)
                 {
-                    if (!CurrentToken.Lexeme.Equals(definitionToken.Lexeme))
+                    type = DetermineType(CurrentToken);
+                    if (type is DefinedType)
                     {
-                        var result = DetermineType(CurrentToken);
-                        if (!result.HasValue)
-                        {
-                            throw FailFast.UndefinedTypeException(CurrentToken, definitionToken, _schemaPath);
-                        }
-                        typeCode = result.Value;
-                    }
-                    else
-                    {
-                        // there is a self-nested field, so let's define this definition and set the type code to the next index
-                        typeCode = _definitions.Count;
+                        _typeReferences.Add((CurrentToken, definitionToken));
                     }
 
                     Expect(TokenKind.Identifier);
-                    if (Eat(TokenKind.OpenBracket))
+                    while (Eat(TokenKind.OpenBracket))
                     {
                         Expect(TokenKind.CloseBracket);
-                        isArray = true;
+                        type = new ArrayType(type);
                     }
                 }
 
@@ -221,57 +221,33 @@ namespace Compiler.Parser
                 }
 
                 Expect(TokenKind.Semicolon);
-                fields.Add(new Field(fieldName, typeCode, fieldLine, fieldCol, isArray, deprecatedAttribute, value));
+                fields.Add(new Field(fieldName, type, fieldLine, fieldCol, deprecatedAttribute, value));
             }
 
-            if (!_definitions.Any(d
-                => d.Name.Equals(definitionToken.Lexeme) && d.Column == definitionToken.Position.StartColumn &&
-                d.Line == definitionToken.Position.StartLine))
+            if (_definitions.TryGetValue(definitionToken.Lexeme, out var d))
             {
-                _definitions.Add(new Definition(definitionToken.Lexeme, isReadOnly,
-                    (uint) definitionToken.Position.StartLine,
-                    (uint) definitionToken.Position.StartColumn,
-                    kind,
-                    fields));
+                throw new DuplicateTypeException(d.Name, d.Line, d.Column, _schemaPath);
             }
+
+            _definitions.Add(definitionToken.Lexeme, new Definition(definitionToken.Lexeme, isReadOnly,
+                (uint) definitionToken.Position.StartLine,
+                (uint) definitionToken.Position.StartColumn,
+                kind,
+                fields));
         }
 
         /// <summary>
-        ///     Attempts to determine the type code for the <paramref name="currentToken"/>, defining dependency types where necessary
+        ///     Attempts to determine the type for the <paramref name="currentToken"/>.
         /// </summary>
-        /// <param name="currentToken">the token that reflects the type to derive a code from.</param>
+        /// <param name="currentToken">the token that reflects the type to derive a type from.</param>
         /// <returns>A type code or null if none was found.</returns>
-        private int? DetermineType(Token currentToken)
+        private IType DetermineType(Token currentToken)
         {
-            if (currentToken.TryParseType(out var typeCode))
+            if (currentToken.TryParseBaseType(out var baseType))
             {
-                return typeCode;
+                return new ScalarType(baseType.Value);
             }
-            typeCode = _definitions.FindIndex(definition => definition.Name.Equals(currentToken.Lexeme));
-            if (typeCode != -1)
-            {
-                return typeCode;
-            }
-            var currentField = _index;
-            AggregateKind? kind = null;
-            var startIndex = _tokens.FindToken(t
-                => t.Key.IsAggregateKind(out kind) &&
-                PeekToken((uint) (t.Value + 1)).Lexeme.Equals(currentToken.Lexeme));
-            if (startIndex == -1)
-            {
-                return null;
-            }
-            if (!kind.HasValue)
-            {
-                return null;
-            }
-            var rebase = Base((uint) startIndex + 1);
-            Debug.Assert(kind != null, nameof(kind) + " != null");
-            // ReSharper disable once PossibleInvalidOperationException
-            DeclareAggregateType(rebase, kind.Value, PeekToken((uint) (startIndex - 1)).Kind == TokenKind.ReadOnly);
-            Base(currentField);
-            typeCode = _definitions.FindIndex(definition => definition.Name.Equals(CurrentToken.Lexeme));
-            return typeCode == -1 ? null : typeCode;
+            return new DefinedType(currentToken.Lexeme);
         }
     }
 }
