@@ -130,6 +130,7 @@ namespace Compiler
                         }
                         catch (Exception ex)
                         {
+                            Console.WriteLine(ex);
                               await webSocket.WriteStringAsync(ex.Message, cancellationToken: cancellation);
                         }
                         
