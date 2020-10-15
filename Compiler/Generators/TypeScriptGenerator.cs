@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using Compiler.Meta;
 using Compiler.Meta.Extensions;
@@ -388,6 +389,20 @@ namespace Compiler.Generators
 
             
             return builder.ToString().TrimEnd();
+        }
+
+        public string OutputFileName(ISchema schema)
+        {
+            return schema.Package + ".ts";
+        }
+
+        public void WriteAuxiliaryFiles(string outputPath)
+        {
+            var assembly = Assembly.GetExecutingAssembly();
+            using Stream stream = assembly.GetManifestResourceStream("Compiler.Generators.Resources.PierogiView.ts");
+            using StreamReader reader = new StreamReader(stream);
+            string result = reader.ReadToEnd();
+            File.WriteAllText(Path.Join(outputPath, "PierogiView.ts"), result);
         }
     }
 }
