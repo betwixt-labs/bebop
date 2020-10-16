@@ -332,6 +332,8 @@ namespace Compiler.Generators
             _schema = schema;
 
             var builder = new StringBuilder();
+            builder.AppendLine("import { PierogiView } from \"./PierogiView\";");
+            builder.AppendLine("");
             if (!string.IsNullOrWhiteSpace(_schema.Package))
             {
                 builder.AppendLine($"export namespace {_schema.Package} {{");

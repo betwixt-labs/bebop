@@ -104,29 +104,7 @@ export class PierogiView {
         return result;
     }
 
-
-    // let array = [0];
-    // array[0] = 1;
-    // uint
-    // int 
-    // bool
-    // writeUint
-    // writeInt
-    // writeBool
-    // view.toArray()
     private growBy(amount: number): void {
-
-        // Packet ID 9163
-      //  Resource ID	61453
-      //  TTL	32
-      //  Use Cache	true
-      //  Access Key	BCF130D0634B49AE
-
-        let d = new DataView(new Uint8Array(1));
-        d.setUint32(0, 4);
-        d.setUint32(4, 8);
-
-
         if (this.length + amount > this.buffer.length) {
             const data = new Uint8Array(this.length + amount << 1);
             data.set(this.buffer);
