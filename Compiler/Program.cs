@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -15,7 +16,59 @@ namespace Compiler
 {
     class Program
     {
-        static async Task Main(string[] args)
+        static void Usage()
+        {
+            Console.Error.WriteLine("Usage:\n");
+            Console.Error.WriteLine("    pierogic --server                       Run a WebSocket server on localhost.");
+            Console.Error.WriteLine("    pierogic --lang ts [outdir] [schemas]   Compile schemas for TypeScript into outdir.");
+            Console.Error.WriteLine("    pierogic --lang cs [outdir] [schemas]   Compile schemas for C# into outdir.");
+            Console.Error.WriteLine("");
+        }
+
+        static async Task<int> Main(string[] args)
+        {
+            var generators = new Dictionary<string, IGenerator> {
+                { "ts", new TypeScriptGenerator() }
+            };
+
+            switch (args.Length == 0 ? null : args[0])
+            {
+                case "--server":
+                    await RunWebServer();
+                    return 0;
+                case "--lang" when args.Length >= 4: // at least one schema
+                    var language = args[1];
+                    var outputPath = args[2];
+                    var schemaPaths = args.Skip(3);
+                    if (!generators.ContainsKey(language))
+                    {
+                        Console.Error.WriteLine($"Unsupported language: {language}.");
+                        Usage();
+                        return 1;
+                    }
+                    var generator = generators[language];
+                    await CompileSchemas(generator, outputPath, schemaPaths);
+                    return 0;
+                default:
+                    Usage();
+                    return 1;
+            }
+        }
+
+        static async Task CompileSchemas(IGenerator generator, string outputPath, IEnumerable<string> schemaPaths)
+        {
+            generator.WriteAuxiliaryFiles(outputPath);
+            foreach (var path in schemaPaths)
+            {
+                var parser = new SchemaParser(path);
+                var schema = await parser.Evaluate();
+                schema.Validate();
+                var compiled = generator.Compile(schema);
+                File.WriteAllText(Path.Join(outputPath, generator.OutputFileName(schema)), compiled);
+            }
+        }
+
+        static async Task RunWebServer()
         {
             var cancellation = new CancellationTokenSource();
 
@@ -100,17 +153,17 @@ namespace Compiler
                 }
                 catch (Exception acceptError)
                 {
-                  //  Log.Error("An error occurred while accepting client.", acceptError);
+                    //  Log.Error("An error occurred while accepting client.", acceptError);
                 }
             }
 
-          //  Log.Warning("Server has stopped accepting new clients.");
+            //  Log.Warning("Server has stopped accepting new clients.");
         }
 
         private static async Task EchoAllIncomingMessagesAsync(WebSocket webSocket, CancellationToken cancellation)
         {
-          //  Log.Warning("Client '" + webSocket.RemoteEndpoint + "' connected.");
-           // var sw = new Stopwatch();
+            //  Log.Warning("Client '" + webSocket.RemoteEndpoint + "' connected.");
+            // var sw = new Stopwatch();
             try
             {
                 while (webSocket.IsConnected && !cancellation.IsCancellationRequested)
@@ -124,16 +177,16 @@ namespace Compiler
                         try
                         {
                             var parser = new SchemaParser("ErrorSchema", messageText);
-                              var schema = await parser.Evaluate();
-                              schema.Validate();
-                              await webSocket.WriteStringAsync(new TypeScriptGenerator().Compile(schema), cancellationToken: cancellation);
+                            var schema = await parser.Evaluate();
+                            schema.Validate();
+                            await webSocket.WriteStringAsync(new TypeScriptGenerator().Compile(schema), cancellationToken: cancellation);
                         }
                         catch (Exception ex)
                         {
                             Console.WriteLine(ex);
-                              await webSocket.WriteStringAsync(ex.Message, cancellationToken: cancellation);
+                            await webSocket.WriteStringAsync(ex.Message, cancellationToken: cancellation);
                         }
-                        
+
                     }
                     catch (TaskCanceledException)
                     {
@@ -153,11 +206,11 @@ namespace Compiler
 
         private static void TaskScheduler_UnobservedTaskException(object sender, UnobservedTaskExceptionEventArgs e)
         {
-           
+
         }
         private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
         {
-            
+
         }
     }
 }

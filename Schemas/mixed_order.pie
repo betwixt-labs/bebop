@@ -1,12 +1,10 @@
-package the.more.you.know;
+package themoreyouknow;
 
-// this is valid
 enum VideoCodec {
   H264 = 0;
   H265 = 1;
 }
 
-// so is this
 struct VideoData {
   float timestamp;
   uint width;
@@ -16,7 +14,7 @@ struct VideoData {
 
 
 message MediaMessage {
-  VideoCodec codec = 0; 
-  string friendlyName = 1 [deprecated];
-  VideoData data = 2;
+  VideoCodec codec = 1;
+  string friendlyName = 2 [deprecated("reason")];
+  VideoData data = 3;
 }

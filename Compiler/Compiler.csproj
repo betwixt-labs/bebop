@@ -6,6 +6,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Generators\Resources\PierogiView.ts" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Generators\Resources\PierogiView.ts" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="deniszykov.WebSocketListener" Version="4.2.9" />
   </ItemGroup>
 

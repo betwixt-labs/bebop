@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
+using System.Reflection;
 using System.Text;
 using Compiler.Meta;
 using Compiler.Meta.Extensions;
@@ -263,6 +263,8 @@ namespace Compiler.Generators
             _schema = schema;
 
             var builder = new StringBuilder();
+            builder.AppendLine("import { PierogiView } from \"./PierogiView\";");
+            builder.AppendLine("");
             if (!string.IsNullOrWhiteSpace(_schema.Package))
             {
                 builder.AppendLine($"export namespace {_schema.Package} {{");
@@ -321,6 +323,20 @@ namespace Compiler.Generators
 
 
             return builder.ToString().TrimEnd();
+        }
+
+        public string OutputFileName(ISchema schema)
+        {
+            return schema.Package + ".ts";
+        }
+
+        public void WriteAuxiliaryFiles(string outputPath)
+        {
+            var assembly = Assembly.GetExecutingAssembly();
+            using Stream stream = assembly.GetManifestResourceStream("Compiler.Generators.Resources.PierogiView.ts");
+            using StreamReader reader = new StreamReader(stream);
+            string result = reader.ReadToEnd();
+            File.WriteAllText(Path.Join(outputPath, "PierogiView.ts"), result);
         }
     }
 }
