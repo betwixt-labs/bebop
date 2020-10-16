@@ -88,7 +88,7 @@ namespace Compiler.Generators.TypeScript
                 case DefinedType dt when _schema.Definitions[dt.Name].Kind == AggregateKind.Enum:
                     return $"view.writeEnum({target});";
                 case DefinedType dt:
-                    return $"{dt.Name}.encode({target}, view)";
+                    return $"{dt.Name}.encodeInto({target}, view)";
             }
             throw new InvalidOperationException($"CompileEncodeField: {type}");
         }
