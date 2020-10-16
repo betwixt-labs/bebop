@@ -20,15 +20,12 @@ namespace Compiler.Generators.TypeScript
         /// <returns>The generated TypeScript <c>encode</c> function body.</returns>
         public string CompileEncode(IDefinition definition)
         {
-            switch (definition.Kind)
+            return definition.Kind switch
             {
-                case AggregateKind.Message:
-                    return CompileEncodeMessage(definition);
-                case AggregateKind.Struct:
-                    return CompileEncodeStruct(definition);
-                default:
-                    throw new InvalidOperationException($"invalid CompileEncode kind: {definition.Kind} in {definition}");
-            }
+                AggregateKind.Message => CompileEncodeMessage(definition),
+                AggregateKind.Struct => CompileEncodeStruct(definition),
+                _ => throw new InvalidOperationException($"invalid CompileEncode kind: {definition.Kind} in {definition}"),
+            };
         }
 
         private string CompileEncodeMessage(IDefinition definition)
@@ -109,15 +106,12 @@ namespace Compiler.Generators.TypeScript
         /// <returns>The generated TypeScript <c>decode</c> function body.</returns>
         public string CompileDecode(IDefinition definition)
         {
-            switch (definition.Kind)
+            return definition.Kind switch
             {
-                case AggregateKind.Message:
-                    return CompileDecodeMessage(definition);
-                case AggregateKind.Struct:
-                    return CompileDecodeStruct(definition);
-                default:
-                    throw new InvalidOperationException($"invalid CompileDecode kind: {definition.Kind} in {definition}");
-            }
+                AggregateKind.Message => CompileDecodeMessage(definition),
+                AggregateKind.Struct => CompileDecodeStruct(definition),
+                _ => throw new InvalidOperationException($"invalid CompileDecode kind: {definition.Kind} in {definition}"),
+            };
         }
 
         /// <summary>
