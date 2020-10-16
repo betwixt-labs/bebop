@@ -2,12 +2,11 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Compiler.Exceptions;
 using Compiler.Generators;
+using Compiler.Generators.TypeScript;
 using Compiler.Parser;
 using vtortola.WebSockets;
 using vtortola.WebSockets.Deflate;

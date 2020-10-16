@@ -7,7 +7,7 @@ using Compiler.Meta;
 using Compiler.Meta.Extensions;
 using Compiler.Meta.Interfaces;
 
-namespace Compiler.Generators
+namespace Compiler.Generators.TypeScript
 {
     public class TypeScriptGenerator : IGenerator
     {
@@ -333,7 +333,7 @@ namespace Compiler.Generators
         public void WriteAuxiliaryFiles(string outputPath)
         {
             var assembly = Assembly.GetExecutingAssembly();
-            using Stream stream = assembly.GetManifestResourceStream("Compiler.Generators.Resources.PierogiView.ts");
+            using Stream stream = assembly.GetManifestResourceStream("Compiler.Generators.TypeScript.PierogiView.ts");
             using StreamReader reader = new StreamReader(stream);
             string result = reader.ReadToEnd();
             File.WriteAllText(Path.Join(outputPath, "PierogiView.ts"), result);
