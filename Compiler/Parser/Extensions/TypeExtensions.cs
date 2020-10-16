@@ -10,15 +10,15 @@ namespace Compiler.Parser.Extensions
 {
     public static class TypeExtensions
     {
-        private static readonly Dictionary<string, int?> TypeIndex = new Dictionary<string, int?>
+        private static readonly Dictionary<string, BaseType> BaseTypeNames = new Dictionary<string, BaseType>
         {
-            {"bool", (int) ScalarType.Bool},
-            {"byte", (int) ScalarType.Byte},
-            {"int", (int) ScalarType.Int},
-            {"uint", (int) ScalarType.UInt},
-            {"float", (int) ScalarType.Float},
-            {"string", (int) ScalarType.String},
-            {"guid", (int) ScalarType.Guid}
+            {"bool", BaseType.Bool},
+            {"byte", BaseType.Byte},
+            {"int", BaseType.Int},
+            {"uint", BaseType.UInt},
+            {"float", BaseType.Float},
+            {"string", BaseType.String},
+            {"guid", BaseType.Guid},
         };
         public static int FindToken(this Token[] tokens, Func<KeyValuePair<Token, int>, bool> predicate)
         {
@@ -54,10 +54,11 @@ namespace Compiler.Parser.Extensions
             };
         }
 
-        public static bool TryParseType(this Token token, out int? typeCode)
+        public static bool TryParseBaseType(this Token token, out BaseType? typeCode)
         {
-            if (TypeIndex.TryGetValue(token.Lexeme, out typeCode))
+            if (BaseTypeNames.TryGetValue(token.Lexeme, out BaseType someType))
             {
+                typeCode = someType;
                 return true;
             }
             typeCode = null;
