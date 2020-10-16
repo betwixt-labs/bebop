@@ -18,12 +18,16 @@ namespace Compiler.IO
         private readonly byte[] _buffer;
         private readonly Stream _stream;
         private int _position;
+        private readonly string _schemaFileName;
 
-        public SchemaReader(Stream stream)
+        public SchemaReader(Stream stream, string schemaFileName)
         {
             _stream = stream;
             _buffer = new byte[128];
+            _schemaFileName = schemaFileName;
         }
+
+        public string SourcePath => _schemaFileName;
 
         /// <summary>
         ///     Get or set the current position of the underlying stream

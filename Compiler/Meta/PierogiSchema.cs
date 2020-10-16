@@ -8,59 +8,80 @@ namespace Compiler.Meta
     /// <inheritdoc/>
     public readonly struct PierogiSchema : ISchema
     {
-        public PierogiSchema(string sourceFile, string package, Dictionary<string, IDefinition> definitions)
+        public PierogiSchema(string sourcePath, string package, Dictionary<string, IDefinition> definitions)
         {
-            SourceFile = sourceFile;
+            SourcePath = sourcePath;
             Package = package;
             Definitions = definitions;
         }
         /// <inheritdoc/>
-        public string SourceFile { get; }
+        public string SourcePath { get; }
         /// <inheritdoc/>
         public string Package { get; }
         /// <inheritdoc/>
         public Dictionary<string, IDefinition> Definitions { get; }
 
-       
+
         /// <inheritdoc/>
         public void Validate()
         {
-            
+
             foreach (var definition in Definitions.Values)
             {
                 if (Definitions.Values.Count(d => d.Name.Equals(definition.Name)) > 1)
                 {
-                    throw FailFast.DuplicateException(definition, SourceFile);
+                    throw new MultipleDefinitionsException(definition, SourcePath);
                 }
-                if (ReservedTypes.Identifiers.Contains(definition.Name))
+                if (ReservedWords.Identifiers.Contains(definition.Name))
                 {
-                    throw FailFast.ReservedException(definition, SourceFile);
+                    throw new ReservedIdentifierException(definition.Name, definition.Span, SourcePath);
+                }
+                if (definition.IsReadOnly && !definition.IsStruct())
+                {
+                    throw new InvalidReadOnlyException(definition, SourcePath);
                 }
                 foreach (var field in definition.Fields)
                 {
-                    if (definition.Kind != AggregateKind.Struct)
+                    if (ReservedWords.Identifiers.Contains(field.Name))
                     {
-                        if (definition.Kind == AggregateKind.Message && field.ConstantValue <= 0)
-                        {
-                            throw FailFast.InvalidField(field, "Message members must start at 1", SourceFile);
-                        }
-                        if (definition.Kind == AggregateKind.Enum && field.ConstantValue < 0)
-                        {
-                            throw FailFast.InvalidField(field, "Enum members must start at 0", SourceFile);
-                        }
-                        if (definition.Fields.Count(f => f.ConstantValue == field.ConstantValue) > 1)
-                        {
-                            throw FailFast.InvalidField(field, "contains duplicate field ids", SourceFile);
-                        }
-                        if (definition.Kind == AggregateKind.Message && field.ConstantValue > definition.Fields.Count)
-                        {
-                            throw FailFast.InvalidField(field, "contains a field id that is greater than the total definition members", SourceFile);
-                        }
+                        throw new ReservedIdentifierException(field.Name, field.Span, SourcePath);
                     }
-                    // check for nested struct definitions 
-                    if (definition.Kind == AggregateKind.Struct && (field.Type is DefinedType) && definition.Name.Equals((field.Type as DefinedType).Name))
+                    if (field.DeprecatedAttribute.HasValue && !definition.IsMessage())
                     {
-                        throw FailFast.RecursiveException(definition, SourceFile);
+                        throw new InvalidDeprectedAttributeException(field, SourcePath);
+                    }
+                    switch (definition.Kind)
+                    {
+                        case AggregateKind.Enum:
+                            if (field.ConstantValue < 0)
+                            {
+                                throw new InvalidFieldException(field, "Enum values must start at 0", SourcePath);
+                            }
+                            if (definition.Fields.Count(f => f.ConstantValue == field.ConstantValue) > 1)
+                            {
+                                throw new InvalidFieldException(field, "Enum value must be unique", SourcePath);
+                            }
+                            break;
+                        case AggregateKind.Struct:
+                            if (field.Type is DefinedType dt && definition.Name.Equals(dt.Name))
+                            {
+                                throw new InvalidFieldException(field, "Struct contains itself", SourcePath);
+                            }
+                            break;
+                        case AggregateKind.Message:
+                            if (definition.Fields.Count(f => f.ConstantValue == field.ConstantValue) > 1)
+                            {
+                                throw new InvalidFieldException(field, "Message ID must be unique", SourcePath);
+                            }
+                            if (field.ConstantValue <= 0)
+                            {
+                                throw new InvalidFieldException(field, "Message member IDs must start at 1", SourcePath);
+                            }
+                            if (field.ConstantValue > definition.Fields.Count)
+                            {
+                                throw new InvalidFieldException(field, "Message ID is greater than field count", SourcePath);
+                            }
+                            break;
                     }
                 }
             }

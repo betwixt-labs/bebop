@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using Compiler.Lexer.Tokenization.Models;
+using System.Collections.Generic;
 
 namespace Compiler.Meta.Interfaces
 {
@@ -13,13 +14,9 @@ namespace Compiler.Meta.Interfaces
         /// </summary>
         public string Name { get; }
         /// <summary>
-        ///     The line coordinate where the definition was found.
+        ///     The span where the definition was found.
         /// </summary>
-        public uint Line { get; }
-        /// <summary>
-        ///     The column coordinate where the definition begins.
-        /// </summary>
-        public uint Column { get; }
+        public Span Span { get; }
         /// <summary>
         ///  An identifier for the <see cref="AggregateKind"/> used by the current definition.
         /// </summary>
@@ -32,5 +29,12 @@ namespace Compiler.Meta.Interfaces
         /// A collection of all <see cref="IField"/> 
         /// </summary>
         public ICollection<IField> Fields { get; }
+    }
+
+    public static class DefinitionExtensions
+    {
+        public static bool IsEnum(this IDefinition definition) => definition.Kind == AggregateKind.Enum;
+        public static bool IsStruct(this IDefinition definition) => definition.Kind == AggregateKind.Struct;
+        public static bool IsMessage(this IDefinition definition) => definition.Kind == AggregateKind.Message;
     }
 }

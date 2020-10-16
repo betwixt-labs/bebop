@@ -20,7 +20,7 @@ namespace Compiler.Lexer.Tokenization.Models
         /// <summary>
         /// The position of the current token in the schema.
         /// </summary>
-        public Span Position { get; }
+        public Span Span { get; }
 
         /// <summary>
         /// The position of the token in the token stream.
@@ -38,25 +38,18 @@ namespace Compiler.Lexer.Tokenization.Models
         /// </summary>
         /// <param name="kind">The <see cref="TokenKind"/> member that identifies the token.</param>
         /// <param name="lexeme">The text of the token as it appeared in the schema.</param>
-        /// <param name="position">The absolute position of the token in the schema</param>
+        /// <param name="span">The absolute position of the token in the schema</param>
         /// <param name="index"></param>
-        public Token(TokenKind kind, string lexeme, Span position, int index)
+        public Token(TokenKind kind, string lexeme, Span span, int index)
         {
             Kind = kind;
             Lexeme = lexeme;
-            Position = position;
             Index = index;
             Length = (uint) (Lexeme?.Length ?? 0);
+            Span = span.WithLength(Length);
         }
 
-        /// <summary>
-        /// Updates the position of the current token
-        /// </summary>
-        /// <param name="position">the new span to assign the current token</param>
-        public Token UpdatePosition(Span position) => new Token(Kind, Lexeme, position, Index);
-
-
-        public override int GetHashCode() => HashCode.Combine((int) Kind, Lexeme, Position);
+        public override int GetHashCode() => HashCode.Combine((int) Kind, Lexeme, Span);
 
         /// <summary>Indicates whether the current <see cref="Token"/> is equal to another.</summary>
         /// <param name="other">The token to compare with the current token.</param>
@@ -65,7 +58,7 @@ namespace Compiler.Lexer.Tokenization.Models
         ///     <see langword="false"/>.
         /// </returns>
         public bool Equals(Token other) => Kind == other.Kind &&
-            string.Equals(Lexeme, other.Lexeme, StringComparison.Ordinal) && Position.Equals(other.Position);
+            string.Equals(Lexeme, other.Lexeme, StringComparison.Ordinal) && Span.Equals(other.Span);
 
         /// <summary>Indicates whether the current <see cref="Token"/> is equal to another.</summary>
         /// <param name="obj">The token to compare with the current token.</param>
@@ -77,7 +70,7 @@ namespace Compiler.Lexer.Tokenization.Models
 
         public int CompareTo(Token other)
         {
-            return Position.CompareTo(other.Position);
+            return Span.CompareTo(other.Span);
         }
     }
 }

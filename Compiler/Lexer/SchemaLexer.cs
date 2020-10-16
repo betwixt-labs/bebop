@@ -28,7 +28,7 @@ namespace Compiler.Lexer
                 throw new ArgumentNullException(nameof(schema));
             }
            
-            Tokenizer.AssignReader(new SchemaReader(new MemoryStream(Encoding.UTF8.GetBytes(schema))));
+            Tokenizer.AssignReader(new SchemaReader(new MemoryStream(Encoding.UTF8.GetBytes(schema)), "(unknown)"));
         }
 
         public override void CreateFileHandle(string schemaFile)
@@ -41,10 +41,10 @@ namespace Compiler.Lexer
             {
                 throw new FileNotFoundException(schemaFile);
             }
-            Tokenizer.AssignReader(new SchemaReader(File.OpenRead(schemaFile)));
+            Tokenizer.AssignReader(new SchemaReader(File.OpenRead(schemaFile), schemaFile));
         }
 
 
-        public override IAsyncEnumerable<Token> NextToken() => Tokenizer.TokenStream();
+        public override IAsyncEnumerable<Token> TokenStream() => Tokenizer.TokenStream();
     }
 }

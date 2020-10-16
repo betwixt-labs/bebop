@@ -1,4 +1,5 @@
-﻿using Compiler.Meta.Interfaces;
+﻿using Compiler.Lexer.Tokenization.Models;
+using Compiler.Meta.Interfaces;
 
 namespace Compiler.Meta
 {
@@ -6,23 +7,20 @@ namespace Compiler.Meta
     {
         public Field(string name,
             in IType type,
-            in uint line,
-            in uint column,
+            in Span span,
             in DeprecatedAttribute? deprecatedAttribute,
             in int constantValue)
         {
             Name = name;
             Type = type;
-            Line = line;
-            Column = column;
+            Span = span;
             DeprecatedAttribute = deprecatedAttribute;
             ConstantValue = constantValue;
         }
 
         public string Name { get; }
         public IType Type { get; }
-        public uint Line { get; }
-        public uint Column { get; }
+        public Span Span { get; }
         public DeprecatedAttribute? DeprecatedAttribute { get; }
         public int ConstantValue { get; }
     }

@@ -5,10 +5,15 @@ namespace Compiler.IO.Interfaces
     public interface ISchemaReader : IDisposable
     {
         /// <summary>
-        ///     Returns the next available character but does not consume it.
+        /// Returns the file name of the schema.
+        /// </summary>
+        public string SourcePath { get; }
+
+        /// <summary>
+        ///     Returns the current position in the file (index into a char array).
         /// </summary>
         /// <returns>
-        ///     An integer representing the next character to be read, or -1 if there are no characters to be read.
+        ///     An integer representing an index into the file.
         /// </returns>
         public int CurrentPosition { get; }
 

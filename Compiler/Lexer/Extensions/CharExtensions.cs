@@ -42,12 +42,6 @@ namespace Compiler.Lexer.Extensions
     #endregion
     }
 
-    internal enum LineEndingType
-    {
-        LineFeed,
-        CarriageReturn
-    }
-
     [Flags]
     internal enum CharTraits
     {
@@ -363,39 +357,6 @@ namespace Compiler.Lexer.Extensions
 
             return char.IsLetterOrDigit(c);
         }
-
-        internal static LineEndingType GetLineEndingType(this char character, char next = default)
-        {
-            return character switch
-            {
-                // CR + LF → Used as a new line character in Windows
-                '\r' when next == '\n' => LineEndingType.CarriageReturn,
-                // LF (Line Feed) → Used as a new line character in Unix/Mac OS X
-                '\n' => LineEndingType.LineFeed,
-                _ => throw new InvalidCastException(nameof(character))
-            };
-        }
-
-        /// <summary>
-        /// Determines if a line ending has been reached.
-        /// </summary>
-        /// <param name="character"></param>
-        /// <param name="next"></param>
-        /// <returns></returns>
-        internal static bool IsLineEnding(this char character, char next = default)
-        {
-            return character switch
-            {
-                // CR + LF → Used as a new line character in Windows
-                '\r' when next == '\n' => true,
-                // LF (Line Feed) → Used as a new line character in Unix/Mac OS X
-                '\n' => true,
-                // CR (Carriage Return) → Used as a new line character in Mac OS before X
-                '\r' => true,
-                _ => false
-            };
-        }
-
 
         #region Numbers
 

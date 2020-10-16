@@ -8,9 +8,9 @@ namespace Compiler.Meta.Interfaces
     public interface ISchema
     { 
         /// <summary>
-        /// The fully qualified path to the schema on disk
+        /// A path to the schema on disk.
         /// </summary>
-        public string SourceFile { get; }
+        public string SourcePath { get; }
 
         /// <summary>
         /// An optional package specifier within the .pie file to prevent name clashes between types.

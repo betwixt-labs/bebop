@@ -6,6 +6,7 @@ using System.Net;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Compiler.Exceptions;
 using Compiler.Generators;
 using Compiler.Parser;
 using vtortola.WebSockets;
@@ -55,16 +56,39 @@ namespace Compiler
             }
         }
 
+        static void ReportError(string problem, string reason = "")
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.Error.Write(problem);
+            Console.ResetColor();
+            Console.Error.WriteLine(string.IsNullOrWhiteSpace(reason) ? "" : " " + reason);
+        }
+
         static async Task CompileSchemas(IGenerator generator, string outputPath, IEnumerable<string> schemaPaths)
         {
             generator.WriteAuxiliaryFiles(outputPath);
             foreach (var path in schemaPaths)
             {
-                var parser = new SchemaParser(path);
-                var schema = await parser.Evaluate();
-                schema.Validate();
-                var compiled = generator.Compile(schema);
-                File.WriteAllText(Path.Join(outputPath, generator.OutputFileName(schema)), compiled);
+                try
+                {
+                    var parser = new SchemaParser(path);
+                    var schema = await parser.Evaluate();
+                    schema.Validate();
+                    var compiled = generator.Compile(schema);
+                    File.WriteAllText(Path.Join(outputPath, generator.OutputFileName(schema)), compiled);
+                }
+                catch (SpanException e)
+                {
+                    ReportError($"Error in {e.SourcePath} at {e.Span.StartColonString()}:", e.Message);
+                }
+                catch (FileNotFoundException)
+                {
+                    ReportError($"File {path} was not found.");
+                }
+                catch (Exception e)
+                {
+                    ReportError($"Error when processing {path}:", e.ToString());
+                }
             }
         }
 

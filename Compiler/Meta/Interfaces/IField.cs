@@ -1,4 +1,6 @@
-﻿namespace Compiler.Meta.Interfaces
+﻿using Compiler.Lexer.Tokenization.Models;
+
+namespace Compiler.Meta.Interfaces
 {
     /// <summary>
     ///     A field represents any type that is declared directly in a <see cref="AggregateKind"/>.
@@ -17,14 +19,9 @@
         public IType Type { get; }
 
         /// <summary>
-        ///     The line coordinate where the member was found.
+        ///     The span where the member was found.
         /// </summary>
-        public uint Line { get; }
-
-        /// <summary>
-        ///     The column coordinate where the member begins.
-        /// </summary>
-        public uint Column { get; }
+        public Span Span { get; }
 
         /// <summary>
         ///     Indicates if the member has been marked as no longer recommended for use.

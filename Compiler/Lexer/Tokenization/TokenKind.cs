@@ -54,11 +54,7 @@ namespace Compiler.Lexer.Tokenization
 
 
     #region Literals
-
-        WhiteSpace,
         Identifier,
-
-        LineComment,
 
         /// <summary>
         ///     A single quoted string literal.

@@ -1,3 +1,5 @@
 package lab;
 
-message M { int x = 1; int y = 2; }
+struct N { int n; }
+message M { int x = 1; int y = 2; } // this is a line comment
+

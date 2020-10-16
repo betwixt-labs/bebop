@@ -27,7 +27,7 @@ namespace Compiler.Lexer.Tokenization.Models
         /// <param name="column">The start/end document column.</param>
         public Span(int line, int column) : this(line, column, line, column)
         {
-           
+
         }
 
         /// <summary>
@@ -75,20 +75,20 @@ namespace Compiler.Lexer.Tokenization.Models
         ///     0.
         /// </summary>
         [JsonIgnore]
-        public Span NextLine => new Span(StartLine, StartColumn, EndLine + 1, 0);
+        public Span ExtendLine => new Span(StartLine, StartColumn, EndLine + 1, 0);
 
         /// <summary>
-        ///     Returns a new span starting on the next line, at column 0
+        ///     Returns a new empty span at column 0 on the next line.
         /// </summary>
         [JsonIgnore]
-        public Span NewLine => new Span(EndLine + 1, 0, EndLine + 1, 0);
+        public Span StartOfNextLine => new Span(EndLine + 1, 0);
 
         /// <summary>
         ///     Extends the span to the next column. Returns a new Span with the same start position, ending on the same line at
         ///     the next column.
         /// </summary>
         [JsonIgnore]
-        public Span NextColumn => new Span(StartLine, StartColumn, EndLine, EndColumn + 1);
+        public Span ExtendColumn => new Span(StartLine, StartColumn, EndLine, EndColumn + 1);
 
         /// <summary>
         ///     Returns a new span starting on the same line, at the next column.
@@ -108,13 +108,11 @@ namespace Compiler.Lexer.Tokenization.Models
         [JsonIgnore]
         public Span End => new Span(EndLine, EndColumn);
 
+        /// <summary>
+        /// Return a span with the same start position that continues on the same line for <paramref name="length"/> characters.
+        /// </summary>
+        public Span WithLength(uint length) => new Span(StartLine, EndLine, StartLine, (int)(EndLine + length));
 
-        public Span SetEndColumn(uint offset) => new Span(StartLine,
-            StartColumn,
-            EndLine,
-            (int) (EndColumn + offset));
-
-   
         public Span Combine(Span other) => Combine(this, other);
 
         public static Span Combine(params Span[] a)
@@ -153,5 +151,7 @@ namespace Compiler.Lexer.Tokenization.Models
         public override string ToString() => Lines == 1
             ? $"L{EndLine}C{EndColumn}"
             : $"L{StartLine}C{StartColumn}:L{EndLine}C{EndColumn}";
+
+        public string StartColonString() => $"{StartLine + 1}:{StartColumn + 1}";
     }
 }

@@ -38,18 +38,18 @@ namespace Compiler.Parser
         }
 
         /// <summary>
-        ///     Gets the <see cref="Token"/> at the current <see name="_index"/>
+        ///     Gets the <see cref="Token"/> at the current <see cref="_index"/>.
         /// </summary>
         private Token CurrentToken => _tokens[_index];
 
         /// <summary>
-        ///     Walks the contents of a schema and turns it's body into characters into <see cref="Token"/> instances
+        /// Tokenize the input file, storing the result in <see cref="_tokens"/>.
         /// </summary>
         /// <returns></returns>
         private async Task Tokenize()
         {
             var collection = new List<Token>();
-            await foreach (var token in _lexer.NextToken())
+            await foreach (var token in _lexer.TokenStream())
             {
                 collection.Add(token);
             }
@@ -93,7 +93,7 @@ namespace Compiler.Parser
         /// <summary>
         ///     If the <see cref="CurrentToken"/> matches the specified <paramref name="kind"/>, advance the token stream
         ///     <see cref="_index"/> forward.
-        ///     Otherwise throw a <see cref="UnexpectedTypeException"/>
+        ///     Otherwise throw a <see cref="UnexpectedTokenException"/>
         /// </summary>
         /// <param name="kind">The <see cref="TokenKind"/> to eat</param>
         /// <returns></returns>
@@ -101,7 +101,7 @@ namespace Compiler.Parser
         {
             if (!Eat(kind))
             {
-                throw FailFast.ExpectedTypeException(kind, CurrentToken, _schemaPath);
+                throw new UnexpectedTokenException(kind, CurrentToken, _schemaPath);
             }
         }
 
@@ -134,22 +134,15 @@ namespace Compiler.Parser
                     _ when Eat(TokenKind.Enum) => AggregateKind.Enum,
                     _ when Eat(TokenKind.Struct) => AggregateKind.Struct,
                     _ when Eat(TokenKind.Message) => AggregateKind.Message,
-                    _ => throw FailFast.ExpectedTypeException(TokenKind.Message, CurrentToken, _schemaPath)
+                    _ => throw new UnexpectedTokenException(TokenKind.Message, CurrentToken, _schemaPath)
                 };
-                if (isReadOnly && kind != AggregateKind.Struct)
-                {
-                    throw FailFast.UnsupportedException(TokenKind.ReadOnly,
-                        TokenKind.Struct,
-                        CurrentToken,
-                        _schemaPath);
-                }
                 DeclareAggregateType(CurrentToken, kind, isReadOnly);
             }
             foreach (var (typeToken, definitionToken) in _typeReferences)
             {
                 if (!_definitions.ContainsKey(typeToken.Lexeme))
                 {
-                    throw FailFast.UndefinedTypeException(typeToken, definitionToken, _schemaPath);
+                    throw new UnrecognizedTypeException(typeToken, definitionToken.Lexeme, _schemaPath);
                 }
             }
             return new PierogiSchema(_schemaPath, _package, _definitions);
@@ -167,6 +160,7 @@ namespace Compiler.Parser
             var fields = new List<IField>();
             Expect(TokenKind.Identifier);
             Expect(TokenKind.OpenBrace);
+            var definitionEnd = CurrentToken.Span;
             while (!Eat(TokenKind.CloseBrace))
             {
                 IType type = new ScalarType(BaseType.Int); // for enums
@@ -190,10 +184,7 @@ namespace Compiler.Parser
                 }
 
                 var fieldName = CurrentToken.Lexeme;
-
-                var fieldLine = (uint) CurrentToken.Position.StartLine;
-                var fieldCol = (uint) CurrentToken.Position.StartColumn;
-
+                var fieldStart = CurrentToken.Span;
                 Expect(TokenKind.Identifier);
 
                 if (kind != AggregateKind.Struct)
@@ -204,36 +195,28 @@ namespace Compiler.Parser
                 }
                 if (Eat(TokenKind.OpenBracket))
                 {
-                    if (kind != AggregateKind.Message)
-                    {
-                        throw FailFast.UnsupportedException(TokenKind.Deprecated,
-                            TokenKind.Message,
-                            CurrentToken,
-                            _schemaPath);
-                    }
                     Expect(TokenKind.Deprecated);
-                    Expect(TokenKind.OpenParenthesis);
-                    var message = CurrentToken.Lexeme;
-                    Expect(TokenKind.StringExpandable);
-                    Expect(TokenKind.CloseParenthesis);
+                    var message = "";
+                    if (Eat(TokenKind.OpenParenthesis))
+                    {
+                        message = CurrentToken.Lexeme;
+                        Expect(TokenKind.StringExpandable);
+                        Expect(TokenKind.CloseParenthesis);
+                    }
                     Expect(TokenKind.CloseBracket);
                     deprecatedAttribute = new DeprecatedAttribute(message);
                 }
 
+                var fieldEnd = CurrentToken.Span;
                 Expect(TokenKind.Semicolon);
-                fields.Add(new Field(fieldName, type, fieldLine, fieldCol, deprecatedAttribute, value));
+                fields.Add(new Field(fieldName, type, fieldStart.Combine(fieldEnd), deprecatedAttribute, value));
+                definitionEnd = CurrentToken.Span;
             }
 
-            if (_definitions.TryGetValue(definitionToken.Lexeme, out var d))
-            {
-                throw new DuplicateTypeException(d.Name, d.Line, d.Column, _schemaPath);
-            }
-
-            _definitions.Add(definitionToken.Lexeme, new Definition(definitionToken.Lexeme, isReadOnly,
-                (uint) definitionToken.Position.StartLine,
-                (uint) definitionToken.Position.StartColumn,
-                kind,
-                fields));
+            var name = definitionToken.Lexeme;
+            var definitionSpan = definitionToken.Span.Combine(definitionEnd);
+            var definition = new Definition(name, isReadOnly, definitionSpan, kind, fields);
+            _definitions.Add(name, definition);
         }
 
         /// <summary>

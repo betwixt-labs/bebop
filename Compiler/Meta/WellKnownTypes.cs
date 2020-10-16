@@ -2,7 +2,7 @@
 
 namespace Compiler.Meta
 {
-    public static class ReservedTypes
+    public static class ReservedWords
     {
         public static HashSet<string> Identifiers = new HashSet<string>
         {
