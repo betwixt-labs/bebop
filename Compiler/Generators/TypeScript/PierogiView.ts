@@ -1,15 +1,21 @@
 ﻿
-const int32 = new Int32Array(1);
-const float32 = new Float32Array(int32.buffer);
-const guidByteOrder = [3, 2, 1, 0, 5, 4, 7, 6, 8, 9, 10, 11, 12, 13, 14, 15];
+const hexDigits = "0123456789abcdef";
+const asciiToHex = [
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  0,  0,  0,  0,  0,  0,
+    0, 10, 11, 12, 13, 14, 15,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0, 10, 11, 12, 13, 14, 15,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
+];
 
-/**
- * A hand-crafted byte buffer that is
- */
 export class PierogiView {
-
     private buffer: Uint8Array;
+    private view: DataView;
     private index: number;
+    private byteToHex: string[] = []; // A lookup table: ['00', '01', ..., 'ff']
     length: number;
 
     constructor(data?: Uint8Array) {
@@ -17,8 +23,29 @@ export class PierogiView {
             throw new Error("data is not a Uint8Array");
         }
         this.buffer = data || new Uint8Array(256);
+        this.view = new DataView(this.buffer.buffer);
         this.index = 0;
         this.length = data ? data.length : 0;
+        for (const x of hexDigits) {
+            for (const y of hexDigits) {
+                this.byteToHex.push(x + y);
+            }
+        }
+    }
+
+    private growBy(amount: number): void {
+        if (this.length + amount > this.buffer.length) {
+            const data = new Uint8Array(this.length + amount << 1);
+            data.set(this.buffer);
+            this.buffer = data;
+            this.view = new DataView(data.buffer);
+        }
+        this.length += amount;
+    }
+
+    rewind(): void {
+        this.index = 0;
+        this.length = 0;
     }
 
     toArray(): Uint8Array {
@@ -33,33 +60,12 @@ export class PierogiView {
     }
 
     readFloat(): number {
-        const index = this.index;
-        const data = this.buffer;
-        const length = data.length;
-
-        // use a single byte to store zero
-        if (index + 1 > length) {
+        if (this.index + 4 > this.buffer.length) {
             throw new Error("Index out of bounds");
         }
-        const first = data[index];
-        if (first === 0) {
-            this.index = index + 1;
-            return 0;
-        }
-
-        // 32-bit read
-        if (index + 4 > length) {
-            throw new Error("Index out of bounds");
-        }
-        let bits = first | (data[index + 1] << 8) | (data[index + 2] << 16) | (data[index + 3] << 24);
-        this.index = index + 4;
-
-        // move the exponent back into place
-        bits = (bits << 23) | (bits >>> 9);
-
-        // reinterpret as a floating-point number
-        int32[0] = bits;
-        return float32[0];
+        const result = this.view.getFloat32(this.index, true);
+        this.index += 4;
+        return result;
     }
 
     readString(): string {
@@ -104,74 +110,39 @@ export class PierogiView {
         return result;
     }
 
-    private growBy(amount: number): void {
-        if (this.length + amount > this.buffer.length) {
-            const data = new Uint8Array(this.length + amount << 1);
-            data.set(this.buffer);
-            this.buffer = data;
-        }
-        this.length += amount;
-    }
-
     readGuid(): string {
-        const result = new Uint8Array(16);
-        result[3] = this.readGuidByte();
-        result[2] = this.readGuidByte();
-        result[1] = this.readGuidByte();
-        result[0] = this.readGuidByte();
+        if (this.index + 16 > this.buffer.length) {
+            throw new Error("Index out of bounds");
+        }
 
-        result[5] = this.readGuidByte();
-        result[4] = this.readGuidByte();
-
-        result[7] = this.readGuidByte();
-        result[6] = this.readGuidByte();
-
-        result[8] = this.readGuidByte();
-        result[9] = this.readGuidByte();
-
-        result[10] = this.readGuidByte();
-        result[11] = this.readGuidByte();
-        result[12] = this.readGuidByte();
-        result[13] = this.readGuidByte();
-        result[14] = this.readGuidByte();
-        result[15] = this.readGuidByte();
-        return String.fromCharCode(...result);
+        // Order: 3 2 1 0 - 5 4 - 7 6 - 8 9 - a b c d e f
+        const b = this.byteToHex, a = this.buffer, i = this.index, d = '-';
+        var s = b[a[i + 3]];
+        s += b[a[i + 2]];
+        s += b[a[i + 1]];
+        s += b[a[i]];
+        s += d;
+        s += b[a[i + 5]];
+        s += b[a[i + 4]];
+        s += d;
+        s += b[a[i + 7]];
+        s += b[a[i + 6]];
+        s += d;
+        s += b[a[i + 8]];
+        s += b[a[i + 9]];
+        s += d;
+        s += b[a[i + 10]];
+        s += b[a[i + 11]];
+        s += b[a[i + 12]];
+        s += b[a[i + 13]];
+        s += b[a[i + 14]];
+        s += b[a[i + 15]];
+        this.index += 16;
+        return s;
     }
 
     skip(amount: number) {
         this.index += amount;
-    }
-
-    readGuidByte(): number {
-        let a = this.readByte();
-        if (a === -1) throw new Error("Expected any character");
-        if (!((a >= 0x30 && a <= 0x39) || (a >= 0x41 && a <= 0x46) || (a >= 0x61 && a <= 0x66)))
-            throw new Error("Expected a hex number");
-        let b = this.readByte();
-        if (b === -1) throw new Error("Expected any character");
-        if (!((b >= 0x30 && b <= 0x39) || (b >= 0x41 && b <= 0x46) || (b >= 0x61 && b <= 0x66)))
-            throw new Error("Expected a hex number");
-
-        if (a <= 0x39) {
-            a -= 0x30;
-        } else {
-            if (a <= 0x46) {
-                a -= (0x41 - 10);
-            } else {
-                a -= (0x61 - 10);
-            }
-        }
-
-        if (b <= 0x39) {
-            b -= 0x30;
-        } else {
-            if (b <= 0x46) {
-                b -= (0x41 - 10);
-            } else {
-                b -= (0x61 - 10);
-            }
-        }
-        return (a * 16 + b);
     }
 
     readBytes(): Uint8Array {
@@ -210,10 +181,52 @@ export class PierogiView {
     }
 
     writeGuid(value: string): void {
-
-        const result = new Uint8Array(16);
-
+        const v = this.view, i = this.length;
+        this.growBy(16);
+        var p = 0, a = 0;
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        p += (value.charCodeAt(p) === 45) as any;
+        v.setUint32(i, a, true);
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        p += (value.charCodeAt(p) === 45) as any;
+        v.setUint16(i + 4, a, true);
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        p += (value.charCodeAt(p) === 45) as any;
+        v.setUint16(i + 6, a, true);
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        p += (value.charCodeAt(p) === 45) as any;
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        v.setUint32(i + 8, a, false);
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        v.setUint32(i + 12, a, false);
     }
+
     /**
      * Writes a byte array to the view.
      * @todo optimize, why is this so slow?
@@ -228,31 +241,11 @@ export class PierogiView {
 
     writeFloat(value: number): void {
         const index = this.length;
-
-        // Reinterpret as an integer
-        float32[0] = value;
-        let bits = int32[0];
-
-        // Move the exponent to the first 8 bits
-        bits = (bits >>> 23) | (bits << 9);
-
-        // Optimization: use a single byte to store zero and denormals (check for an exponent of 0)
-        if ((bits & 255) === 0) {
-            this.writeByte(0);
-            return;
-        }
-
-        // Endian-independent 32-bit write
         this.growBy(4);
-        const data = this.buffer;
-        data[index] = bits;
-        data[index + 1] = bits >> 8;
-        data[index + 2] = bits >> 16;
-        data[index + 3] = bits >> 24;
+        this.view.setFloat32(index, value, true);
     }
 
     writeUint(value: number): void {
-        
         do {
             const byte = value & 127;
             value >>>= 7;

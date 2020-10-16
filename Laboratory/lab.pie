@@ -2,4 +2,4 @@ package lab;
 
 struct N { int n; }
 message M { int x = 1; int y = 2; } // this is a line comment
-struct S { string s; }
+struct S { string s; guid g; float f; }
