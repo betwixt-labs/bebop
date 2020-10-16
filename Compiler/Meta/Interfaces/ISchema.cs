@@ -19,7 +19,7 @@ namespace Compiler.Meta.Interfaces
         /// <summary>
         /// A collection of data structures defined in the schema
         /// </summary>
-        public ICollection<IDefinition> Definitions { get; }
+        public Dictionary<string, IDefinition> Definitions { get; }
         /// <summary>
         /// Validates that the schema is made up of well-formed values.
         /// </summary>

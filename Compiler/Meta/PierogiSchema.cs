@@ -8,7 +8,7 @@ namespace Compiler.Meta
     /// <inheritdoc/>
     public readonly struct PierogiSchema : ISchema
     {
-        public PierogiSchema(string sourceFile, string package, ICollection<IDefinition> definitions)
+        public PierogiSchema(string sourceFile, string package, Dictionary<string, IDefinition> definitions)
         {
             SourceFile = sourceFile;
             Package = package;
@@ -19,16 +19,16 @@ namespace Compiler.Meta
         /// <inheritdoc/>
         public string Package { get; }
         /// <inheritdoc/>
-        public ICollection<IDefinition> Definitions { get; }
+        public Dictionary<string, IDefinition> Definitions { get; }
 
        
         /// <inheritdoc/>
         public void Validate()
         {
             
-            foreach (var definition in Definitions)
+            foreach (var definition in Definitions.Values)
             {
-                if (Definitions.Count(d => d.Name.Equals(definition.Name)) > 1)
+                if (Definitions.Values.Count(d => d.Name.Equals(definition.Name)) > 1)
                 {
                     throw FailFast.DuplicateException(definition, SourceFile);
                 }
@@ -58,7 +58,7 @@ namespace Compiler.Meta
                         }
                     }
                     // check for nested struct definitions 
-                    if (definition.Kind == AggregateKind.Struct && !field.IsArray && field.TypeCode > -1 && definition.Name.Equals(Definitions.ElementAt(field.TypeCode).Name))
+                    if (definition.Kind == AggregateKind.Struct && (field.Type is DefinedType) && definition.Name.Equals((field.Type as DefinedType).Name))
                     {
                         throw FailFast.RecursiveException(definition, SourceFile);
                     }
