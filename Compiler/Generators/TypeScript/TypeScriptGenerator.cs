@@ -33,38 +33,29 @@ namespace Compiler.Generators.TypeScript
 
         private string CompileEncodeMessage(IDefinition definition)
         { 
-            var builder = new StringBuilder();
-            builder.AppendLine("      var source = !view;");
-            builder.AppendLine("      if (source) view = new PierogiView();");
+            var builder = new IndentedStringBuilder(6);
             foreach (var field in definition.Fields)
             {
                 if (field.DeprecatedAttribute.HasValue)
                 {
                     continue;
                 }
-                builder.AppendLine("");
-                builder.AppendLine($"      if (message.{field.Name.ToCamelCase()} != null) {{");
-                builder.AppendLine($"        view.writeUint({field.ConstantValue});");
-                builder.AppendLine($"        {CompileEncodeField(field.Type, $"message.{field.Name.ToCamelCase()}")}");
-                builder.AppendLine($"      }}");
+                builder.AppendLine($"if (message.{field.Name.ToCamelCase()} != null) {{");
+                builder.AppendLine($"  view.writeUint({field.ConstantValue});");
+                builder.AppendLine($"  {CompileEncodeField(field.Type, $"message.{field.Name.ToCamelCase()}")}");
+                builder.AppendLine($"}}");
             }
-            builder.AppendLine("      view.writeUint(0);");
-            builder.AppendLine("");
-            builder.AppendLine("      if (source) return view.toArray();");
+            builder.AppendLine("view.writeUint(0);");
             return builder.ToString();
         }
 
         private string CompileEncodeStruct(IDefinition definition)
         {
-            var builder = new StringBuilder();
-            builder.AppendLine("      var source = !view;");
-            builder.AppendLine("      if (source) view = new PierogiView();");
+            var builder = new IndentedStringBuilder(6);
             foreach (var field in definition.Fields)
             {
-                builder.AppendLine($"      {CompileEncodeField(field.Type, $"message.{field.Name.ToCamelCase()}")}");
+                builder.AppendLine(CompileEncodeField(field.Type, $"message.{field.Name.ToCamelCase()}"));
             }
-            builder.AppendLine("");
-            builder.AppendLine("      if (source) return view.toArray();");
             return builder.ToString();
         }
 
@@ -80,7 +71,7 @@ namespace Compiler.Generators.TypeScript
                     return $"var length{depth} = {target}.length;\n"
                         + indent + $"view.writeUint(length{depth});\n"
                         + indent + $"for (var {i} = 0; {i} < length{depth}; {i}++) {{\n"
-                        + indent + $"    {CompileEncodeField(at.MemberType, $"{target}[{i}]", depth + 1)}\n"
+                        + indent + $"  {CompileEncodeField(at.MemberType, $"{target}[{i}]", depth + 1)}\n"
                         + indent + "}";
                 case ScalarType st:
                     switch (st.BaseType)
@@ -128,47 +119,47 @@ namespace Compiler.Generators.TypeScript
         /// <returns>The generated TypeScript <c>decode</c> function body.</returns>
         private string CompileDecodeMessage(IDefinition definition)
         {
-            var builder = new StringBuilder();
-            builder.AppendLine("      if (!(view instanceof PierogiView)) {");
-            builder.AppendLine("        view = new PierogiView(view);");
-            builder.AppendLine("      }");
+            var builder = new IndentedStringBuilder(6);
+            builder.AppendLine("if (!(view instanceof PierogiView)) {");
+            builder.AppendLine("  view = new PierogiView(view);");
+            builder.AppendLine("}");
             builder.AppendLine("");
-            builder.AppendLine($"      let message: I{definition.Name} = {{}};");
-            builder.AppendLine("      while (true) {");
-            builder.AppendLine("        switch (view.readUint()) {");
-            builder.AppendLine("          case 0:");
-            builder.AppendLine("            return message;");
+            builder.AppendLine($"let message: I{definition.Name} = {{}};");
+            builder.AppendLine("while (true) {");
+            builder.Indent(2);
+            builder.AppendLine("switch (view.readUint()) {");
+            builder.AppendLine("  case 0:");
+            builder.AppendLine("    return message;");
             builder.AppendLine("");
             foreach (var field in definition.Fields)
             {
-                builder.AppendLine($"          case {field.ConstantValue}:");
-                builder.AppendLine($"            message.{field.Name.ToCamelCase()} = {CompileDecodeField(field.Type)};");
-                builder.AppendLine("            break;");
+                builder.AppendLine($"  case {field.ConstantValue}:");
+                builder.AppendLine($"    message.{field.Name.ToCamelCase()} = {CompileDecodeField(field.Type)};");
+                builder.AppendLine("    break;");
                 builder.AppendLine("");
             }
-            builder.AppendLine("          default:");
-            builder.AppendLine("            throw new Error(\"Attempted to parse invalid message\");");
-            builder.AppendLine("        }");
-            builder.AppendLine("      }");
-            builder.AppendLine("    },");
+            builder.AppendLine("  default:");
+            builder.AppendLine("    throw new Error(\"Attempted to parse invalid message\");");
+            builder.AppendLine("}");
+            builder.Dedent(2);
+            builder.AppendLine("}");
             return builder.ToString();
         }
         
         private string CompileDecodeStruct(IDefinition definition)
         {
-            var builder = new StringBuilder();
-            builder.AppendLine("      if (!(view instanceof PierogiView)) {");
-            builder.AppendLine("        view = new PierogiView(view);");
-            builder.AppendLine("      }");
+            var builder = new IndentedStringBuilder(6);
+            builder.AppendLine("if (!(view instanceof PierogiView)) {");
+            builder.AppendLine("  view = new PierogiView(view);");
+            builder.AppendLine("}");
             builder.AppendLine("");
-            builder.AppendLine($"      var message: I{definition.Name} = {{");
+            builder.AppendLine($"var message: I{definition.Name} = {{");
             foreach (var field in definition.Fields)
             {
-                builder.AppendLine($"        {field.Name.ToCamelCase()}: {CompileDecodeField(field.Type)},");
+                builder.AppendLine($"  {field.Name.ToCamelCase()}: {CompileDecodeField(field.Type)},");
             }
-            builder.AppendLine("      };");
-            builder.AppendLine("      return message;");
-            builder.AppendLine("    }");
+            builder.AppendLine("};");
+            builder.AppendLine("return message;");
             return builder.ToString();
         }
 
@@ -238,8 +229,6 @@ namespace Compiler.Generators.TypeScript
             throw new InvalidOperationException($"GetTypeName: {type}");
         }
 
-        private string 
-
         private string LoopVariable(int depth)
         {
             return depth switch
@@ -276,8 +265,8 @@ namespace Compiler.Generators.TypeScript
                     for (var i = 0; i < definition.Fields.Count; i++)
                     {
                         var field = definition.Fields.ElementAt(i);
-                        builder.AppendLine(
-                            $"      {field.Name} = {field.ConstantValue}{(i + 1 < definition.Fields.Count ? "," : "")}");
+                        var comma = i + 1 < definition.Fields.Count ? "," : "";
+                        builder.AppendLine($"      {field.Name} = {field.ConstantValue}{comma}");
                     }
                     builder.AppendLine("  }");
                 }
@@ -302,14 +291,20 @@ namespace Compiler.Generators.TypeScript
                     builder.AppendLine("");
 
                     builder.AppendLine($"  export const {definition.Name} = {{");
+                    builder.AppendLine($"    encode(message: I{definition.Name}): Uint8Array {{");
+                    builder.AppendLine("      const view = new PierogiView();");
+                    builder.AppendLine("      this.encodeInto(message, view);");
+                    builder.AppendLine("      return view.toArray();");
+                    builder.AppendLine("    },");
                     builder.AppendLine("");
-                    builder.AppendLine($"    encode(message: I{definition.Name}, view: PierogiView): Uint8Array | void {{");
+                    builder.AppendLine($"    encodeInto(message: I{definition.Name}, view: PierogiView): void {{");
                     builder.AppendLine(CompileEncode(definition));
                     builder.AppendLine("    },");
                     builder.AppendLine("");
 
                     builder.AppendLine($"    decode(view: PierogiView | Uint8Array): I{definition.Name} {{");
                     builder.AppendLine(CompileDecode(definition));
+                    builder.AppendLine("    },");
                     builder.AppendLine("  };");
                 }
             }
