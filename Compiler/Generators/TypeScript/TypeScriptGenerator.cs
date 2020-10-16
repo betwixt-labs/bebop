@@ -61,11 +61,7 @@ namespace Compiler.Generators.TypeScript
             builder.AppendLine("      if (source) view = new PierogiView();");
             foreach (var field in definition.Fields)
             {
-                builder.AppendLine("");
-                builder.AppendLine($"      if (message.{field.Name.ToCamelCase()} != null) {{");
-                builder.AppendLine($"        view.writeUint({field.ConstantValue});");
-                builder.AppendLine($"        {CompileEncodeField(field.Type, $"message.{field.Name.ToCamelCase()}")}");
-                builder.AppendLine($"      }} else throw new Error(\"Missing required field {field.Name.ToCamelCase()}\");");
+                builder.AppendLine($"      {CompileEncodeField(field.Type, $"message.{field.Name.ToCamelCase()}")}");
             }
             builder.AppendLine("");
             builder.AppendLine("      if (source) return view.toArray();");
@@ -79,7 +75,7 @@ namespace Compiler.Generators.TypeScript
                 case ArrayType at when at.IsBytes():
                     return $"view.writeBytes({target});";
                 case ArrayType at:
-                    var indent = new string(' ', (depth + 2) * 4);
+                    var indent = new string(' ', (depth + 4) * 2);
                     var i = LoopVariable(depth);
                     return $"var length{depth} = {target}.length;\n"
                         + indent + $"view.writeUint(length{depth});\n"
@@ -104,18 +100,6 @@ namespace Compiler.Generators.TypeScript
                     return $"{dt.Name}.encode({target}, view)";
             }
             throw new InvalidOperationException($"CompileEncodeField: {type}");
-        }
-
-        private string LoopVariable(int depth)
-        {
-            return depth switch
-            {
-                0 => "i",
-                1 => "j",
-                2 => "k",
-                3 => "l",
-                _ => $"i{depth}",
-            };
         }
 
         /// <summary>
@@ -180,7 +164,7 @@ namespace Compiler.Generators.TypeScript
             builder.AppendLine($"      var message: I{definition.Name} = {{");
             foreach (var field in definition.Fields)
             {
-                builder.AppendLine($"          {field.Name.ToCamelCase()}: {CompileDecodeField(field.Type)},");
+                builder.AppendLine($"        {field.Name.ToCamelCase()}: {CompileDecodeField(field.Type)},");
             }
             builder.AppendLine("      };");
             builder.AppendLine("      return message;");
@@ -197,7 +181,7 @@ namespace Compiler.Generators.TypeScript
                 case ArrayType at:
                     return @$"(() => {{
                         let length = view.readUint();
-                        const collection = new {GetTsType(at)}(length);
+                        const collection = new {TypeName(at)}(length);
                         for (var i = 0; i < length; i++) collection[i] = {CompileDecodeField(at.MemberType)};
                         return collection;
                     }})()";
@@ -226,7 +210,7 @@ namespace Compiler.Generators.TypeScript
         /// </summary>
         /// <param name="type">The field type to generate code for.</param>
         /// <returns>The TypeScript type name.</returns>
-        private string GetTsType(in IType type)
+        private string TypeName(in IType type)
         {
             switch (type)
             {
@@ -246,12 +230,26 @@ namespace Compiler.Generators.TypeScript
                     }
                     break;
                 case ArrayType at:
-                    return at.IsBytes() ? "Uint8Array" : $"Array<{GetTsType(at.MemberType)}>";
+                    return at.IsBytes() ? "Uint8Array" : $"Array<{TypeName(at.MemberType)}>";
                 case DefinedType dt:
                     var isEnum = _schema.Definitions[dt.Name].Kind == AggregateKind.Enum;
                     return (isEnum ? "" : "I") + dt.Name;
             }
-            throw new InvalidOperationException($"GetTsType: {type}");
+            throw new InvalidOperationException($"GetTypeName: {type}");
+        }
+
+        private string 
+
+        private string LoopVariable(int depth)
+        {
+            return depth switch
+            {
+                0 => "i",
+                1 => "j",
+                2 => "k",
+                3 => "l",
+                _ => $"i{depth}",
+            };
         }
 
         /// <summary>
@@ -291,7 +289,7 @@ namespace Compiler.Generators.TypeScript
                     {
                         var field = definition.Fields.ElementAt(i);
 
-                        var type = GetTsType(field.Type);
+                        var type = TypeName(field.Type);
                         if (field.DeprecatedAttribute.HasValue && !string.IsNullOrWhiteSpace(field.DeprecatedAttribute.Value.Message))
                         {
                             builder.AppendLine("    /**");

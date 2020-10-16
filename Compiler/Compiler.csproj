@@ -6,11 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Generators\Resources\PierogiView.ts" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Include="Generators\Resources\PierogiView.ts" />
+    <EmbeddedResource Include="Generators\TypeScript\PierogiView.ts" />
   </ItemGroup>
 
   <ItemGroup>
