@@ -74,7 +74,7 @@ namespace Compiler
                     var schema = await parser.Evaluate();
                     schema.Validate();
                     var compiled = generator.Compile(schema);
-                    File.WriteAllText(Path.Join(outputPath, generator.OutputFileName(schema)), compiled);
+                    await File.WriteAllTextAsync(Path.Join(outputPath, generator.OutputFileName(schema)), compiled);
                 }
                 catch (SpanException e)
                 {

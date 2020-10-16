@@ -23,6 +23,10 @@ namespace Compiler.Parser
         private string _package;
         private Token[] _tokens;
 
+        /// <summary>
+        /// Creates a new schema parser instance from a schema file on disk
+        /// </summary>
+        /// <param name="file">The path to the Pierogi schema file that will be parsed</param>
         public SchemaParser(string file)
         {
             _lexer = new SchemaLexer();
@@ -30,6 +34,11 @@ namespace Compiler.Parser
             _schemaPath = file;
         }
 
+        /// <summary>
+        /// Creates a new schema parser instance and loads the schema into memory
+        /// </summary>
+        /// <param name="file">The path to the Pierogi schema file that will be parsed</param>
+        /// <param name="schema">The contents of the schema file.</param>
         public SchemaParser(string file, string schema)
         {
             _lexer = new SchemaLexer();

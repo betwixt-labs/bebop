@@ -238,8 +238,6 @@ namespace Compiler.Generators.TypeScript
             throw new InvalidOperationException($"GetTypeName: {type}");
         }
 
-        private string 
-
         private string LoopVariable(int depth)
         {
             return depth switch
