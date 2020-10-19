@@ -7,24 +7,99 @@ using Compiler.Meta.Interfaces;
 
 namespace Compiler.Generators.CSharp
 {
-
-    
-
     public class CSharpGenerator : IGenerator
     {
-
-       
-
-
         private ISchema _schema;
 
-        public CSharpGenerator()
+
+        public string Compile(ISchema schema)
         {
-          
+            _schema = schema;
+            var builder = new StringBuilder();
+
+            if (!string.IsNullOrWhiteSpace(_schema.Package))
+            {
+                builder.AppendLine($"namespace {_schema.Package.ToPascalCase()} {{");
+            }
+            foreach (var definition in _schema.Definitions.Values)
+            {
+                if (definition.IsEnum())
+                {
+                    builder.AppendLine($"  public enum {definition.Name} {{");
+                    for (var i = 0; i < definition.Fields.Count; i++)
+                    {
+                        var field = definition.Fields.ElementAt(i);
+                        builder.AppendLine(
+                            $"      {field.Name} = {field.ConstantValue}{(i + 1 < definition.Fields.Count ? "," : "")}");
+                    }
+                    builder.AppendLine("  }");
+                }
+
+
+                if (definition.IsMessage() || definition.IsStruct())
+                {
+                    builder.AppendLine($"  public abstract class I{definition.Name.ToPascalCase()} {{");
+                    if (definition.IsMessage())
+                    {
+                        builder.AppendLine("  #nullable enable");
+                    }
+                    for (var i = 0; i < definition.Fields.Count; i++)
+                    {
+                        var field = definition.Fields.ElementAt(i);
+
+                        var type = TypeName(field.Type);
+                        if (field.DeprecatedAttribute.HasValue &&
+                            !string.IsNullOrWhiteSpace(field.DeprecatedAttribute.Value.Message))
+                        {
+                            builder.AppendLine($"    [System.Obsolete(\"{field.DeprecatedAttribute.Value.Message}\")]");
+                        }
+                        builder.AppendLine(
+                            $"    public {type}{(definition.Kind == AggregateKind.Message ? "?" : "")} {field.Name.ToPascalCase()} {{ get; {(definition.IsReadOnly ? "init;" : "set;")} }}");
+                    }
+                    if (definition.IsMessage())
+                    {
+                        builder.AppendLine("  #nullable disable");
+                    }
+                    builder.AppendLine("  }");
+                    builder.AppendLine("");
+
+                    builder.AppendLine(
+                        $"  public class {definition.Name.ToPascalCase()} : I{definition.Name.ToPascalCase()} {{");
+                    builder.AppendLine("");
+                    builder.AppendLine(CompileEncodeHelper(definition));
+                    builder.AppendLine(
+                        $"    public static void EncodeInto(I{definition.Name.ToPascalCase()} message, PierogiView view) {{");
+                    builder.AppendLine(CompileEncode(definition));
+                    builder.AppendLine("    }");
+                    builder.AppendLine("");
+
+                    builder.AppendLine(
+                        $"    public static I{definition.Name.ToPascalCase()} DecodeFrom(PierogiView view) {{");
+                    builder.AppendLine(CompileDecode(definition));
+                    builder.AppendLine("  }");
+                }
+            }
+
+
+            if (!string.IsNullOrWhiteSpace(_schema.Package))
+            {
+                builder.AppendLine("}");
+            }
+            builder.AppendLine("");
+
+
+            return builder.ToString().TrimEnd();
+        }
+
+        public string OutputFileName(ISchema schema) => throw new NotImplementedException();
+
+        public void WriteAuxiliaryFiles(string outputPath)
+        {
+            throw new NotImplementedException();
         }
 
         /// <summary>
-        /// Generate a C# type name for the given <see cref="IType"/>.
+        ///     Generate a C# type name for the given <see cref="IType"/>.
         /// </summary>
         /// <param name="type">The field type to generate code for.</param>
         /// <returns>The C# type name.</returns>
@@ -55,88 +130,13 @@ namespace Compiler.Generators.CSharp
                     return $"{TypeName(at.MemberType)}";
                 case DefinedType dt:
                     var isEnum = _schema.Definitions[dt.Name].Kind == AggregateKind.Enum;
-                    return (isEnum ? string.Empty : "I") + dt.Name;
+                    return $"{(isEnum ? string.Empty : "I")}{dt.Name}";
             }
             throw new InvalidOperationException($"GetTypeName: {type}");
         }
 
-        [System.Obsolete("")]
-        public string Compile(ISchema schema)
-        {
-            _schema = schema;
-            var builder = new StringBuilder();
-
-            if (!string.IsNullOrWhiteSpace(_schema.Package))
-            {
-                builder.AppendLine($"namespace {_schema.Package.ToPascalCase()} {{");
-            }
-            foreach (var definition in _schema.Definitions.Values)
-            {
-                if (definition.IsEnum())
-                {
-                    builder.AppendLine($"  public enum {definition.Name} {{");
-                    for (var i = 0; i < definition.Fields.Count; i++)
-                    {
-                        var field = definition.Fields.ElementAt(i);
-                        builder.AppendLine(
-                            $"      {field.Name} = {field.ConstantValue}{(i + 1 < definition.Fields.Count ? "," : "")}");
-                    }
-                    builder.AppendLine("  }");
-                }
-
-               
-                if (definition.IsMessage() || definition.IsStruct())
-                {
-                    builder.AppendLine($"  public abstract class I{definition.Name.ToPascalCase()} {{");
-                    if (definition.IsMessage())
-                    {
-                        builder.AppendLine($"  #nullable enable");
-                    }
-                    for (var i = 0; i < definition.Fields.Count; i++)
-                    {
-                        var field = definition.Fields.ElementAt(i);
-
-                        var type = TypeName(field.Type);
-                        if (field.DeprecatedAttribute.HasValue && !string.IsNullOrWhiteSpace(field.DeprecatedAttribute.Value.Message))
-                        {
-                            builder.AppendLine($"    [System.Obsolete(\"{field.DeprecatedAttribute.Value.Message}\")]");
-                        }
-                        builder.AppendLine($"    public {type}{(definition.Kind == AggregateKind.Message ? "?" : "")} {field.Name.ToPascalCase()} {{ get; {(definition.IsReadOnly ? "init;" : "set;")} }}");
-                    }
-                    if (definition.IsMessage())
-                    {
-                        builder.AppendLine($"  #nullable disable");
-                    }
-                    builder.AppendLine("  }");
-                    builder.AppendLine("");
-
-                    builder.AppendLine($"  public class {definition.Name.ToPascalCase()} : I{definition.Name.ToPascalCase()} {{");
-                    builder.AppendLine("");
-                    builder.AppendLine(CompileEncodeHelper(definition));
-                    builder.AppendLine($"    public static void EncodeInto(I{definition.Name.ToPascalCase()} message, PierogiView view) {{");
-                    builder.AppendLine(CompileEncode(definition));
-                    builder.AppendLine("    }");
-                    builder.AppendLine("");
-
-                    builder.AppendLine($"    public static I{definition.Name.ToPascalCase()} DecodeFrom(PierogiView view) {{");
-                    builder.AppendLine(CompileDecode(definition));
-                    builder.AppendLine("  }");
-                }
-            }
-
-
-            if (!string.IsNullOrWhiteSpace(_schema.Package))
-            {
-                builder.AppendLine("}");
-            }
-            builder.AppendLine("");
-
-
-            return builder.ToString().TrimEnd();
-        }
-
         /// <summary>
-        /// Generate the body of the <c>DecodeFrom</c> function for the given <see cref="IDefinition"/>.
+        ///     Generate the body of the <c>DecodeFrom</c> function for the given <see cref="IDefinition"/>.
         /// </summary>
         /// <param name="definition">The definition to generate code for.</param>
         /// <returns>The generated C# <c>DecodeFrom</c> function body.</returns>
@@ -146,7 +146,8 @@ namespace Compiler.Generators.CSharp
             {
                 AggregateKind.Message => CompileDecodeMessage(definition),
                 AggregateKind.Struct => CompileDecodeStruct(definition),
-                _ => throw new InvalidOperationException($"invalid CompileDecode kind: {definition.Kind} in {definition}"),
+                _ => throw new InvalidOperationException(
+                    $"invalid CompileDecode kind: {definition.Kind} in {definition}")
             };
         }
 
@@ -165,8 +166,8 @@ namespace Compiler.Generators.CSharp
         }
 
         /// <summary>
-        /// Generate the body of the <c>DecodeFrom</c> function for the given <see cref="IDefinition"/>,
-        /// given that its "kind" is Message.
+        ///     Generate the body of the <c>DecodeFrom</c> function for the given <see cref="IDefinition"/>,
+        ///     given that its "kind" is Message.
         /// </summary>
         /// <param name="definition">The message definition to generate code for.</param>
         /// <returns>The generated C# <c>DecodeFrom</c> function body.</returns>
@@ -182,7 +183,8 @@ namespace Compiler.Generators.CSharp
             foreach (var field in definition.Fields)
             {
                 builder.AppendLine($"          case {field.ConstantValue}:");
-                builder.AppendLine($"            message.{field.Name.ToPascalCase()} = {CompileDecodeField(field.Type)};");
+                builder.AppendLine(
+                    $"            message.{field.Name.ToPascalCase()} = {CompileDecodeField(field.Type)};");
                 builder.AppendLine("            break;");
                 builder.AppendLine("");
             }
@@ -211,25 +213,26 @@ namespace Compiler.Generators.CSharp
                 case ScalarType st:
                     switch (st.BaseType)
                     {
-                        case BaseType.Bool: return "view.ReadByte() != 0";
-                        case BaseType.Byte: return "view.ReadByte()";
-                        case BaseType.UInt: return "view.ReadUint()";
-                        case BaseType.Int: return "view.ReadInt()";
-                        case BaseType.Float: return "view.ReadFloat()";
+                        case BaseType.Bool:   return "view.ReadByte() != 0";
+                        case BaseType.Byte:   return "view.ReadByte()";
+                        case BaseType.UInt:   return "view.ReadUint()";
+                        case BaseType.Int:    return "view.ReadInt()";
+                        case BaseType.Float:  return "view.ReadFloat()";
                         case BaseType.String: return "view.ReadString()";
-                        case BaseType.Guid: return "view.ReadGuid()";
+                        case BaseType.Guid:   return "view.ReadGuid()";
                     }
                     break;
                 case DefinedType dt when _schema.Definitions[dt.Name].Kind == AggregateKind.Enum:
                     return $"view.ReadUint() as {dt.Name}";
                 case DefinedType dt:
-                    return $"{(string.IsNullOrWhiteSpace(_schema.Package) ? string.Empty : $"{_schema.Package.ToPascalCase()}.")}{dt.Name.ToPascalCase()}.DecodeFrom(view)";
+                    return
+                        $"{(string.IsNullOrWhiteSpace(_schema.Package) ? string.Empty : $"{_schema.Package.ToPascalCase()}.")}{dt.Name.ToPascalCase()}.DecodeFrom(view)";
             }
             throw new InvalidOperationException($"CompileDecodeField: {type}");
         }
 
         /// <summary>
-        /// Generates the body of a helper method to decode the given <see cref="IDefinition"/>
+        ///     Generates the body of a helper method to decode the given <see cref="IDefinition"/>
         /// </summary>
         /// <param name="definition"></param>
         /// <returns></returns>
@@ -244,7 +247,7 @@ namespace Compiler.Generators.CSharp
         }
 
         /// <summary>
-        /// Generates the body of a helper method to encode the given <see cref="IDefinition"/>
+        ///     Generates the body of a helper method to encode the given <see cref="IDefinition"/>
         /// </summary>
         /// <param name="definition"></param>
         /// <returns></returns>
@@ -260,7 +263,7 @@ namespace Compiler.Generators.CSharp
         }
 
         /// <summary>
-        /// Generate the body of the <c>EncodeTo</c> function for the given <see cref="IDefinition"/>.
+        ///     Generate the body of the <c>EncodeTo</c> function for the given <see cref="IDefinition"/>.
         /// </summary>
         /// <param name="definition">The definition to generate code for.</param>
         /// <returns>The generated C# <c>EncodeTo</c> function body.</returns>
@@ -270,7 +273,8 @@ namespace Compiler.Generators.CSharp
             {
                 AggregateKind.Message => CompileEncodeMessage(definition),
                 AggregateKind.Struct => CompileEncodeStruct(definition),
-                _ => throw new InvalidOperationException($"invalid CompileEncode kind: {definition.Kind} in {definition}"),
+                _ => throw new InvalidOperationException(
+                    $"invalid CompileEncode kind: {definition.Kind} in {definition}")
             };
         }
 
@@ -287,7 +291,7 @@ namespace Compiler.Generators.CSharp
                 builder.AppendLine($"      if (message.{field.Name.ToPascalCase()} != null) {{");
                 builder.AppendLine($"        view.WriteUInt({field.ConstantValue});");
                 builder.AppendLine($"        {CompileEncodeField(field.Type, $"message.{field.Name.ToPascalCase()}")}");
-                builder.AppendLine($"      }}");
+                builder.AppendLine("      }");
             }
             builder.AppendLine("      view.WriteUInt(0);");
             return builder.ToString();
@@ -322,31 +326,22 @@ namespace Compiler.Generators.CSharp
                 case ScalarType st:
                     switch (st.BaseType)
                     {
-                        case BaseType.Bool: return $"view.WriteByte({target});";
-                        case BaseType.Byte: return $"view.WriteByte({target});";
-                        case BaseType.UInt: return $"view.WriteUInt({target});";
-                        case BaseType.Int: return $"view.WriteInt({target});";
-                        case BaseType.Float: return $"view.WriteFloat({target});";
+                        case BaseType.Bool:   return $"view.WriteByte({target});";
+                        case BaseType.Byte:   return $"view.WriteByte({target});";
+                        case BaseType.UInt:   return $"view.WriteUInt({target});";
+                        case BaseType.Int:    return $"view.WriteInt({target});";
+                        case BaseType.Float:  return $"view.WriteFloat({target});";
                         case BaseType.String: return $"view.WriteString({target});";
-                        case BaseType.Guid: return $"view.WriteGuid({target});";
+                        case BaseType.Guid:   return $"view.WriteGuid({target});";
                     }
                     break;
                 case DefinedType dt when _schema.Definitions[dt.Name].Kind == AggregateKind.Enum:
                     return $"view.WriteEnum({target});";
                 case DefinedType dt:
-                    return $"{(string.IsNullOrWhiteSpace(_schema.Package) ? string.Empty : $"{_schema.Package.ToPascalCase()}.")}{dt.Name.ToPascalCase()}.EncodeInto({target}, view);";
+                    return
+                        $"{(string.IsNullOrWhiteSpace(_schema.Package) ? string.Empty : $"{_schema.Package.ToPascalCase()}.")}{dt.Name.ToPascalCase()}.EncodeInto({target}, view);";
             }
             throw new InvalidOperationException($"CompileEncodeField: {type}");
-        }
-
-        public string OutputFileName(ISchema schema)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void WriteAuxiliaryFiles(string outputPath)
-        {
-            throw new NotImplementedException();
         }
     }
 }
