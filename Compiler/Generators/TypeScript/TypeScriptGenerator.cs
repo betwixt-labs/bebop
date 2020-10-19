@@ -280,7 +280,6 @@ namespace Compiler.Generators.TypeScript
                     for (var i = 0; i < definition.Fields.Count; i++)
                     {
                         var field = definition.Fields.ElementAt(i);
-
                         var type = TypeName(field.Type);
                         if (field.DeprecatedAttribute.HasValue && !string.IsNullOrWhiteSpace(field.DeprecatedAttribute.Value.Message))
                         {

@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Compiler.Exceptions;
 using Compiler.Generators;
+using Compiler.Generators.CSharp;
 using Compiler.Generators.TypeScript;
 using Compiler.Parser;
 using vtortola.WebSockets;
@@ -125,7 +126,7 @@ namespace Compiler
             // options.ConnectionExtensions.RegisterSecureConnection(certificate);
 
             var listenEndPoints = new Uri[] {
-                new Uri("ws://localhost") // will listen both IPv4 and IPv6
+                new Uri("ws://localhost:4443") // will listen both IPv4 and IPv6
             };
 
             // starting the server
@@ -202,7 +203,7 @@ namespace Compiler
                             var parser = new SchemaParser("ErrorSchema", messageText);
                             var schema = await parser.Evaluate();
                             schema.Validate();
-                            await webSocket.WriteStringAsync(new TypeScriptGenerator().Compile(schema), cancellationToken: cancellation);
+                            await webSocket.WriteStringAsync(new CSharpGenerator().Compile(schema), cancellationToken: cancellation);
                         }
                         catch (Exception ex)
                         {

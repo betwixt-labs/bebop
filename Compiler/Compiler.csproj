@@ -2,9 +2,15 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net5.0</TargetFramework>
   </PropertyGroup>
 
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <LangVersion>9.0</LangVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <LangVersion>9.0</LangVersion>
+  </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="Generators\TypeScript\PierogiView.ts" />
   </ItemGroup>
@@ -13,4 +19,7 @@
     <PackageReference Include="deniszykov.WebSocketListener" Version="4.2.9" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Generators\CSharp\" />
+  </ItemGroup>
 </Project>
