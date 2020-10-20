@@ -109,24 +109,22 @@ namespace Compiler.Generators.CSharp
             switch (type)
             {
                 case ScalarType st:
-                    switch (st.BaseType)
+                    return st.BaseType switch
                     {
-                        case BaseType.Bool:
-                            return "bool";
-                        case BaseType.Byte:
-                            return "byte";
-                        case BaseType.UInt:
-                            return "uint";
-                        case BaseType.Int:
-                            return "int";
-                        case BaseType.Float:
-                            return "float";
-                        case BaseType.String:
-                            return "string";
-                        case BaseType.Guid:
-                            return "System.Guid";
-                    }
-                    break;
+                        BaseType.Bool => "bool",
+                        BaseType.Byte => "byte",
+                        BaseType.UInt32 => "uint",
+                        BaseType.Int32 => "int",
+                        BaseType.Float32 => "float",
+                        BaseType.Float64 => "double",
+                        BaseType.String => "string",
+                        BaseType.Guid => "System.Guid",
+                        BaseType.UInt16 => "ushort",
+                        BaseType.Int16 => "short",
+                        BaseType.UInt64 => "ulong",
+                        BaseType.Int64 => "long",
+                        _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
+                    };
                 case ArrayType at: 
                     return $"{(at.MemberType is ArrayType ? ($"{TypeName(at.MemberType, arraySizeVar)}[]") : $"{TypeName(at.MemberType)}[{arraySizeVar}]")}";
                 case DefinedType dt:
@@ -200,37 +198,38 @@ namespace Compiler.Generators.CSharp
 
         private string CompileDecodeField(IType type)
         {
-            switch (type)
+            return type switch
             {
-                case ArrayType at when at.IsBytes():
-                    return "view.ReadBytes()";
-                case ArrayType at:
-                    return @$"new System.Func<{TypeName(at)}>(() =>
+                ArrayType at when at.IsBytes() => "view.ReadBytes()",
+                ArrayType at => @$"new System.Func<{TypeName(at)}>(() =>
                         {{
                         var length = view.ReadUInt();
                         var collection = new {TypeName(at, "length")};
                         for (var i = 0; i < length; i++) collection[i] = {CompileDecodeField(at.MemberType)};
                         return collection;
-                    }}).Invoke()";
-                case ScalarType st:
-                    switch (st.BaseType)
-                    {
-                        case BaseType.Bool:   return "view.ReadByte() != 0";
-                        case BaseType.Byte:   return "view.ReadByte()";
-                        case BaseType.UInt:   return "view.ReadUint()";
-                        case BaseType.Int:    return "view.ReadInt()";
-                        case BaseType.Float:  return "view.ReadFloat()";
-                        case BaseType.String: return "view.ReadString()";
-                        case BaseType.Guid:   return "view.ReadGuid()";
-                    }
-                    break;
-                case DefinedType dt when _schema.Definitions[dt.Name].Kind == AggregateKind.Enum:
-                    return $"view.ReadUint() as {dt.Name}";
-                case DefinedType dt:
-                    return
-                        $"{(string.IsNullOrWhiteSpace(_schema.Package) ? string.Empty : $"{_schema.Package.ToPascalCase()}.")}{dt.Name.ToPascalCase()}.DecodeFrom(view)";
-            }
-            throw new InvalidOperationException($"CompileDecodeField: {type}");
+                    }}).Invoke()",
+                ScalarType st => st.BaseType switch
+                {
+                    BaseType.Bool => "view.ReadByte() != 0",
+                    BaseType.Byte => "view.ReadByte()",
+                    BaseType.UInt32 => "view.ReadUInt()",
+                    BaseType.Int32 => "view.ReadInt()",
+                    BaseType.Float32 => "view.ReadFloat32()",
+                    BaseType.String => "view.ReadString()",
+                    BaseType.Guid => "view.ReadGuid()",
+                    BaseType.UInt16 => "view.ReadUInt16()",
+                    BaseType.Int16 => "view.ReadInt16()",
+                    BaseType.UInt64 => "view.ReadUInt64()",
+                    BaseType.Int64 => "view.ReadInt64()",
+                    BaseType.Float64 => "view.ReadFloat64()",
+                    _ => throw new ArgumentOutOfRangeException()
+                },
+                DefinedType dt when _schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
+                    $"view.ReadUint() as {dt.Name}",
+                DefinedType dt =>
+                    $"{(string.IsNullOrWhiteSpace(_schema.Package) ? string.Empty : $"{_schema.Package.ToPascalCase()}.")}{dt.Name.ToPascalCase()}.DecodeFrom(view)",
+                _ => throw new InvalidOperationException($"CompileDecodeField: {type}")
+            };
         }
 
         /// <summary>
@@ -313,37 +312,39 @@ namespace Compiler.Generators.CSharp
 
         private string CompileEncodeField(IType type, string target, int depth = 0)
         {
-            switch (type)
+            var indent = new string(' ', (depth + 4) * 2);
+            var i = GeneratorUtils.LoopVariable(depth);
+            return type switch
             {
-                case ArrayType at when at.IsBytes():
-                    return $"view.WriteBytes({target});";
-                case ArrayType at:
-                    var indent = new string(' ', (depth + 4) * 2);
-                    var i = GeneratorUtils.LoopVariable(depth);
-                    return $"var length{depth} = {target}.Length;\n"
-                        + indent + $"view.WriteUInt(length{depth});\n"
-                        + indent + $"for (var {i} = 0; {i} < length{depth}; {i}++) {{\n"
-                        + indent + $"    {CompileEncodeField(at.MemberType, $"{target}[{i}]", depth + 1)}\n"
-                        + indent + "}";
-                case ScalarType st:
-                    switch (st.BaseType)
-                    {
-                        case BaseType.Bool:   return $"view.WriteByte({target});";
-                        case BaseType.Byte:   return $"view.WriteByte({target});";
-                        case BaseType.UInt:   return $"view.WriteUInt({target});";
-                        case BaseType.Int:    return $"view.WriteInt({target});";
-                        case BaseType.Float:  return $"view.WriteFloat({target});";
-                        case BaseType.String: return $"view.WriteString({target});";
-                        case BaseType.Guid:   return $"view.WriteGuid({target});";
-                    }
-                    break;
-                case DefinedType dt when _schema.Definitions[dt.Name].Kind == AggregateKind.Enum:
-                    return $"view.WriteEnum({target});";
-                case DefinedType dt:
-                    return
-                        $"{(string.IsNullOrWhiteSpace(_schema.Package) ? string.Empty : $"{_schema.Package.ToPascalCase()}.")}{dt.Name.ToPascalCase()}.EncodeInto({target}, view);";
-            }
-            throw new InvalidOperationException($"CompileEncodeField: {type}");
+                ArrayType at when at.IsBytes() => $"view.WriteBytes({target});",
+                ArrayType at when at.IsFloat32s() => $"view.WriteFloat32s({target});",
+                ArrayType at when at.IsFloat64s() => $"view.WriteFloat64s({target});",
+                ArrayType at => $"var length{depth} = {target}.Length;\n" + indent +
+                    $"view.WriteUInt(length{depth});\n" + indent +
+                    $"for (var {i} = 0; {i} < length{depth}; {i}++) {{\n" + indent +
+                    $"    {CompileEncodeField(at.MemberType, $"{target}[{i}]", depth + 1)}\n" + indent + "}",
+                ScalarType st => st.BaseType switch
+                {
+                    BaseType.Bool => $"view.WriteByte({target});",
+                    BaseType.Byte => $"view.WriteByte({target});",
+                    BaseType.UInt32 => $"view.WriteUInt32({target});",
+                    BaseType.Int32 => $"view.WriteInt32({target});",
+                    BaseType.Float32 => $"view.WriteFloat32({target});",
+                    BaseType.Float64 => $"view.WriteFloat64({target});",
+                    BaseType.String => $"view.WriteString({target});",
+                    BaseType.Guid => $"view.WriteGuid({target});",
+                    BaseType.UInt16 => $"view.WriteUInt16({target});",
+                    BaseType.Int16 => $"view.WriteInt16({target});",
+                    BaseType.UInt64 => $"view.WriteUInt64({target});",
+                    BaseType.Int64 => $"view.WriteInt64({target});",
+                    _ => throw new ArgumentOutOfRangeException()
+                },
+                DefinedType dt when _schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
+                    $"view.WriteEnum({target});",
+                DefinedType dt =>
+                    $"{(string.IsNullOrWhiteSpace(_schema.Package) ? string.Empty : $"{_schema.Package.ToPascalCase()}.")}{dt.Name.ToPascalCase()}.EncodeInto({target}, view);",
+                _ => throw new InvalidOperationException($"CompileEncodeField: {type}")
+            };
         }
     }
 }
