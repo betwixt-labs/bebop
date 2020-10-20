@@ -387,5 +387,36 @@ namespace Compiler.Generators.CSharp
             GrowBy(1);
             _buffer[index] = value;
         }
+
+
+        /// <summary>
+        ///     Reserve some space to write a message's length prefix, and return its index.
+        ///     The length is stored as a little-endian fixed-width unsigned 32 - bit integer, so 4 bytes are reserved.
+        /// </summary>
+        /// <returns>The index to later write the message's length to.</returns>
+        public int ReserveMessageLength() {
+            var i = Length;
+            GrowBy(4);
+            return i;
+        }
+
+        /// <summary>
+        ///     Fill in a message's length prefix.
+        /// </summary>
+        /// <param name="position">The position in the buffer of the message's length prefix.</param>
+        /// <param name="messageLength">The message length to write.</param>
+        public void FillMessageLength(int position, uint messageLength) {
+            BinaryPrimitives.WriteUInt32LittleEndian(_buffer.Slice(position, 4), messageLength);
+        }
+
+        /// <summary>
+        ///     Read out a message's length prefix.
+        /// </summary>
+        public uint ReadMessageLength()
+        {
+            var result = BinaryPrimitives.ReadUInt32LittleEndian(_buffer.Slice(Position, 4));
+            Position += 4;
+            return result;
+        }
     }
 }
