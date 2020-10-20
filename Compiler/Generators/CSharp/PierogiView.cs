@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Buffers.Binary;
-using System.Drawing;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -12,22 +11,47 @@ namespace Compiler.Generators.CSharp
     public ref struct PierogiView
     {
         /// <summary>
+        ///     A contiguous region of memory that contains the contents of a Pierogi message
         /// </summary>
         private Span<byte> _buffer;
 
+        /// <summary>
+        ///     Allocates a new <see cref="PierogiView"/> instance backed by an empty array.
+        /// </summary>
+        /// <returns></returns>
         public static PierogiView Create() => new PierogiView(Array.Empty<byte>());
 
-        public byte[] ToArray() => _buffer.Slice(0, Length).ToArray();
+        /// <summary>
+        ///     Returns a read-only span of all the data present in the underlying <see cref="_buffer"/>
+        /// </summary>
+        public ReadOnlySpan<byte> Data => _buffer.Slice(0, Length);
 
-        public PierogiView(byte[] buffer)
+
+        /// <summary>
+        ///     Creates a new Pierogi view
+        /// </summary>
+        /// <param name="buffer">the buffer of data that will be read from / written to</param>
+        public PierogiView(Span<byte> buffer)
         {
             _buffer = buffer;
             Position = 0;
             Length = _buffer.Length;
         }
 
+        /// <summary>
+        ///     The current byte position of the view
+        /// </summary>
         public int Position { get; set; }
+
+        /// <summary>
+        ///     The amount of bytes that have been written to the underlying buffer.
+        ///     <remarks>
+        ///         This is not the same as the <see cref="_buffer"/> length which contains null-bytes due to look-ahead
+        ///         allocation.
+        ///     </remarks>
+        /// </summary>
         public int Length { get; set; }
+
 
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         public float ReadFloat32()
@@ -47,6 +71,10 @@ namespace Compiler.Generators.CSharp
             return value;
         }
 
+        /// <summary>
+        ///     Reads a null-terminated string from the underlying buffer
+        /// </summary>
+        /// <returns>A UTF-16 encoded string</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         public string ReadString()
         {
@@ -105,6 +133,10 @@ namespace Compiler.Generators.CSharp
             return result.ToString();
         }
 
+
+        /// <summary>
+        /// </summary>
+        /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         public int ReadInt32()
         {
@@ -130,13 +162,17 @@ namespace Compiler.Generators.CSharp
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         public byte ReadByte() => _buffer[Position++];
 
+        /// <summary>
+        ///     Reads a <see cref="Guid"/> from the underlying buffer and advances the advances the current position by 16 bytes.
+        /// </summary>
+        /// <returns>A well-formed Guid structure instances.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         public Guid ReadGuid()
         {
             const int size = 16;
-            var guid = new Guid(_buffer.Slice(Position, size));
+            var index = Position;
             Position += size;
-            return guid;
+            return new Guid(_buffer.Slice(index, size));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
@@ -162,6 +198,7 @@ namespace Compiler.Generators.CSharp
             } while ((b & 0x80) != 0);
             return unchecked((ulong) count);
         }
+
 
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         public short ReadInt16()
@@ -193,6 +230,10 @@ namespace Compiler.Generators.CSharp
             Length += amount;
         }
 
+        /// <summary>
+        ///     Reads a length-prefixed byte array from the buffer
+        /// </summary>
+        /// <returns>An array of bytes</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         public byte[] ReadBytes()
         {
@@ -217,7 +258,19 @@ namespace Compiler.Generators.CSharp
             const int size = 16;
             var index = Length;
             GrowBy(size);
-           guid.ToByteArray().AsSpan().CopyTo(_buffer.Slice(index - 2));
+            guid.TryWriteBytes(_buffer.Slice(index));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        public void WriteInt16(short value)
+        {
+            WriteUInt32(unchecked((uint) ((value << 1) ^ (value >> 31))));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        public void WriteUInt16(ushort value)
+        {
+            WriteUInt32(unchecked((uint) ((value << 1) ^ (value >> 31))));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
@@ -229,16 +282,33 @@ namespace Compiler.Generators.CSharp
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         public void WriteUInt32(uint value)
         {
-            do
+            while (value >= 0x80)
             {
-                var b = value & 127;
+                WriteByte(unchecked((byte) (value | 0x80)));
                 value >>= 7;
-                WriteByte(unchecked((byte) (value > 0 ? b | 128 : b)));
-            } while (value > 0);
+            }
+            WriteByte(unchecked((byte) value));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-        public void WriteString(string value)
+        public void WriteInt64(long value)
+        {
+            WriteUInt64(unchecked((ulong) (value >= 0 ? value << 1 : ~(value << 1))));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        public void WriteUInt64(ulong value)
+        {
+            while (value >= 0x80)
+            {
+                WriteByte(unchecked((byte) (value | 0x80)));
+                value >>= 7;
+            }
+            WriteByte(unchecked((byte) value));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        public void WriteString(in string value)
         {
             for (var i = 0; i < value.Length; i++)
             {
