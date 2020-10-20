@@ -157,6 +157,20 @@ export class PierogiView {
         return result;
     }
 
+    readFloat32s(): Float32Array {
+        const length = this.readUint();
+        const result = new Float32Array(this.buffer, this.index, length);
+        this.index += length * 4;
+        return result;
+    }
+
+    readFloat64s(): Float64Array {
+        const length = this.readUint();
+        const result = new Float64Array(this.buffer, this.index, length);
+        this.index += length * 8;
+        return result;
+    }
+
     readInt(): number {
         const value = this.readUint() | 0;
         return value & 1 ? ~(value >> 1) : value >> 1;
@@ -252,6 +266,20 @@ export class PierogiView {
         this.writeUint(value.length);
         const index = this.length;
         this.growBy(value.length);
+        this.buffer.set(value, index);
+    }
+
+    writeFloat32s(value: Float32Array): void {
+        this.writeUint(value.length);
+        const index = this.length;
+        this.growBy(value.length * 4);
+        this.buffer.set(value, index);
+    }
+
+    writeFloat64s(value: Float64Array): void {
+        this.writeUint(value.length);
+        const index = this.length;
+        this.growBy(value.length * 8);
         this.buffer.set(value, index);
     }
 

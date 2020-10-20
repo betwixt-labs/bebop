@@ -65,6 +65,10 @@ namespace Compiler.Generators.TypeScript
             {
                 case ArrayType at when at.IsBytes():
                     return $"view.writeBytes({target});";
+                case ArrayType at when at.IsFloat32s():
+                    return $"view.writeFloat32s({target});";
+                case ArrayType at when at.IsFloat64s():
+                    return $"view.writeFloat64s({target});";
                 case ArrayType at:
                     var indent = new string(' ', (depth + 4) * 2);
                     var i = LoopVariable(depth);
@@ -174,6 +178,10 @@ namespace Compiler.Generators.TypeScript
             {
                 case ArrayType at when at.IsBytes():
                     return "view.readBytes()";
+                case ArrayType at when at.IsFloat32s():
+                    return "view.readFloat32s()";
+                case ArrayType at when at.IsFloat64s():
+                    return "view.readFloat64s()";
                 case ArrayType at:
                     return @$"(() => {{
                         let length = view.readUint();
@@ -236,8 +244,14 @@ namespace Compiler.Generators.TypeScript
                             return "string";
                     }
                     break;
+                case ArrayType at when at.IsBytes():
+                    return "Uint8Array";
+                case ArrayType at when at.IsFloat32s():
+                    return "Float32Array";
+                case ArrayType at when at.IsFloat64s():
+                    return "Float64Array";
                 case ArrayType at:
-                    return at.IsBytes() ? "Uint8Array" : $"Array<{TypeName(at.MemberType)}>";
+                    return $"Array<{TypeName(at.MemberType)}>";
                 case DefinedType dt:
                     var isEnum = _schema.Definitions[dt.Name].Kind == AggregateKind.Enum;
                     return (isEnum ? "" : "I") + dt.Name;
