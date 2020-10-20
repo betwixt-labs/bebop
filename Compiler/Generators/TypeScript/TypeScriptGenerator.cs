@@ -65,6 +65,10 @@ namespace Compiler.Generators.TypeScript
             {
                 case ArrayType at when at.IsBytes():
                     return $"view.writeBytes({target});";
+                case ArrayType at when at.IsFloat32s():
+                    return $"view.writeFloat32s({target});";
+                case ArrayType at when at.IsFloat64s():
+                    return $"view.writeFloat64s({target});";
                 case ArrayType at:
                     var indent = new string(' ', (depth + 4) * 2);
                     var i = LoopVariable(depth);
@@ -78,9 +82,14 @@ namespace Compiler.Generators.TypeScript
                     {
                         case BaseType.Bool: return $"view.writeByte({target});";
                         case BaseType.Byte: return $"view.writeByte({target});";
-                        case BaseType.UInt: return $"view.writeUint({target});";
-                        case BaseType.Int: return $"view.writeInt({target});";
-                        case BaseType.Float: return $"view.writeFloat({target});";
+                        case BaseType.UInt16: return $"view.writeUint({target}, 0xFFFF);";
+                        case BaseType.Int16: return $"view.writeInt({target}, -0x8000, 0x7FFF);";
+                        case BaseType.UInt32: return $"view.writeUint({target}, 0xFFFFFFFF);";
+                        case BaseType.Int32: return $"view.writeInt({target}, -0x80000000, 0x7FFFFFFF);";
+                        case BaseType.UInt64: return $"view.writeBigUint({target});";
+                        case BaseType.Int64: return $"view.writeBigInt({target});";
+                        case BaseType.Float32: return $"view.writeFloat32({target});";
+                        case BaseType.Float64: return $"view.writeFloat64({target});";
                         case BaseType.String: return $"view.writeString({target});";
                         case BaseType.Guid: return $"view.writeGuid({target});";
                     }
@@ -169,6 +178,10 @@ namespace Compiler.Generators.TypeScript
             {
                 case ArrayType at when at.IsBytes():
                     return "view.readBytes()";
+                case ArrayType at when at.IsFloat32s():
+                    return "view.readFloat32s()";
+                case ArrayType at when at.IsFloat64s():
+                    return "view.readFloat64s()";
                 case ArrayType at:
                     return @$"(() => {{
                         let length = view.readUint();
@@ -181,9 +194,14 @@ namespace Compiler.Generators.TypeScript
                     {
                         case BaseType.Bool: return "!!view.readByte()";
                         case BaseType.Byte: return "view.readByte()";
-                        case BaseType.UInt: return "view.readUint()";
-                        case BaseType.Int: return "view.readInt()";
-                        case BaseType.Float: return "view.readFloat()";
+                        case BaseType.UInt16: return "view.readUint()";
+                        case BaseType.Int16: return "view.readInt()";
+                        case BaseType.UInt32: return "view.readUint()";
+                        case BaseType.Int32: return "view.readInt()";
+                        case BaseType.UInt64: return "view.readBigUint()";
+                        case BaseType.Int64: return "view.readBigInt()";
+                        case BaseType.Float32: return "view.readFloat32()";
+                        case BaseType.Float64: return "view.readFloat64()";
                         case BaseType.String: return "view.readString()";
                         case BaseType.Guid: return "view.readGuid()";
                     }
@@ -211,17 +229,29 @@ namespace Compiler.Generators.TypeScript
                         case BaseType.Bool:
                             return "boolean";
                         case BaseType.Byte:
-                        case BaseType.UInt:
-                        case BaseType.Int:
-                        case BaseType.Float:
+                        case BaseType.UInt16:
+                        case BaseType.Int16:
+                        case BaseType.UInt32:
+                        case BaseType.Int32:
+                        case BaseType.Float32:
+                        case BaseType.Float64:
                             return "number";
+                        case BaseType.UInt64:
+                        case BaseType.Int64:
+                            return "bigint";
                         case BaseType.String:
                         case BaseType.Guid:
                             return "string";
                     }
                     break;
+                case ArrayType at when at.IsBytes():
+                    return "Uint8Array";
+                case ArrayType at when at.IsFloat32s():
+                    return "Float32Array";
+                case ArrayType at when at.IsFloat64s():
+                    return "Float64Array";
                 case ArrayType at:
-                    return at.IsBytes() ? "Uint8Array" : $"Array<{TypeName(at.MemberType)}>";
+                    return $"Array<{TypeName(at.MemberType)}>";
                 case DefinedType dt:
                     var isEnum = _schema.Definitions[dt.Name].Kind == AggregateKind.Enum;
                     return (isEnum ? "" : "I") + dt.Name;

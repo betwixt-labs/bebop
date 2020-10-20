@@ -32,6 +32,16 @@ namespace Compiler.Meta
         {
             return MemberType is ScalarType st && st.BaseType == BaseType.Byte;
         }
+
+        public bool IsFloat32s()
+        {
+            return MemberType is ScalarType st && st.BaseType == BaseType.Float32;
+        }
+
+        public bool IsFloat64s()
+        {
+            return MemberType is ScalarType st && st.BaseType == BaseType.Float64;
+        }
     }
 
     class DefinedType : IType

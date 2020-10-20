@@ -14,9 +14,15 @@ namespace Compiler.Parser.Extensions
         {
             {"bool", BaseType.Bool},
             {"byte", BaseType.Byte},
-            {"int", BaseType.Int},
-            {"uint", BaseType.UInt},
-            {"float", BaseType.Float},
+            {"uint8", BaseType.Byte},
+            {"int16", BaseType.Int16},
+            {"uint16", BaseType.UInt16},
+            {"int32", BaseType.Int32},
+            {"uint32", BaseType.UInt32},
+            {"int64", BaseType.Int64},
+            {"uint64", BaseType.UInt64},
+            {"float32", BaseType.Float32},
+            {"float64", BaseType.Float64},
             {"string", BaseType.String},
             {"guid", BaseType.Guid},
         };

@@ -53,18 +53,18 @@ export class PierogiView {
     }
 
     readByte(): number {
-        if (this.index + 1 > this.buffer.length) {
-            throw new Error("Index out of bounds");
-        }
         return this.buffer[this.index++];
     }
 
-    readFloat(): number {
-        if (this.index + 4 > this.buffer.length) {
-            throw new Error("Index out of bounds");
-        }
+    readFloat32(): number {
         const result = this.view.getFloat32(this.index, true);
         this.index += 4;
+        return result;
+    }
+
+    readFloat64(): number {
+        const result = this.view.getFloat64(this.index, true);
+        this.index += 8;
         return result;
     }
 
@@ -157,9 +157,23 @@ export class PierogiView {
         return result;
     }
 
+    readFloat32s(): Float32Array {
+        const length = this.readUint();
+        const result = new Float32Array(this.buffer, this.index, length);
+        this.index += length * 4;
+        return result;
+    }
+
+    readFloat64s(): Float64Array {
+        const length = this.readUint();
+        const result = new Float64Array(this.buffer, this.index, length);
+        this.index += length * 8;
+        return result;
+    }
+
     readInt(): number {
         const value = this.readUint() | 0;
-        return value & 1 ? ~(value >>> 1) : value >>> 1;
+        return value & 1 ? ~(value >> 1) : value >> 1;
     }
 
     readUint(): number {
@@ -170,8 +184,26 @@ export class PierogiView {
             byte = this.readByte();
             value |= (byte & 127) << shift;
             shift += 7;
-        } while (byte & 128 && shift < 35);
-        return value >>> 0;
+        } while (byte & 128);
+        return value >> 0;
+    }
+
+    readBigInt(): bigint {
+        const value = this.readBigUint();
+        const half = value >> BigInt(1);
+        return value & BigInt(1) ? ~half : half;
+    }
+
+    readBigUint(): bigint {
+        let value = BigInt(0);
+        let shift = BigInt(0);
+        let byte: number;
+        do {
+            byte = this.readByte();
+            value |= BigInt(byte & 127) << shift;
+            shift += BigInt(7);
+        } while (byte & 128);
+        return value;
     }
 
     writeByte(value: number): void {
@@ -229,8 +261,6 @@ export class PierogiView {
 
     /**
      * Writes a byte array to the view.
-     * @todo optimize, why is this so slow?
-     * @param value
      */
     writeBytes(value: Uint8Array): void {
         this.writeUint(value.length);
@@ -239,16 +269,47 @@ export class PierogiView {
         this.buffer.set(value, index);
     }
 
-    writeFloat(value: number): void {
+    writeFloat32s(value: Float32Array): void {
+        this.writeUint(value.length);
+        const index = this.length;
+        this.growBy(value.length * 4);
+        this.buffer.set(value, index);
+    }
+
+    writeFloat64s(value: Float64Array): void {
+        this.writeUint(value.length);
+        const index = this.length;
+        this.growBy(value.length * 8);
+        this.buffer.set(value, index);
+    }
+
+    writeFloat32(value: number): void {
         const index = this.length;
         this.growBy(4);
         this.view.setFloat32(index, value, true);
     }
 
-    writeUint(value: number): void {
+    writeFloat64(value: number): void {
+        const index = this.length;
+        this.growBy(8);
+        this.view.setFloat64(index, value, true);
+    }
+
+    writeUint(value: number, maxValue?: number): void {
+        if (maxValue !== undefined && value > maxValue) {
+            throw new Error(`Value ${value} is greater than maximum allowed value ${maxValue}`);
+        }
         do {
             const byte = value & 127;
-            value >>>= 7;
+            value >>= 7;
+            this.writeByte(value ? byte | 128 : byte);
+        } while (value);
+    }
+
+    writeBigUint(value: bigint): void {
+        do {
+            const byte = Number(value & BigInt(127));
+            value >>= BigInt(7);
             this.writeByte(value ? byte | 128 : byte);
         } while (value);
     }
@@ -256,11 +317,17 @@ export class PierogiView {
     writeEnum(value: any): void {
         var encoded = value as number;
         if (encoded === void 0) throw new Error("Couldn't convert enum value");
-        this.writeUint(encoded);
+        this.writeUint(encoded, 0xFFFFFFFF);
     }
 
-    writeInt(value: number): void {
+    writeInt(value: number, minValue: number, maxValue: number): void {
+        if (value < minValue) throw new Error(`Value ${value} is less than minimum allowed value ${minValue}`);
+        if (value > maxValue) throw new Error(`Value ${value} is greater than maximum allowed value ${maxValue}`);
         this.writeUint((value << 1) ^ (value >> 31));
+    }
+
+    writeBigInt(value: bigint): void {
+        this.writeBigUint(value >= 0 ? BigInt(2) * value : ~(BigInt(2) * value));
     }
 
     /**

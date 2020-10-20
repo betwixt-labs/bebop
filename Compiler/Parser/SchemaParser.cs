@@ -163,7 +163,7 @@ namespace Compiler.Parser
             var definitionEnd = CurrentToken.Span;
             while (!Eat(TokenKind.CloseBrace))
             {
-                IType type = new ScalarType(BaseType.Int); // for enums
+                IType type = new ScalarType(BaseType.Int32); // for enums
                 DeprecatedAttribute? deprecatedAttribute = null;
                 var value = 0;
 
