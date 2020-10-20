@@ -219,7 +219,7 @@ namespace Compiler.Generators.CSharp
         {
             if ((Length & 0xC0000000) != 0)
             {
-                throw new Exception("ByteBuffer: cannot grow buffer beyond 2 gigabytes.");
+                throw new Exception("cannot grow buffer beyond 2 gigabytes.");
             }
             if (Length + amount > _buffer.Length)
             {
@@ -307,6 +307,10 @@ namespace Compiler.Generators.CSharp
             WriteByte(unchecked((byte) value));
         }
 
+        /// <summary>
+        /// Writes a UTF-16 encoded string to the underlying buffer
+        /// </summary>
+        /// <param name="value"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         public void WriteString(in string value)
         {
