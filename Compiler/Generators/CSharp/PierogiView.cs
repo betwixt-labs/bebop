@@ -6,6 +6,26 @@ using System.Text;
 namespace Compiler.Generators.CSharp
 {
     /// <summary>
+    ///     Represents an error that occurs during Pierogi reading and writing
+    /// </summary>
+    public class PierogiException : Exception
+    {
+        public PierogiException()
+        {
+        }
+
+        public PierogiException(string message)
+            : base(message)
+        {
+        }
+
+        public PierogiException(string message, Exception inner)
+            : base(message, inner)
+        {
+        }
+    }
+
+    /// <summary>
     ///     A low-level interface for encoding and decoding Pierogi structured data
     /// </summary>
     public ref struct PierogiView
@@ -134,9 +154,6 @@ namespace Compiler.Generators.CSharp
         }
 
 
-        /// <summary>
-        /// </summary>
-        /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         public int ReadInt32()
         {
@@ -219,7 +236,7 @@ namespace Compiler.Generators.CSharp
         {
             if ((Length & 0xC0000000) != 0)
             {
-                throw new Exception("cannot grow buffer beyond 2 gigabytes.");
+                throw new PierogiException("A Pierogi View cannot grow beyond 2 gigabytes.");
             }
             if (Length + amount > _buffer.Length)
             {
@@ -308,7 +325,7 @@ namespace Compiler.Generators.CSharp
         }
 
         /// <summary>
-        /// Writes a UTF-16 encoded string to the underlying buffer
+        ///     Writes a UTF-16 encoded string to the underlying buffer
         /// </summary>
         /// <param name="value"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
@@ -331,7 +348,7 @@ namespace Compiler.Generators.CSharp
                 // strings are null-terminated, so a string cannot contain a null character.
                 if (codePoint == 0)
                 {
-                    throw new Exception("Cannot encode a string containing the null character");
+                    throw new PierogiException("Cannot encode a string containing the null character.");
                 }
                 // encode UTF-8
                 if (codePoint < 0x80)
