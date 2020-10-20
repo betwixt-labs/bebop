@@ -13,51 +13,91 @@ namespace Compiler.Meta
     /// <summary>
     ///     Pierogi base types are aligned with native types found in most programming languages.
     /// </summary>
-    // ReSharper disable once EnumUnderlyingTypeIsInt
-    public enum BaseType : int
+    public enum BaseType
     {
         /// <summary>
         ///     A simple type representing Boolean values of true or false.
+        ///     It is encoded as a single byte (false is 0, true is 1).
         /// </summary>
-        Bool = -1,
+        Bool,
 
         /// <summary>
         ///     An integral type representing unsigned 8-bit integers with values between 0 and 255.
+        ///     It is encoded as a single byte.
         /// </summary>
-        Byte = -2,
+        Byte,
+
+        /// <summary>
+        ///     An integral type representing unsigned 16-bit integers with values between 0 and 65535.
+        /// </summary>
+        /// <remarks>
+        ///     It uses a base-128 variable-length encoding: small integers are encoded as a single byte, but large ones may take up to 3 bytes.
+        /// </remarks>
+        UInt16,
+
+        /// <summary>
+        ///     An integral type representing signed 16-bit integers with values between -32768 and 32767.
+        /// </summary>
+        /// <remarks>
+        ///     It uses a base-128 variable-length encoding: small integers are encoded as a single byte, but large ones may take up to 3 bytes.
+        /// </remarks>
+        Int16,
 
         /// <summary>
         ///     An integral type representing unsigned 32-bit integers with values between 0 and 4294967295.
         /// </summary>
         /// <remarks>
-        ///     Uses variable-length encoding.
+        ///     It uses a base-128 variable-length encoding: small integers are encoded as a single byte, but large ones may take up to 5 bytes.
         /// </remarks>
-        UInt = -3,
+        UInt32,
 
         /// <summary>
         ///     An integral type representing signed 32-bit integers with values between -2147483648 and 2147483647.
         /// </summary>
         /// <remarks>
-        ///     Uses variable-length encoding.
+        ///     It uses a base-128 variable-length encoding: small integers are encoded as a single byte, but large ones may take up to 5 bytes.
         /// </remarks>
-        Int = -4,
+        Int32,
 
         /// <summary>
-        ///     A floating point type representing values ranging from approximately 5.0 x 10 <sup>-324</sup> to 1.7 x 10
-        ///     <sup>308</sup> with a precision of 15-16 digits.
+        ///     An integral type representing unsigned 64-bit integers with values between 0 and 2^64-1.
         /// </summary>
-        Float = -5,
+        /// <remarks>
+        ///     It uses a base-128 variable-length encoding: small integers are encoded as a single byte, but large ones may take up to 10 bytes.
+        /// </remarks>
+        UInt64,
+
+        /// <summary>
+        ///     An integral type representing signed 64-bit integers with values between -2^63 and 2^63-1.
+        /// </summary>
+        /// <remarks>
+        ///     It uses a base-128 variable-length encoding: small integers are encoded as a single byte, but large ones may take up to 10 bytes.
+        /// </remarks>
+        Int64,
+
+        /// <summary>
+        ///     A 32-bit (single-precision) IEEE 754 floating point number.
+        ///     It is encoded as 4 bytes.
+        /// </summary>
+        Float32,
+
+        /// <summary>
+        ///     A 64-bit (double-precision) IEEE 754 floating point number.
+        ///     It is encoded as 8 bytes.
+        /// </summary>
+        Float64,
 
         /// <summary>
         ///     A UTF-8 encoded null-terminated string.
         /// </summary>
-        String = -6,
+        String,
 
         /// <summary>
         ///     GUID (or UUID) is an acronym for 'Globally Unique Identifier' (or 'Universally Unique Identifier').
         ///     It is a 128-bit integer number used to identify resources.
+        ///     It is encoded as 16 bytes (as returned by <see cref="System.Guid.ToByteArray"/>).
         /// </summary>
-        Guid = -7
+        Guid,
     }
 
     /// <summary>
@@ -67,7 +107,7 @@ namespace Compiler.Meta
     {
         /// <summary>
         ///     An enumeration type (or enum type) is a type defined by a set of named constants.
-        ///     It is restricted to <see cref="ScalarType.UInt"/> integral numeric type.
+        ///     It is restricted to <see cref="BaseType.UInt"/> integral numeric type, and enum values will be encoded using variable-length encoding.
         /// </summary>
         /// <remarks>
         ///     It is possible to add new members to an enum in use by a <see cref="Message"/> while maintaining backwards
