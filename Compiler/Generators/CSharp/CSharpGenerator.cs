@@ -102,8 +102,9 @@ namespace Compiler.Generators.CSharp
         ///     Generate a C# type name for the given <see cref="IType"/>.
         /// </summary>
         /// <param name="type">The field type to generate code for.</param>
+        /// <param name="arraySizeVar">A variable name that will be formatted into the array initializer</param>
         /// <returns>The C# type name.</returns>
-        private string TypeName(in IType type)
+        private string TypeName(in IType type , string arraySizeVar = "")
         {
             switch (type)
             {
@@ -123,11 +124,11 @@ namespace Compiler.Generators.CSharp
                         case BaseType.String:
                             return "string";
                         case BaseType.Guid:
-                            return "Guid";
+                            return "System.Guid";
                     }
                     break;
-                case ArrayType at:
-                    return $"{TypeName(at.MemberType)}";
+                case ArrayType at: 
+                    return $"{(at.MemberType is ArrayType ? ($"{TypeName(at.MemberType, arraySizeVar)}[]") : $"{TypeName(at.MemberType)}[{arraySizeVar}]")}";
                 case DefinedType dt:
                     var isEnum = _schema.Definitions[dt.Name].Kind == AggregateKind.Enum;
                     return $"{(isEnum ? string.Empty : "I")}{dt.Name}";
@@ -204,12 +205,13 @@ namespace Compiler.Generators.CSharp
                 case ArrayType at when at.IsBytes():
                     return "view.ReadBytes()";
                 case ArrayType at:
-                    return @$"(() => {{
-                        let length = view.readUint();
-                        var collection = new {TypeName(at)}[length];
+                    return @$"new System.Func<{TypeName(at)}>(() =>
+                        {{
+                        var length = view.ReadUInt();
+                        var collection = new {TypeName(at, "length")};
                         for (var i = 0; i < length; i++) collection[i] = {CompileDecodeField(at.MemberType)};
                         return collection;
-                    }})()";
+                    }}).Invoke()";
                 case ScalarType st:
                     switch (st.BaseType)
                     {
@@ -318,7 +320,7 @@ namespace Compiler.Generators.CSharp
                 case ArrayType at:
                     var indent = new string(' ', (depth + 4) * 2);
                     var i = GeneratorUtils.LoopVariable(depth);
-                    return $"var length{depth} = {target}.length;\n"
+                    return $"var length{depth} = {target}.Length;\n"
                         + indent + $"view.WriteUInt(length{depth});\n"
                         + indent + $"for (var {i} = 0; {i} < length{depth}; {i}++) {{\n"
                         + indent + $"    {CompileEncodeField(at.MemberType, $"{target}[{i}]", depth + 1)}\n"
