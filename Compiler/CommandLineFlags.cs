@@ -78,13 +78,13 @@ namespace Compiler
 
 
         [CommandLineFlag("server", false, "I'm a flag", "--server 8080")]
-        public string ServerPort { get; }
+        public int ServerPort { get; private set; }
 
         [CommandLineFlag("fake", false, "I am also a flag", "--fake dogma")]
-        public string Fake { get; }
+        public string Fake { get; private set; }
 
         [CommandLineFlag("files", false, "Testerino", "--files [file1, file 2]")]
-        public List<string> Files { get; }
+        public List<string> Files { get; private set; }
 
         public string HelpText { get; private init; }
 
@@ -93,7 +93,7 @@ namespace Compiler
         /// </summary>
         /// <param name="args">The flags to be parsed.</param>
         /// <returns>A dictionary containing all parsed flags and their value if any.</returns>
-        private static Dictionary<string, string> GetArguments(string[] args) => args
+        private static Dictionary<string, string> GetFlags(string[] args) => args
             .Zip(args.Skip(1).Concat(new[] {string.Empty}), (first, second) => new {first, second})
             .Where(pair => pair.first.StartsWith("-", StringComparison.Ordinal))
             .ToDictionary(pair => new string(pair.first.SkipWhile(c => c == '-').ToArray()).ToLowerInvariant(),
@@ -104,9 +104,10 @@ namespace Compiler
         ///     Attempts to parse commandline flags into a <see cref="CommandLineFlags"/> instance
         /// </summary>
         /// <param name="args">the array of arguments to parse</param>
-        /// <param name="flags">An instance which contains all parsed flags and their values</param>
-        /// <returns></returns>
-        public static bool TryParse(string[] args, out CommandLineFlags flags)
+        /// <param name="flagStore">An instance which contains all parsed flags and their values</param>
+        /// <param name="errorMessage">A human-friendly message describing why parsing failed.</param>
+        /// <returns>If the provided <param name="args"></param> were parsed this method returns true.</returns>
+        public static bool TryParse(string[] args, out CommandLineFlags flagStore, out string errorMessage)
         {
             var props = (from p in typeof(CommandLineFlags).GetProperties()
                 let attr = p.GetCustomAttributes(typeof(CommandLineFlagAttribute), true)
@@ -132,49 +133,60 @@ namespace Compiler
                 stringBuilder.AppendLine($"--{prop.Attribute.Name}  {prop.Attribute.HelpText}");
             }
 
-            flags = new CommandLineFlags {HelpText = stringBuilder.ToString()};
+            flagStore = new CommandLineFlags {HelpText = stringBuilder.ToString()};
 
-            var parsedArguments = GetArguments(args);
-            if (parsedArguments.Count == 0)
+            var parsedFlags = GetFlags(args);
+            if (parsedFlags.Count == 0)
             {
+                errorMessage = "No commandline flags found.";
                 return false;
             }
+
             foreach (var flag in props)
             {
-                if (flag.Attribute.IsRequired && !parsedArguments.ContainsKey(flag.Attribute.Name))
+                if (flag.Attribute.IsRequired && !parsedFlags.ContainsKey(flag.Attribute.Name))
                 {
+                    errorMessage = $"Required commandline flag \"{flag.Attribute.Name}\" is missing.";
                     return false;
                 }
-                var parsedValue = parsedArguments[flag.Attribute.Name]?.Trim();
+                if (!parsedFlags.ContainsKey(flag.Attribute.Name))
+                {
+                    continue;
+                }
+
+                var parsedValue = parsedFlags[flag.Attribute.Name]?.Trim();
                 var propertyType = flag.Property.PropertyType;
                 if (propertyType == typeof(bool))
                 {
-                    flag.Property.SetValue(flags, true);
+                    flag.Property.SetValue(flagStore, true);
+                    continue;
                 }
-                else if (propertyType.IsGenericType && propertyType.GetGenericTypeDefinition() == typeof(List<>))
+                if (string.IsNullOrWhiteSpace(parsedValue))
+                {
+                    errorMessage = $"Commandline flag \"{flag.Attribute.Name}\" was not assigned a value.";
+                    return false;
+                }
+                if (propertyType.IsGenericType && propertyType.GetGenericTypeDefinition() == typeof(List<>))
                 {
                     Type itemType = propertyType.GetGenericArguments()[0];
- 
-                    if (string.IsNullOrWhiteSpace(parsedValue))
-                    {
-                        return false;
-                    }
                     if (!(Activator.CreateInstance(typeof(List<>).MakeGenericType(itemType)) is IList genericList))
                     {
+                        errorMessage = $"Failed to activate \"{flag.Property.Name}\".";
                         return false;
                     }
                     foreach (var item in parsedValue.Split(","))
                     {
                         genericList.Add(Convert.ChangeType(item.Trim(), itemType));
                     }
-                    flag.Property.SetValue(flags, genericList, null);
+                    flag.Property.SetValue(flagStore, genericList, null);
                 }
                 else
                 {
-                    flag.Property.SetValue(flags, Convert.ChangeType(parsedValue, flag.Property.PropertyType), null);
+                    flag.Property.SetValue(flagStore, Convert.ChangeType(parsedValue, flag.Property.PropertyType),
+                        null);
                 }
             }
-
+            errorMessage = string.Empty;
             return true;
         }
     }
