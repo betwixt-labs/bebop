@@ -118,7 +118,7 @@ namespace Compiler.Lexer.Tokenization
         /// <returns></returns>
         public Token? TryScan(char surrogate) => surrogate switch
         {
-         //   _ when IsBlockComment(surrogate, out var b) => b,
+            _ when IsBlockComment(surrogate, out var b) => b,
             _ when IsSymbol(surrogate, out var s) => s,
             _ when IsIdentifier(surrogate, out var i) => i,
             _ when IsLiteral(surrogate, out var l) => l,
@@ -129,6 +129,12 @@ namespace Compiler.Lexer.Tokenization
 
       
       
+        /// <summary>
+        /// Determines if a surrogate leads into a block comment.
+        /// </summary>
+        /// <param name="surrogate"></param>
+        /// <param name="token"></param>
+        /// <returns></returns>
         private bool IsBlockComment(char surrogate, out Token token)
         {
             token = default;
@@ -136,14 +142,15 @@ namespace Compiler.Lexer.Tokenization
             {
                 return false;
             }
+           
             _reader.GetChar();
             var builder = new StringBuilder();
             var currentChar = _reader.GetChar();
             while (currentChar != '\0')
             {
                 
-             
                 var isNewLine = false;
+ 
                 if (currentChar == '\r')
                 {
                     builder.Append(currentChar);
@@ -157,6 +164,7 @@ namespace Compiler.Lexer.Tokenization
                 }
                 if (isNewLine)
                 {
+                    // skip over all whitespace after a newline and find the beginning of the next line.
                     if (_reader.PeekChar().IsWhitespace())
                     {
                         currentChar = _reader.GetChar();
@@ -164,11 +172,24 @@ namespace Compiler.Lexer.Tokenization
                         continue;
                     }
                     currentChar = _reader.GetChar();
+                    // the next character is the end of the block comment
+                    // skip so we consume only at the end of the method
                     if (_reader.PeekChar() == '/')
                     {
                         continue;
                     }
                 }
+
+                // skip over the left edges of aligned block comments
+                if (currentChar == '*' && _reader.PeekChar() == '*')
+                {
+                    currentChar = _reader.GetChar();
+                    if (currentChar == '*')
+                    {
+                        currentChar = _reader.GetChar();
+                    }
+                }
+                // we have reached the end of the block comment
                 if (currentChar == '*' && _reader.PeekChar() == '/')
                 {
                     _reader.GetChar();
@@ -178,8 +199,6 @@ namespace Compiler.Lexer.Tokenization
                 currentChar = _reader.GetChar();
             }
             token = new Token(TokenKind.BlockComment, builder.ToString().Trim(), CurrentTokenPosition, TokenCount);
-
-            Console.WriteLine(token.Span.ToString());
             return true;
         }
 
@@ -297,10 +316,6 @@ namespace Compiler.Lexer.Tokenization
         /// <returns></returns>
         private bool IsSymbol(char surrogate, out Token token)
         {
-            if (IsNumber(surrogate, out token))
-            {
-                return true;
-            }
             if (TokenizerExtensions.TryGetSymbol(surrogate, out var kind))
             {
                 token = new Token(kind, surrogate.ToString(), CurrentTokenPosition, TokenCount);

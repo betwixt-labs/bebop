@@ -29,6 +29,10 @@ namespace Compiler.Meta.Interfaces
         /// A collection of all <see cref="IField"/> 
         /// </summary>
         public ICollection<IField> Fields { get; }
+        /// <summary>
+        /// The inner text of a block comment that preceded the definition.
+        /// </summary>
+        public string Documentation { get; }
     }
 
     public static class DefinitionExtensions
