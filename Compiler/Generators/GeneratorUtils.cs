@@ -7,6 +7,7 @@ namespace Compiler.Generators
 {
     public static class GeneratorUtils
     {
+
         /// <summary>
         /// A dictionary that contains generators.
         /// </summary>

@@ -91,8 +91,6 @@ namespace Compiler.Generators.CSharp
             return builder.ToString().TrimEnd();
         }
 
-        public string OutputFileName(ISchema schema) => throw new NotImplementedException();
-
         public void WriteAuxiliaryFiles(string outputPath)
         {
             throw new NotImplementedException();
