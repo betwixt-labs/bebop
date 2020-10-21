@@ -2,7 +2,7 @@ import { PierogiView } from './generated/PierogiView';
 import { BasicTypes } from './generated/basic_types';
 import * as assert from "assert";
 
-it("Basic types", () => {
+it("Basic types roundtrip", () => {
     const obj = {
         a_bool: true,
         a_byte: 1,

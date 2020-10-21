@@ -1,0 +1,16 @@
+struct BasicArrays {
+    bool[] a_bool;
+    byte[] a_byte;
+    int16[] a_int16;
+    uint16[] a_uint16;
+    int32[] a_int32;
+    uint32[] a_uint32;
+    int64[] a_int64;
+    uint64[] a_uint64;
+    float32[] a_float32;
+    float64[] a_float64;
+    string[] a_string;
+    guid[] a_guid;
+}
+
+struct TestInt32Array { int32[] a; }

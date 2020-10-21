@@ -76,8 +76,8 @@ namespace Compiler
         [CommandLineFlag("dir", "Parse and generate code from a directory of schemas", "--lang ts --dir [input dir]")]
         public string SchemaDirectory { get; private set; }
 
-        [CommandLineFlag("files", "Parse and generate code from a list of schemas", "--files [input file], [input file]")]
-        public List<string>? SchemaFiles { get; private set; }
+        [CommandLineFlag("files", "Parse and generate code from a list of schemas", "--files [file1] [file2] ...")]
+        public List<string> SchemaFiles { get; private set; }
 
         [CommandLineFlag("out", "The file generated code will be written to", "--lang cs --dir [input dir] --out [output file]")]
         public string OutputFile { get; private set; }

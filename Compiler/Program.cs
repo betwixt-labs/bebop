@@ -25,7 +25,7 @@ namespace Compiler
             void WriteHelpText()
             {
                 Console.WriteLine();
-                Console.WriteLine(flags?.HelpText);
+                Console.WriteLine(flags.HelpText);
             }
 
             if (flags.Version)
@@ -53,13 +53,13 @@ namespace Compiler
                 return 1;
             }
 
-            if (string.IsNullOrWhiteSpace(flags?.SchemaDirectory) && flags?.SchemaFiles?.Count == 0)
+            if (string.IsNullOrWhiteSpace(flags.SchemaDirectory) && flags.SchemaFiles.Count == 0)
             {
                 Log.Error("No schema sources specified");
                 return 1;
             }
 
-            if (string.IsNullOrWhiteSpace(flags?.OutputFile))
+            if (string.IsNullOrWhiteSpace(flags.OutputFile))
             {
                 Log.Error("No output file was specified");
                 return 1;
@@ -74,7 +74,7 @@ namespace Compiler
                 return 1;
             }
 
-            if (flags?.SchemaFiles?.Count > 0 && !SchemaFuser.TryCoalescing(flags.SchemaFiles, out inputFile))
+            if (flags.SchemaFiles.Count > 0 && !SchemaFuser.TryCoalescing(flags.SchemaFiles, out inputFile))
             {
                 Log.Error($"Unable to coalesce schemas: {string.Join(",", flags.SchemaFiles)}");
                 return 1;

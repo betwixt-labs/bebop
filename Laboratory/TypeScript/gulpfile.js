@@ -15,7 +15,7 @@ async function compile() {
 
   return gulp
       .src("test/*.pie")
-      .pipe(exec((file) => `..\\..\\Compiler\\bin\\Debug\\netcoreapp3.1\\Compiler.exe --lang ts test\\generated ${file.stem}.ts ${file.path}`, options))
+      .pipe(exec((file) => `..\\..\\Compiler\\bin\\Debug\\net5.0\\Compiler.exe --lang ts --out test\\generated\\${file.stem}.ts --files ${file.path}`, options))
       .pipe(exec.reporter(reportOptions));
 }
 
