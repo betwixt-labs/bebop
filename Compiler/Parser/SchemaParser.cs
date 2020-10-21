@@ -116,15 +116,6 @@ namespace Compiler.Parser
             _index = 0;
             _definitions = new Dictionary<string, IDefinition>();
             _typeReferences = new HashSet<(Token, Token)>();
-            _package = string.Empty;
-            
-            if (Eat(TokenKind.Package))
-            {
-                _package = CurrentToken.Lexeme;
-                Expect(TokenKind.Identifier);
-                Expect(TokenKind.Semicolon);
-            }
-
             
             while (_index < _tokens.Length && !Eat(TokenKind.EndOfFile))
             {
@@ -145,7 +136,7 @@ namespace Compiler.Parser
                     throw new UnrecognizedTypeException(typeToken, definitionToken.Lexeme, _schemaPath);
                 }
             }
-            return new PierogiSchema(_schemaPath, _package, _definitions);
+            return new PierogiSchema(_schemaPath, _definitions);
         }
 
 

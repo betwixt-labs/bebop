@@ -20,8 +20,8 @@ namespace Compiler
         {
             Console.Error.WriteLine("Usage:\n");
             Console.Error.WriteLine("    pierogic --server                       Run a WebSocket server on localhost.");
-            Console.Error.WriteLine("    pierogic --lang ts [outdir] [schemas]   Compile schemas for TypeScript into outdir.");
-            Console.Error.WriteLine("    pierogic --lang cs [outdir] [schemas]   Compile schemas for C# into outdir.");
+            Console.Error.WriteLine("    pierogic --lang ts [outdir] [outname] [schemas]   Compile schemas for TypeScript into outdir.");
+            Console.Error.WriteLine("    pierogic --lang cs [outdir] [outname] [schemas]   Compile schemas for C# into outdir.");
             Console.Error.WriteLine("");
         }
 
@@ -39,7 +39,8 @@ namespace Compiler
                 case "--lang" when args.Length >= 4: // at least one schema
                     var language = args[1];
                     var outputPath = args[2];
-                    var schemaPaths = args.Skip(3);
+                    var outputFileName = args[3];
+                    var schemaPaths = args.Skip(4);
                     if (!generators.ContainsKey(language))
                     {
                         Console.Error.WriteLine($"Unsupported language: {language}.");
@@ -47,7 +48,7 @@ namespace Compiler
                         return 1;
                     }
                     var generator = generators[language];
-                    await CompileSchemas(generator, outputPath, schemaPaths);
+                    await CompileSchemas(generator, outputPath, outputFileName, schemaPaths);
                     return 0;
                 default:
                     Usage();
@@ -63,31 +64,30 @@ namespace Compiler
             Console.Error.WriteLine(string.IsNullOrWhiteSpace(reason) ? "" : " " + reason);
         }
 
-        static async Task CompileSchemas(IGenerator generator, string outputPath, IEnumerable<string> schemaPaths)
+        static async Task CompileSchemas(IGenerator generator, string outputPath, string outputFileName, IEnumerable<string> schemaPaths)
         {
             generator.WriteAuxiliaryFiles(outputPath);
-            foreach (var path in schemaPaths)
+            // TODO: add support (in parser and lexer) for multiple schema paths, treating them as one long file.
+            var path = schemaPaths.First();
+            try
             {
-                try
-                {
-                    var parser = new SchemaParser(path);
-                    var schema = await parser.Evaluate();
-                    schema.Validate();
-                    var compiled = generator.Compile(schema);
-                    File.WriteAllText(Path.Join(outputPath, generator.OutputFileName(schema)), compiled);
-                }
-                catch (SpanException e)
-                {
-                    ReportError($"Error in {e.SourcePath} at {e.Span.StartColonString()}:", e.Message);
-                }
-                catch (FileNotFoundException)
-                {
-                    ReportError($"File {path} was not found.");
-                }
-                catch (Exception e)
-                {
-                    ReportError($"Error when processing {path}:", e.ToString());
-                }
+                var parser = new SchemaParser(path);
+                var schema = await parser.Evaluate();
+                schema.Validate();
+                var compiled = generator.Compile(schema);
+                File.WriteAllText(Path.Join(outputPath, outputFileName), compiled);
+            }
+            catch (SpanException e)
+            {
+                ReportError($"Error in {e.SourcePath} at {e.Span.StartColonString()}:", e.Message);
+            }
+            catch (FileNotFoundException)
+            {
+                ReportError($"File {path} was not found.");
+            }
+            catch (Exception e)
+            {
+                ReportError($"Error when processing {path}:", e.ToString());
             }
         }
 

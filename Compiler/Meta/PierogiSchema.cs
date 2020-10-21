@@ -8,16 +8,13 @@ namespace Compiler.Meta
     /// <inheritdoc/>
     public readonly struct PierogiSchema : ISchema
     {
-        public PierogiSchema(string sourcePath, string package, Dictionary<string, IDefinition> definitions)
+        public PierogiSchema(string sourcePath, Dictionary<string, IDefinition> definitions)
         {
             SourcePath = sourcePath;
-            Package = package;
             Definitions = definitions;
         }
         /// <inheritdoc/>
         public string SourcePath { get; }
-        /// <inheritdoc/>
-        public string Package { get; }
         /// <inheritdoc/>
         public Dictionary<string, IDefinition> Definitions { get; }
 

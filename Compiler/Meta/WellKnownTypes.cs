@@ -6,7 +6,6 @@ namespace Compiler.Meta
     {
         public static HashSet<string> Identifiers = new HashSet<string>
         {
-            "package",
             "PierogiView"
         };
     }

@@ -13,10 +13,6 @@ namespace Compiler.Meta.Interfaces
         public string SourcePath { get; }
 
         /// <summary>
-        /// An optional package specifier within the .pie file to prevent name clashes between types.
-        /// </summary>
-        public string Package { get; }
-        /// <summary>
         /// A collection of data structures defined in the schema
         /// </summary>
         public Dictionary<string, IDefinition> Definitions { get; }

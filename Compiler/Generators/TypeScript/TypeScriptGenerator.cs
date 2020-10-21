@@ -80,7 +80,7 @@ namespace Compiler.Generators.TypeScript
                 case ScalarType st:
                     switch (st.BaseType)
                     {
-                        case BaseType.Bool: return $"view.writeByte({target});";
+                        case BaseType.Bool: return $"view.writeByte(Number({target}));";
                         case BaseType.Byte: return $"view.writeByte({target});";
                         case BaseType.UInt16: return $"view.writeUint({target}, 0xFFFF);";
                         case BaseType.Int16: return $"view.writeInt({target}, -0x8000, 0x7FFF);";
@@ -282,10 +282,6 @@ namespace Compiler.Generators.TypeScript
             var builder = new StringBuilder();
             builder.AppendLine("import { PierogiView } from \"./PierogiView\";");
             builder.AppendLine("");
-            if (!string.IsNullOrWhiteSpace(_schema.Package))
-            {
-                builder.AppendLine($"export namespace {_schema.Package} {{");
-            }
 
             foreach (var definition in _schema.Definitions.Values)
             {
@@ -338,19 +334,7 @@ namespace Compiler.Generators.TypeScript
                     builder.AppendLine("  };");
                 }
             }
-            if (!string.IsNullOrWhiteSpace(_schema.Package))
-            {
-                builder.AppendLine("}");
-            }
-            builder.AppendLine("");
-
-
-            return builder.ToString().TrimEnd();
-        }
-
-        public string OutputFileName(ISchema schema)
-        {
-            return schema.Package + ".ts";
+            return builder.ToString();
         }
 
         public void WriteAuxiliaryFiles(string outputPath)
