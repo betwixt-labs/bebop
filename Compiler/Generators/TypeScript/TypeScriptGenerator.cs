@@ -40,11 +40,11 @@ namespace Compiler.Generators.TypeScript
                     continue;
                 }
                 builder.AppendLine($"if (message.{field.Name.ToCamelCase()} != null) {{");
-                builder.AppendLine($"  view.writeUint({field.ConstantValue});");
+                builder.AppendLine($"  view.writeByte({field.ConstantValue});");
                 builder.AppendLine($"  {CompileEncodeField(field.Type, $"message.{field.Name.ToCamelCase()}")}");
                 builder.AppendLine($"}}");
             }
-            builder.AppendLine("view.writeUint(0);");
+            builder.AppendLine("view.writeByte(0);");
             builder.AppendLine("const end = view.length;");
             builder.AppendLine("view.fillMessageLength(pos, end - start);");
             return builder.ToString();
@@ -74,7 +74,7 @@ namespace Compiler.Generators.TypeScript
                     var indent = new string(' ', (depth + 4) * 2);
                     var i = GeneratorUtils.LoopVariable(depth);
                     return $"var length{depth} = {target}.length;\n"
-                        + indent + $"view.writeUint(length{depth});\n"
+                        + indent + $"view.writeUint32(length{depth});\n"
                         + indent + $"for (var {i} = 0; {i} < length{depth}; {i}++) {{\n"
                         + indent + $"  {CompileEncodeField(at.MemberType, $"{target}[{i}]", depth + 1)}\n"
                         + indent + "}";
@@ -83,12 +83,12 @@ namespace Compiler.Generators.TypeScript
                     {
                         case BaseType.Bool: return $"view.writeByte({target});";
                         case BaseType.Byte: return $"view.writeByte({target});";
-                        case BaseType.UInt16: return $"view.writeUint({target}, 0xFFFF);";
-                        case BaseType.Int16: return $"view.writeInt({target}, -0x8000, 0x7FFF);";
-                        case BaseType.UInt32: return $"view.writeUint({target}, 0xFFFFFFFF);";
-                        case BaseType.Int32: return $"view.writeInt({target}, -0x80000000, 0x7FFFFFFF);";
-                        case BaseType.UInt64: return $"view.writeBigUint({target});";
-                        case BaseType.Int64: return $"view.writeBigInt({target});";
+                        case BaseType.UInt16: return $"view.writeUint16({target});";
+                        case BaseType.Int16: return $"view.writeInt16({target});";
+                        case BaseType.UInt32: return $"view.writeUint32({target});";
+                        case BaseType.Int32: return $"view.writeInt32({target});";
+                        case BaseType.UInt64: return $"view.writeUint64({target});";
+                        case BaseType.Int64: return $"view.writeInt64({target});";
                         case BaseType.Float32: return $"view.writeFloat32({target});";
                         case BaseType.Float64: return $"view.writeFloat64({target});";
                         case BaseType.String: return $"view.writeString({target});";
@@ -136,7 +136,7 @@ namespace Compiler.Generators.TypeScript
             builder.AppendLine("const end = view.index + length;");
             builder.AppendLine("while (true) {");
             builder.Indent(2);
-            builder.AppendLine("switch (view.readUint()) {");
+            builder.AppendLine("switch (view.readByte()) {");
             builder.AppendLine("  case 0:");
             builder.AppendLine("    return message;");
             builder.AppendLine("");
@@ -185,7 +185,7 @@ namespace Compiler.Generators.TypeScript
                     return "view.readFloat64s()";
                 case ArrayType at:
                     return @$"(() => {{
-                        let length = view.readUint();
+                        let length = view.readUint32();
                         const collection = new {TypeName(at)}(length);
                         for (var i = 0; i < length; i++) collection[i] = {CompileDecodeField(at.MemberType)};
                         return collection;
@@ -195,12 +195,12 @@ namespace Compiler.Generators.TypeScript
                     {
                         case BaseType.Bool: return "!!view.readByte()";
                         case BaseType.Byte: return "view.readByte()";
-                        case BaseType.UInt16: return "view.readUint()";
-                        case BaseType.Int16: return "view.readInt()";
-                        case BaseType.UInt32: return "view.readUint()";
-                        case BaseType.Int32: return "view.readInt()";
-                        case BaseType.UInt64: return "view.readBigUint()";
-                        case BaseType.Int64: return "view.readBigInt()";
+                        case BaseType.UInt16: return "view.readUint16()";
+                        case BaseType.Int16: return "view.readInt16()";
+                        case BaseType.UInt32: return "view.readUint32()";
+                        case BaseType.Int32: return "view.readInt32()";
+                        case BaseType.UInt64: return "view.readUint64()";
+                        case BaseType.Int64: return "view.readInt64()";
                         case BaseType.Float32: return "view.readFloat32()";
                         case BaseType.Float64: return "view.readFloat64()";
                         case BaseType.String: return "view.readString()";
@@ -208,7 +208,7 @@ namespace Compiler.Generators.TypeScript
                     }
                     break;
                 case DefinedType dt when _schema.Definitions[dt.Name].Kind == AggregateKind.Enum:
-                    return $"view.readUint() as {dt.Name}";
+                    return $"view.readUint32() as {dt.Name}";
                 case DefinedType dt:
                     return $"{dt.Name}.decode(view)";
             }
