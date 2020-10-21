@@ -68,14 +68,32 @@ namespace Compiler
     /// </summary>
     public class CommandLineFlags
     {
-        [CommandLineFlag("server", false, "I'm a flag", "--server 8080")]
-        public int ServerPort { get; private set; }
+        [CommandLineFlag("lang", true, "Generate source file for a given language", "--lang (ts|cs)")]
+        public string Language { get; private set; }
 
-        [CommandLineFlag("fake", false, "I am also a flag", "--fake dogma")]
-        public string Fake { get; private set; }
+        [CommandLineFlag("namespace", false, "When this option is specified generated code will use namespaces", "--lang cs --namespace [package]")]
+        public string Namespace { get; private set; }
 
-        [CommandLineFlag("files", false, "Testerino", "--files [file1, file 2]")]
-        public List<string> Files { get; private set; }
+        [CommandLineFlag("dir", false, "Parse and generate code from a directory of schemas", "--lang ts --dir [input dir]")]
+        public string SchemaDirectory { get; private set; }
+
+        [CommandLineFlag("files", false, "Parse and generate code from a list of schemas", "--files [input file], [input file]")]
+        public List<string> SchemaFiles { get; private set; }
+
+        [CommandLineFlag("out", false, "The file generated code will be written to", "--lang cs --dir [input dir] --out [output file]")]
+        public string OutputFile { get; private set; }
+
+        /// <summary>
+        /// When set to true the process will output the product version and exit with a zero return code.
+        /// </summary>
+        [CommandLineFlag("version", false, "Show version info and exit.", "")]
+        public bool Version { get; private set; }
+
+        /// <summary>
+        /// When set to true the process will output the <see cref="HelpText"/> and exit with a zero return code.
+        /// </summary>
+        [CommandLineFlag("help", false, "Show this text and exit.", "")]
+        public bool Help { get; private set; }
 
         public string HelpText { get; private init; }
 
@@ -122,6 +140,7 @@ namespace Compiler
         /// </returns>
         public static bool TryParse(string[] args, out CommandLineFlags flagStore, out string errorMessage)
         {
+            errorMessage = string.Empty;
             var props = (from p in typeof(CommandLineFlags).GetProperties()
                 let attr = p.GetCustomAttributes(typeof(CommandLineFlagAttribute), true)
                 where attr.Length == 1
@@ -131,7 +150,7 @@ namespace Compiler
 
             stringBuilder.AppendLine("Usage:");
             stringBuilder.Indent(4);
-            foreach (var prop in props)
+            foreach (var prop in props.Where(prop => !string.IsNullOrWhiteSpace(prop.Attribute.UsageExample)))
             {
                 stringBuilder.AppendLine($"{ProcessName} {prop.Attribute.UsageExample}");
             }
@@ -153,6 +172,19 @@ namespace Compiler
             {
                 errorMessage = "No commandline flags found.";
                 return false;
+            }
+
+
+            if (parsedFlags.ContainsKey("help"))
+            {
+                flagStore.Help = true;
+                return true;
+            }
+
+            if (parsedFlags.ContainsKey("version"))
+            {
+                flagStore.Version = true;
+                return true;
             }
 
             foreach (var flag in props)
