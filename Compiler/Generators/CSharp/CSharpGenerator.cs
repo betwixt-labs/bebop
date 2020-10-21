@@ -11,6 +11,20 @@ namespace Compiler.Generators.CSharp
     {
         private ISchema _schema;
 
+        private string GetFormattedDocumentation(string documentation, int spaces)
+        {
+            var builder = new IndentedStringBuilder();
+            builder.Indent(spaces);
+            builder.AppendLine("/// <summary>");
+            foreach (var line in documentation.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None
+            ))
+            {
+                builder.AppendLine($"/// {line}");
+            }
+            builder.AppendLine("/// </summary>");
+            return builder.ToString();
+        }
+
         public string Compile(ISchema schema)
         {
             _schema = schema;
@@ -24,13 +38,7 @@ namespace Compiler.Generators.CSharp
             {
                 if (!string.IsNullOrWhiteSpace(definition.Documentation))
                 {
-                    builder.AppendLine("  /// <summary>");
-                    foreach (var line in definition.Documentation.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None
-                    ))
-                    {
-                        builder.AppendLine($"  /// {line}");
-                    }
-                    builder.AppendLine("  /// </summary>");
+                    builder.Append(GetFormattedDocumentation(definition.Documentation, 2));
                 }
                 if (definition.IsEnum())
                 {
@@ -40,13 +48,7 @@ namespace Compiler.Generators.CSharp
                         var field = definition.Fields.ElementAt(i);
                         if (!string.IsNullOrWhiteSpace(field.Documentation))
                         {
-                            builder.AppendLine("      /// <summary>");
-                            foreach (var line in field.Documentation.Split(new[] { "\r\n", "\r", "\n" },
-                                StringSplitOptions.None))
-                            {
-                                builder.AppendLine($"      /// {line}");
-                            }
-                            builder.AppendLine("      /// </summary>");
+                            builder.Append(GetFormattedDocumentation(field.Documentation, 6));
                         }
                         builder.AppendLine(
                             $"      {field.Name} = {field.ConstantValue}{(i + 1 < definition.Fields.Count ? "," : "")}");
@@ -69,13 +71,7 @@ namespace Compiler.Generators.CSharp
                         var type = TypeName(field.Type);
                         if (!string.IsNullOrWhiteSpace(field.Documentation))
                         {
-                            builder.AppendLine("    /// <summary>");
-                            foreach (var line in field.Documentation.Split(new[] {"\r\n", "\r", "\n"},
-                                StringSplitOptions.None))
-                            {
-                                builder.AppendLine($"    /// {line}");
-                            }
-                            builder.AppendLine("    /// </summary>");
+                            builder.Append(GetFormattedDocumentation(field.Documentation, 4));
                         }
                         if (field.DeprecatedAttribute.HasValue &&
                             !string.IsNullOrWhiteSpace(field.DeprecatedAttribute.Value.Message))
