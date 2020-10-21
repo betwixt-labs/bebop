@@ -11,7 +11,7 @@ namespace Compiler
 {
     internal class Program
     {
-        private static Lager Log = Lager.CreateLogger("Compiler");
+        private static readonly Lager Log = Lager.CreateLogger("Compiler");
 
         private static async Task<int> Main(string[] args)
         {
@@ -22,6 +22,12 @@ namespace Compiler
                 return 1;
             }
 
+            void WriteHelpText()
+            {
+                Console.WriteLine();
+                Console.WriteLine(flags?.HelpText);
+            }
+
             if (flags.Version)
             {
                 Console.WriteLine($"pierogic {Assembly.GetExecutingAssembly().GetName().Version}");
@@ -30,31 +36,32 @@ namespace Compiler
 
             if (flags.Help)
             {
-                Console.WriteLine(flags.HelpText);
+                WriteHelpText();
                 return 0;
             }
 
             if (string.IsNullOrWhiteSpace(flags.Language))
             {
-                Console.WriteLine();
+                Log.Error("No code generator was specified");
+                WriteHelpText();
                 return 1;
             }
 
             if (!GeneratorUtils.ImplementedGenerators.ContainsKey(flags.Language))
             {
-                Console.WriteLine();
+                Log.Error($"\"{flags.Language}\" is not a recognized code generator");
                 return 1;
             }
 
-            if (string.IsNullOrWhiteSpace(flags.SchemaDirectory) && flags.SchemaFiles.Count == 0)
+            if (string.IsNullOrWhiteSpace(flags?.SchemaDirectory) && flags?.SchemaFiles?.Count == 0)
             {
-                Console.WriteLine();
+                Log.Error("No schema sources specified");
                 return 1;
             }
 
-            if (string.IsNullOrWhiteSpace(flags.OutputFile))
+            if (string.IsNullOrWhiteSpace(flags?.OutputFile))
             {
-                Log.Error("No output file was specified.");
+                Log.Error("No output file was specified");
                 return 1;
             }
 
@@ -63,27 +70,24 @@ namespace Compiler
             if (!string.IsNullOrWhiteSpace(flags.SchemaDirectory) &&
                 !SchemaFuser.TryCoalescing(flags.SchemaDirectory, out inputFile))
             {
-                Log.Error($"Unable to coalesce schemas from {flags.SchemaDirectory}.");
+                Log.Error($"Unable to coalesce schemas from {flags.SchemaDirectory}");
                 return 1;
             }
 
             if (flags?.SchemaFiles?.Count > 0 && !SchemaFuser.TryCoalescing(flags.SchemaFiles, out inputFile))
             {
+                Log.Error($"Unable to coalesce schemas: {string.Join(",", flags.SchemaFiles)}");
                 return 1;
             }
 
-            if (inputFile == null)
+
+            if (!inputFile!.Exists)
             {
+                Log.Error("Master source file not found after coalescing");
                 return 1;
             }
 
-
-            if (!inputFile.Exists)
-            {
-                return 1;
-            }
-
-            return await CompileSchemas(GeneratorUtils.ImplementedGenerators[flags.Language],
+            return await CompileSchemas(GeneratorUtils.ImplementedGenerators[flags!.Language],
                 inputFile, new FileInfo(flags.OutputFile), flags.Namespace);
         }
 
@@ -95,12 +99,16 @@ namespace Compiler
             if (outputFile.Directory != null && !outputFile.Directory.Exists)
             {
                 outputFile.Directory.Create();
+                Log.Info($"Created output directory: {outputFile.Directory.FullName}");
             }
             if (outputFile.Exists)
             {
                 File.Delete(outputFile.FullName);
+                Log.Warn($"Deleted previously generated file: {outputFile.FullName}");
             }
+
             generator.WriteAuxiliaryFiles(outputFile.DirectoryName ?? string.Empty);
+            Log.Info("Auxiliary files written to output directory");
 
             try
             {
@@ -109,6 +117,7 @@ namespace Compiler
                 schema.Validate();
                 var compiled = generator.Compile(schema);
                 await File.WriteAllTextAsync(outputFile.FullName, compiled);
+                Log.Success($"Build complete -> \"{outputFile.FullName}\"");
                 return 0;
             }
             catch (SpanException e)

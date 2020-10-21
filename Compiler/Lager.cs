@@ -30,6 +30,22 @@ namespace Compiler
             }
         }
 
+        public void Success(string message)
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.Error.Write($"[{_component}] {message}");
+            Console.ResetColor();
+            Console.WriteLine();
+        }
+
+        public void Warn(string message)
+        {
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.Error.Write($"[{_component}] {message}");
+            Console.ResetColor();
+            Console.WriteLine();
+        }
+
         public void Info(string message)
         {
             Console.Out.WriteLine($"[{_component}] {message}");

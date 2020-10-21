@@ -16,6 +16,7 @@ namespace Compiler.Parser
 {
     public class SchemaParser
     {
+        
         private readonly SchemaLexer _lexer;
         private Dictionary<string, IDefinition> _definitions;
         private HashSet<(Token, Token)> _typeReferences;

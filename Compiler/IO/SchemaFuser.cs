@@ -33,6 +33,7 @@ namespace Compiler.IO
 
         public static bool TryCoalescing(List<string> filePaths, out FileInfo combinedSchema)
         {
+          
             const int chunkSize = 2048;
 
             var tempDir = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "pierogic"));
@@ -41,8 +42,10 @@ namespace Compiler.IO
 
             using var tempFileStream = File.Create(tempFile, chunkSize, FileOptions.WriteThrough);
 
-            foreach (var filePath in filePaths)
+            Log.Info($"Coalescing {filePaths.Count} schemas...");
+            for (int i = 0; i < filePaths.Count; i++)
             {
+                var filePath = filePaths[i];
                 using var input = File.OpenRead(filePath);
                 var buffer = new byte[chunkSize];
                 int bytesRead;
@@ -50,7 +53,9 @@ namespace Compiler.IO
                 {
                     tempFileStream.Write(buffer, 0, bytesRead);
                 }
+                Log.Info($"{filePath} {i + 1}/{filePaths.Count}");
             }
+
             tempFileStream.Flush();
             combinedSchema = new FileInfo(tempFile);
             return true;
