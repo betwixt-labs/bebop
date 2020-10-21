@@ -1,4 +1,1 @@
-*.js
-*.js.map
-dest
-Generated
+test/generated/*
