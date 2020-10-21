@@ -4,12 +4,14 @@ namespace Compiler.Meta
 {
     public static class ReservedWords
     {
+        public static string SchemaExt = "pie";
+
         public static HashSet<string> Identifiers = new HashSet<string>
         {
-            "package",
             "PierogiView"
         };
     }
+
     /// <summary>
     ///     Pierogi base types are aligned with native types found in most programming languages.
     /// </summary>

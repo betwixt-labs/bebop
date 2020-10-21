@@ -14,7 +14,7 @@ const asciiToHex = [
 export class PierogiView {
     private buffer: Uint8Array;
     private view: DataView;
-    private index: number;
+    index: number;
     private byteToHex: string[] = []; // A lookup table: ['00', '01', ..., 'ff']
     length: number;
 
@@ -251,5 +251,31 @@ export class PierogiView {
         var encoded = value as number;
         if (encoded === void 0) throw new Error("Couldn't convert enum value");
         this.writeUint32(encoded);
+    }
+
+    /**
+     * Reserve some space to write a message's length prefix, and return its index.
+     * The length is stored as a little-endian fixed-width unsigned 32-bit integer, so 4 bytes are reserved.
+     */
+    reserveMessageLength(): number {
+        const i = this.length;
+        this.growBy(4);
+        return i;
+    }
+
+    /**
+     * Fill in a message's length prefix.
+     */
+    fillMessageLength(position: number, messageLength: number): void {
+        this.view.setUint32(position, messageLength, true);
+    }
+
+    /**
+     * Read out a message's length prefix.
+     */
+    readMessageLength(): number {
+        const result = this.view.getUint32(this.index, true);
+        this.index += 4;
+        return result;
     }
 }

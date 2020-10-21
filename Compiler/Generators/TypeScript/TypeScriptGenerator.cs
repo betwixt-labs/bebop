@@ -20,20 +20,19 @@ namespace Compiler.Generators.TypeScript
         /// <returns>The generated TypeScript <c>encode</c> function body.</returns>
         public string CompileEncode(IDefinition definition)
         {
-            switch (definition.Kind)
+            return definition.Kind switch
             {
-                case AggregateKind.Message:
-                    return CompileEncodeMessage(definition);
-                case AggregateKind.Struct:
-                    return CompileEncodeStruct(definition);
-                default:
-                    throw new InvalidOperationException($"invalid CompileEncode kind: {definition.Kind} in {definition}");
-            }
+                AggregateKind.Message => CompileEncodeMessage(definition),
+                AggregateKind.Struct => CompileEncodeStruct(definition),
+                _ => throw new InvalidOperationException($"invalid CompileEncode kind: {definition.Kind} in {definition}"),
+            };
         }
 
         private string CompileEncodeMessage(IDefinition definition)
         { 
             var builder = new IndentedStringBuilder(6);
+            builder.AppendLine($"const pos = view.reserveMessageLength();");
+            builder.AppendLine($"const start = view.length;");
             foreach (var field in definition.Fields)
             {
                 if (field.DeprecatedAttribute.HasValue)
@@ -46,6 +45,8 @@ namespace Compiler.Generators.TypeScript
                 builder.AppendLine($"}}");
             }
             builder.AppendLine("view.writeByte(0);");
+            builder.AppendLine("const end = view.length;");
+            builder.AppendLine("view.fillMessageLength(pos, end - start);");
             return builder.ToString();
         }
 
@@ -71,7 +72,7 @@ namespace Compiler.Generators.TypeScript
                     return $"view.writeFloat64s({target});";
                 case ArrayType at:
                     var indent = new string(' ', (depth + 4) * 2);
-                    var i = LoopVariable(depth);
+                    var i = GeneratorUtils.LoopVariable(depth);
                     return $"var length{depth} = {target}.length;\n"
                         + indent + $"view.writeUint32(length{depth});\n"
                         + indent + $"for (var {i} = 0; {i} < length{depth}; {i}++) {{\n"
@@ -109,15 +110,12 @@ namespace Compiler.Generators.TypeScript
         /// <returns>The generated TypeScript <c>decode</c> function body.</returns>
         public string CompileDecode(IDefinition definition)
         {
-            switch (definition.Kind)
+            return definition.Kind switch
             {
-                case AggregateKind.Message:
-                    return CompileDecodeMessage(definition);
-                case AggregateKind.Struct:
-                    return CompileDecodeStruct(definition);
-                default:
-                    throw new InvalidOperationException($"invalid CompileDecode kind: {definition.Kind} in {definition}");
-            }
+                AggregateKind.Message => CompileDecodeMessage(definition),
+                AggregateKind.Struct => CompileDecodeStruct(definition),
+                _ => throw new InvalidOperationException($"invalid CompileDecode kind: {definition.Kind} in {definition}"),
+            };
         }
 
         /// <summary>
@@ -134,6 +132,8 @@ namespace Compiler.Generators.TypeScript
             builder.AppendLine("}");
             builder.AppendLine("");
             builder.AppendLine($"let message: I{definition.Name} = {{}};");
+            builder.AppendLine("const length = view.readMessageLength();");
+            builder.AppendLine("const end = view.index + length;");
             builder.AppendLine("while (true) {");
             builder.Indent(2);
             builder.AppendLine("switch (view.readByte()) {");
@@ -148,7 +148,8 @@ namespace Compiler.Generators.TypeScript
                 builder.AppendLine("");
             }
             builder.AppendLine("  default:");
-            builder.AppendLine("    throw new Error(\"Attempted to parse invalid message\");");
+            builder.AppendLine("    view.index = end;");
+            builder.AppendLine("    return message;");
             builder.AppendLine("}");
             builder.Dedent(2);
             builder.AppendLine("}");
@@ -259,18 +260,6 @@ namespace Compiler.Generators.TypeScript
             throw new InvalidOperationException($"GetTypeName: {type}");
         }
 
-        private string LoopVariable(int depth)
-        {
-            return depth switch
-            {
-                0 => "i",
-                1 => "j",
-                2 => "k",
-                3 => "l",
-                _ => $"i{depth}",
-            };
-        }
-
         /// <summary>
         /// Generate code for a Pierogi schema.
         /// </summary>
@@ -282,9 +271,9 @@ namespace Compiler.Generators.TypeScript
             var builder = new StringBuilder();
             builder.AppendLine("import { PierogiView } from \"./PierogiView\";");
             builder.AppendLine("");
-            if (!string.IsNullOrWhiteSpace(_schema.Package))
+            if (!string.IsNullOrWhiteSpace(_schema.Namespace))
             {
-                builder.AppendLine($"export namespace {_schema.Package} {{");
+                builder.AppendLine($"export namespace {_schema.Namespace} {{");
             }
 
             foreach (var definition in _schema.Definitions.Values)
@@ -307,7 +296,6 @@ namespace Compiler.Generators.TypeScript
                     for (var i = 0; i < definition.Fields.Count; i++)
                     {
                         var field = definition.Fields.ElementAt(i);
-
                         var type = TypeName(field.Type);
                         if (field.DeprecatedAttribute.HasValue && !string.IsNullOrWhiteSpace(field.DeprecatedAttribute.Value.Message))
                         {
@@ -328,17 +316,17 @@ namespace Compiler.Generators.TypeScript
                     builder.AppendLine("    },");
                     builder.AppendLine("");
                     builder.AppendLine($"    encodeInto(message: I{definition.Name}, view: PierogiView): void {{");
-                    builder.AppendLine(CompileEncode(definition));
+                    builder.Append(CompileEncode(definition));
                     builder.AppendLine("    },");
                     builder.AppendLine("");
 
                     builder.AppendLine($"    decode(view: PierogiView | Uint8Array): I{definition.Name} {{");
-                    builder.AppendLine(CompileDecode(definition));
+                    builder.Append(CompileDecode(definition));
                     builder.AppendLine("    },");
                     builder.AppendLine("  };");
                 }
             }
-            if (!string.IsNullOrWhiteSpace(_schema.Package))
+            if (!string.IsNullOrWhiteSpace(_schema.Namespace))
             {
                 builder.AppendLine("}");
             }
@@ -346,11 +334,6 @@ namespace Compiler.Generators.TypeScript
 
 
             return builder.ToString().TrimEnd();
-        }
-
-        public string OutputFileName(ISchema schema)
-        {
-            return schema.Package + ".ts";
         }
 
         public void WriteAuxiliaryFiles(string outputPath)
