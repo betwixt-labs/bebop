@@ -31,6 +31,8 @@ namespace Compiler.Generators.TypeScript
         private string CompileEncodeMessage(IDefinition definition)
         { 
             var builder = new IndentedStringBuilder(6);
+            builder.AppendLine($"const pos = view.reserveMessageLength();");
+            builder.AppendLine($"const start = view.length;");
             foreach (var field in definition.Fields)
             {
                 if (field.DeprecatedAttribute.HasValue)
@@ -43,6 +45,8 @@ namespace Compiler.Generators.TypeScript
                 builder.AppendLine($"}}");
             }
             builder.AppendLine("view.writeUint(0);");
+            builder.AppendLine("const end = view.length;");
+            builder.AppendLine("view.fillMessageLength(pos, end - start);");
             return builder.ToString();
         }
 
@@ -128,6 +132,8 @@ namespace Compiler.Generators.TypeScript
             builder.AppendLine("}");
             builder.AppendLine("");
             builder.AppendLine($"let message: I{definition.Name} = {{}};");
+            builder.AppendLine("const length = view.readMessageLength();");
+            builder.AppendLine("const end = view.index + length;");
             builder.AppendLine("while (true) {");
             builder.Indent(2);
             builder.AppendLine("switch (view.readUint()) {");
@@ -142,7 +148,8 @@ namespace Compiler.Generators.TypeScript
                 builder.AppendLine("");
             }
             builder.AppendLine("  default:");
-            builder.AppendLine("    throw new Error(\"Attempted to parse invalid message\");");
+            builder.AppendLine("    view.index = end;");
+            builder.AppendLine("    return message;");
             builder.AppendLine("}");
             builder.Dedent(2);
             builder.AppendLine("}");
@@ -309,12 +316,12 @@ namespace Compiler.Generators.TypeScript
                     builder.AppendLine("    },");
                     builder.AppendLine("");
                     builder.AppendLine($"    encodeInto(message: I{definition.Name}, view: PierogiView): void {{");
-                    builder.AppendLine(CompileEncode(definition));
+                    builder.Append(CompileEncode(definition));
                     builder.AppendLine("    },");
                     builder.AppendLine("");
 
                     builder.AppendLine($"    decode(view: PierogiView | Uint8Array): I{definition.Name} {{");
-                    builder.AppendLine(CompileDecode(definition));
+                    builder.Append(CompileDecode(definition));
                     builder.AppendLine("    },");
                     builder.AppendLine("  };");
                 }

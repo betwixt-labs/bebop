@@ -172,6 +172,8 @@ namespace Compiler.Generators.CSharp
         {
             var builder = new StringBuilder();
             builder.AppendLine($"      var message = new {definition.Name.ToPascalCase()}();");
+            builder.AppendLine("      var length = view.ReadMessageLength();");
+            builder.AppendLine("      var end = view.Position + length;");
             builder.AppendLine("      while (true) {");
             builder.AppendLine("        switch (view.ReadUint()) {");
             builder.AppendLine("          case 0:");
@@ -186,7 +188,8 @@ namespace Compiler.Generators.CSharp
                 builder.AppendLine("");
             }
             builder.AppendLine("          default:");
-            builder.AppendLine("            throw new System.Exception(\"Attempted to parse invalid message\");");
+            builder.AppendLine("            view.Position = end;");
+            builder.AppendLine("            return message;");
             builder.AppendLine("        }");
             builder.AppendLine("      }");
             builder.AppendLine("    }");
@@ -280,6 +283,8 @@ namespace Compiler.Generators.CSharp
         private string CompileEncodeMessage(IDefinition definition)
         {
             var builder = new StringBuilder();
+            builder.AppendLine($"      var pos = view.ReserveMessageLength();");
+            builder.AppendLine($"      var start = view.Length;");
             foreach (var field in definition.Fields)
             {
                 if (field.DeprecatedAttribute.HasValue)
@@ -293,6 +298,8 @@ namespace Compiler.Generators.CSharp
                 builder.AppendLine("      }");
             }
             builder.AppendLine("      view.WriteUInt(0);");
+            builder.AppendLine("      var end = view.Length;");
+            builder.AppendLine("      view.FillMessageLength(pos, end - start);");
             return builder.ToString();
         }
 
