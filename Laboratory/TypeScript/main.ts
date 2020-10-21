@@ -13,6 +13,10 @@ for (var i = 0; i < randomBytes.length; i++) {
 }
 const mediaMessage = { codec: lab.VideoCodec.H265, data: { time: 1.2345, width: 2000, height: 1000, fragment: randomBytes } }
 
+const bytes = lab.SkipTestNewContainer.encode({ s: { x: 11, y: 22, z: 33 }, after: 99 });
+console.log(lab.SkipTestOldContainer.decode(bytes));
+
+/*
 b.suite(
     "Encoding/decoding arrays",
     b.add("Encoding MediaMessage", () => { arr = lab.MediaMessage.encode(mediaMessage); }),
@@ -30,4 +34,4 @@ b.suite(
     b.save({ file: "reduce", version: "1.0.0" }),
     b.save({ file: "reduce", format: "chart.html" })
 );
-
+*/
