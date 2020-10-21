@@ -237,10 +237,7 @@ namespace Compiler.Parser
         {
             if (currentToken.TryParseBaseType(out var baseType))
             {
-                if (baseType != null)
-                {
-                    return new ScalarType(baseType.Value);
-                }
+                return new ScalarType(baseType!.Value);
             }
             return new DefinedType(currentToken.Lexeme);
         }
