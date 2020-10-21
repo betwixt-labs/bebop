@@ -175,7 +175,7 @@ namespace Compiler.Generators.CSharp
             builder.AppendLine("      var length = view.ReadMessageLength();");
             builder.AppendLine("      var end = view.Position + length;");
             builder.AppendLine("      while (true) {");
-            builder.AppendLine("        switch (view.ReadUint()) {");
+            builder.AppendLine("        switch (view.ReadByte()) {");
             builder.AppendLine("          case 0:");
             builder.AppendLine("            return message;");
             builder.AppendLine("");
@@ -213,8 +213,8 @@ namespace Compiler.Generators.CSharp
                 {
                     BaseType.Bool => "view.ReadByte() != 0",
                     BaseType.Byte => "view.ReadByte()",
-                    BaseType.UInt32 => "view.ReadUInt()",
-                    BaseType.Int32 => "view.ReadInt()",
+                    BaseType.UInt32 => "view.ReadUInt32()",
+                    BaseType.Int32 => "view.ReadInt32()",
                     BaseType.Float32 => "view.ReadFloat32()",
                     BaseType.String => "view.ReadString()",
                     BaseType.Guid => "view.ReadGuid()",
@@ -293,11 +293,11 @@ namespace Compiler.Generators.CSharp
                 }
                 builder.AppendLine("");
                 builder.AppendLine($"      if (message.{field.Name.ToPascalCase()} != null) {{");
-                builder.AppendLine($"        view.WriteUInt({field.ConstantValue});");
+                builder.AppendLine($"        view.WriteByte({field.ConstantValue});");
                 builder.AppendLine($"        {CompileEncodeField(field.Type, $"message.{field.Name.ToPascalCase()}")}");
                 builder.AppendLine("      }");
             }
-            builder.AppendLine("      view.WriteUInt(0);");
+            builder.AppendLine("      view.WriteByte(0);");
             builder.AppendLine("      var end = view.Length;");
             builder.AppendLine("      view.FillMessageLength(pos, end - start);");
             return builder.ToString();
@@ -325,7 +325,7 @@ namespace Compiler.Generators.CSharp
                 ArrayType at when at.IsFloat32s() => $"view.WriteFloat32s({target});",
                 ArrayType at when at.IsFloat64s() => $"view.WriteFloat64s({target});",
                 ArrayType at => $"var length{depth} = {target}.Length;\n" + indent +
-                    $"view.WriteUInt(length{depth});\n" + indent +
+                    $"view.WriteUInt32(length{depth});\n" + indent +
                     $"for (var {i} = 0; {i} < length{depth}; {i}++) {{\n" + indent +
                     $"    {CompileEncodeField(at.MemberType, $"{target}[{i}]", depth + 1)}\n" + indent + "}",
                 ScalarType st => st.BaseType switch

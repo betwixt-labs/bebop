@@ -72,6 +72,59 @@ namespace Compiler.Generators.CSharp
         /// </summary>
         public int Length { get; set; }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        public ushort ReadUInt16()
+        {
+            const int size = 2;
+            var value = BinaryPrimitives.ReadUInt16LittleEndian(_buffer.Slice(Position, size));
+            Position += size;
+            return value;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        public short ReadInt16()
+        {
+            const int size = 2;
+            var value = BinaryPrimitives.ReadInt16LittleEndian(_buffer.Slice(Position, size));
+            Position += size;
+            return value;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        public uint ReadUInt32()
+        {
+            const int size = 4;
+            var value = BinaryPrimitives.ReadUInt32LittleEndian(_buffer.Slice(Position, size));
+            Position += size;
+            return value;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        public int ReadInt32()
+        {
+            const int size = 4;
+            var value = BinaryPrimitives.ReadInt32LittleEndian(_buffer.Slice(Position, size));
+            Position += size;
+            return value;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        public ulong ReadUInt64()
+        {
+            const int size = 8;
+            var value = BinaryPrimitives.ReadUInt64LittleEndian(_buffer.Slice(Position, size));
+            Position += size;
+            return value;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        public long ReadInt64()
+        {
+            const int size = 8;
+            var value = BinaryPrimitives.ReadInt64LittleEndian(_buffer.Slice(Position, size));
+            Position += size;
+            return value;
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         public float ReadFloat32()
@@ -89,6 +142,78 @@ namespace Compiler.Generators.CSharp
             var value = BinaryPrimitives.ReadDoubleLittleEndian(_buffer.Slice(Position, size));
             Position += size;
             return value;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        public void WriteUInt16(ushort value)
+        {
+            const int size = 2;
+            var index = Length;
+            GrowBy(size);
+            BinaryPrimitives.WriteUInt16LittleEndian(_buffer.Slice(Position, size), value);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        public void WriteInt16(short value)
+        {
+            const int size = 2;
+            var index = Length;
+            GrowBy(size);
+            BinaryPrimitives.WriteInt16LittleEndian(_buffer.Slice(index, size), value);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        public void WriteUInt32(uint value)
+        {
+            const int size = 4;
+            var index = Length;
+            GrowBy(size);
+            BinaryPrimitives.WriteUInt32LittleEndian(_buffer.Slice(index, size), value);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        public void WriteInt32(int value)
+        {
+            const int size = 4;
+            var index = Length;
+            GrowBy(size);
+            BinaryPrimitives.WriteInt32LittleEndian(_buffer.Slice(index, size), value);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        public void WriteUInt64(ulong value)
+        {
+            const int size = 8;
+            var index = Length;
+            GrowBy(size);
+            BinaryPrimitives.WriteUInt64LittleEndian(_buffer.Slice(index, size), value);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        public void WriteInt64(long value)
+        {
+            const int size = 8;
+            var index = Length;
+            GrowBy(size);
+            BinaryPrimitives.WriteInt64LittleEndian(_buffer.Slice(index, size), value);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        public void WriteFloat32(float value)
+        {
+            const int size = 4;
+            var index = Length;
+            GrowBy(size);
+            BinaryPrimitives.WriteSingleLittleEndian(_buffer.Slice(index, size), value);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        public void WriteFloat64(double value)
+        {
+            const int size = 8;
+            var index = Length;
+            GrowBy(size);
+            BinaryPrimitives.WriteDoubleLittleEndian(_buffer.Slice(index, size), value);
         }
 
         /// <summary>
@@ -153,29 +278,6 @@ namespace Compiler.Generators.CSharp
             return result.ToString();
         }
 
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-        public int ReadInt32()
-        {
-            var value = ReadUInt32() | 0;
-            return unchecked((int) ((value & 1) != 0 ? ~(value >> 1) : value >> 1));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-        public uint ReadUInt32()
-        {
-            var count = 0;
-            var shift = 0;
-            byte b;
-            do
-            {
-                b = ReadByte();
-                count |= (b & 0x7F) << shift;
-                shift += 7;
-            } while ((b & 0x80) != 0);
-            return unchecked((uint) count);
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         public byte ReadByte() => _buffer[Position++];
 
@@ -190,45 +292,6 @@ namespace Compiler.Generators.CSharp
             var index = Position;
             Position += size;
             return new Guid(_buffer.Slice(index, size));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-        public long ReadInt64()
-        {
-            var value = ReadUInt64();
-            var half = value >> 1;
-            return unchecked((long) ((value & 1) != 0 ? ~half : half));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-        public ulong ReadUInt64()
-        {
-            long count = 0;
-            var shift = 0;
-            byte b;
-            do
-            {
-                b = ReadByte();
-
-                count |= (long) (b & 0x7F) << shift;
-                shift += 7;
-            } while ((b & 0x80) != 0);
-            return unchecked((ulong) count);
-        }
-
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-        public short ReadInt16()
-        {
-            var value = ReadUInt32() | 0;
-            return unchecked((short) ((value & 1) != 0 ? ~(value >> 1) : value >> 1));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-        public ushort ReadUInt16()
-        {
-            var value = ReadUInt32() | 0;
-            return unchecked((ushort) value);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
@@ -276,52 +339,6 @@ namespace Compiler.Generators.CSharp
             var index = Length;
             GrowBy(size);
             guid.TryWriteBytes(_buffer.Slice(index));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-        public void WriteInt16(short value)
-        {
-            WriteUInt32(unchecked((uint) ((value << 1) ^ (value >> 31))));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-        public void WriteUInt16(ushort value)
-        {
-            WriteUInt32(unchecked((uint) ((value << 1) ^ (value >> 31))));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-        public void WriteInt32(int value)
-        {
-            WriteUInt32(unchecked((uint) ((value << 1) ^ (value >> 31))));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-        public void WriteUInt32(uint value)
-        {
-            while (value >= 0x80)
-            {
-                WriteByte(unchecked((byte) (value | 0x80)));
-                value >>= 7;
-            }
-            WriteByte(unchecked((byte) value));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-        public void WriteInt64(long value)
-        {
-            WriteUInt64(unchecked((ulong) (value >= 0 ? value << 1 : ~(value << 1))));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-        public void WriteUInt64(ulong value)
-        {
-            while (value >= 0x80)
-            {
-                WriteByte(unchecked((byte) (value | 0x80)));
-                value >>= 7;
-            }
-            WriteByte(unchecked((byte) value));
         }
 
         /// <summary>
