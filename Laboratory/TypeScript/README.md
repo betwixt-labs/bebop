@@ -1,6 +1,9 @@
-# TypeScript Pierogi lab
+# TypeScript Pierogi test suite
 
-Try something like:
+Try running:
 
-    ..\..\Compiler\bin\*\*\Compiler.exe --lang ts .\Generated\ ..\lab.pie
-    npx tsc; cd dest; node main.js; cd ..
+```ps1
+npm install   # Install dependencies
+gulp compile  # Compile test/*.pie into test/generated/*.ts
+jest          # Run all the test/*.ts tests
+```

@@ -19,6 +19,7 @@ async function compile() {
       .pipe(exec.reporter(reportOptions));
 }
 
+// this doesn't work, because gulp-jest is broken or something
 async function test() {
     return gulp.src("test/*.ts").pipe(jest({
         "preprocessorIgnorePatterns": [
