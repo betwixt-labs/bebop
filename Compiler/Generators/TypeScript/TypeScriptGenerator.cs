@@ -264,9 +264,9 @@ namespace Compiler.Generators.TypeScript
             var builder = new StringBuilder();
             builder.AppendLine("import { PierogiView } from \"./PierogiView\";");
             builder.AppendLine("");
-            if (!string.IsNullOrWhiteSpace(_schema.Package))
+            if (!string.IsNullOrWhiteSpace(_schema.Namespace))
             {
-                builder.AppendLine($"export namespace {_schema.Package} {{");
+                builder.AppendLine($"export namespace {_schema.Namespace} {{");
             }
 
             foreach (var definition in _schema.Definitions.Values)
@@ -319,7 +319,7 @@ namespace Compiler.Generators.TypeScript
                     builder.AppendLine("  };");
                 }
             }
-            if (!string.IsNullOrWhiteSpace(_schema.Package))
+            if (!string.IsNullOrWhiteSpace(_schema.Namespace))
             {
                 builder.AppendLine("}");
             }
@@ -327,11 +327,6 @@ namespace Compiler.Generators.TypeScript
 
 
             return builder.ToString().TrimEnd();
-        }
-
-        public string OutputFileName(ISchema schema)
-        {
-            return schema.Package + ".ts";
         }
 
         public void WriteAuxiliaryFiles(string outputPath)

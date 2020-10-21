@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Compiler.Exceptions;
@@ -16,34 +17,37 @@ namespace Compiler.Parser
     public class SchemaParser
     {
         private readonly SchemaLexer _lexer;
-        private readonly string _schemaPath;
         private Dictionary<string, IDefinition> _definitions;
         private HashSet<(Token, Token)> _typeReferences;
         private uint _index;
-        private string _package;
+        private readonly string _nameSpace;
         private Token[] _tokens;
+        private readonly string _schemaPath;
 
         /// <summary>
         /// Creates a new schema parser instance from a schema file on disk
         /// </summary>
-        /// <param name="file">The path to the Pierogi schema file that will be parsed</param>
-        public SchemaParser(string file)
+        /// <param name="inputFile">The path to the Pierogi schema file that will be parsed</param>
+        /// <param name="nameSpace"></param>
+        public SchemaParser(FileInfo inputFile, string nameSpace)
         {
             _lexer = new SchemaLexer();
-            _lexer.CreateFileHandle(file);
-            _schemaPath = file;
+            _lexer.CreateFileHandle(inputFile.FullName);
+            _schemaPath = inputFile.FullName;
+            _nameSpace = nameSpace;
         }
 
         /// <summary>
         /// Creates a new schema parser instance and loads the schema into memory
         /// </summary>
-        /// <param name="file">The path to the Pierogi schema file that will be parsed</param>
-        /// <param name="schema">The contents of the schema file.</param>
-        public SchemaParser(string file, string schema)
+        /// <param name="textualSchema">A string representation of a schema.</param>
+        /// <param name="nameSpace"></param>
+        public SchemaParser(string textualSchema, string nameSpace)
         {
             _lexer = new SchemaLexer();
-            _lexer.CreateMemoryHandle(schema);
-            _schemaPath = file;
+            _lexer.CreateMemoryHandle(textualSchema);
+            _nameSpace = nameSpace;
+            _schemaPath = string.Empty;
         }
 
         /// <summary>
@@ -125,15 +129,7 @@ namespace Compiler.Parser
             _index = 0;
             _definitions = new Dictionary<string, IDefinition>();
             _typeReferences = new HashSet<(Token, Token)>();
-            _package = string.Empty;
             
-            if (Eat(TokenKind.Package))
-            {
-                _package = CurrentToken.Lexeme;
-                Expect(TokenKind.Identifier);
-                Expect(TokenKind.Semicolon);
-            }
-
             
             while (_index < _tokens.Length && !Eat(TokenKind.EndOfFile))
             {
@@ -154,7 +150,7 @@ namespace Compiler.Parser
                     throw new UnrecognizedTypeException(typeToken, definitionToken.Lexeme, _schemaPath);
                 }
             }
-            return new PierogiSchema(_schemaPath, _package, _definitions);
+            return new PierogiSchema(_schemaPath, _nameSpace, _definitions);
         }
 
 
@@ -225,6 +221,10 @@ namespace Compiler.Parser
             var name = definitionToken.Lexeme;
             var definitionSpan = definitionToken.Span.Combine(definitionEnd);
             var definition = new Definition(name, isReadOnly, definitionSpan, kind, fields);
+            if (_definitions.ContainsKey(name))
+            {
+                throw new MultipleDefinitionsException(definition, _schemaPath);
+            }
             _definitions.Add(name, definition);
         }
 
@@ -237,7 +237,10 @@ namespace Compiler.Parser
         {
             if (currentToken.TryParseBaseType(out var baseType))
             {
-                return new ScalarType(baseType.Value);
+                if (baseType != null)
+                {
+                    return new ScalarType(baseType.Value);
+                }
             }
             return new DefinedType(currentToken.Lexeme);
         }

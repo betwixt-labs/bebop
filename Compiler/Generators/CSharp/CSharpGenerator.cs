@@ -17,9 +17,9 @@ namespace Compiler.Generators.CSharp
             _schema = schema;
             var builder = new StringBuilder();
 
-            if (!string.IsNullOrWhiteSpace(_schema.Package))
+            if (!string.IsNullOrWhiteSpace(_schema.Namespace))
             {
-                builder.AppendLine($"namespace {_schema.Package.ToPascalCase()} {{");
+                builder.AppendLine($"namespace {_schema.Namespace.ToPascalCase()} {{");
             }
             foreach (var definition in _schema.Definitions.Values)
             {
@@ -81,7 +81,7 @@ namespace Compiler.Generators.CSharp
             }
 
 
-            if (!string.IsNullOrWhiteSpace(_schema.Package))
+            if (!string.IsNullOrWhiteSpace(_schema.Namespace))
             {
                 builder.AppendLine("}");
             }
@@ -227,7 +227,7 @@ namespace Compiler.Generators.CSharp
                 DefinedType dt when _schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
                     $"view.ReadUint() as {dt.Name}",
                 DefinedType dt =>
-                    $"{(string.IsNullOrWhiteSpace(_schema.Package) ? string.Empty : $"{_schema.Package.ToPascalCase()}.")}{dt.Name.ToPascalCase()}.DecodeFrom(view)",
+                    $"{(string.IsNullOrWhiteSpace(_schema.Namespace) ? string.Empty : $"{_schema.Namespace.ToPascalCase()}.")}{dt.Name.ToPascalCase()}.DecodeFrom(view)",
                 _ => throw new InvalidOperationException($"CompileDecodeField: {type}")
             };
         }
@@ -342,7 +342,7 @@ namespace Compiler.Generators.CSharp
                 DefinedType dt when _schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
                     $"view.WriteEnum({target});",
                 DefinedType dt =>
-                    $"{(string.IsNullOrWhiteSpace(_schema.Package) ? string.Empty : $"{_schema.Package.ToPascalCase()}.")}{dt.Name.ToPascalCase()}.EncodeInto({target}, view);",
+                    $"{(string.IsNullOrWhiteSpace(_schema.Namespace) ? string.Empty : $"{_schema.Namespace.ToPascalCase()}.")}{dt.Name.ToPascalCase()}.EncodeInto({target}, view);",
                 _ => throw new InvalidOperationException($"CompileEncodeField: {type}")
             };
         }

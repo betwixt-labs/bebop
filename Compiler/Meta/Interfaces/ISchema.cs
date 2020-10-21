@@ -13,9 +13,9 @@ namespace Compiler.Meta.Interfaces
         public string SourcePath { get; }
 
         /// <summary>
-        /// An optional package specifier within the .pie file to prevent name clashes between types.
+        /// An optional namespace that is provided to the compiler.
         /// </summary>
-        public string Package { get; }
+        public string Namespace { get; }
         /// <summary>
         /// A collection of data structures defined in the schema
         /// </summary>
