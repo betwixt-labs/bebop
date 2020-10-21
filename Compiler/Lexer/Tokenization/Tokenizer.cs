@@ -118,12 +118,70 @@ namespace Compiler.Lexer.Tokenization
         /// <returns></returns>
         public Token? TryScan(char surrogate) => surrogate switch
         {
+         //   _ when IsBlockComment(surrogate, out var b) => b,
             _ when IsSymbol(surrogate, out var s) => s,
             _ when IsIdentifier(surrogate, out var i) => i,
             _ when IsLiteral(surrogate, out var l) => l,
             _ when IsNumber(surrogate, out var n) => n,
             _ => null
         };
+
+
+      
+      
+        private bool IsBlockComment(char surrogate, out Token token)
+        {
+            token = default;
+            if (surrogate != '/' || _reader.PeekChar() != '*')
+            {
+                return false;
+            }
+            _reader.GetChar();
+            var builder = new StringBuilder();
+            var currentChar = _reader.GetChar();
+            while (currentChar != '\0')
+            {
+                
+             
+                var isNewLine = false;
+                if (currentChar == '\r')
+                {
+                    builder.Append(currentChar);
+                    currentChar = _reader.GetChar();
+                    isNewLine = true;
+                }
+                if (currentChar == '\n')
+                {
+                    builder.Append(currentChar);
+                    isNewLine = true;
+                }
+                if (isNewLine)
+                {
+                    if (_reader.PeekChar().IsWhitespace())
+                    {
+                        currentChar = _reader.GetChar();
+                        builder.Append(currentChar);
+                        continue;
+                    }
+                    currentChar = _reader.GetChar();
+                    if (_reader.PeekChar() == '/')
+                    {
+                        continue;
+                    }
+                }
+                if (currentChar == '*' && _reader.PeekChar() == '/')
+                {
+                    _reader.GetChar();
+                    break;
+                }
+                builder.Append(currentChar);
+                currentChar = _reader.GetChar();
+            }
+            token = new Token(TokenKind.BlockComment, builder.ToString().Trim(), CurrentTokenPosition, TokenCount);
+
+            Console.WriteLine(token.Span.ToString());
+            return true;
+        }
 
 
         /// <summary>

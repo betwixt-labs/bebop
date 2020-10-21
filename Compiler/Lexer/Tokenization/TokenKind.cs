@@ -65,6 +65,10 @@ namespace Compiler.Lexer.Tokenization
         ///     Any numerical literal token.
         /// </summary>
         Number,
+        /// <summary>
+        /// A token that represents a multi-line block comment
+        /// </summary>
+        BlockComment,
         EndOfFile,
 
     #endregion
@@ -166,7 +170,6 @@ namespace Compiler.Lexer.Tokenization
         /// </summary>
         [Symbol('-')]
         Hyphen
-
         #endregion
     }
 }

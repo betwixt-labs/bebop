@@ -20,20 +20,19 @@ namespace Compiler.Generators.TypeScript
         /// <returns>The generated TypeScript <c>encode</c> function body.</returns>
         public string CompileEncode(IDefinition definition)
         {
-            switch (definition.Kind)
+            return definition.Kind switch
             {
-                case AggregateKind.Message:
-                    return CompileEncodeMessage(definition);
-                case AggregateKind.Struct:
-                    return CompileEncodeStruct(definition);
-                default:
-                    throw new InvalidOperationException($"invalid CompileEncode kind: {definition.Kind} in {definition}");
-            }
+                AggregateKind.Message => CompileEncodeMessage(definition),
+                AggregateKind.Struct => CompileEncodeStruct(definition),
+                _ => throw new InvalidOperationException($"invalid CompileEncode kind: {definition.Kind} in {definition}"),
+            };
         }
 
         private string CompileEncodeMessage(IDefinition definition)
         { 
             var builder = new IndentedStringBuilder(6);
+            builder.AppendLine($"const pos = view.reserveMessageLength();");
+            builder.AppendLine($"const start = view.length;");
             foreach (var field in definition.Fields)
             {
                 if (field.DeprecatedAttribute.HasValue)
@@ -41,11 +40,13 @@ namespace Compiler.Generators.TypeScript
                     continue;
                 }
                 builder.AppendLine($"if (message.{field.Name.ToCamelCase()} != null) {{");
-                builder.AppendLine($"  view.writeUint({field.ConstantValue});");
+                builder.AppendLine($"  view.writeByte({field.ConstantValue});");
                 builder.AppendLine($"  {CompileEncodeField(field.Type, $"message.{field.Name.ToCamelCase()}")}");
                 builder.AppendLine($"}}");
             }
-            builder.AppendLine("view.writeUint(0);");
+            builder.AppendLine("view.writeByte(0);");
+            builder.AppendLine("const end = view.length;");
+            builder.AppendLine("view.fillMessageLength(pos, end - start);");
             return builder.ToString();
         }
 
@@ -71,9 +72,9 @@ namespace Compiler.Generators.TypeScript
                     return $"view.writeFloat64s({target});";
                 case ArrayType at:
                     var indent = new string(' ', (depth + 4) * 2);
-                    var i = LoopVariable(depth);
+                    var i = GeneratorUtils.LoopVariable(depth);
                     return $"var length{depth} = {target}.length;\n"
-                        + indent + $"view.writeUint(length{depth});\n"
+                        + indent + $"view.writeUint32(length{depth});\n"
                         + indent + $"for (var {i} = 0; {i} < length{depth}; {i}++) {{\n"
                         + indent + $"  {CompileEncodeField(at.MemberType, $"{target}[{i}]", depth + 1)}\n"
                         + indent + "}";
@@ -82,12 +83,12 @@ namespace Compiler.Generators.TypeScript
                     {
                         case BaseType.Bool: return $"view.writeByte(Number({target}));";
                         case BaseType.Byte: return $"view.writeByte({target});";
-                        case BaseType.UInt16: return $"view.writeUint({target}, 0xFFFF);";
-                        case BaseType.Int16: return $"view.writeInt({target}, -0x8000, 0x7FFF);";
-                        case BaseType.UInt32: return $"view.writeUint({target}, 0xFFFFFFFF);";
-                        case BaseType.Int32: return $"view.writeInt({target}, -0x80000000, 0x7FFFFFFF);";
-                        case BaseType.UInt64: return $"view.writeBigUint({target});";
-                        case BaseType.Int64: return $"view.writeBigInt({target});";
+                        case BaseType.UInt16: return $"view.writeUint16({target});";
+                        case BaseType.Int16: return $"view.writeInt16({target});";
+                        case BaseType.UInt32: return $"view.writeUint32({target});";
+                        case BaseType.Int32: return $"view.writeInt32({target});";
+                        case BaseType.UInt64: return $"view.writeUint64({target});";
+                        case BaseType.Int64: return $"view.writeInt64({target});";
                         case BaseType.Float32: return $"view.writeFloat32({target});";
                         case BaseType.Float64: return $"view.writeFloat64({target});";
                         case BaseType.String: return $"view.writeString({target});";
@@ -109,15 +110,12 @@ namespace Compiler.Generators.TypeScript
         /// <returns>The generated TypeScript <c>decode</c> function body.</returns>
         public string CompileDecode(IDefinition definition)
         {
-            switch (definition.Kind)
+            return definition.Kind switch
             {
-                case AggregateKind.Message:
-                    return CompileDecodeMessage(definition);
-                case AggregateKind.Struct:
-                    return CompileDecodeStruct(definition);
-                default:
-                    throw new InvalidOperationException($"invalid CompileDecode kind: {definition.Kind} in {definition}");
-            }
+                AggregateKind.Message => CompileDecodeMessage(definition),
+                AggregateKind.Struct => CompileDecodeStruct(definition),
+                _ => throw new InvalidOperationException($"invalid CompileDecode kind: {definition.Kind} in {definition}"),
+            };
         }
 
         /// <summary>
@@ -134,9 +132,11 @@ namespace Compiler.Generators.TypeScript
             builder.AppendLine("}");
             builder.AppendLine("");
             builder.AppendLine($"let message: I{definition.Name} = {{}};");
+            builder.AppendLine("const length = view.readMessageLength();");
+            builder.AppendLine("const end = view.index + length;");
             builder.AppendLine("while (true) {");
             builder.Indent(2);
-            builder.AppendLine("switch (view.readUint()) {");
+            builder.AppendLine("switch (view.readByte()) {");
             builder.AppendLine("  case 0:");
             builder.AppendLine("    return message;");
             builder.AppendLine("");
@@ -148,7 +148,8 @@ namespace Compiler.Generators.TypeScript
                 builder.AppendLine("");
             }
             builder.AppendLine("  default:");
-            builder.AppendLine("    throw new Error(\"Attempted to parse invalid message\");");
+            builder.AppendLine("    view.index = end;");
+            builder.AppendLine("    return message;");
             builder.AppendLine("}");
             builder.Dedent(2);
             builder.AppendLine("}");
@@ -184,7 +185,7 @@ namespace Compiler.Generators.TypeScript
                     return "view.readFloat64s()";
                 case ArrayType at:
                     return @$"(() => {{
-                        let length = view.readUint();
+                        let length = view.readUint32();
                         const collection = new {TypeName(at)}(length);
                         for (var i = 0; i < length; i++) collection[i] = {CompileDecodeField(at.MemberType)};
                         return collection;
@@ -194,12 +195,12 @@ namespace Compiler.Generators.TypeScript
                     {
                         case BaseType.Bool: return "!!view.readByte()";
                         case BaseType.Byte: return "view.readByte()";
-                        case BaseType.UInt16: return "view.readUint()";
-                        case BaseType.Int16: return "view.readInt()";
-                        case BaseType.UInt32: return "view.readUint()";
-                        case BaseType.Int32: return "view.readInt()";
-                        case BaseType.UInt64: return "view.readBigUint()";
-                        case BaseType.Int64: return "view.readBigInt()";
+                        case BaseType.UInt16: return "view.readUint16()";
+                        case BaseType.Int16: return "view.readInt16()";
+                        case BaseType.UInt32: return "view.readUint32()";
+                        case BaseType.Int32: return "view.readInt32()";
+                        case BaseType.UInt64: return "view.readUint64()";
+                        case BaseType.Int64: return "view.readInt64()";
                         case BaseType.Float32: return "view.readFloat32()";
                         case BaseType.Float64: return "view.readFloat64()";
                         case BaseType.String: return "view.readString()";
@@ -207,7 +208,7 @@ namespace Compiler.Generators.TypeScript
                     }
                     break;
                 case DefinedType dt when _schema.Definitions[dt.Name].Kind == AggregateKind.Enum:
-                    return $"view.readUint() as {dt.Name}";
+                    return $"view.readUint32() as {dt.Name}";
                 case DefinedType dt:
                     return $"{dt.Name}.decode(view)";
             }
@@ -259,18 +260,6 @@ namespace Compiler.Generators.TypeScript
             throw new InvalidOperationException($"GetTypeName: {type}");
         }
 
-        private string LoopVariable(int depth)
-        {
-            return depth switch
-            {
-                0 => "i",
-                1 => "j",
-                2 => "k",
-                3 => "l",
-                _ => $"i{depth}",
-            };
-        }
-
         /// <summary>
         /// Generate code for a Pierogi schema.
         /// </summary>
@@ -282,6 +271,10 @@ namespace Compiler.Generators.TypeScript
             var builder = new StringBuilder();
             builder.AppendLine("import { PierogiView } from \"./PierogiView\";");
             builder.AppendLine("");
+            if (!string.IsNullOrWhiteSpace(_schema.Namespace))
+            {
+                builder.AppendLine($"export namespace {_schema.Namespace} {{");
+            }
 
             foreach (var definition in _schema.Definitions.Values)
             {
@@ -303,7 +296,6 @@ namespace Compiler.Generators.TypeScript
                     for (var i = 0; i < definition.Fields.Count; i++)
                     {
                         var field = definition.Fields.ElementAt(i);
-
                         var type = TypeName(field.Type);
                         if (field.DeprecatedAttribute.HasValue && !string.IsNullOrWhiteSpace(field.DeprecatedAttribute.Value.Message))
                         {
@@ -324,16 +316,21 @@ namespace Compiler.Generators.TypeScript
                     builder.AppendLine("    },");
                     builder.AppendLine("");
                     builder.AppendLine($"    encodeInto(message: I{definition.Name}, view: PierogiView): void {{");
-                    builder.AppendLine(CompileEncode(definition));
+                    builder.Append(CompileEncode(definition));
                     builder.AppendLine("    },");
                     builder.AppendLine("");
 
                     builder.AppendLine($"    decode(view: PierogiView | Uint8Array): I{definition.Name} {{");
-                    builder.AppendLine(CompileDecode(definition));
+                    builder.Append(CompileDecode(definition));
                     builder.AppendLine("    },");
                     builder.AppendLine("  };");
                 }
             }
+            if (!string.IsNullOrWhiteSpace(_schema.Namespace))
+            {
+                builder.AppendLine("}");
+            }
+
             return builder.ToString();
         }
 

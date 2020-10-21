@@ -13,6 +13,10 @@ namespace Compiler.Meta.Interfaces
         public string SourcePath { get; }
 
         /// <summary>
+        /// An optional namespace that is provided to the compiler.
+        /// </summary>
+        public string Namespace { get; }
+        /// <summary>
         /// A collection of data structures defined in the schema
         /// </summary>
         public Dictionary<string, IDefinition> Definitions { get; }
