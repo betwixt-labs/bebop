@@ -14,8 +14,4 @@
   <ItemGroup>
     <EmbeddedResource Include="Generators\TypeScript\PierogiView.ts" />
   </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="deniszykov.WebSocketListener" Version="4.2.9" />
-  </ItemGroup>
 </Project>

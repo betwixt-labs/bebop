@@ -1,8 +1,23 @@
 ﻿using System;
+using System.Collections.Generic;
+using Compiler.Generators.CSharp;
+using Compiler.Generators.TypeScript;
+
 namespace Compiler.Generators
 {
     public static class GeneratorUtils
     {
+        /// <summary>
+        /// A dictionary that contains generators.
+        /// </summary>
+        /// <remarks>
+        /// Generators are keyed via their commandline alias.
+        /// </remarks>
+        public static Dictionary<string, IGenerator> ImplementedGenerators  = new Dictionary<string, IGenerator> {
+            { "ts", new TypeScriptGenerator() },
+            { "cs", new CSharpGenerator() }
+        };
+   
         /// <summary>
         /// Returns a loop variable name based on the provided loop <paramref name="depth"/>
         /// </summary>

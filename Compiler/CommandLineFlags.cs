@@ -6,6 +6,8 @@ using Compiler.Generators;
 
 namespace Compiler
 {
+    #region FlagAttribute
+
     /// <summary>
     ///     Models an application commandline flag.
     /// </summary>
@@ -60,10 +62,25 @@ namespace Compiler
         public bool IsRequired { get; }
     }
 
+#endregion
+
     /// <summary>
     /// </summary>
     public class CommandLineFlags
     {
+        [CommandLineFlag("server", false, "I'm a flag", "--server 8080")]
+        public int ServerPort { get; private set; }
+
+        [CommandLineFlag("fake", false, "I am also a flag", "--fake dogma")]
+        public string Fake { get; private set; }
+
+        [CommandLineFlag("files", false, "Testerino", "--files [file1, file 2]")]
+        public List<string> Files { get; private set; }
+
+        public string HelpText { get; private init; }
+
+    #region Static
+
         /// <summary>
         ///     Used for generating usage text.
         /// </summary>
@@ -76,17 +93,9 @@ namespace Compiler
         {
         }
 
+    #endregion
 
-        [CommandLineFlag("server", false, "I'm a flag", "--server 8080")]
-        public int ServerPort { get; private set; }
-
-        [CommandLineFlag("fake", false, "I am also a flag", "--fake dogma")]
-        public string Fake { get; private set; }
-
-        [CommandLineFlag("files", false, "Testerino", "--files [file1, file 2]")]
-        public List<string> Files { get; private set; }
-
-        public string HelpText { get; private init; }
+    #region Parsing
 
         /// <summary>
         ///     Parses an array of commandline flags into dictionary.
@@ -106,7 +115,11 @@ namespace Compiler
         /// <param name="args">the array of arguments to parse</param>
         /// <param name="flagStore">An instance which contains all parsed flags and their values</param>
         /// <param name="errorMessage">A human-friendly message describing why parsing failed.</param>
-        /// <returns>If the provided <param name="args"></param> were parsed this method returns true.</returns>
+        /// <returns>
+        ///     If the provided
+        ///     <param name="args"></param>
+        ///     were parsed this method returns true.
+        /// </returns>
         public static bool TryParse(string[] args, out CommandLineFlags flagStore, out string errorMessage)
         {
             var props = (from p in typeof(CommandLineFlags).GetProperties()
@@ -190,4 +203,6 @@ namespace Compiler
             return true;
         }
     }
+
+#endregion
 }

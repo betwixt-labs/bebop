@@ -68,7 +68,7 @@ namespace Compiler.Generators.TypeScript
                     return $"view.writeFloat64s({target});";
                 case ArrayType at:
                     var indent = new string(' ', (depth + 4) * 2);
-                    var i = LoopVariable(depth);
+                    var i = GeneratorUtils.LoopVariable(depth);
                     return $"var length{depth} = {target}.length;\n"
                         + indent + $"view.writeUint(length{depth});\n"
                         + indent + $"for (var {i} = 0; {i} < length{depth}; {i}++) {{\n"
@@ -251,18 +251,6 @@ namespace Compiler.Generators.TypeScript
                     return (isEnum ? "" : "I") + dt.Name;
             }
             throw new InvalidOperationException($"GetTypeName: {type}");
-        }
-
-        private string LoopVariable(int depth)
-        {
-            return depth switch
-            {
-                0 => "i",
-                1 => "j",
-                2 => "k",
-                3 => "l",
-                _ => $"i{depth}",
-            };
         }
 
         /// <summary>
