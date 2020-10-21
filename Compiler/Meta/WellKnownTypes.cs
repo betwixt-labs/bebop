@@ -30,49 +30,31 @@ namespace Compiler.Meta
         /// <summary>
         ///     An integral type representing unsigned 16-bit integers with values between 0 and 65535.
         /// </summary>
-        /// <remarks>
-        ///     It uses a base-128 variable-length encoding: small integers are encoded as a single byte, but large ones may take up to 3 bytes.
-        /// </remarks>
         UInt16,
 
         /// <summary>
         ///     An integral type representing signed 16-bit integers with values between -32768 and 32767.
         /// </summary>
-        /// <remarks>
-        ///     It uses a base-128 variable-length encoding: small integers are encoded as a single byte, but large ones may take up to 3 bytes.
-        /// </remarks>
         Int16,
 
         /// <summary>
         ///     An integral type representing unsigned 32-bit integers with values between 0 and 4294967295.
         /// </summary>
-        /// <remarks>
-        ///     It uses a base-128 variable-length encoding: small integers are encoded as a single byte, but large ones may take up to 5 bytes.
-        /// </remarks>
         UInt32,
 
         /// <summary>
         ///     An integral type representing signed 32-bit integers with values between -2147483648 and 2147483647.
         /// </summary>
-        /// <remarks>
-        ///     It uses a base-128 variable-length encoding: small integers are encoded as a single byte, but large ones may take up to 5 bytes.
-        /// </remarks>
         Int32,
 
         /// <summary>
         ///     An integral type representing unsigned 64-bit integers with values between 0 and 2^64-1.
         /// </summary>
-        /// <remarks>
-        ///     It uses a base-128 variable-length encoding: small integers are encoded as a single byte, but large ones may take up to 10 bytes.
-        /// </remarks>
         UInt64,
 
         /// <summary>
         ///     An integral type representing signed 64-bit integers with values between -2^63 and 2^63-1.
         /// </summary>
-        /// <remarks>
-        ///     It uses a base-128 variable-length encoding: small integers are encoded as a single byte, but large ones may take up to 10 bytes.
-        /// </remarks>
         Int64,
 
         /// <summary>
@@ -107,7 +89,7 @@ namespace Compiler.Meta
     {
         /// <summary>
         ///     An enumeration type (or enum type) is a type defined by a set of named constants.
-        ///     It is restricted to <see cref="BaseType.UInt"/> integral numeric type, and enum values will be encoded using variable-length encoding.
+        ///     It is restricted to the <see cref="BaseType.UInt32"/> integral numeric type.
         /// </summary>
         /// <remarks>
         ///     It is possible to add new members to an enum in use by a <see cref="Message"/> while maintaining backwards
@@ -130,12 +112,7 @@ namespace Compiler.Meta
         ///     The message type is a data structure that combines state (members) as a single type-safe unit. All members of a
         ///     message are optional.
         ///     <para/>
-        ///     Members of the message may be any valid Pierogi type such as
-        ///     <see cref="ScalarType"/>,
-        ///     <see cref="Enum"/>,
-        ///     <see cref="Struct"/>,
-        ///     <see cref="Message"/>,
-        ///     and arrays of <see cref="T:T[]"/>.
+        ///     Members of the message may be any valid Pierogi type.
         ///     <para/>
         /// </summary>
         /// <remarks>
