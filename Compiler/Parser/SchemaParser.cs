@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Compiler.Exceptions;
 using Compiler.Lexer;
@@ -24,6 +25,7 @@ namespace Compiler.Parser
         private readonly string _nameSpace;
         private Token[] _tokens;
         private readonly string _schemaPath;
+        private string _lastComment;
 
         /// <summary>
         /// Creates a new schema parser instance from a schema file on disk
@@ -96,6 +98,7 @@ namespace Compiler.Parser
         /// <returns></returns>
         private bool Eat(TokenKind kind)
         {
+            
             if (CurrentToken.Kind == kind)
             {
                 _index++;
@@ -113,10 +116,34 @@ namespace Compiler.Parser
         /// <returns></returns>
         private void Expect(TokenKind kind)
         {
+            // don't throw on block comment tokens
+            if (CurrentToken.Kind == TokenKind.BlockComment)
+            {
+                ConsumeBlockComments();
+            }
             if (!Eat(kind))
             {
                 throw new UnexpectedTokenException(kind, CurrentToken, _schemaPath);
             }
+        }
+
+        /// <summary>
+        /// Consume all sequential block comments.
+        /// </summary>
+        /// <returns>The content of the last block comment which usually proceeds a definition.</returns>
+        private string ConsumeBlockComments()
+        {
+            var definitionDocumentation = string.Empty;
+            if (CurrentToken.Kind == TokenKind.BlockComment)
+            {
+                definitionDocumentation = CurrentToken.Lexeme;
+                while (PeekToken(_index += 1).Kind == TokenKind.BlockComment)
+                {
+                    Eat(TokenKind.BlockComment);
+                    definitionDocumentation = CurrentToken.Lexeme;
+                }
+            }
+            return definitionDocumentation;
         }
 
 
@@ -134,12 +161,7 @@ namespace Compiler.Parser
             
             while (_index < _tokens.Length && !Eat(TokenKind.EndOfFile))
             {
-                var definitionDocumentation = string.Empty;
-                if (CurrentToken.Kind == TokenKind.BlockComment)
-                {
-                    definitionDocumentation = CurrentToken.Lexeme;
-                    Eat(TokenKind.BlockComment);
-                }
+                var definitionDocumentation = ConsumeBlockComments();
                 var isReadOnly = Eat(TokenKind.ReadOnly);
                 var kind = CurrentToken switch
                 {
@@ -181,12 +203,13 @@ namespace Compiler.Parser
                 DeprecatedAttribute? deprecatedAttribute = null;
                 var value = 0;
 
-                var fieldDocumentation = string.Empty;
-                if (CurrentToken.Kind == TokenKind.BlockComment)
+                var fieldDocumentation = ConsumeBlockComments();
+                // if we've reached the end of the definition after parsing documentation we need to exit.
+                if (Eat(TokenKind.CloseBrace))
                 {
-                    fieldDocumentation = CurrentToken.Lexeme;
-                    Eat(TokenKind.BlockComment);
+                    break;
                 }
+
                 if (kind != AggregateKind.Enum)
                 {
                     type = DetermineType(CurrentToken);
@@ -205,6 +228,7 @@ namespace Compiler.Parser
 
                 var fieldName = CurrentToken.Lexeme;
                 var fieldStart = CurrentToken.Span;
+               
                 Expect(TokenKind.Identifier);
 
                 if (kind != AggregateKind.Struct)
