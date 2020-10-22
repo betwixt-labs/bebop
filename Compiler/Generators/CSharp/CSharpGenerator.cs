@@ -7,16 +7,11 @@ using Compiler.Meta.Interfaces;
 
 namespace Compiler.Generators.CSharp
 {
-    public class CSharpGenerator : IGenerator
+    public class CSharpGenerator : Generator
     {
-        private ISchema _schema;
+        public CSharpGenerator(ISchema schema) : base(schema) { }
 
-        public CSharpGenerator(ISchema schema)
-        {
-            _schema = schema;
-        }
-
-        public string Compile()
+        override public string Compile()
         {
             var builder = new StringBuilder();
 
@@ -94,7 +89,7 @@ namespace Compiler.Generators.CSharp
             return builder.ToString().TrimEnd();
         }
 
-        public void WriteAuxiliaryFiles(string outputPath)
+        override public void WriteAuxiliaryFiles(string outputPath)
         {
             throw new NotImplementedException();
         }

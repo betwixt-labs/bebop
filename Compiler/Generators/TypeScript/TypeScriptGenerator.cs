@@ -9,14 +9,9 @@ using Compiler.Meta.Interfaces;
 
 namespace Compiler.Generators.TypeScript
 {
-    public class TypeScriptGenerator : IGenerator
+    public class TypeScriptGenerator : Generator
     {
-        private ISchema _schema;
-
-        public TypeScriptGenerator(ISchema schema)
-        {
-            _schema = schema;
-        }
+        public TypeScriptGenerator(ISchema schema) : base(schema) { }
 
         /// <summary>
         /// Generate the body of the <c>encode</c> function for the given <see cref="IDefinition"/>.
@@ -257,7 +252,7 @@ namespace Compiler.Generators.TypeScript
         /// Generate code for a Pierogi schema.
         /// </summary>
         /// <returns>The generated code.</returns>
-        public string Compile()
+        override public string Compile()
         {
             var builder = new StringBuilder();
             builder.AppendLine("import { PierogiView } from \"./PierogiView\";");
@@ -325,7 +320,7 @@ namespace Compiler.Generators.TypeScript
             return builder.ToString();
         }
 
-        public void WriteAuxiliaryFiles(string outputPath)
+        override public void WriteAuxiliaryFiles(string outputPath)
         {
             var assembly = Assembly.GetExecutingAssembly();
             using Stream stream = assembly.GetManifestResourceStream("Compiler.Generators.TypeScript.PierogiView.ts")!;

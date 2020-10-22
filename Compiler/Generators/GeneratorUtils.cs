@@ -15,7 +15,7 @@ namespace Compiler.Generators
         /// <remarks>
         /// Generators are keyed via their commandline alias.
         /// </remarks>
-        public static Dictionary<string, Func<ISchema, IGenerator>> ImplementedGenerators  = new Dictionary<string, Func<ISchema, IGenerator>> {
+        public static Dictionary<string, Func<ISchema, Generator>> ImplementedGenerators  = new Dictionary<string, Func<ISchema, Generator>> {
             { "ts", s => new TypeScriptGenerator(s) },
             { "cs", s => new CSharpGenerator(s) }
         };

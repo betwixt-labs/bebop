@@ -98,7 +98,7 @@ namespace Compiler
                 inputFile, new FileInfo(flags.OutputFile), flags.Namespace ?? "");
         }
 
-        private static async Task<int> CompileSchemas(Func<ISchema, IGenerator> makeGenerator,
+        private static async Task<int> CompileSchemas(Func<ISchema, Generator> makeGenerator,
             FileInfo inputFile,
             FileInfo outputFile,
             string nameSpace)
