@@ -37,5 +37,10 @@ namespace Compiler.Meta.Interfaces
         ///     It will be zero for <see cref="AggregateKind.Struct"/>.
         /// </remarks>
         public int ConstantValue { get; }
+
+        /// <summary>
+        /// The inner text of a block comment that preceded the field.
+        /// </summary>
+        public string Documentation { get; }
     }
 }
