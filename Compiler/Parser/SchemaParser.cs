@@ -116,6 +116,7 @@ namespace Compiler.Parser
         /// <returns></returns>
         private void Expect(TokenKind kind)
         {
+          
             // don't throw on block comment tokens
             if (CurrentToken.Kind == TokenKind.BlockComment)
             {
@@ -133,14 +134,14 @@ namespace Compiler.Parser
         /// <returns>The content of the last block comment which usually proceeds a definition.</returns>
         private string ConsumeBlockComments()
         {
+
             var definitionDocumentation = string.Empty;
             if (CurrentToken.Kind == TokenKind.BlockComment)
             {
-                definitionDocumentation = CurrentToken.Lexeme;
-                while (PeekToken(_index += 1).Kind == TokenKind.BlockComment)
+                while (CurrentToken.Kind == TokenKind.BlockComment)
                 {
-                    Eat(TokenKind.BlockComment);
                     definitionDocumentation = CurrentToken.Lexeme;
+                    Eat(TokenKind.BlockComment);
                 }
             }
             return definitionDocumentation;
@@ -161,7 +162,9 @@ namespace Compiler.Parser
             
             while (_index < _tokens.Length && !Eat(TokenKind.EndOfFile))
             {
+              
                 var definitionDocumentation = ConsumeBlockComments();
+                
                 var isReadOnly = Eat(TokenKind.ReadOnly);
                 var kind = CurrentToken switch
                 {
