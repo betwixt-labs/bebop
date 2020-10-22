@@ -148,47 +148,6 @@ namespace Compiler.Lexer.Tokenization
             var currentChar = _reader.GetChar();
             while (currentChar != '\0')
             {
-                
-                var isNewLine = false;
- 
-                if (currentChar == '\r')
-                {
-                    builder.Append(currentChar);
-                    currentChar = _reader.GetChar();
-                    isNewLine = true;
-                }
-                if (currentChar == '\n')
-                {
-                    builder.Append(currentChar);
-                    isNewLine = true;
-                }
-                if (isNewLine)
-                {
-                    // skip over all whitespace after a newline and find the beginning of the next line.
-                    if (_reader.PeekChar().IsWhitespace())
-                    {
-                        currentChar = _reader.GetChar();
-                        builder.Append(currentChar);
-                        continue;
-                    }
-                    currentChar = _reader.GetChar();
-                    // the next character is the end of the block comment
-                    // skip so we consume only at the end of the method
-                    if (_reader.PeekChar() == '/')
-                    {
-                        continue;
-                    }
-                }
-
-                // skip over the left edges of aligned block comments
-                if (currentChar == '*' && _reader.PeekChar() == '*')
-                {
-                    currentChar = _reader.GetChar();
-                    if (currentChar == '*')
-                    {
-                        currentChar = _reader.GetChar();
-                    }
-                }
                 // we have reached the end of the block comment
                 if (currentChar == '*' && _reader.PeekChar() == '/')
                 {
@@ -198,7 +157,17 @@ namespace Compiler.Lexer.Tokenization
                 builder.Append(currentChar);
                 currentChar = _reader.GetChar();
             }
-            token = new Token(TokenKind.BlockComment, builder.ToString().Trim(), CurrentTokenPosition, TokenCount);
+
+            var cleanedDocumentation = new StringBuilder();
+
+            foreach (var line in builder.ToString().Split(new[] {"\r\n", "\r", "\n"}, StringSplitOptions.None))
+            {
+                var trimmedLine = line.Trim(' ', '*');
+                cleanedDocumentation.AppendLine(trimmedLine);
+            }
+
+
+            token = new Token(TokenKind.BlockComment, cleanedDocumentation.ToString().TrimStart().TrimEnd(), CurrentTokenPosition, TokenCount);
             return true;
         }
 

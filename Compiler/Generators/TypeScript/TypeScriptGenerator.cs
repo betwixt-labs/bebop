@@ -20,8 +20,7 @@ namespace Compiler.Generators.TypeScript
             builder.Indent(spaces);
             builder.AppendLine("/**");
             builder.Indent(1);
-            foreach (var line in documentation.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None
-            ))
+            foreach (var line in documentation.Split(new[] {"\r\n", "\r", "\n"}, StringSplitOptions.None))
             {
                 builder.AppendLine($"* {line}");
             }
