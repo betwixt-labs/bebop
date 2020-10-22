@@ -11,7 +11,7 @@ namespace Compiler.Generators.CSharp
     {
         private ISchema _schema;
 
-        private string GetFormattedDocumentation(string documentation, int spaces)
+        private string FormatDocumentation(string documentation, int spaces)
         {
             var builder = new IndentedStringBuilder();
             builder.Indent(spaces);
@@ -38,7 +38,7 @@ namespace Compiler.Generators.CSharp
             {
                 if (!string.IsNullOrWhiteSpace(definition.Documentation))
                 {
-                    builder.Append(GetFormattedDocumentation(definition.Documentation, 2));
+                    builder.Append(FormatDocumentation(definition.Documentation, 2));
                 }
                 if (definition.IsEnum())
                 {
@@ -48,7 +48,7 @@ namespace Compiler.Generators.CSharp
                         var field = definition.Fields.ElementAt(i);
                         if (!string.IsNullOrWhiteSpace(field.Documentation))
                         {
-                            builder.Append(GetFormattedDocumentation(field.Documentation, 6));
+                            builder.Append(FormatDocumentation(field.Documentation, 6));
                         }
                         builder.AppendLine(
                             $"      {field.Name} = {field.ConstantValue}{(i + 1 < definition.Fields.Count ? "," : "")}");
@@ -71,7 +71,7 @@ namespace Compiler.Generators.CSharp
                         var type = TypeName(field.Type);
                         if (!string.IsNullOrWhiteSpace(field.Documentation))
                         {
-                            builder.Append(GetFormattedDocumentation(field.Documentation, 4));
+                            builder.Append(FormatDocumentation(field.Documentation, 4));
                         }
                         if (field.DeprecatedAttribute.HasValue &&
                             !string.IsNullOrWhiteSpace(field.DeprecatedAttribute.Value.Message))
