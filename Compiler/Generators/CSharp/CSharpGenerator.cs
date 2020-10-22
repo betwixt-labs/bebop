@@ -24,7 +24,7 @@ namespace Compiler.Generators.CSharp
             return builder.ToString();
         }
 
-        override public string Compile()
+        public override string Compile()
         {
             var builder = new StringBuilder();
 
@@ -40,7 +40,7 @@ namespace Compiler.Generators.CSharp
                 }
                 if (definition.IsEnum())
                 {
-                    builder.AppendLine($"  public enum {definition.Name} {{");
+                    builder.AppendLine($"  public enum {definition.Name} : uint {{");
                     for (var i = 0; i < definition.Fields.Count; i++)
                     {
                         var field = definition.Fields.ElementAt(i);
@@ -114,7 +114,7 @@ namespace Compiler.Generators.CSharp
             return builder.ToString().TrimEnd();
         }
 
-        override public void WriteAuxiliaryFiles(string outputPath)
+        public override void WriteAuxiliaryFiles(string outputPath)
         {
            
         }

@@ -153,6 +153,11 @@ namespace Compiler.Generators.CSharp
             BinaryPrimitives.WriteUInt16LittleEndian(_buffer.Slice(Position, size), value);
         }
 
+        public void WriteEnum(Enum value)
+        {
+            WriteUInt32(Convert.ToUInt32(value));
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         public void WriteInt16(short value)
         {

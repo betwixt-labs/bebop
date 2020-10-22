@@ -198,7 +198,7 @@ namespace Compiler.Parser
             var definitionEnd = CurrentToken.Span;
             while (!Eat(TokenKind.CloseBrace))
             {
-                IType type = new ScalarType(BaseType.Int32); // for enums
+                IType type = new ScalarType(BaseType.UInt32); // for enums
                 DeprecatedAttribute? deprecatedAttribute = null;
                 var value = 0;
 
@@ -271,7 +271,7 @@ namespace Compiler.Parser
         /// </summary>
         /// <param name="currentToken">the token that reflects the type to derive a type from.</param>
         /// <returns>A type code or null if none was found.</returns>
-        private IType DetermineType(Token currentToken)
+        private static IType DetermineType(Token currentToken)
         {
             if (currentToken.TryParseBaseType(out var baseType))
             {
