@@ -25,7 +25,6 @@ namespace Compiler.Parser
         private readonly string _nameSpace;
         private Token[] _tokens;
         private readonly string _schemaPath;
-        private string _lastComment;
 
         /// <summary>
         /// Creates a new schema parser instance from a schema file on disk
