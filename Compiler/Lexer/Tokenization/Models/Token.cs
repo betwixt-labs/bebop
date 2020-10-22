@@ -66,7 +66,7 @@ namespace Compiler.Lexer.Tokenization.Models
         ///     <see langword="true"/> if the current token is equal to the <paramref name="obj"/> parameter; otherwise,
         ///     <see langword="false"/>.
         /// </returns>
-        public override bool Equals(object obj) => obj is Token other && Equals(other);
+        public override bool Equals(object? obj) => obj is Token other && Equals(other);
 
         public int CompareTo(Token other)
         {

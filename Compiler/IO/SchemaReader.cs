@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Compiler.IO.Interfaces;
@@ -241,7 +242,7 @@ namespace Compiler.IO
         public override IAsyncResult BeginWrite(byte[] buffer,
             int offset,
             int count,
-            AsyncCallback callback,
+            AsyncCallback? callback,
             object? state) => throw new NotSupportedException();
 
     #endregion

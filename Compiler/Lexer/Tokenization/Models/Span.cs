@@ -144,7 +144,7 @@ namespace Compiler.Lexer.Tokenization.Models
             return 1;
         }
 
-        public override bool Equals(object obj) => obj is Span span && Equals(span);
+        public override bool Equals(object? obj) => obj is Span span && Equals(span);
 
         public override int GetHashCode() => HashCode.Combine(StartLine, EndLine, StartColumn, EndColumn);
 

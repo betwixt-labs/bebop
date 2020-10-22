@@ -28,7 +28,7 @@ namespace Compiler.Lexer.Extensions
         /// </typeparam>
         /// <typeparam name="TAttribute">The attribute that is defined on the desired group of <see cref="TokenKind"/> members.</typeparam>
         /// <returns></returns>
-        private static Dictionary<TSource, TokenKind> PopulateKinds<TSource, TAttribute>() where TAttribute : Attribute
+        private static Dictionary<TSource, TokenKind> PopulateKinds<TSource, TAttribute>() where TSource : notnull where TAttribute : Attribute
         {
             var dict = new Dictionary<TSource, TokenKind>();
             var enumNames = Enum.GetNames(typeof(TokenKind));

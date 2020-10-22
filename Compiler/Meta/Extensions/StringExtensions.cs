@@ -15,7 +15,6 @@ namespace Compiler.Meta.Extensions
         public static string ToPascalCase(this string input)
         {
             // If there are 0 or 1 characters, just return the string.
-            if (input == null) return null;
             if (input.Length < 2) return input.ToUpper();
 
             // Split the string into words.

@@ -11,10 +11,13 @@ namespace Compiler.Generators.CSharp
     {
         private ISchema _schema;
 
-
-        public string Compile(ISchema schema)
+        public CSharpGenerator(ISchema schema)
         {
             _schema = schema;
+        }
+
+        public string Compile()
+        {
             var builder = new StringBuilder();
 
             if (!string.IsNullOrWhiteSpace(_schema.Namespace))

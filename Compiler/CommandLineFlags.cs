@@ -68,19 +68,19 @@ namespace Compiler
     public class CommandLineFlags
     {
         [CommandLineFlag("lang", "Generate source file for a given language", "--lang (ts|cs)")]
-        public string Language { get; private set; }
+        public string? Language { get; private set; }
 
         [CommandLineFlag("namespace", "When this option is specified generated code will use namespaces", "--lang cs --namespace [package]")]
-        public string Namespace { get; private set; }
+        public string? Namespace { get; private set; }
 
         [CommandLineFlag("dir", "Parse and generate code from a directory of schemas", "--lang ts --dir [input dir]")]
-        public string SchemaDirectory { get; private set; }
+        public string? SchemaDirectory { get; private set; }
 
         [CommandLineFlag("files", "Parse and generate code from a list of schemas", "--files [file1] [file2] ...")]
-        public List<string> SchemaFiles { get; private set; }
+        public List<string>? SchemaFiles { get; private set; }
 
         [CommandLineFlag("out", "The file generated code will be written to", "--lang cs --dir [input dir] --out [output file]")]
-        public string OutputFile { get; private set; }
+        public string? OutputFile { get; private set; }
 
         /// <summary>
         /// When set to true the process will output the product version and exit with a zero return code.
@@ -94,7 +94,7 @@ namespace Compiler
         [CommandLineFlag("help", "Show this text and exit.", "")]
         public bool Help { get; private set; }
 
-        public string HelpText { get; private init; }
+        public string? HelpText { get; private init; }
 
     #region Static
 

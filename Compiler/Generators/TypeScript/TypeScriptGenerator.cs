@@ -13,6 +13,11 @@ namespace Compiler.Generators.TypeScript
     {
         private ISchema _schema;
 
+        public TypeScriptGenerator(ISchema schema)
+        {
+            _schema = schema;
+        }
+
         /// <summary>
         /// Generate the body of the <c>encode</c> function for the given <see cref="IDefinition"/>.
         /// </summary>
@@ -252,10 +257,8 @@ namespace Compiler.Generators.TypeScript
         /// Generate code for a Pierogi schema.
         /// </summary>
         /// <returns>The generated code.</returns>
-        public string Compile(ISchema schema)
+        public string Compile()
         {
-            _schema = schema;
-
             var builder = new StringBuilder();
             builder.AppendLine("import { PierogiView } from \"./PierogiView\";");
             builder.AppendLine("");
@@ -325,7 +328,7 @@ namespace Compiler.Generators.TypeScript
         public void WriteAuxiliaryFiles(string outputPath)
         {
             var assembly = Assembly.GetExecutingAssembly();
-            using Stream stream = assembly.GetManifestResourceStream("Compiler.Generators.TypeScript.PierogiView.ts");
+            using Stream stream = assembly.GetManifestResourceStream("Compiler.Generators.TypeScript.PierogiView.ts")!;
             using StreamReader reader = new StreamReader(stream);
             string result = reader.ReadToEnd();
             File.WriteAllText(Path.Join(outputPath, "PierogiView.ts"), result);

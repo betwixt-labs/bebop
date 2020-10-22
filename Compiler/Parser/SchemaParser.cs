@@ -16,13 +16,12 @@ namespace Compiler.Parser
 {
     public class SchemaParser
     {
-        
         private readonly SchemaLexer _lexer;
-        private Dictionary<string, IDefinition> _definitions;
-        private HashSet<(Token, Token)> _typeReferences;
+        private readonly Dictionary<string, IDefinition> _definitions = new Dictionary<string, IDefinition>();
+        private readonly HashSet<(Token, Token)> _typeReferences = new HashSet<(Token, Token)>();
         private uint _index;
         private readonly string _nameSpace;
-        private Token[] _tokens;
+        private Token[] _tokens = new Token[] { };
         private readonly string _schemaPath;
 
         /// <summary>
@@ -32,10 +31,9 @@ namespace Compiler.Parser
         /// <param name="nameSpace"></param>
         public SchemaParser(FileInfo inputFile, string nameSpace)
         {
-            _lexer = new SchemaLexer();
-            _lexer.CreateFileHandle(inputFile.FullName);
-            _schemaPath = inputFile.FullName;
+            _lexer = SchemaLexer.FromSchemaPath(inputFile.FullName);
             _nameSpace = nameSpace;
+            _schemaPath = inputFile.FullName;
         }
 
         /// <summary>
@@ -45,8 +43,7 @@ namespace Compiler.Parser
         /// <param name="nameSpace"></param>
         public SchemaParser(string textualSchema, string nameSpace)
         {
-            _lexer = new SchemaLexer();
-            _lexer.CreateMemoryHandle(textualSchema);
+            _lexer = SchemaLexer.FromTextualSchema(textualSchema);
             _nameSpace = nameSpace;
             _schemaPath = string.Empty;
         }
@@ -128,8 +125,8 @@ namespace Compiler.Parser
         {
             await Tokenize();
             _index = 0;
-            _definitions = new Dictionary<string, IDefinition>();
-            _typeReferences = new HashSet<(Token, Token)>();
+            _definitions.Clear();
+            _typeReferences.Clear();
             
             
             while (_index < _tokens.Length && !Eat(TokenKind.EndOfFile))
