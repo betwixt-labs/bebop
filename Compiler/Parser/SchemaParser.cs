@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Compiler.Exceptions;
 using Compiler.Lexer;
@@ -93,6 +94,7 @@ namespace Compiler.Parser
         /// <returns></returns>
         private bool Eat(TokenKind kind)
         {
+            
             if (CurrentToken.Kind == kind)
             {
                 _index++;
@@ -110,10 +112,35 @@ namespace Compiler.Parser
         /// <returns></returns>
         private void Expect(TokenKind kind)
         {
+          
+            // don't throw on block comment tokens
+            if (CurrentToken.Kind == TokenKind.BlockComment)
+            {
+                ConsumeBlockComments();
+            }
             if (!Eat(kind))
             {
                 throw new UnexpectedTokenException(kind, CurrentToken, _schemaPath);
             }
+        }
+
+        /// <summary>
+        /// Consume all sequential block comments.
+        /// </summary>
+        /// <returns>The content of the last block comment which usually proceeds a definition.</returns>
+        private string ConsumeBlockComments()
+        {
+
+            var definitionDocumentation = string.Empty;
+            if (CurrentToken.Kind == TokenKind.BlockComment)
+            {
+                while (CurrentToken.Kind == TokenKind.BlockComment)
+                {
+                    definitionDocumentation = CurrentToken.Lexeme;
+                    Eat(TokenKind.BlockComment);
+                }
+            }
+            return definitionDocumentation;
         }
 
 
@@ -131,6 +158,9 @@ namespace Compiler.Parser
             
             while (_index < _tokens.Length && !Eat(TokenKind.EndOfFile))
             {
+              
+                var definitionDocumentation = ConsumeBlockComments();
+                
                 var isReadOnly = Eat(TokenKind.ReadOnly);
                 var kind = CurrentToken switch
                 {
@@ -139,7 +169,7 @@ namespace Compiler.Parser
                     _ when Eat(TokenKind.Message) => AggregateKind.Message,
                     _ => throw new UnexpectedTokenException(TokenKind.Message, CurrentToken, _schemaPath)
                 };
-                DeclareAggregateType(CurrentToken, kind, isReadOnly);
+                DeclareAggregateType(CurrentToken, kind, isReadOnly, definitionDocumentation);
             }
             foreach (var (typeToken, definitionToken) in _typeReferences)
             {
@@ -158,9 +188,11 @@ namespace Compiler.Parser
         /// <param name="definitionToken">The token that names the type to define.</param>
         /// <param name="kind">The <see cref="AggregateKind"/> the type will represents.</param>
         /// <param name="isReadOnly"></param>
-        private void DeclareAggregateType(Token definitionToken, AggregateKind kind, bool isReadOnly)
+        /// <param name="definitionDocumentation"></param>
+        private void DeclareAggregateType(Token definitionToken, AggregateKind kind, bool isReadOnly, string definitionDocumentation)
         {
             var fields = new List<IField>();
+
             Expect(TokenKind.Identifier);
             Expect(TokenKind.OpenBrace);
             var definitionEnd = CurrentToken.Span;
@@ -169,6 +201,13 @@ namespace Compiler.Parser
                 IType type = new ScalarType(BaseType.Int32); // for enums
                 DeprecatedAttribute? deprecatedAttribute = null;
                 var value = 0;
+
+                var fieldDocumentation = ConsumeBlockComments();
+                // if we've reached the end of the definition after parsing documentation we need to exit.
+                if (Eat(TokenKind.CloseBrace))
+                {
+                    break;
+                }
 
                 if (kind != AggregateKind.Enum)
                 {
@@ -188,6 +227,7 @@ namespace Compiler.Parser
 
                 var fieldName = CurrentToken.Lexeme;
                 var fieldStart = CurrentToken.Span;
+               
                 Expect(TokenKind.Identifier);
 
                 if (kind != AggregateKind.Struct)
@@ -212,13 +252,13 @@ namespace Compiler.Parser
 
                 var fieldEnd = CurrentToken.Span;
                 Expect(TokenKind.Semicolon);
-                fields.Add(new Field(fieldName, type, fieldStart.Combine(fieldEnd), deprecatedAttribute, value));
+                fields.Add(new Field(fieldName, type, fieldStart.Combine(fieldEnd), deprecatedAttribute, value, fieldDocumentation));
                 definitionEnd = CurrentToken.Span;
             }
 
             var name = definitionToken.Lexeme;
             var definitionSpan = definitionToken.Span.Combine(definitionEnd);
-            var definition = new Definition(name, isReadOnly, definitionSpan, kind, fields);
+            var definition = new Definition(name, isReadOnly, definitionSpan, kind, fields, definitionDocumentation);
             if (_definitions.ContainsKey(name))
             {
                 throw new MultipleDefinitionsException(definition, _schemaPath);

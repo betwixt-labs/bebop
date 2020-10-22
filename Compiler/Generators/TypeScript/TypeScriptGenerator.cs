@@ -13,6 +13,21 @@ namespace Compiler.Generators.TypeScript
     {
         public TypeScriptGenerator(ISchema schema) : base(schema) { }
 
+
+        private string FormatDocumentation(string documentation, int spaces)
+        {
+            var builder = new IndentedStringBuilder();
+            builder.Indent(spaces);
+            builder.AppendLine("/**");
+            builder.Indent(1);
+            foreach (var line in documentation.Split(new[] {"\r\n", "\r", "\n"}, StringSplitOptions.None))
+            {
+                builder.AppendLine($"* {line}");
+            }
+            builder.AppendLine("*/");
+            return builder.ToString();
+        }
+
         /// <summary>
         /// Generate the body of the <c>encode</c> function for the given <see cref="IDefinition"/>.
         /// </summary>
@@ -264,6 +279,10 @@ namespace Compiler.Generators.TypeScript
 
             foreach (var definition in _schema.Definitions.Values)
             {
+                if(!string.IsNullOrWhiteSpace(definition.Documentation))
+                {
+                    builder.Append(FormatDocumentation(definition.Documentation, 2));
+                }
                 if (definition.Kind == AggregateKind.Enum)
                 {
                     builder.AppendLine($"  export enum {definition.Name} {{");
@@ -271,6 +290,10 @@ namespace Compiler.Generators.TypeScript
                     {
                         var field = definition.Fields.ElementAt(i);
                         var comma = i + 1 < definition.Fields.Count ? "," : "";
+                        if (!string.IsNullOrWhiteSpace(field.Documentation))
+                        {
+                            builder.Append(FormatDocumentation(field.Documentation, 5));
+                        }
                         builder.AppendLine($"      {field.Name} = {field.ConstantValue}{comma}");
                     }
                     builder.AppendLine("  }");
@@ -283,6 +306,11 @@ namespace Compiler.Generators.TypeScript
                     {
                         var field = definition.Fields.ElementAt(i);
                         var type = TypeName(field.Type);
+                        var comma = i + 1 < definition.Fields.Count ? "," : "";
+                        if (!string.IsNullOrWhiteSpace(field.Documentation))
+                        {
+                            builder.Append(FormatDocumentation(field.Documentation, 3));
+                        }
                         if (field.DeprecatedAttribute.HasValue && !string.IsNullOrWhiteSpace(field.DeprecatedAttribute.Value.Message))
                         {
                             builder.AppendLine("    /**");

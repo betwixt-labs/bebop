@@ -123,7 +123,7 @@ namespace Compiler.Lexer.Tokenization
         /// <returns></returns>
         public Token? TryScan(char surrogate) => surrogate switch
         {
-         //   _ when IsBlockComment(surrogate, out var b) => b,
+            _ when IsBlockComment(surrogate, out var b) => b,
             _ when IsSymbol(surrogate, out var s) => s,
             _ when IsIdentifier(surrogate, out var i) => i,
             _ when IsLiteral(surrogate, out var l) => l,
@@ -134,6 +134,12 @@ namespace Compiler.Lexer.Tokenization
 
       
       
+        /// <summary>
+        /// Determines if a surrogate leads into a block comment.
+        /// </summary>
+        /// <param name="surrogate"></param>
+        /// <param name="token"></param>
+        /// <returns></returns>
         private bool IsBlockComment(char surrogate, out Token token)
         {
             token = default;
@@ -141,39 +147,13 @@ namespace Compiler.Lexer.Tokenization
             {
                 return false;
             }
+           
             _reader.GetChar();
             var builder = new StringBuilder();
             var currentChar = _reader.GetChar();
             while (currentChar != '\0')
             {
-                
-             
-                var isNewLine = false;
-                if (currentChar == '\r')
-                {
-                    builder.Append(currentChar);
-                    currentChar = _reader.GetChar();
-                    isNewLine = true;
-                }
-                if (currentChar == '\n')
-                {
-                    builder.Append(currentChar);
-                    isNewLine = true;
-                }
-                if (isNewLine)
-                {
-                    if (_reader.PeekChar().IsWhitespace())
-                    {
-                        currentChar = _reader.GetChar();
-                        builder.Append(currentChar);
-                        continue;
-                    }
-                    currentChar = _reader.GetChar();
-                    if (_reader.PeekChar() == '/')
-                    {
-                        continue;
-                    }
-                }
+                // we have reached the end of the block comment
                 if (currentChar == '*' && _reader.PeekChar() == '/')
                 {
                     _reader.GetChar();
@@ -182,9 +162,17 @@ namespace Compiler.Lexer.Tokenization
                 builder.Append(currentChar);
                 currentChar = _reader.GetChar();
             }
-            token = new Token(TokenKind.BlockComment, builder.ToString().Trim(), CurrentTokenPosition, TokenCount);
 
-            Console.WriteLine(token.Span.ToString());
+            var cleanedDocumentation = new StringBuilder();
+
+            foreach (var line in builder.ToString().Split(new[] {"\r\n", "\r", "\n"}, StringSplitOptions.None))
+            {
+                var trimmedLine = line.Trim(' ', '*');
+                cleanedDocumentation.AppendLine(trimmedLine);
+            }
+
+
+            token = new Token(TokenKind.BlockComment, cleanedDocumentation.ToString().TrimStart().TrimEnd(), CurrentTokenPosition, TokenCount);
             return true;
         }
 
@@ -302,10 +290,6 @@ namespace Compiler.Lexer.Tokenization
         /// <returns></returns>
         private bool IsSymbol(char surrogate, out Token token)
         {
-            if (IsNumber(surrogate, out token))
-            {
-                return true;
-            }
             if (TokenizerExtensions.TryGetSymbol(surrogate, out var kind))
             {
                 token = new Token(kind, surrogate.ToString(), CurrentTokenPosition, TokenCount);

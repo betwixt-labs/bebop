@@ -6,16 +6,14 @@ namespace Compiler.Meta
 {
     public readonly struct Definition : IDefinition
     {
-        public Definition(string name, bool isReadOnly,
-            in Span span,
-            AggregateKind kind,
-            ICollection<IField> fields)
+        public Definition(string name, bool isReadOnly, in Span span, AggregateKind kind, ICollection<IField> fields, string documentation)
         {
             Name = name;
             IsReadOnly = isReadOnly;
             Span = span;
             Kind = kind;
             Fields = fields;
+            Documentation = documentation;
         }
 
         public string Name { get; }
@@ -23,5 +21,6 @@ namespace Compiler.Meta
         public AggregateKind Kind { get; }
         public bool IsReadOnly { get; }
         public ICollection<IField> Fields { get; }
+        public string Documentation { get; }
     }
 }

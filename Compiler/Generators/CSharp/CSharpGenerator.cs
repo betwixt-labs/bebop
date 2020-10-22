@@ -11,6 +11,19 @@ namespace Compiler.Generators.CSharp
     {
         public CSharpGenerator(ISchema schema) : base(schema) { }
 
+        private string FormatDocumentation(string documentation, int spaces)
+        {
+            var builder = new IndentedStringBuilder();
+            builder.Indent(spaces);
+            builder.AppendLine("/// <summary>");
+            foreach (var line in documentation.Split(new[] {"\r\n", "\r", "\n"}, StringSplitOptions.None))
+            {
+                builder.AppendLine($"/// {line}");
+            }
+            builder.AppendLine("/// </summary>");
+            return builder.ToString();
+        }
+
         override public string Compile()
         {
             var builder = new StringBuilder();
@@ -21,12 +34,20 @@ namespace Compiler.Generators.CSharp
             }
             foreach (var definition in _schema.Definitions.Values)
             {
+                if (!string.IsNullOrWhiteSpace(definition.Documentation))
+                {
+                    builder.Append(FormatDocumentation(definition.Documentation, 2));
+                }
                 if (definition.IsEnum())
                 {
                     builder.AppendLine($"  public enum {definition.Name} {{");
                     for (var i = 0; i < definition.Fields.Count; i++)
                     {
                         var field = definition.Fields.ElementAt(i);
+                        if (!string.IsNullOrWhiteSpace(field.Documentation))
+                        {
+                            builder.Append(FormatDocumentation(field.Documentation, 6));
+                        }
                         builder.AppendLine(
                             $"      {field.Name} = {field.ConstantValue}{(i + 1 < definition.Fields.Count ? "," : "")}");
                     }
@@ -46,6 +67,10 @@ namespace Compiler.Generators.CSharp
                         var field = definition.Fields.ElementAt(i);
 
                         var type = TypeName(field.Type);
+                        if (!string.IsNullOrWhiteSpace(field.Documentation))
+                        {
+                            builder.Append(FormatDocumentation(field.Documentation, 4));
+                        }
                         if (field.DeprecatedAttribute.HasValue &&
                             !string.IsNullOrWhiteSpace(field.DeprecatedAttribute.Value.Message))
                         {
@@ -60,7 +85,7 @@ namespace Compiler.Generators.CSharp
                     }
                     builder.AppendLine("  }");
                     builder.AppendLine("");
-
+                    builder.AppendLine("  /// <inheritdoc />");
                     builder.AppendLine(
                         $"  public class {definition.Name.ToPascalCase()} : I{definition.Name.ToPascalCase()} {{");
                     builder.AppendLine("");
@@ -91,7 +116,7 @@ namespace Compiler.Generators.CSharp
 
         override public void WriteAuxiliaryFiles(string outputPath)
         {
-            throw new NotImplementedException();
+           
         }
 
         /// <summary>
