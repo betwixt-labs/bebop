@@ -7,11 +7,11 @@ namespace Compiler.Generators
         /// <summary>
         /// The schema to generate code from.
         /// </summary>
-        protected ISchema _schema;
+        protected ISchema Schema;
 
         protected Generator(ISchema schema)
         {
-            _schema = schema;
+            Schema = schema;
         }
 
         /// <summary>

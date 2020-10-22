@@ -102,7 +102,7 @@ namespace Compiler.Generators.TypeScript
                     BaseType.Guid => $"view.writeGuid({target});",
                     _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                 },
-                DefinedType dt when _schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
+                DefinedType dt when Schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
                     $"view.writeEnum({target});",
                 DefinedType dt => $"{dt.Name}.encodeInto({target}, view)",
                 _ => throw new InvalidOperationException($"CompileEncodeField: {type}")
@@ -206,7 +206,7 @@ namespace Compiler.Generators.TypeScript
                     BaseType.Guid => "view.readGuid()",
                     _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                 },
-                DefinedType dt when _schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
+                DefinedType dt when Schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
                     $"view.readUint32() as {dt.Name}",
                 DefinedType dt => $"{dt.Name}.decode(view)",
                 _ => throw new InvalidOperationException($"CompileDecodeField: {type}")
@@ -237,7 +237,7 @@ namespace Compiler.Generators.TypeScript
                 case ArrayType at:
                     return $"Array<{TypeName(at.MemberType)}>";
                 case DefinedType dt:
-                    var isEnum = _schema.Definitions[dt.Name].Kind == AggregateKind.Enum;
+                    var isEnum = Schema.Definitions[dt.Name].Kind == AggregateKind.Enum;
                     return (isEnum ? "" : "I") + dt.Name;
             }
             throw new InvalidOperationException($"GetTypeName: {type}");
@@ -252,12 +252,12 @@ namespace Compiler.Generators.TypeScript
             var builder = new StringBuilder();
             builder.AppendLine("import { BebopView } from \"./BebopView\";");
             builder.AppendLine("");
-            if (!string.IsNullOrWhiteSpace(_schema.Namespace))
+            if (!string.IsNullOrWhiteSpace(Schema.Namespace))
             {
-                builder.AppendLine($"export namespace {_schema.Namespace} {{");
+                builder.AppendLine($"export namespace {Schema.Namespace} {{");
             }
 
-            foreach (var definition in _schema.Definitions.Values)
+            foreach (var definition in Schema.Definitions.Values)
             {
                 if(!string.IsNullOrWhiteSpace(definition.Documentation))
                 {
@@ -320,7 +320,7 @@ namespace Compiler.Generators.TypeScript
                     builder.AppendLine("  };");
                 }
             }
-            if (!string.IsNullOrWhiteSpace(_schema.Namespace))
+            if (!string.IsNullOrWhiteSpace(Schema.Namespace))
             {
                 builder.AppendLine("}");
             }

@@ -150,7 +150,7 @@ namespace Compiler.Generators.CSharp
             const int size = 2;
             var index = Length;
             GrowBy(size);
-            BinaryPrimitives.WriteUInt16LittleEndian(_buffer.Slice(Position, size), value);
+            BinaryPrimitives.WriteUInt16LittleEndian(_buffer.Slice(index, size), value);
         }
 
         public void WriteEnum(Enum value)

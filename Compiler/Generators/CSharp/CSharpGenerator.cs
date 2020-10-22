@@ -28,11 +28,11 @@ namespace Compiler.Generators.CSharp
         {
             var builder = new StringBuilder();
 
-            if (!string.IsNullOrWhiteSpace(_schema.Namespace))
+            if (!string.IsNullOrWhiteSpace(Schema.Namespace))
             {
-                builder.AppendLine($"namespace {_schema.Namespace.ToPascalCase()} {{");
+                builder.AppendLine($"namespace {Schema.Namespace.ToPascalCase()} {{");
             }
-            foreach (var definition in _schema.Definitions.Values)
+            foreach (var definition in Schema.Definitions.Values)
             {
                 if (!string.IsNullOrWhiteSpace(definition.Documentation))
                 {
@@ -104,7 +104,7 @@ namespace Compiler.Generators.CSharp
             }
 
 
-            if (!string.IsNullOrWhiteSpace(_schema.Namespace))
+            if (!string.IsNullOrWhiteSpace(Schema.Namespace))
             {
                 builder.AppendLine("}");
             }
@@ -149,7 +149,7 @@ namespace Compiler.Generators.CSharp
                 case ArrayType at: 
                     return $"{(at.MemberType is ArrayType ? ($"{TypeName(at.MemberType, arraySizeVar)}[]") : $"{TypeName(at.MemberType)}[{arraySizeVar}]")}";
                 case DefinedType dt:
-                    var isEnum = _schema.Definitions[dt.Name].Kind == AggregateKind.Enum;
+                    var isEnum = Schema.Definitions[dt.Name].Kind == AggregateKind.Enum;
                     return $"{(isEnum ? string.Empty : "I")}{dt.Name}";
             }
             throw new InvalidOperationException($"GetTypeName: {type}");
@@ -248,10 +248,10 @@ namespace Compiler.Generators.CSharp
                     BaseType.Float64 => "view.ReadFloat64()",
                     _ => throw new ArgumentOutOfRangeException()
                 },
-                DefinedType dt when _schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
+                DefinedType dt when Schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
                     $"view.ReadUint() as {dt.Name}",
                 DefinedType dt =>
-                    $"{(string.IsNullOrWhiteSpace(_schema.Namespace) ? string.Empty : $"{_schema.Namespace.ToPascalCase()}.")}{dt.Name.ToPascalCase()}.DecodeFrom(view)",
+                    $"{(string.IsNullOrWhiteSpace(Schema.Namespace) ? string.Empty : $"{Schema.Namespace.ToPascalCase()}.")}{dt.Name.ToPascalCase()}.DecodeFrom(view)",
                 _ => throw new InvalidOperationException($"CompileDecodeField: {type}")
             };
         }
@@ -367,10 +367,10 @@ namespace Compiler.Generators.CSharp
                     BaseType.Int64 => $"view.WriteInt64({target});",
                     _ => throw new ArgumentOutOfRangeException()
                 },
-                DefinedType dt when _schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
+                DefinedType dt when Schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
                     $"view.WriteEnum({target});",
                 DefinedType dt =>
-                    $"{(string.IsNullOrWhiteSpace(_schema.Namespace) ? string.Empty : $"{_schema.Namespace.ToPascalCase()}.")}{dt.Name.ToPascalCase()}.EncodeInto({target}, view);",
+                    $"{(string.IsNullOrWhiteSpace(Schema.Namespace) ? string.Empty : $"{Schema.Namespace.ToPascalCase()}.")}{dt.Name.ToPascalCase()}.EncodeInto({target}, view);",
                 _ => throw new InvalidOperationException($"CompileEncodeField: {type}")
             };
         }
