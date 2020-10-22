@@ -4,16 +4,18 @@ namespace Compiler.Meta
 {
     public static class ReservedWords
     {
-        public static string SchemaExt = "pie";
+        public static readonly string CompilerVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version!.ToString()!;
+        public static readonly string CompilerName = System.Reflection.Assembly.GetExecutingAssembly().GetName().Name!;
+        public static string SchemaExt = "bop";
 
         public static HashSet<string> Identifiers = new HashSet<string>
         {
-            "PierogiView"
+            "BebopView"
         };
     }
 
     /// <summary>
-    ///     Pierogi base types are aligned with native types found in most programming languages.
+    ///     Bebop base types are aligned with native types found in most programming languages.
     /// </summary>
     public enum BaseType
     {
@@ -114,7 +116,7 @@ namespace Compiler.Meta
         ///     The message type is a data structure that combines state (members) as a single type-safe unit. All members of a
         ///     message are optional.
         ///     <para/>
-        ///     Members of the message may be any valid Pierogi type.
+        ///     Members of the message may be any valid Bebop type.
         ///     <para/>
         /// </summary>
         /// <remarks>

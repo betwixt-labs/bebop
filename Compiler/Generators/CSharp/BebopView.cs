@@ -6,40 +6,40 @@ using System.Text;
 namespace Compiler.Generators.CSharp
 {
     /// <summary>
-    ///     Represents an error that occurs during Pierogi reading and writing
+    ///     Represents an error that occurs during Bebop reading and writing
     /// </summary>
-    public class PierogiException : Exception
+    public class BebopException : Exception
     {
-        public PierogiException()
+        public BebopException()
         {
         }
 
-        public PierogiException(string message)
+        public BebopException(string message)
             : base(message)
         {
         }
 
-        public PierogiException(string message, Exception inner)
+        public BebopException(string message, Exception inner)
             : base(message, inner)
         {
         }
     }
 
     /// <summary>
-    ///     A low-level interface for encoding and decoding Pierogi structured data
+    ///     A low-level interface for encoding and decoding Bebop structured data
     /// </summary>
-    public ref struct PierogiView
+    public ref struct BebopView
     {
         /// <summary>
-        ///     A contiguous region of memory that contains the contents of a Pierogi message
+        ///     A contiguous region of memory that contains the contents of a Bebop message
         /// </summary>
         private Span<byte> _buffer;
 
         /// <summary>
-        ///     Allocates a new <see cref="PierogiView"/> instance backed by an empty array.
+        ///     Allocates a new <see cref="BebopView"/> instance backed by an empty array.
         /// </summary>
         /// <returns></returns>
-        public static PierogiView Create() => new PierogiView(Array.Empty<byte>());
+        public static BebopView Create() => new BebopView(Array.Empty<byte>());
 
         /// <summary>
         ///     Returns a read-only span of all the data present in the underlying <see cref="_buffer"/>
@@ -48,10 +48,10 @@ namespace Compiler.Generators.CSharp
 
 
         /// <summary>
-        ///     Creates a new Pierogi view
+        ///     Creates a new Bebop view
         /// </summary>
         /// <param name="buffer">the buffer of data that will be read from / written to</param>
-        public PierogiView(Span<byte> buffer)
+        public BebopView(Span<byte> buffer)
         {
             _buffer = buffer;
             Position = 0;
@@ -304,7 +304,7 @@ namespace Compiler.Generators.CSharp
         {
             if ((Length & 0xC0000000) != 0)
             {
-                throw new PierogiException("A Pierogi View cannot grow beyond 2 gigabytes.");
+                throw new BebopException("A Bebop View cannot grow beyond 2 gigabytes.");
             }
             if (Length + amount > _buffer.Length)
             {
@@ -370,7 +370,7 @@ namespace Compiler.Generators.CSharp
                 // strings are null-terminated, so a string cannot contain a null character.
                 if (codePoint == 0)
                 {
-                    throw new PierogiException("Cannot encode a string containing the null character.");
+                    throw new BebopException("Cannot encode a string containing the null character.");
                 }
                 // encode UTF-8
                 if (codePoint < 0x80)

@@ -15,7 +15,7 @@ namespace Compiler.Generators
         }
 
         /// <summary>
-        /// Generate code for a Pierogi schema.
+        /// Generate code for a Bebop schema.
         /// </summary>
         /// <returns>The generated code.</returns>
         public abstract string Compile();

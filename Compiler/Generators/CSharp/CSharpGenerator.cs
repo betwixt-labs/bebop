@@ -91,13 +91,13 @@ namespace Compiler.Generators.CSharp
                     builder.AppendLine("");
                     builder.AppendLine(CompileEncodeHelper(definition));
                     builder.AppendLine(
-                        $"    public static void EncodeInto(I{definition.Name.ToPascalCase()} message, PierogiView view) {{");
+                        $"    public static void EncodeInto(I{definition.Name.ToPascalCase()} message, BebopView view) {{");
                     builder.AppendLine(CompileEncode(definition));
                     builder.AppendLine("    }");
                     builder.AppendLine("");
 
                     builder.AppendLine(
-                        $"    public static I{definition.Name.ToPascalCase()} DecodeFrom(PierogiView view) {{");
+                        $"    public static I{definition.Name.ToPascalCase()} DecodeFrom(BebopView view) {{");
                     builder.AppendLine(CompileDecode(definition));
                     builder.AppendLine("  }");
                 }
@@ -265,7 +265,7 @@ namespace Compiler.Generators.CSharp
         {
             var builder = new StringBuilder();
             builder.AppendLine($"    public static I{definition.Name.ToPascalCase()} Decode(byte[] message) {{");
-            builder.AppendLine("        var view = new PierogiView(message);");
+            builder.AppendLine("        var view = new BebopView(message);");
             builder.AppendLine("        return DecodeFrom(view);");
             builder.AppendLine("      }");
             return builder.ToString();
@@ -280,7 +280,7 @@ namespace Compiler.Generators.CSharp
         {
             var builder = new StringBuilder();
             builder.AppendLine($"    public static byte[] Encode(I{definition.Name.ToPascalCase()} message) {{");
-            builder.AppendLine("        var view = new PierogiView();");
+            builder.AppendLine("        var view = new BebopView();");
             builder.AppendLine("        EncodeInto(message, view);");
             builder.AppendLine("        return view.ToArray();");
             builder.AppendLine("      }");

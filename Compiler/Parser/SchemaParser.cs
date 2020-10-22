@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Text.Json;
 using System.Threading.Tasks;
 using Compiler.Exceptions;
 using Compiler.Lexer;
@@ -28,7 +26,7 @@ namespace Compiler.Parser
         /// <summary>
         /// Creates a new schema parser instance from a schema file on disk
         /// </summary>
-        /// <param name="inputFile">The path to the Pierogi schema file that will be parsed</param>
+        /// <param name="inputFile">The path to the Bebop schema file that will be parsed</param>
         /// <param name="nameSpace"></param>
         public SchemaParser(FileInfo inputFile, string nameSpace)
         {
@@ -178,7 +176,7 @@ namespace Compiler.Parser
                     throw new UnrecognizedTypeException(typeToken, definitionToken.Lexeme, _schemaPath);
                 }
             }
-            return new PierogiSchema(_schemaPath, _nameSpace, _definitions);
+            return new BebopSchema(_schemaPath, _nameSpace, _definitions);
         }
 
 

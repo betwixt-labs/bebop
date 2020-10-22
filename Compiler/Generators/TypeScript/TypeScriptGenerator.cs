@@ -133,8 +133,8 @@ namespace Compiler.Generators.TypeScript
         private string CompileDecodeMessage(IDefinition definition)
         {
             var builder = new IndentedStringBuilder(6);
-            builder.AppendLine("if (!(view instanceof PierogiView)) {");
-            builder.AppendLine("  view = new PierogiView(view);");
+            builder.AppendLine("if (!(view instanceof BebopView)) {");
+            builder.AppendLine("  view = new BebopView(view);");
             builder.AppendLine("}");
             builder.AppendLine("");
             builder.AppendLine($"let message: I{definition.Name} = {{}};");
@@ -165,8 +165,8 @@ namespace Compiler.Generators.TypeScript
         private string CompileDecodeStruct(IDefinition definition)
         {
             var builder = new IndentedStringBuilder(6);
-            builder.AppendLine("if (!(view instanceof PierogiView)) {");
-            builder.AppendLine("  view = new PierogiView(view);");
+            builder.AppendLine("if (!(view instanceof BebopView)) {");
+            builder.AppendLine("  view = new BebopView(view);");
             builder.AppendLine("}");
             builder.AppendLine("");
             builder.AppendLine($"var message: I{definition.Name} = {{");
@@ -244,13 +244,13 @@ namespace Compiler.Generators.TypeScript
         }
 
         /// <summary>
-        /// Generate code for a Pierogi schema.
+        /// Generate code for a Bebop schema.
         /// </summary>
         /// <returns>The generated code.</returns>
         public override string Compile()
         {
             var builder = new StringBuilder();
-            builder.AppendLine("import { PierogiView } from \"./PierogiView\";");
+            builder.AppendLine("import { BebopView } from \"./BebopView\";");
             builder.AppendLine("");
             if (!string.IsNullOrWhiteSpace(_schema.Namespace))
             {
@@ -304,17 +304,17 @@ namespace Compiler.Generators.TypeScript
 
                     builder.AppendLine($"  export const {definition.Name} = {{");
                     builder.AppendLine($"    encode(message: I{definition.Name}): Uint8Array {{");
-                    builder.AppendLine("      const view = new PierogiView();");
+                    builder.AppendLine("      const view = new BebopView();");
                     builder.AppendLine("      this.encodeInto(message, view);");
                     builder.AppendLine("      return view.toArray();");
                     builder.AppendLine("    },");
                     builder.AppendLine("");
-                    builder.AppendLine($"    encodeInto(message: I{definition.Name}, view: PierogiView): void {{");
+                    builder.AppendLine($"    encodeInto(message: I{definition.Name}, view: BebopView): void {{");
                     builder.Append(CompileEncode(definition));
                     builder.AppendLine("    },");
                     builder.AppendLine("");
 
-                    builder.AppendLine($"    decode(view: PierogiView | Uint8Array): I{definition.Name} {{");
+                    builder.AppendLine($"    decode(view: BebopView | Uint8Array): I{definition.Name} {{");
                     builder.Append(CompileDecode(definition));
                     builder.AppendLine("    },");
                     builder.AppendLine("  };");
@@ -331,10 +331,10 @@ namespace Compiler.Generators.TypeScript
         public override void WriteAuxiliaryFiles(string outputPath)
         {
             var assembly = Assembly.GetExecutingAssembly();
-            using Stream stream = assembly.GetManifestResourceStream("Compiler.Generators.TypeScript.PierogiView.ts")!;
+            using Stream stream = assembly.GetManifestResourceStream("Compiler.Generators.TypeScript.BebopView.ts")!;
             using StreamReader reader = new StreamReader(stream);
             string result = reader.ReadToEnd();
-            File.WriteAllText(Path.Join(outputPath, "PierogiView.ts"), result);
+            File.WriteAllText(Path.Join(outputPath, "BebopView.ts"), result);
         }
     }
 }

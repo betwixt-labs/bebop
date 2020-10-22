@@ -6,9 +6,9 @@ using Compiler.Meta.Interfaces;
 namespace Compiler.Meta
 {
     /// <inheritdoc/>
-    public readonly struct PierogiSchema : ISchema
+    public readonly struct BebopSchema : ISchema
     {
-        public PierogiSchema(string sourcePath, string nameSpace, Dictionary<string, IDefinition> definitions)
+        public BebopSchema(string sourcePath, string nameSpace, Dictionary<string, IDefinition> definitions)
         {
             SourcePath = sourcePath;
             Namespace = nameSpace;

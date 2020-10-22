@@ -36,7 +36,7 @@ namespace Compiler.IO
           
             const int chunkSize = 2048;
 
-            var tempDir = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "pierogic"));
+            var tempDir = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "Bebopc"));
             Directory.CreateDirectory(tempDir);
             string tempFile = Path.Combine(tempDir, Path.GetFileName(Path.GetTempFileName()));
 

@@ -3,7 +3,7 @@
 namespace Compiler.Lexer.Tokenization.Models
 {
     /// <summary>
-    ///     Represents many of the various Pierogi schema tokens.
+    ///     Represents many of the various Bebop schema tokens.
     /// </summary>
     public readonly struct Token : IEquatable<Token>, IComparable<Token>
     {

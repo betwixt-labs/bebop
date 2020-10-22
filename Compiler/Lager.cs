@@ -28,6 +28,7 @@ namespace Compiler
             {
                 Console.Error.WriteLine(ex.ToString());
             }
+            Console.WriteLine();
         }
 
         public void Success(string message)

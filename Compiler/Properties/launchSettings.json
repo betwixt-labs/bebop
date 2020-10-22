@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Compiler": {
+      "commandName": "Project",
+      "commandLineArgs": " pierogic --lang ts --dir C:\\Users\\Andrew\\PierogiVNext\\Schemas -out C:\\Users\\Andrew\\PierogiVNext\\Schemas\\output\\Test.g.cs"
+    }
+  }
+}
