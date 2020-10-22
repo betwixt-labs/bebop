@@ -76,13 +76,18 @@ export class PierogiView {
     writeFloat32(value: number): void { const index = this.length; this.growBy(4); this.view.setFloat32(index, value, true); }
     writeFloat64(value: number): void { const index = this.length; this.growBy(8); this.view.setFloat64(index, value, true); }
 
-    readBytes():    Uint8Array   { const length = this.readUint32(), start = this.index, end = start + length; this.index = end; return this.buffer.subarray(start, end); }
-    readFloat32s(): Float32Array { const length = this.readUint32(), result = new Float32Array(this.buffer, this.index, length); this.index += length * 4; return result; }
-    readFloat64s(): Float64Array { const length = this.readUint32(), result = new Float64Array(this.buffer, this.index, length); this.index += length * 8; return result; }
+    readBytes(): Uint8Array {
+        const length = this.readUint32(), start = this.index, end = start + length;
+        this.index = end;
+        return this.buffer.subarray(start, end);
+    }
 
-    writeBytes(value: Uint8Array):      void { this.writeUint32(value.length); const index = this.length; this.growBy(value.length);     this.buffer.set(value, index); }
-    writeFloat32s(value: Float32Array): void { this.writeUint32(value.length); const index = this.length; this.growBy(value.length * 4); this.buffer.set(value, index); }
-    writeFloat64s(value: Float64Array): void { this.writeUint32(value.length); const index = this.length; this.growBy(value.length * 8); this.buffer.set(value, index); }
+    writeBytes(value: Uint8Array): void {
+        this.writeUint32(value.length);
+        const index = this.length;
+        this.growBy(value.length);
+        this.buffer.set(value, index);
+    }
 
     /**
      * Reads a null-terminated UTF-8-encoded string.

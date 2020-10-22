@@ -9,9 +9,9 @@ using Compiler.Meta.Interfaces;
 
 namespace Compiler.Generators.TypeScript
 {
-    public class TypeScriptGenerator : IGenerator
+    public class TypeScriptGenerator : Generator
     {
-        private ISchema _schema;
+        public TypeScriptGenerator(ISchema schema) : base(schema) { }
 
 
         private string FormatDocumentation(string documentation, int spaces)
@@ -81,10 +81,6 @@ namespace Compiler.Generators.TypeScript
             {
                 case ArrayType at when at.IsBytes():
                     return $"view.writeBytes({target});";
-                case ArrayType at when at.IsFloat32s():
-                    return $"view.writeFloat32s({target});";
-                case ArrayType at when at.IsFloat64s():
-                    return $"view.writeFloat64s({target});";
                 case ArrayType at:
                     var indent = new string(' ', (depth + 4) * 2);
                     var i = GeneratorUtils.LoopVariable(depth);
@@ -96,7 +92,7 @@ namespace Compiler.Generators.TypeScript
                 case ScalarType st:
                     switch (st.BaseType)
                     {
-                        case BaseType.Bool: return $"view.writeByte({target});";
+                        case BaseType.Bool: return $"view.writeByte(Number({target}));";
                         case BaseType.Byte: return $"view.writeByte({target});";
                         case BaseType.UInt16: return $"view.writeUint16({target});";
                         case BaseType.Int16: return $"view.writeInt16({target});";
@@ -194,10 +190,6 @@ namespace Compiler.Generators.TypeScript
             {
                 case ArrayType at when at.IsBytes():
                     return "view.readBytes()";
-                case ArrayType at when at.IsFloat32s():
-                    return "view.readFloat32s()";
-                case ArrayType at when at.IsFloat64s():
-                    return "view.readFloat64s()";
                 case ArrayType at:
                     return @$"(() => {{
                         let length = view.readUint32();
@@ -262,10 +254,6 @@ namespace Compiler.Generators.TypeScript
                     break;
                 case ArrayType at when at.IsBytes():
                     return "Uint8Array";
-                case ArrayType at when at.IsFloat32s():
-                    return "Float32Array";
-                case ArrayType at when at.IsFloat64s():
-                    return "Float64Array";
                 case ArrayType at:
                     return $"Array<{TypeName(at.MemberType)}>";
                 case DefinedType dt:
@@ -279,10 +267,8 @@ namespace Compiler.Generators.TypeScript
         /// Generate code for a Pierogi schema.
         /// </summary>
         /// <returns>The generated code.</returns>
-        public string Compile(ISchema schema)
+        override public string Compile()
         {
-            _schema = schema;
-
             var builder = new StringBuilder();
             builder.AppendLine("import { PierogiView } from \"./PierogiView\";");
             builder.AppendLine("");
@@ -358,16 +344,14 @@ namespace Compiler.Generators.TypeScript
             {
                 builder.AppendLine("}");
             }
-            builder.AppendLine("");
 
-
-            return builder.ToString().TrimEnd();
+            return builder.ToString();
         }
 
-        public void WriteAuxiliaryFiles(string outputPath)
+        override public void WriteAuxiliaryFiles(string outputPath)
         {
             var assembly = Assembly.GetExecutingAssembly();
-            using Stream stream = assembly.GetManifestResourceStream("Compiler.Generators.TypeScript.PierogiView.ts");
+            using Stream stream = assembly.GetManifestResourceStream("Compiler.Generators.TypeScript.PierogiView.ts")!;
             using StreamReader reader = new StreamReader(stream);
             string result = reader.ReadToEnd();
             File.WriteAllText(Path.Join(outputPath, "PierogiView.ts"), result);

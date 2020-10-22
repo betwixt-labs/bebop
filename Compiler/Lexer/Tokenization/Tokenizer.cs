@@ -14,6 +14,11 @@ namespace Compiler.Lexer.Tokenization
     {
         private ISchemaReader _reader;
 
+        public Tokenizer(ISchemaReader reader)
+        {
+            _reader = reader;
+        }
+
         protected int TokenCount { get; private set; }
 
         protected Span CurrentTokenPosition { get; private set; }

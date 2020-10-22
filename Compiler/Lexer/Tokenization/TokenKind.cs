@@ -28,11 +28,6 @@ namespace Compiler.Lexer.Tokenization
         Message,
 
         /// <summary>
-        ///     The 'package' keyword which is reserved by the compiler
-        /// </summary>
-        [Keyword("package")]
-        Package,
-        /// <summary>
         ///     The 'readonly' keyword which is reserved by the compiler
         /// </summary>
         [Keyword("readonly")]

@@ -7,9 +7,9 @@ using Compiler.Meta.Interfaces;
 
 namespace Compiler.Generators.CSharp
 {
-    public class CSharpGenerator : IGenerator
+    public class CSharpGenerator : Generator
     {
-        private ISchema _schema;
+        public CSharpGenerator(ISchema schema) : base(schema) { }
 
         private string FormatDocumentation(string documentation, int spaces)
         {
@@ -24,9 +24,8 @@ namespace Compiler.Generators.CSharp
             return builder.ToString();
         }
 
-        public string Compile(ISchema schema)
+        override public string Compile()
         {
-            _schema = schema;
             var builder = new StringBuilder();
 
             if (!string.IsNullOrWhiteSpace(_schema.Namespace))
@@ -115,7 +114,7 @@ namespace Compiler.Generators.CSharp
             return builder.ToString().TrimEnd();
         }
 
-        public void WriteAuxiliaryFiles(string outputPath)
+        override public void WriteAuxiliaryFiles(string outputPath)
         {
            
         }

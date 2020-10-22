@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Compiler.Exceptions;
 using Compiler.Generators;
 using Compiler.IO;
+using Compiler.Meta.Interfaces;
 using Compiler.Parser;
 
 namespace Compiler
@@ -25,7 +26,7 @@ namespace Compiler
             void WriteHelpText()
             {
                 Console.WriteLine();
-                Console.WriteLine(flags?.HelpText);
+                Console.WriteLine(flags.HelpText);
             }
 
             if (flags.Version)
@@ -53,15 +54,21 @@ namespace Compiler
                 return 1;
             }
 
-            if (string.IsNullOrWhiteSpace(flags?.SchemaDirectory) && flags?.SchemaFiles?.Count == 0)
+            if (string.IsNullOrWhiteSpace(flags.SchemaDirectory) && (flags.SchemaFiles?.Count ?? 0) == 0)
             {
                 Log.Error("No schema sources specified");
                 return 1;
             }
 
-            if (string.IsNullOrWhiteSpace(flags?.OutputFile))
+            if (string.IsNullOrWhiteSpace(flags.OutputFile))
             {
                 Log.Error("No output file was specified");
+                return 1;
+            }
+
+            if (string.IsNullOrWhiteSpace(flags.Namespace) && flags.Language == "cs")
+            {
+                Log.Error("No namespace was specified");
                 return 1;
             }
 
@@ -74,7 +81,7 @@ namespace Compiler
                 return 1;
             }
 
-            if (flags?.SchemaFiles?.Count > 0 && !SchemaFuser.TryCoalescing(flags.SchemaFiles, out inputFile))
+            if (flags.SchemaFiles != null && flags.SchemaFiles.Count > 0 && !SchemaFuser.TryCoalescing(flags.SchemaFiles, out inputFile))
             {
                 Log.Error($"Unable to coalesce schemas: {string.Join(",", flags.SchemaFiles)}");
                 return 1;
@@ -88,10 +95,10 @@ namespace Compiler
             }
 
             return await CompileSchemas(GeneratorUtils.ImplementedGenerators[flags!.Language],
-                inputFile, new FileInfo(flags.OutputFile), flags.Namespace);
+                inputFile, new FileInfo(flags.OutputFile), flags.Namespace ?? "");
         }
 
-        private static async Task<int> CompileSchemas(IGenerator generator,
+        private static async Task<int> CompileSchemas(Func<ISchema, Generator> makeGenerator,
             FileInfo inputFile,
             FileInfo outputFile,
             string nameSpace)
@@ -107,15 +114,15 @@ namespace Compiler
                 Log.Warn($"Deleted previously generated file: {outputFile.FullName}");
             }
 
-            generator.WriteAuxiliaryFiles(outputFile.DirectoryName ?? string.Empty);
-            Log.Info("Auxiliary files written to output directory");
-
             try
             {
                 var parser = new SchemaParser(inputFile, nameSpace);
                 var schema = await parser.Evaluate();
                 schema.Validate();
-                var compiled = generator.Compile(schema);
+                var generator = makeGenerator(schema);
+                generator.WriteAuxiliaryFiles(outputFile.DirectoryName ?? string.Empty);
+                Log.Info("Auxiliary files written to output directory");
+                var compiled = generator.Compile();
                 await File.WriteAllTextAsync(outputFile.FullName, compiled);
                 Log.Success($"Build complete -> \"{outputFile.FullName}\"");
                 return 0;

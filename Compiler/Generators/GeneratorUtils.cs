@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Compiler.Generators.CSharp;
 using Compiler.Generators.TypeScript;
+using Compiler.Meta.Interfaces;
 
 namespace Compiler.Generators
 {
@@ -14,9 +15,9 @@ namespace Compiler.Generators
         /// <remarks>
         /// Generators are keyed via their commandline alias.
         /// </remarks>
-        public static Dictionary<string, IGenerator> ImplementedGenerators  = new Dictionary<string, IGenerator> {
-            { "ts", new TypeScriptGenerator() },
-            { "cs", new CSharpGenerator() }
+        public static Dictionary<string, Func<ISchema, Generator>> ImplementedGenerators  = new Dictionary<string, Func<ISchema, Generator>> {
+            { "ts", s => new TypeScriptGenerator(s) },
+            { "cs", s => new CSharpGenerator(s) }
         };
    
         /// <summary>
