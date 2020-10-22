@@ -1,7 +1,4 @@
 ﻿using Compiler.Meta.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace Compiler.Meta
 {
