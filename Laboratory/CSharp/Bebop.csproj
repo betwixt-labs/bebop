@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+	  <TargetFrameworks>net5.0;net472</TargetFrameworks>
+	  <Nullable>enable</Nullable>
+	  <LangVersion>9.0</LangVersion>
+	  <Description>Provides simple access to fast and efficient "Bebop" serialization from .NET applications</Description>
+	  <PackageId>bebop-net</PackageId>
+	  <Authors>Rainway, Inc.</Authors>
+	  <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+  </PropertyGroup>
+
+
+	<ItemGroup Condition="'$(TargetFramework)' == 'net472'">
+		<PackageReference Include="System.Memory" Version="4.5.4" />
+		<PackageReference Include="System.Buffers" Version="4.5.1" />
+	</ItemGroup>
+
+	<PropertyGroup Condition="'$(TargetFramework)'=='net5.0'">
+		<DefineConstants>$(DefineConstants);AGGRESSIVE_OPTIMIZE</DefineConstants>
+	</PropertyGroup>
+
+	<ItemGroup>
+    <Compile Remove="BebopTest\**" />
+    <EmbeddedResource Remove="BebopTest\**" />
+    <None Remove="BebopTest\**" />
+  </ItemGroup>
+</Project>

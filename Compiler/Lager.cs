@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Compiler
 {
@@ -28,6 +24,7 @@ namespace Compiler
             {
                 Console.Error.WriteLine(ex.ToString());
             }
+            Console.WriteLine();
         }
 
         public void Success(string message)

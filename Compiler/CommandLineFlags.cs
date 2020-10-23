@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Compiler.Generators;
+using Compiler.Meta;
 
 namespace Compiler
 {
@@ -18,8 +19,6 @@ namespace Compiler
         ///     Creates a new commandline flag attribute
         /// </summary>
         /// <param name="name">The name of the commandline flag.</param>
-        /// ///
-        /// <param name="isRequired">Whether or not the flag is required.</param>
         /// <param name="helpText">A detailed description of flag.</param>
         /// <param name="usageExample"></param>
         public CommandLineFlagAttribute(string name, string helpText, string usageExample = "")
@@ -54,11 +53,6 @@ namespace Compiler
         ///     If any an example of the parameter that is used in conjunction with the flag
         /// </summary>
         public string UsageExample { get; }
-
-        /// <summary>
-        ///     Determines if the flag is required to run the application.
-        /// </summary>
-        public bool IsRequired { get; }
     }
 
 #endregion
@@ -96,12 +90,8 @@ namespace Compiler
 
         public string? HelpText { get; private init; }
 
-    #region Static
+        #region Static
 
-        /// <summary>
-        ///     Used for generating usage text.
-        /// </summary>
-        private const string ProcessName = "pierogic";
 
         /// <summary>
         ///     Hide the constructor to prevent direct initialization
@@ -151,7 +141,7 @@ namespace Compiler
             stringBuilder.Indent(4);
             foreach (var prop in props.Where(prop => !string.IsNullOrWhiteSpace(prop.Attribute.UsageExample)))
             {
-                stringBuilder.AppendLine($"{ProcessName} {prop.Attribute.UsageExample}");
+                stringBuilder.AppendLine($"{ReservedWords.CompilerName} {prop.Attribute.UsageExample}");
             }
             stringBuilder.Dedent(4);
 
@@ -188,11 +178,7 @@ namespace Compiler
 
             foreach (var flag in props)
             {
-                if (flag.Attribute.IsRequired && !parsedFlags.ContainsKey(flag.Attribute.Name))
-                {
-                    errorMessage = $"Required commandline flag \"{flag.Attribute.Name}\" is missing.";
-                    return false;
-                }
+
                 if (!parsedFlags.ContainsKey(flag.Attribute.Name))
                 {
                     continue;

@@ -3,7 +3,7 @@
 namespace Compiler.Meta.Interfaces
 {
     /// <summary>
-    /// Represents the contents of a textual Pierogi schema 
+    /// Represents the contents of a textual Bebop schema 
     /// </summary>
     public interface ISchema
     { 

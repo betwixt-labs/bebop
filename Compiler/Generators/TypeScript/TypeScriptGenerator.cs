@@ -77,41 +77,43 @@ namespace Compiler.Generators.TypeScript
 
         private string CompileEncodeField(IType type, string target, int depth = 0)
         {
-            switch (type)
+            var indent = new string(' ', (depth + 3) * 2);
+            var i = GeneratorUtils.LoopVariable(depth);
+            return type switch
             {
-                case ArrayType at when at.IsBytes():
-                    return $"view.writeBytes({target});";
-                case ArrayType at:
-                    var indent = new string(' ', (depth + 4) * 2);
-                    var i = GeneratorUtils.LoopVariable(depth);
-                    return $"var length{depth} = {target}.length;\n"
-                        + indent + $"view.writeUint32(length{depth});\n"
-                        + indent + $"for (var {i} = 0; {i} < length{depth}; {i}++) {{\n"
-                        + indent + $"  {CompileEncodeField(at.MemberType, $"{target}[{i}]", depth + 1)}\n"
-                        + indent + "}";
-                case ScalarType st:
-                    switch (st.BaseType)
-                    {
-                        case BaseType.Bool: return $"view.writeByte(Number({target}));";
-                        case BaseType.Byte: return $"view.writeByte({target});";
-                        case BaseType.UInt16: return $"view.writeUint16({target});";
-                        case BaseType.Int16: return $"view.writeInt16({target});";
-                        case BaseType.UInt32: return $"view.writeUint32({target});";
-                        case BaseType.Int32: return $"view.writeInt32({target});";
-                        case BaseType.UInt64: return $"view.writeUint64({target});";
-                        case BaseType.Int64: return $"view.writeInt64({target});";
-                        case BaseType.Float32: return $"view.writeFloat32({target});";
-                        case BaseType.Float64: return $"view.writeFloat64({target});";
-                        case BaseType.String: return $"view.writeString({target});";
-                        case BaseType.Guid: return $"view.writeGuid({target});";
-                    }
-                    break;
-                case DefinedType dt when _schema.Definitions[dt.Name].Kind == AggregateKind.Enum:
-                    return $"view.writeEnum({target});";
-                case DefinedType dt:
-                    return $"{dt.Name}.encodeInto({target}, view)";
-            }
-            throw new InvalidOperationException($"CompileEncodeField: {type}");
+                ArrayType at when at.IsBytes() => $"view.writeBytes({target});",
+                ArrayType at => $"var length{depth} = {target}.length;\n" + indent +
+                    $"view.writeUint32(length{depth});\n" + indent +
+                    $"for (var {i} = 0; {i} < length{depth}; {i}++) {{\n" + indent +
+                    $"  {CompileEncodeField(at.MemberType, $"{target}[{i}]", depth + 1)}\n" + indent +
+                    "}",
+                MapType mt => $"var size{depth} = {target}.size;\n" + indent +
+                    $"view.writeUint32(size{depth});\n" + indent +
+                    $"{target}.forEach((v{depth},k{depth}) => {{\n" + indent +
+                    $"  {CompileEncodeField(mt.KeyType, $"k{depth}", depth + 1)}\n" + indent +
+                    $"  {CompileEncodeField(mt.ValueType, $"v{depth}", depth + 1)}\n" + indent +
+                    "});",
+                ScalarType st => st.BaseType switch
+                {
+                    BaseType.Bool => $"view.writeByte(Number({target}));",
+                    BaseType.Byte => $"view.writeByte({target});",
+                    BaseType.UInt16 => $"view.writeUint16({target});",
+                    BaseType.Int16 => $"view.writeInt16({target});",
+                    BaseType.UInt32 => $"view.writeUint32({target});",
+                    BaseType.Int32 => $"view.writeInt32({target});",
+                    BaseType.UInt64 => $"view.writeUint64({target});",
+                    BaseType.Int64 => $"view.writeInt64({target});",
+                    BaseType.Float32 => $"view.writeFloat32({target});",
+                    BaseType.Float64 => $"view.writeFloat64({target});",
+                    BaseType.String => $"view.writeString({target});",
+                    BaseType.Guid => $"view.writeGuid({target});",
+                    _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
+                },
+                DefinedType dt when Schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
+                    $"view.writeEnum({target});",
+                DefinedType dt => $"{dt.Name}.encodeInto({target}, view)",
+                _ => throw new InvalidOperationException($"CompileEncodeField: {type}")
+            };
         }
 
         /// <summary>
@@ -138,8 +140,8 @@ namespace Compiler.Generators.TypeScript
         private string CompileDecodeMessage(IDefinition definition)
         {
             var builder = new IndentedStringBuilder(6);
-            builder.AppendLine("if (!(view instanceof PierogiView)) {");
-            builder.AppendLine("  view = new PierogiView(view);");
+            builder.AppendLine("if (!(view instanceof BebopView)) {");
+            builder.AppendLine("  view = new BebopView(view);");
             builder.AppendLine("}");
             builder.AppendLine("");
             builder.AppendLine($"let message: I{definition.Name} = {{}};");
@@ -170,8 +172,8 @@ namespace Compiler.Generators.TypeScript
         private string CompileDecodeStruct(IDefinition definition)
         {
             var builder = new IndentedStringBuilder(6);
-            builder.AppendLine("if (!(view instanceof PierogiView)) {");
-            builder.AppendLine("  view = new PierogiView(view);");
+            builder.AppendLine("if (!(view instanceof BebopView)) {");
+            builder.AppendLine("  view = new BebopView(view);");
             builder.AppendLine("}");
             builder.AppendLine("");
             builder.AppendLine($"var message: I{definition.Name} = {{");
@@ -186,40 +188,42 @@ namespace Compiler.Generators.TypeScript
 
         private string CompileDecodeField(IType type)
         {
-            switch (type)
+            return type switch
             {
-                case ArrayType at when at.IsBytes():
-                    return "view.readBytes()";
-                case ArrayType at:
-                    return @$"(() => {{
+                ArrayType at when at.IsBytes() => "view.readBytes()",
+                ArrayType at => @$"(() => {{
                         let length = view.readUint32();
                         const collection = new {TypeName(at)}(length);
                         for (var i = 0; i < length; i++) collection[i] = {CompileDecodeField(at.MemberType)};
                         return collection;
-                    }})()";
-                case ScalarType st:
-                    switch (st.BaseType)
-                    {
-                        case BaseType.Bool: return "!!view.readByte()";
-                        case BaseType.Byte: return "view.readByte()";
-                        case BaseType.UInt16: return "view.readUint16()";
-                        case BaseType.Int16: return "view.readInt16()";
-                        case BaseType.UInt32: return "view.readUint32()";
-                        case BaseType.Int32: return "view.readInt32()";
-                        case BaseType.UInt64: return "view.readUint64()";
-                        case BaseType.Int64: return "view.readInt64()";
-                        case BaseType.Float32: return "view.readFloat32()";
-                        case BaseType.Float64: return "view.readFloat64()";
-                        case BaseType.String: return "view.readString()";
-                        case BaseType.Guid: return "view.readGuid()";
-                    }
-                    break;
-                case DefinedType dt when _schema.Definitions[dt.Name].Kind == AggregateKind.Enum:
-                    return $"view.readUint32() as {dt.Name}";
-                case DefinedType dt:
-                    return $"{dt.Name}.decode(view)";
-            }
-            throw new InvalidOperationException($"CompileDecodeField: {type}");
+                    }})()",
+                MapType mt => @$"(() => {{
+                        let size = view.readUint32();
+                        const collection = new {TypeName(mt)}();
+                        for (var i = 0; i < size; i++) collection.set({CompileDecodeField(mt.KeyType)}, {CompileDecodeField(mt.ValueType)});
+                        return collection;
+                    }})()",
+                ScalarType st => st.BaseType switch
+                {
+                    BaseType.Bool => "!!view.readByte()",
+                    BaseType.Byte => "view.readByte()",
+                    BaseType.UInt16 => "view.readUint16()",
+                    BaseType.Int16 => "view.readInt16()",
+                    BaseType.UInt32 => "view.readUint32()",
+                    BaseType.Int32 => "view.readInt32()",
+                    BaseType.UInt64 => "view.readUint64()",
+                    BaseType.Int64 => "view.readInt64()",
+                    BaseType.Float32 => "view.readFloat32()",
+                    BaseType.Float64 => "view.readFloat64()",
+                    BaseType.String => "view.readString()",
+                    BaseType.Guid => "view.readGuid()",
+                    _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
+                },
+                DefinedType dt when Schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
+                    $"view.readUint32() as {dt.Name}",
+                DefinedType dt => $"{dt.Name}.decode(view)",
+                _ => throw new InvalidOperationException($"CompileDecodeField: {type}")
+            };
         }
 
         /// <summary>
@@ -232,52 +236,43 @@ namespace Compiler.Generators.TypeScript
             switch (type)
             {
                 case ScalarType st:
-                    switch (st.BaseType)
+                    return st.BaseType switch
                     {
-                        case BaseType.Bool:
-                            return "boolean";
-                        case BaseType.Byte:
-                        case BaseType.UInt16:
-                        case BaseType.Int16:
-                        case BaseType.UInt32:
-                        case BaseType.Int32:
-                        case BaseType.Float32:
-                        case BaseType.Float64:
-                            return "number";
-                        case BaseType.UInt64:
-                        case BaseType.Int64:
-                            return "bigint";
-                        case BaseType.String:
-                        case BaseType.Guid:
-                            return "string";
-                    }
-                    break;
+                        BaseType.Bool => "boolean",
+                        BaseType.Byte or BaseType.UInt16 or BaseType.Int16 or BaseType.UInt32 or BaseType.Int32 or
+                            BaseType.Float32 or BaseType.Float64 => "number",
+                        BaseType.UInt64 or BaseType.Int64 => "bigint",
+                        BaseType.String or BaseType.Guid => "string",
+                        _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
+                    };
                 case ArrayType at when at.IsBytes():
                     return "Uint8Array";
                 case ArrayType at:
                     return $"Array<{TypeName(at.MemberType)}>";
+                case MapType mt:
+                    return $"Map<{TypeName(mt.KeyType)}, {TypeName(mt.ValueType)}>";
                 case DefinedType dt:
-                    var isEnum = _schema.Definitions[dt.Name].Kind == AggregateKind.Enum;
+                    var isEnum = Schema.Definitions[dt.Name].Kind == AggregateKind.Enum;
                     return (isEnum ? "" : "I") + dt.Name;
             }
             throw new InvalidOperationException($"GetTypeName: {type}");
         }
 
         /// <summary>
-        /// Generate code for a Pierogi schema.
+        /// Generate code for a Bebop schema.
         /// </summary>
         /// <returns>The generated code.</returns>
-        override public string Compile()
+        public override string Compile()
         {
             var builder = new StringBuilder();
-            builder.AppendLine("import { PierogiView } from \"./PierogiView\";");
+            builder.AppendLine("import { BebopView } from \"./BebopView\";");
             builder.AppendLine("");
-            if (!string.IsNullOrWhiteSpace(_schema.Namespace))
+            if (!string.IsNullOrWhiteSpace(Schema.Namespace))
             {
-                builder.AppendLine($"export namespace {_schema.Namespace} {{");
+                builder.AppendLine($"export namespace {Schema.Namespace} {{");
             }
 
-            foreach (var definition in _schema.Definitions.Values)
+            foreach (var definition in Schema.Definitions.Values)
             {
                 if(!string.IsNullOrWhiteSpace(definition.Documentation))
                 {
@@ -324,23 +319,23 @@ namespace Compiler.Generators.TypeScript
 
                     builder.AppendLine($"  export const {definition.Name} = {{");
                     builder.AppendLine($"    encode(message: I{definition.Name}): Uint8Array {{");
-                    builder.AppendLine("      const view = new PierogiView();");
+                    builder.AppendLine("      const view = new BebopView();");
                     builder.AppendLine("      this.encodeInto(message, view);");
                     builder.AppendLine("      return view.toArray();");
                     builder.AppendLine("    },");
                     builder.AppendLine("");
-                    builder.AppendLine($"    encodeInto(message: I{definition.Name}, view: PierogiView): void {{");
+                    builder.AppendLine($"    encodeInto(message: I{definition.Name}, view: BebopView): void {{");
                     builder.Append(CompileEncode(definition));
                     builder.AppendLine("    },");
                     builder.AppendLine("");
 
-                    builder.AppendLine($"    decode(view: PierogiView | Uint8Array): I{definition.Name} {{");
+                    builder.AppendLine($"    decode(view: BebopView | Uint8Array): I{definition.Name} {{");
                     builder.Append(CompileDecode(definition));
                     builder.AppendLine("    },");
                     builder.AppendLine("  };");
                 }
             }
-            if (!string.IsNullOrWhiteSpace(_schema.Namespace))
+            if (!string.IsNullOrWhiteSpace(Schema.Namespace))
             {
                 builder.AppendLine("}");
             }
@@ -348,13 +343,13 @@ namespace Compiler.Generators.TypeScript
             return builder.ToString();
         }
 
-        override public void WriteAuxiliaryFiles(string outputPath)
+        public override void WriteAuxiliaryFiles(string outputPath)
         {
             var assembly = Assembly.GetExecutingAssembly();
-            using Stream stream = assembly.GetManifestResourceStream("Compiler.Generators.TypeScript.PierogiView.ts")!;
+            using Stream stream = assembly.GetManifestResourceStream("Compiler.Generators.TypeScript.BebopView.ts")!;
             using StreamReader reader = new StreamReader(stream);
             string result = reader.ReadToEnd();
-            File.WriteAllText(Path.Join(outputPath, "PierogiView.ts"), result);
+            File.WriteAllText(Path.Join(outputPath, "BebopView.ts"), result);
         }
     }
 }

@@ -1,5 +1,3 @@
-package lab;
-
 struct Int32s { int32[] a; }
 struct Uint32s { uint32[] a; }
 struct Float32s { float32[] a; }

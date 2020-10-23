@@ -1,10 +1,10 @@
 ﻿using System;
 using System.IO;
-using System.Reflection;
 using System.Threading.Tasks;
 using Compiler.Exceptions;
 using Compiler.Generators;
 using Compiler.IO;
+using Compiler.Meta;
 using Compiler.Meta.Interfaces;
 using Compiler.Parser;
 
@@ -18,7 +18,7 @@ namespace Compiler
         {
             if (!CommandLineFlags.TryParse(args, out var flags, out var message))
             {
-                Console.WriteLine(message);
+                Log.Error(message);
                 Console.WriteLine(flags.HelpText);
                 return 1;
             }
@@ -31,7 +31,7 @@ namespace Compiler
 
             if (flags.Version)
             {
-                Console.WriteLine($"pierogic {Assembly.GetExecutingAssembly().GetName().Version}");
+                Console.WriteLine($"{ReservedWords.CompilerName} {ReservedWords.CompilerVersion}");
                 return 0;
             }
 

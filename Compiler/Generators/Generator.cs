@@ -7,15 +7,15 @@ namespace Compiler.Generators
         /// <summary>
         /// The schema to generate code from.
         /// </summary>
-        protected ISchema _schema;
+        protected ISchema Schema;
 
         protected Generator(ISchema schema)
         {
-            _schema = schema;
+            Schema = schema;
         }
 
         /// <summary>
-        /// Generate code for a Pierogi schema.
+        /// Generate code for a Bebop schema.
         /// </summary>
         /// <returns>The generated code.</returns>
         public abstract string Compile();

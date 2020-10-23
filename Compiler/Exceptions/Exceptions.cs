@@ -2,8 +2,6 @@
 using Compiler.Lexer.Tokenization.Models;
 using Compiler.Meta.Interfaces;
 using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace Compiler.Exceptions
 {

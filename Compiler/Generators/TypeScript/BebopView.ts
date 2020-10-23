@@ -11,7 +11,7 @@ const asciiToHex = [
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
 ];
 
-export class PierogiView {
+export class BebopView {
     private buffer: Uint8Array;
     private view: DataView;
     index: number;

@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30615.102
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Bebop", "Bebop.csproj", "{FAB6A625-EF9E-4422-BFF0-FCB3157681B9}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Test", "BebopTest\Test.csproj", "{A54205BB-1ECC-4901-9CDA-2F2186AD0584}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FAB6A625-EF9E-4422-BFF0-FCB3157681B9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FAB6A625-EF9E-4422-BFF0-FCB3157681B9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FAB6A625-EF9E-4422-BFF0-FCB3157681B9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FAB6A625-EF9E-4422-BFF0-FCB3157681B9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A54205BB-1ECC-4901-9CDA-2F2186AD0584}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A54205BB-1ECC-4901-9CDA-2F2186AD0584}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A54205BB-1ECC-4901-9CDA-2F2186AD0584}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A54205BB-1ECC-4901-9CDA-2F2186AD0584}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {FFCFDD71-B4B2-4DC2-92BA-F62E71DFF5BF}
+	EndGlobalSection
+EndGlobal
