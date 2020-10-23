@@ -146,8 +146,10 @@ namespace Compiler.Generators.CSharp
                         BaseType.Int64 => "long",
                         _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                     };
-                case ArrayType at: 
+                case ArrayType at:
                     return $"{(at.MemberType is ArrayType ? ($"{TypeName(at.MemberType, arraySizeVar)}[]") : $"{TypeName(at.MemberType)}[{arraySizeVar}]")}";
+                case MapType mt:
+                    return $"Dictionary<{TypeName(mt.KeyType)}, {TypeName(mt.ValueType)}>";
                 case DefinedType dt:
                     var isEnum = Schema.Definitions[dt.Name].Kind == AggregateKind.Enum;
                     return $"{(isEnum ? string.Empty : "I")}{dt.Name}";

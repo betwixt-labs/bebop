@@ -14,8 +14,8 @@ async function compile() {
   };
 
   return gulp
-      .src("test/*.pie")
-      .pipe(exec((file) => `..\\..\\Compiler\\bin\\Debug\\net5.0\\Compiler.exe --lang ts --out test\\generated\\${file.stem}.ts --files ${file.path}`, options))
+      .src("test/*.bop")
+      .pipe(exec((file) => `..\\..\\Compiler\\bin\\Debug\\net5.0\\win10-x64\\bebopc.exe --lang ts --out test\\generated\\${file.stem}.ts --files ${file.path}`, options))
       .pipe(exec.reporter(reportOptions));
 }
 
