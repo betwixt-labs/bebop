@@ -45,6 +45,12 @@ namespace Compiler.Lexer.Tokenization
         [Keyword("map")]
         Map,
 
+        /// <summary>
+        ///     The 'array' keyword which is reserved by the compiler
+        /// </summary>
+        [Keyword("array")]
+        Array,
+
     #endregion
 
 

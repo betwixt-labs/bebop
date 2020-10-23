@@ -1,4 +1,4 @@
-import { PierogiView } from './generated/PierogiView';
+import { BebopView } from './generated/BebopView';
 import { BasicArrays, IBasicArrays, TestInt32Array } from './generated/basic_arrays';
 import * as assert from "assert";
 

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Compiler.Exceptions;
@@ -15,6 +16,10 @@ namespace Compiler.Parser
     {
         private readonly SchemaLexer _lexer;
         private readonly Dictionary<string, IDefinition> _definitions = new Dictionary<string, IDefinition>();
+        /// <summary>
+        /// A set of references to named types found in message/struct definitions:
+        /// the left token is the type name, and the right token is the definition it's used in (used to report a helpful error).
+        /// </summary>
         private readonly HashSet<(Token, Token)> _typeReferences = new HashSet<(Token, Token)>();
         private uint _index;
         private readonly string _nameSpace;
@@ -207,20 +212,10 @@ namespace Compiler.Parser
 
                 if (kind != AggregateKind.Enum)
                 {
-                    type = DetermineType(CurrentToken);
-                    if (type is DefinedType)
-                    {
-                        _typeReferences.Add((CurrentToken, definitionToken));
-                    }
-
-                    Expect(TokenKind.Identifier);
-                    while (Eat(TokenKind.OpenBracket))
-                    {
-                        Expect(TokenKind.CloseBracket);
-                        type = new ArrayType(type);
-                    }
+                    type = ParseType(definitionToken);
                 }
 
+                Console.WriteLine(CurrentToken.Lexeme);
                 var fieldName = CurrentToken.Lexeme;
                 var fieldStart = CurrentToken.Span;
                
@@ -263,17 +258,56 @@ namespace Compiler.Parser
         }
 
         /// <summary>
-        ///     Attempts to determine the type for the <paramref name="currentToken"/>.
+        ///     Parse a type name.
         /// </summary>
-        /// <param name="currentToken">the token that reflects the type to derive a type from.</param>
-        /// <returns>A type code or null if none was found.</returns>
-        private static IType DetermineType(Token currentToken)
+        /// <param name="definitionToken">
+        ///     The token acting as a representative for the definition we're in.
+        ///     <para/>
+        ///     This is used to track how DefinedTypes are referenced in definitions, and give useful error messages.
+        /// </param>
+        /// <returns>An IType object.</returns>
+        private IType ParseType(Token definitionToken)
         {
-            if (currentToken.TryParseBaseType(out var baseType))
+            IType type;
+            if (Eat(TokenKind.Map))
             {
-                return new ScalarType(baseType!.Value);
+                // Parse "map[k,v]".
+                Expect(TokenKind.OpenBracket);
+                var keyType = ParseType(definitionToken);
+                Expect(TokenKind.Comma);
+                var valueType = ParseType(definitionToken);
+                Expect(TokenKind.CloseBracket);
+                type = new MapType(keyType, valueType);
             }
-            return new DefinedType(currentToken.Lexeme);
+            else if (Eat(TokenKind.Array))
+            {
+                // Parse "array[v]".
+                Expect(TokenKind.OpenBracket);
+                var valueType = ParseType(definitionToken);
+                Expect(TokenKind.CloseBracket);
+                type = new ArrayType(valueType);
+            }
+            else if (CurrentToken.TryParseBaseType(out var baseType))
+            {
+                type = new ScalarType(baseType!.Value);
+                // Consume the matched basetype name as an identifier:
+                Expect(TokenKind.Identifier);
+            } else
+            {
+                type = new DefinedType(CurrentToken.Lexeme);
+                _typeReferences.Add((CurrentToken, definitionToken));
+                // Consume the type name as an identifier:
+                Expect(TokenKind.Identifier);
+            }
+
+            // Parse any postfix "[]".
+            while (Eat(TokenKind.OpenBracket))
+            {
+                Expect(TokenKind.CloseBracket);
+                type = new ArrayType(type);
+            }
+
+            return type;
         }
     }
 }

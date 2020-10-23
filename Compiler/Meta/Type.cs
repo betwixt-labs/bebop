@@ -41,6 +41,21 @@ namespace Compiler.Meta
         }
     }
 
+    /// <summary>
+    /// A map type, like "map[int, int]" or "map[string, map[int, Foo]]".
+    /// It represents a list of key-value pairs, where each key occurs only once.
+    /// </summary>
+    class MapType : IType
+    {
+        public IType KeyType { get; }
+        public IType ValueType { get; }
+        public MapType(IType keyType, IType valueType)
+        {
+            KeyType = keyType;
+            ValueType = valueType;
+        }
+    }
+
     class DefinedType : IType
     {
         /// <summary>

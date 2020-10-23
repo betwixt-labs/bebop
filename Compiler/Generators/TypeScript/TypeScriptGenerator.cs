@@ -77,7 +77,7 @@ namespace Compiler.Generators.TypeScript
 
         private string CompileEncodeField(IType type, string target, int depth = 0)
         {
-            var indent = new string(' ', (depth + 4) * 2);
+            var indent = new string(' ', (depth + 3) * 2);
             var i = GeneratorUtils.LoopVariable(depth);
             return type switch
             {
@@ -85,7 +85,14 @@ namespace Compiler.Generators.TypeScript
                 ArrayType at => $"var length{depth} = {target}.length;\n" + indent +
                     $"view.writeUint32(length{depth});\n" + indent +
                     $"for (var {i} = 0; {i} < length{depth}; {i}++) {{\n" + indent +
-                    $"  {CompileEncodeField(at.MemberType, $"{target}[{i}]", depth + 1)}\n" + indent + "}",
+                    $"  {CompileEncodeField(at.MemberType, $"{target}[{i}]", depth + 1)}\n" + indent +
+                    "}",
+                MapType mt => $"var size{depth} = {target}.size;\n" + indent +
+                    $"view.writeUint32(size{depth});\n" + indent +
+                    $"{target}.forEach((v{depth},k{depth}) => {{\n" + indent +
+                    $"  {CompileEncodeField(mt.KeyType, $"k{depth}", depth + 1)}\n" + indent +
+                    $"  {CompileEncodeField(mt.ValueType, $"v{depth}", depth + 1)}\n" + indent +
+                    "});",
                 ScalarType st => st.BaseType switch
                 {
                     BaseType.Bool => $"view.writeByte(Number({target}));",
@@ -190,6 +197,12 @@ namespace Compiler.Generators.TypeScript
                         for (var i = 0; i < length; i++) collection[i] = {CompileDecodeField(at.MemberType)};
                         return collection;
                     }})()",
+                MapType mt => @$"(() => {{
+                        let size = view.readUint32();
+                        const collection = new {TypeName(mt)}();
+                        for (var i = 0; i < size; i++) collection.set({CompileDecodeField(mt.KeyType)}, {CompileDecodeField(mt.ValueType)});
+                        return collection;
+                    }})()",
                 ScalarType st => st.BaseType switch
                 {
                     BaseType.Bool => "!!view.readByte()",
@@ -236,6 +249,8 @@ namespace Compiler.Generators.TypeScript
                     return "Uint8Array";
                 case ArrayType at:
                     return $"Array<{TypeName(at.MemberType)}>";
+                case MapType mt:
+                    return $"Map<{TypeName(mt.KeyType)}, {TypeName(mt.ValueType)}>";
                 case DefinedType dt:
                     var isEnum = Schema.Definitions[dt.Name].Kind == AggregateKind.Enum;
                     return (isEnum ? "" : "I") + dt.Name;
