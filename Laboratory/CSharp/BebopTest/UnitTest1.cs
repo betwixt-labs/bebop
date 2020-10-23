@@ -2,7 +2,7 @@
 using Bebop;
 using NUnit.Framework;
 
-namespace BebopTest
+namespace Test
 {
     public class Tests
     {
