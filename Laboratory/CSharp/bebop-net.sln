@@ -5,7 +5,7 @@ VisualStudioVersion = 16.0.30615.102
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Bebop", "Bebop.csproj", "{FAB6A625-EF9E-4422-BFF0-FCB3157681B9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BebopTest", "BebopTest\BebopTest.csproj", "{A54205BB-1ECC-4901-9CDA-2F2186AD0584}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Test", "BebopTest\Test.csproj", "{A54205BB-1ECC-4901-9CDA-2F2186AD0584}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
