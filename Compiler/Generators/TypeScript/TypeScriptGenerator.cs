@@ -75,7 +75,7 @@ namespace Compiler.Generators.TypeScript
             return builder.ToString();
         }
 
-        private string CompileEncodeField(IType type, string target, int depth = 0)
+        private string CompileEncodeField(TypeBase type, string target, int depth = 0)
         {
             var indent = new string(' ', (depth + 3) * 2);
             var i = GeneratorUtils.LoopVariable(depth);
@@ -186,7 +186,7 @@ namespace Compiler.Generators.TypeScript
             return builder.ToString();
         }
 
-        private string CompileDecodeField(IType type)
+        private string CompileDecodeField(TypeBase type)
         {
             return type switch
             {
@@ -227,11 +227,11 @@ namespace Compiler.Generators.TypeScript
         }
 
         /// <summary>
-        /// Generate a TypeScript type name for the given <see cref="IType"/>.
+        /// Generate a TypeScript type name for the given <see cref="TypeBase"/>.
         /// </summary>
         /// <param name="type">The field type to generate code for.</param>
         /// <returns>The TypeScript type name.</returns>
-        private string TypeName(in IType type)
+        private string TypeName(in TypeBase type)
         {
             switch (type)
             {

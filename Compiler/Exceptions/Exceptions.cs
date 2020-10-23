@@ -64,4 +64,10 @@ namespace Compiler.Exceptions
         public InvalidDeprectedAttributeException(IField field, string sourcePath)
             : base($"'{field.Name}' was marked deprecated, but it is not part of a message", field.Span, sourcePath) { }
     }
+
+    class InvalidMapKeyTypeException : SpanException
+    {
+        public InvalidMapKeyTypeException(TypeBase type, string sourcePath)
+            : base($"Type '{type.AsString}' is an invalid key type for a map. Only booleans, numbers, strings, and GUIDs can be used as keys.", type.Span, sourcePath) { }
+    }
 }

@@ -6,7 +6,7 @@ namespace Compiler.Meta
     public readonly struct Field : IField
     {
         public Field(string name,
-            in IType type,
+            in TypeBase type,
             in Span span,
             in DeprecatedAttribute? deprecatedAttribute,
             in int constantValue, string documentation)
@@ -20,7 +20,7 @@ namespace Compiler.Meta
         }
 
         public string Name { get; }
-        public IType Type { get; }
+        public TypeBase Type { get; }
         public Span Span { get; }
         public DeprecatedAttribute? DeprecatedAttribute { get; }
         public int ConstantValue { get; }

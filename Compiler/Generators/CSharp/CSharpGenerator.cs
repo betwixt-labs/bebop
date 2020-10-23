@@ -121,12 +121,12 @@ namespace Compiler.Generators.CSharp
         }
 
         /// <summary>
-        ///     Generate a C# type name for the given <see cref="IType"/>.
+        ///     Generate a C# type name for the given <see cref="TypeBase"/>.
         /// </summary>
         /// <param name="type">The field type to generate code for.</param>
         /// <param name="arraySizeVar">A variable name that will be formatted into the array initializer</param>
         /// <returns>The C# type name.</returns>
-        private string TypeName(in IType type , string arraySizeVar = "")
+        private string TypeName(in TypeBase type , string arraySizeVar = "")
         {
             switch (type)
             {
@@ -223,7 +223,7 @@ namespace Compiler.Generators.CSharp
         }
 
 
-        private string CompileDecodeField(IType type)
+        private string CompileDecodeField(TypeBase type)
         {
             return type switch
             {
@@ -341,7 +341,7 @@ namespace Compiler.Generators.CSharp
         }
 
 
-        private string CompileEncodeField(IType type, string target, int depth = 0)
+        private string CompileEncodeField(TypeBase type, string target, int depth = 0)
         {
             var indent = new string(' ', (depth + 4) * 2);
             var i = GeneratorUtils.LoopVariable(depth);

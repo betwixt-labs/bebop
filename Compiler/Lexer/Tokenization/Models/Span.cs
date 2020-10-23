@@ -111,7 +111,7 @@ namespace Compiler.Lexer.Tokenization.Models
         /// <summary>
         /// Return a span with the same start position that continues on the same line for <paramref name="length"/> characters.
         /// </summary>
-        public Span WithLength(uint length) => new Span(StartLine, EndLine, StartLine, (int)(EndLine + length));
+        public Span WithLength(uint length) => new Span(StartLine, StartColumn, StartLine, (int)(StartColumn + length));
 
         public Span Combine(Span other) => Combine(this, other);
 

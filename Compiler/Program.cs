@@ -29,6 +29,16 @@ namespace Compiler
                 Console.WriteLine(flags.HelpText);
             }
 
+            if (flags.CheckSchemaFiles != null && flags.CheckSchemaFiles.Count > 0)
+            {
+                if (!SchemaFuser.TryCoalescing(flags.CheckSchemaFiles, out var inputCheckFile))
+                {
+                    Log.Error("Couldn't coalesce schemas to check.");
+                    return 1;
+                }
+                return await CheckSchema(inputCheckFile);
+            }
+
             if (flags.Version)
             {
                 Console.WriteLine($"{ReservedWords.CompilerName} {ReservedWords.CompilerVersion}");
@@ -94,11 +104,19 @@ namespace Compiler
                 return 1;
             }
 
-            return await CompileSchemas(GeneratorUtils.ImplementedGenerators[flags!.Language],
+            return await CompileSchema(GeneratorUtils.ImplementedGenerators[flags!.Language],
                 inputFile, new FileInfo(flags.OutputFile), flags.Namespace ?? "");
         }
 
-        private static async Task<int> CompileSchemas(Func<ISchema, Generator> makeGenerator,
+        private static async Task<ISchema> ParseAndValidateSchema(FileInfo inputFile, string nameSpace)
+        {
+            var parser = new SchemaParser(inputFile, nameSpace);
+            var schema = await parser.Evaluate();
+            schema.Validate();
+            return schema;
+        }
+
+        private static async Task<int> CompileSchema(Func<ISchema, Generator> makeGenerator,
             FileInfo inputFile,
             FileInfo outputFile,
             string nameSpace)
@@ -116,9 +134,7 @@ namespace Compiler
 
             try
             {
-                var parser = new SchemaParser(inputFile, nameSpace);
-                var schema = await parser.Evaluate();
-                schema.Validate();
+                var schema = await ParseAndValidateSchema(inputFile, nameSpace);
                 var generator = makeGenerator(schema);
                 generator.WriteAuxiliaryFiles(outputFile.DirectoryName ?? string.Empty);
                 Log.Info("Auxiliary files written to output directory");
@@ -127,19 +143,41 @@ namespace Compiler
                 Log.Success($"Build complete -> \"{outputFile.FullName}\"");
                 return 0;
             }
-            catch (SpanException e)
+            catch (Exception e)
             {
-                Log.Error($"Error in {e.SourcePath} at {e.Span.StartColonString()}:", e);
+                ReportError(inputFile.FullName, e);
             }
-            catch (FileNotFoundException)
+            return 1;
+        }
+
+        private static async Task<int> CheckSchema(FileInfo inputFile)
+        {
+            try
             {
-                Log.Error($"File {inputFile.FullName} was not found.");
+                await ParseAndValidateSchema(inputFile, "CheckNameSpace");
+                return 0;
             }
             catch (Exception e)
             {
-                Log.Error($"Error when processing {inputFile.FullName}:", e);
+                ReportError(inputFile.FullName, e);
+                return 1;
             }
-            return 1;
+        }
+
+        private static void ReportError(string inputFileName, Exception exception)
+        {
+            switch (exception)
+            {
+                case SpanException e:
+                    Log.Error($"Error in {e.SourcePath} at {e.Span.StartColonString()}: ", e);
+                    break;
+                case FileNotFoundException:
+                    Log.Error($"File {inputFileName} was not found.");
+                    break;
+                default:
+                    Log.Error($"Error when processing {inputFileName}:", exception);
+                    break;
+            }
         }
     }
 }

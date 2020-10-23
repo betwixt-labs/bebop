@@ -1,0 +1,6 @@
+
+
+
+struct Wrong {
+   map[array[bool], bool] m1;
+}
