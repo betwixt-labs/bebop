@@ -27,6 +27,7 @@ namespace Compiler.Generators.CSharp
         public override string Compile()
         {
             var builder = new StringBuilder();
+            builder.AppendLine("using Bebop;");
 
             if (!string.IsNullOrWhiteSpace(Schema.Namespace))
             {

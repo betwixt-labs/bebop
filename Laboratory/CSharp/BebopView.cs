@@ -55,6 +55,7 @@ namespace Bebop
         /// </summary>
         public ReadOnlySpan<byte> Data => _buffer.Slice(0, Length);
 
+        public BebopView(ReadOnlySpan<byte> buffer) : this(new Span<byte>(buffer.ToArray())) {}
 
         /// <summary>
         ///     Creates a new Bebop view
@@ -251,6 +252,7 @@ namespace Bebop
 
         /// <summary>
         ///     Reads a null-terminated string from the underlying buffer
+        ///  TODO optimize because wtf
         /// </summary>
         /// <returns>A UTF-16 encoded string</returns>
         [MethodImpl(HotPath)]
@@ -376,58 +378,65 @@ namespace Bebop
 
         /// <summary>
         ///     Writes a UTF-16 encoded string to the underlying buffer
+        /// TODO optimize because wtf
         /// </summary>
         /// <param name="value"></param>
         [MethodImpl(HotPath)]
         public void WriteString(in string value)
         {
-            for (var i = 0; i < value.Length; i++)
-            {
-                // decode UTF-16
-                var a = value[i];
-                int codePoint;
-                if (i + 1 == value.Length || a < 0xD800 || a >= 0xDC00)
-                {
-                    codePoint = unchecked((byte) a);
-                }
-                else
-                {
-                    var b = value[++i];
-                    codePoint = unchecked((byte) ((a << 10) + b + (0x10000 - (0xD800 << 10) - 0xDC00)));
-                }
-                // strings are null-terminated, so a string cannot contain a null character.
-                if (codePoint == 0)
-                {
-                    throw new BebopException("Cannot encode a string containing the null character.");
-                }
-                // encode UTF-8
-                if (codePoint < 0x80)
-                {
-                    WriteByte(unchecked((byte) codePoint));
-                }
-                else
-                {
-                    if (codePoint < 0x800)
-                    {
-                        WriteByte(unchecked((byte) (((codePoint >> 6) & 0x1F) | 0xC0)));
-                    }
-                    else
-                    {
-                        if (codePoint < 0x10000)
-                        {
-                            WriteByte(unchecked((byte) (((codePoint >> 12) & 0x0F) | 0xE0)));
-                        }
-                        else
-                        {
-                            WriteByte(unchecked((byte) (((codePoint >> 18) & 0x07) | 0xF0)));
-                            WriteByte(unchecked((byte) (((codePoint >> 12) & 0x3F) | 0x80)));
-                        }
-                        WriteByte(unchecked((byte) (((codePoint >> 6) & 0x3F) | 0x80)));
-                    }
-                    WriteByte(unchecked((byte) ((codePoint & 0x3F) | 0x80)));
-                }
-            }
+
+            var data = Encoding.UTF8.GetBytes(value).AsSpan();
+            var index = Length;
+            GrowBy(data.Length);
+            data.CopyTo(_buffer.Slice(index, data.Length));
             WriteByte(0);
+            /*
+             for (var i = 0; i < value.Length; i++)
+             {
+                 // decode UTF-16
+                 var a = value[i];
+                 int codePoint;
+                 if (i + 1 == value.Length || a < 0xD800 || a >= 0xDC00)
+                 {
+                     codePoint = unchecked((byte) a);
+                 }
+                 else
+                 {
+                     var b = value[++i];
+                     codePoint = unchecked((byte) ((a << 10) + b + (0x10000 - (0xD800 << 10) - 0xDC00)));
+                 }
+                 // strings are null-terminated, so a string cannot contain a null character.
+                 if (codePoint == 0)
+                 {
+                     throw new BebopException("Cannot encode a string containing the null character.");
+                 }
+                 // encode UTF-8
+                 if (codePoint < 0x80)
+                 {
+                     WriteByte(unchecked((byte) codePoint));
+                 }
+                 else
+                 {
+                     if (codePoint < 0x800)
+                     {
+                         WriteByte(unchecked((byte) (((codePoint >> 6) & 0x1F) | 0xC0)));
+                     }
+                     else
+                     {
+                         if (codePoint < 0x10000)
+                         {
+                             WriteByte(unchecked((byte) (((codePoint >> 12) & 0x0F) | 0xE0)));
+                         }
+                         else
+                         {
+                             WriteByte(unchecked((byte) (((codePoint >> 18) & 0x07) | 0xF0)));
+                             WriteByte(unchecked((byte) (((codePoint >> 12) & 0x3F) | 0x80)));
+                         }
+                         WriteByte(unchecked((byte) (((codePoint >> 6) & 0x3F) | 0x80)));
+                     }
+                     WriteByte(unchecked((byte) ((codePoint & 0x3F) | 0x80)));
+                 }
+             }*/
         }
 
         [MethodImpl(HotPath)]
