@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net.NetworkInformation;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -50,18 +51,30 @@ namespace Bebop
         [MethodImpl(HotPath)]
         public static BebopView Create() => new BebopView(Array.Empty<byte>());
 
+
+        public static BebopView From(ReadOnlyMemory<byte> buffer) => From(buffer.Span);
+
+        public static BebopView From(ReadOnlySpan<byte> buffer) => new BebopView(new Span<byte>(buffer.ToArray()));
+
+        public static BebopView From(Memory<byte> buffer) => new BebopView(buffer.Span);
+
+        public static BebopView From(byte[] buffer) => new BebopView(buffer);
+
+        public static BebopView From(Span<byte> buffer) => new BebopView(buffer);
+
+       
+
         /// <summary>
         ///     Returns a read-only span of all the data present in the underlying <see cref="_buffer"/>
         /// </summary>
         public ReadOnlySpan<byte> Data => _buffer.Slice(0, Length);
 
-        public BebopView(ReadOnlySpan<byte> buffer) : this(new Span<byte>(buffer.ToArray())) {}
 
         /// <summary>
         ///     Creates a new Bebop view
         /// </summary>
         /// <param name="buffer">the buffer of data that will be read from / written to</param>
-        public BebopView(Span<byte> buffer)
+        private BebopView(Span<byte> buffer)
         {
             _buffer = buffer;
             Position = 0;
@@ -252,67 +265,31 @@ namespace Bebop
 
         /// <summary>
         ///     Reads a null-terminated string from the underlying buffer
-        ///  TODO optimize because wtf
         /// </summary>
         /// <returns>A UTF-16 encoded string</returns>
         [MethodImpl(HotPath)]
         public string ReadString()
         {
-            var result = new StringBuilder();
-
-            while (true)
+            unsafe
             {
-                int codePoint;
+                var startIndex = Position;
+                // eat bytes until we find the null terminator
+                while (ReadByte() != 0) { /*NOOP*/ }
 
-                // decode UTF-8
-                var a = ReadByte();
-                if (a < 0xC0)
+                var stringByteCount = Position - startIndex - 1;
+                fixed (byte* o = &_buffer.Slice(startIndex, stringByteCount).GetPinnableReference())
                 {
-                    codePoint = a;
-                }
-                else
-                {
-                    var b = ReadByte();
-                    if (a < 0xE0)
+                    var charCount = Encoding.UTF8.GetMaxCharCount(stringByteCount);
+                    fixed (char* c = new char[charCount])
                     {
-                        codePoint = ((a & 0x1F) << 6) | (b & 0x3F);
+                        var writtenChars = Encoding.UTF8.GetChars(o, stringByteCount, c, charCount);
+                        return new string(c, 0, writtenChars);
                     }
-                    else
-                    {
-                        var c = ReadByte();
-                        if (a < 0xF0)
-                        {
-                            codePoint = ((a & 0x0F) << 12) | ((b & 0x3F) << 6) | (c & 0x3F);
-                        }
-                        else
-                        {
-                            var d = ReadByte();
-                            codePoint = ((a & 0x07) << 18) | ((b & 0x3F) << 12) | ((c & 0x3F) << 6) | (d & 0x3F);
-                        }
-                    }
-                }
-
-                // strings are null-terminated
-                if (codePoint == 0)
-                {
-                    break;
-                }
-
-                // encode UTF-16
-                if (codePoint < 0x10000)
-                {
-                    result.Append((char) codePoint, 1);
-                }
-                else
-                {
-                    codePoint -= 0x10000;
-
-                    result.Append(new[] {(char) ((codePoint >> 10) + 0xD800), (char) (codePoint % 0x0400 + 0xDC00)});
                 }
             }
-            return result.ToString();
         }
 
+       
         [MethodImpl(HotPath)]
         public byte ReadByte() => _buffer[Position++];
 
@@ -376,67 +353,23 @@ namespace Bebop
             MemoryMarshal.Write(_buffer.Slice(index), ref guid);
         }
 
-        /// <summary>
-        ///     Writes a UTF-16 encoded string to the underlying buffer
-        /// TODO optimize because wtf
-        /// </summary>
-        /// <param name="value"></param>
         [MethodImpl(HotPath)]
-        public void WriteString(in string value)
+        public void WriteString(string value)
         {
-
-            var data = Encoding.UTF8.GetBytes(value).AsSpan();
-            var index = Length;
-            GrowBy(data.Length);
-            data.CopyTo(_buffer.Slice(index, data.Length));
-            WriteByte(0);
-            /*
-             for (var i = 0; i < value.Length; i++)
-             {
-                 // decode UTF-16
-                 var a = value[i];
-                 int codePoint;
-                 if (i + 1 == value.Length || a < 0xD800 || a >= 0xDC00)
-                 {
-                     codePoint = unchecked((byte) a);
-                 }
-                 else
-                 {
-                     var b = value[++i];
-                     codePoint = unchecked((byte) ((a << 10) + b + (0x10000 - (0xD800 << 10) - 0xDC00)));
-                 }
-                 // strings are null-terminated, so a string cannot contain a null character.
-                 if (codePoint == 0)
-                 {
-                     throw new BebopException("Cannot encode a string containing the null character.");
-                 }
-                 // encode UTF-8
-                 if (codePoint < 0x80)
-                 {
-                     WriteByte(unchecked((byte) codePoint));
-                 }
-                 else
-                 {
-                     if (codePoint < 0x800)
-                     {
-                         WriteByte(unchecked((byte) (((codePoint >> 6) & 0x1F) | 0xC0)));
-                     }
-                     else
-                     {
-                         if (codePoint < 0x10000)
-                         {
-                             WriteByte(unchecked((byte) (((codePoint >> 12) & 0x0F) | 0xE0)));
-                         }
-                         else
-                         {
-                             WriteByte(unchecked((byte) (((codePoint >> 18) & 0x07) | 0xF0)));
-                             WriteByte(unchecked((byte) (((codePoint >> 12) & 0x3F) | 0x80)));
-                         }
-                         WriteByte(unchecked((byte) (((codePoint >> 6) & 0x3F) | 0x80)));
-                     }
-                     WriteByte(unchecked((byte) ((codePoint & 0x3F) | 0x80)));
-                 }
-             }*/
+            unsafe
+            {
+                fixed (char* c = value)
+                {
+                    var size = Encoding.UTF8.GetByteCount(c, value.Length);
+                    var index = Length;
+                    GrowBy(size);
+                    fixed (byte* o = &_buffer.Slice(index, size).GetPinnableReference())
+                    {
+                        Encoding.UTF8.GetBytes(c, value.Length, o, size);
+                        WriteByte(0);
+                    }
+                }
+            }
         }
 
         [MethodImpl(HotPath)]
