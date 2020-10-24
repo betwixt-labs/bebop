@@ -46,7 +46,7 @@ namespace Compiler.Lexer.Tokenization.Models
             Lexeme = lexeme;
             Index = index;
             Length = (uint) (Lexeme?.Length ?? 0);
-            Span = span.WithLength(Length);
+            Span = span;
         }
 
         public override int GetHashCode() => HashCode.Combine((int) Kind, Lexeme, Span);

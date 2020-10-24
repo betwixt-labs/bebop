@@ -72,58 +72,7 @@ namespace Compiler.Lexer.Tokenization.Models
         /// </summary>
         public int Lines => EndLine - StartLine + 1;
 
-        /// <summary>
-        ///     Extends the span to the next line. Returns a new Span with the same start position, ending on next line at column
-        ///     0.
-        /// </summary>
-        public static Span StartOfFile(string fileName) => new Span(fileName, 0, 0);
-
-        /// <summary>
-        ///     Extends the span to the next line. Returns a new Span with the same start position, ending on next line at column
-        ///     0.
-        /// </summary>
-        [JsonIgnore]
-        public Span ExtendLine => new Span(FileName, StartLine, StartColumn, EndLine + 1, 0);
-
-        /// <summary>
-        ///     Returns a new empty span at column 0 on the next line.
-        /// </summary>
-        [JsonIgnore]
-        public Span StartOfNextLine => new Span(FileName, EndLine + 1, 0);
-
-        /// <summary>
-        ///     Extends the span to the next column. Returns a new Span with the same start position, ending on the same line at
-        ///     the next column.
-        /// </summary>
-        [JsonIgnore]
-        public Span ExtendColumn => new Span(FileName, StartLine, StartColumn, EndLine, EndColumn + 1);
-
-        /// <summary>
-        ///     Returns a new span starting on the same line, at the next column.
-        /// </summary>
-        [JsonIgnore]
-        public Span Next => new Span(FileName, EndLine, EndColumn + 1);
-
-        /// <summary>
-        ///     Returns a new span with the same start position, ending on the same line at the previous column.
-        /// </summary>
-        [JsonIgnore]
-        public Span PreviousColumn => new Span(FileName, StartLine, StartColumn, EndLine, EndColumn - 1);
-
-        /// <summary>
-        ///     Returns a new span starting at the end of the current position.
-        /// </summary>
-        [JsonIgnore]
-        public Span End => new Span(FileName, EndLine, EndColumn);
-
-        /// <summary>
-        /// Return a span with the same start position that continues on the same line for <paramref name="length"/> characters.
-        /// </summary>
-        public Span WithLength(uint length) => new Span(FileName, StartLine, StartColumn, StartLine, (int)(StartColumn + length));
-
         public Span Combine(Span other) => Combine(this, other);
-
-        public Span WithFileName(string newFileName) => new Span(newFileName, StartLine, StartColumn, EndLine, EndColumn);
 
         public static Span Combine(params Span[] a)
         {
@@ -141,17 +90,14 @@ namespace Compiler.Lexer.Tokenization.Models
 
         public int CompareTo(Span other)
         {
-            if (Equals(other))
-            {
-                return 0;
-            }
-
-            if (other.StartLine < StartLine || other.StartLine == StartLine && other.StartColumn < StartColumn)
-            {
-                return 1;
-            }
-
-            return -1;
+            var c = StartLine.CompareTo(other.StartLine);
+            if (c != 0) return c;
+            c = StartColumn.CompareTo(other.StartColumn);
+            if (c != 0) return c;
+            c = EndLine.CompareTo(other.EndLine);
+            if (c != 0) return c;
+            c = EndColumn.CompareTo(other.EndColumn);
+            return c;
         }
 
         public override bool Equals(object? obj) => obj is Span span && Equals(span);
