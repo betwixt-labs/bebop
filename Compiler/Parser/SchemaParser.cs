@@ -24,22 +24,20 @@ namespace Compiler.Parser
         private uint _index;
         private readonly string _nameSpace;
         private Token[] _tokens = new Token[] { };
-        private readonly string _schemaPath;
 
         /// <summary>
-        /// Creates a new schema parser instance from a schema file on disk
+        /// Creates a new schema parser instance from some schema files on disk.
         /// </summary>
-        /// <param name="inputFile">The path to the Bebop schema file that will be parsed</param>
+        /// <param name="schemaPaths">The Bebop schema files that will be parsed</param>
         /// <param name="nameSpace"></param>
-        public SchemaParser(FileInfo inputFile, string nameSpace)
+        public SchemaParser(List<string> schemaPaths, string nameSpace)
         {
-            _lexer = SchemaLexer.FromSchemaPath(inputFile.FullName);
+            _lexer = SchemaLexer.FromSchemaPaths(schemaPaths);
             _nameSpace = nameSpace;
-            _schemaPath = inputFile.FullName;
         }
 
         /// <summary>
-        /// Creates a new schema parser instance and loads the schema into memory
+        /// Creates a new schema parser instance and loads the schema into memory.
         /// </summary>
         /// <param name="textualSchema">A string representation of a schema.</param>
         /// <param name="nameSpace"></param>
@@ -47,7 +45,6 @@ namespace Compiler.Parser
         {
             _lexer = SchemaLexer.FromTextualSchema(textualSchema);
             _nameSpace = nameSpace;
-            _schemaPath = string.Empty;
         }
 
         /// <summary>
@@ -121,7 +118,7 @@ namespace Compiler.Parser
             }
             if (!Eat(kind))
             {
-                throw new UnexpectedTokenException(kind, CurrentToken, _schemaPath);
+                throw new UnexpectedTokenException(kind, CurrentToken);
             }
         }
 
@@ -168,7 +165,7 @@ namespace Compiler.Parser
                     _ when Eat(TokenKind.Enum) => AggregateKind.Enum,
                     _ when Eat(TokenKind.Struct) => AggregateKind.Struct,
                     _ when Eat(TokenKind.Message) => AggregateKind.Message,
-                    _ => throw new UnexpectedTokenException(TokenKind.Message, CurrentToken, _schemaPath)
+                    _ => throw new UnexpectedTokenException(TokenKind.Message, CurrentToken)
                 };
                 DeclareAggregateType(CurrentToken, kind, isReadOnly, definitionDocumentation);
             }
@@ -176,10 +173,10 @@ namespace Compiler.Parser
             {
                 if (!_definitions.ContainsKey(typeToken.Lexeme))
                 {
-                    throw new UnrecognizedTypeException(typeToken, definitionToken.Lexeme, _schemaPath);
+                    throw new UnrecognizedTypeException(typeToken, definitionToken.Lexeme);
                 }
             }
-            return new BebopSchema(_schemaPath, _nameSpace, _definitions);
+            return new BebopSchema(_nameSpace, _definitions);
         }
 
 
@@ -213,7 +210,6 @@ namespace Compiler.Parser
                     ? new ScalarType(BaseType.UInt32, definitionToken.Span, definitionToken.Lexeme)
                     : ParseType(definitionToken);
 
-                Console.WriteLine(CurrentToken.Lexeme);
                 var fieldName = CurrentToken.Lexeme;
                 var fieldStart = CurrentToken.Span;
 
@@ -250,7 +246,7 @@ namespace Compiler.Parser
             var definition = new Definition(name, isReadOnly, definitionSpan, kind, fields, definitionDocumentation);
             if (_definitions.ContainsKey(name))
             {
-                throw new MultipleDefinitionsException(definition, _schemaPath);
+                throw new MultipleDefinitionsException(definition);
             }
             _definitions.Add(name, definition);
         }
@@ -275,7 +271,7 @@ namespace Compiler.Parser
                 var keyType = ParseType(definitionToken);
                 if (!IsValidMapKeyType(keyType))
                 {
-                    throw new InvalidMapKeyTypeException(keyType, _schemaPath);
+                    throw new InvalidMapKeyTypeException(keyType);
                 }
                 Expect(TokenKind.Comma);
                 var valueType = ParseType(definitionToken);

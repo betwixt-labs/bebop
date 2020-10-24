@@ -1,6 +1,3 @@
-
-
-
 struct Wrong {
-   map[array[bool], bool] m1;
+    map[bool[], bool] m1;
 }

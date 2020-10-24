@@ -6,7 +6,7 @@ using Compiler.Lexer.Tokenization.Models;
 namespace Compiler.Lexer.Tokenization.Interfaces
 {
 
-    public interface ITokenizer :  IDisposable
+    public interface ITokenizer
     {
         Token? TryScan(char surrogate);
 
