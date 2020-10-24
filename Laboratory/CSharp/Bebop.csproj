@@ -8,6 +8,7 @@
 	  <PackageId>bebop-net</PackageId>
 	  <Authors>Rainway, Inc.</Authors>
 	  <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+	  <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
 
@@ -22,7 +23,10 @@
 
 	<ItemGroup>
     <Compile Remove="BebopTest\**" />
+    <Compile Remove="Benchmarks\**" />
     <EmbeddedResource Remove="BebopTest\**" />
+    <EmbeddedResource Remove="Benchmarks\**" />
     <None Remove="BebopTest\**" />
+    <None Remove="Benchmarks\**" />
   </ItemGroup>
 </Project>
