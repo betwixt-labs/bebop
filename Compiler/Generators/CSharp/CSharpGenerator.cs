@@ -150,7 +150,7 @@ namespace Compiler.Generators.CSharp
                 case ArrayType at:
                     return $"{(at.MemberType is ArrayType ? ($"{TypeName(at.MemberType, arraySizeVar)}[]") : $"{TypeName(at.MemberType)}[{arraySizeVar}]")}";
                 case MapType mt:
-                    return $"Dictionary<{TypeName(mt.KeyType)}, {TypeName(mt.ValueType)}>";
+                    return $"System.Collections.Generic.Dictionary<{TypeName(mt.KeyType)}, {TypeName(mt.ValueType)}>";
                 case DefinedType dt:
                     var isEnum = Schema.Definitions[dt.Name].Kind == AggregateKind.Enum;
                     return $"{(isEnum ? string.Empty : "I")}{dt.Name}";
@@ -229,10 +229,21 @@ namespace Compiler.Generators.CSharp
             {
                 ArrayType at when at.IsBytes() => "view.ReadBytes()",
                 ArrayType at => @$"new System.Func<{TypeName(at)}>(() =>
-                        {{
-                        var length = view.ReadUInt();
+                    {{
+                        var length = view.ReadUInt32();
                         var collection = new {TypeName(at, "length")};
                         for (var i = 0; i < length; i++) collection[i] = {CompileDecodeField(at.MemberType)};
+                        return collection;
+                    }}).Invoke()",
+                MapType mt => @$"new System.Func<{TypeName(mt)}>(() =>
+                    {{
+                        var length = view.ReadUInt32();
+                        var collection = new {TypeName(mt)}(length);
+                        for (var i = 0; i < length; i++) {{
+                            var key = {CompileDecodeField(mt.KeyType)};
+                            var value = {CompileDecodeField(mt.ValueType)};
+                            collection.Add(key, value);
+                        }}
                         return collection;
                     }}).Invoke()",
                 ScalarType st => st.BaseType switch
@@ -343,7 +354,7 @@ namespace Compiler.Generators.CSharp
 
         private string CompileEncodeField(TypeBase type, string target, int depth = 0)
         {
-            var indent = new string(' ', (depth + 4) * 2);
+            var indent = new string(' ', (depth + 3) * 2);
             var i = GeneratorUtils.LoopVariable(depth);
             return type switch
             {
@@ -353,7 +364,12 @@ namespace Compiler.Generators.CSharp
                 ArrayType at => $"var length{depth} = {target}.Length;\n" + indent +
                     $"view.WriteUInt32(length{depth});\n" + indent +
                     $"for (var {i} = 0; {i} < length{depth}; {i}++) {{\n" + indent +
-                    $"    {CompileEncodeField(at.MemberType, $"{target}[{i}]", depth + 1)}\n" + indent + "}",
+                    $"  {CompileEncodeField(at.MemberType, $"{target}[{i}]", depth + 1)}\n" + indent + "}",
+                MapType mt => $"view.WriteUInt32({target}.Count);\n" + indent +
+                    $"foreach (var kv in {target}) {{\n" + indent +
+                    $"  {CompileEncodeField(mt.KeyType, "kv.Key", depth + 1)}\n" + indent +
+                    $"  {CompileEncodeField(mt.ValueType, "kv.Value", depth + 1)}\n" + indent +
+                    $"}}",
                 ScalarType st => st.BaseType switch
                 {
                     BaseType.Bool => $"view.WriteByte({target});",

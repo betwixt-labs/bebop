@@ -103,12 +103,6 @@ namespace Compiler
                 return 1;
             }
 
-            if (string.IsNullOrWhiteSpace(flags.Namespace) && flags.Language == "cs")
-            {
-                Log.Error("No namespace was specified");
-                return 1;
-            }
-
             return await CompileSchema(GeneratorUtils.ImplementedGenerators[flags!.Language],
                 paths, new FileInfo(flags.OutputFile), flags.Namespace ?? "");
         }
