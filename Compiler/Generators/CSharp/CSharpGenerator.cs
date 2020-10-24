@@ -9,6 +9,7 @@ namespace Compiler.Generators.CSharp
 {
     public class CSharpGenerator : Generator
     {
+        private const string HotPath = "[System.Runtime.CompilerServices.MethodImpl(BebopView.HotPath)]";
         public CSharpGenerator(ISchema schema) : base(schema) { }
 
         private string FormatDocumentation(string documentation, int spaces)
@@ -91,12 +92,13 @@ namespace Compiler.Generators.CSharp
                         $"  public class {definition.Name.ToPascalCase()} : I{definition.Name.ToPascalCase()} {{");
                     builder.AppendLine("");
                     builder.AppendLine(CompileEncodeHelper(definition));
+                    builder.AppendLine($"    {HotPath}");
                     builder.AppendLine(
                         $"    public static void EncodeInto(I{definition.Name.ToPascalCase()} message, BebopView view) {{");
                     builder.AppendLine(CompileEncode(definition));
                     builder.AppendLine("    }");
                     builder.AppendLine("");
-
+                    builder.AppendLine($"    {HotPath}");
                     builder.AppendLine(
                         $"    public static I{definition.Name.ToPascalCase()} DecodeFrom(BebopView view) {{");
                     builder.AppendLine(CompileDecode(definition));
@@ -177,10 +179,30 @@ namespace Compiler.Generators.CSharp
         private string CompileDecodeStruct(IDefinition definition)
         {
             var builder = new StringBuilder();
-            builder.AppendLine($"      var message = new {definition.Name.ToPascalCase()}() {{");
             foreach (var field in definition.Fields)
             {
-                builder.AppendLine($"        {field.Name.ToPascalCase()} = {CompileDecodeField(field.Type)},");
+                if (field.Type is MapType || field.Type is ArrayType)
+                {
+                    builder.AppendLine(
+                        $"        {HotPath} static {TypeName(field.Type)} Decode{field.Name.ToPascalCase()}(BebopView view) {{");
+                    builder.AppendLine(
+                        $"        {CompileDecodeField(field.Type)}");
+                    builder.AppendLine( $"        }}");
+                }
+            }
+
+            builder.AppendLine($"      var message = new {definition.Name.ToPascalCase()} {{");
+            foreach (var field in definition.Fields)
+            {
+                if (field.Type is MapType || field.Type is ArrayType)
+                {
+                    
+                    builder.AppendLine($"        {field.Name.ToPascalCase()} = Decode{field.Name.ToPascalCase()}(view),");
+                }
+                else
+                {
+                    builder.AppendLine($"        {field.Name.ToPascalCase()} = {CompileDecodeField(field.Type)},");
+                }
             }
             builder.AppendLine("      };");
             builder.AppendLine("      return message;");
@@ -199,7 +221,7 @@ namespace Compiler.Generators.CSharp
             var builder = new StringBuilder();
             builder.AppendLine($"      var message = new {definition.Name.ToPascalCase()}();");
             builder.AppendLine("      var length = view.ReadMessageLength();");
-            builder.AppendLine("      var end = view.Position + length;");
+            builder.AppendLine("      var end = unchecked((int) (view.Position + length));");
             builder.AppendLine("      while (true) {");
             builder.AppendLine("        switch (view.ReadByte()) {");
             builder.AppendLine("          case 0:");
@@ -223,29 +245,51 @@ namespace Compiler.Generators.CSharp
         }
 
 
-        private string CompileDecodeField(TypeBase type)
+        private string CompileDecodeField(TypeBase type, int depth = 0)
         {
+            
+            var i = GeneratorUtils.LoopVariable(depth);
             return type switch
             {
                 ArrayType at when at.IsBytes() => "view.ReadBytes()",
-                ArrayType at => @$"new System.Func<{TypeName(at)}>(() =>
-                    {{
-                        var length = view.ReadUInt32();
-                        var collection = new {TypeName(at, "length")};
-                        for (var i = 0; i < length; i++) collection[i] = {CompileDecodeField(at.MemberType)};
-                        return collection;
-                    }}).Invoke()",
-                MapType mt => @$"new System.Func<{TypeName(mt)}>(() =>
-                    {{
-                        var length = view.ReadUInt32();
-                        var collection = new {TypeName(mt)}(length);
-                        for (var i = 0; i < length; i++) {{
-                            var key = {CompileDecodeField(mt.KeyType)};
-                            var value = {CompileDecodeField(mt.ValueType)};
-                            collection.Add(key, value);
+                ArrayType at => @$"
+                        var length{depth} = unchecked((int)view.ReadUInt32());
+                        var collection{depth} = new {TypeName(at, $"length{depth}")};
+                        for (var {i} = 0; {i} < length{depth}; {i}++) {{
+                            
+                {at.MemberType switch
+                {
+                    MapType m => $@"{CompileDecodeField(m, depth + 1)}
+                    {(depth == 0 ? $"he" : $"collection{depth - 1}.Add(key{depth - 1}, collection{depth});")}
+",
+                    ArrayType a => $@"{CompileDecodeField(a, depth + 1)} {(depth == 0 ? $"a_test" : $"a_dad")}",
+                    _ => $"collection{depth}[{i}] = {CompileDecodeField(at.MemberType)};"
+                }}
+       
                         }}
-                        return collection;
-                    }}).Invoke()",
+                {(depth == 0 ? $"return collection{depth};" : $"")}
+
+",
+                MapType mt => @$"
+                        var length{depth} = unchecked((int)view.ReadUInt32());
+                        var collection{depth} = new {TypeName(mt)}(length{depth});
+                        for (var {i} = 0; {i} < length{depth}; {i}++) {{
+                        var key{depth} = {CompileDecodeField(mt.KeyType, depth)};
+                        {mt.ValueType switch
+                {
+                    MapType m => $@"{CompileDecodeField(m, depth + 1)}
+                    {(depth == 0 ? $"collection{depth}.Add(key{depth}, collection{depth + 1});" : $"")}
+",
+                    ArrayType a => @$"what the fuck {CompileDecodeField(a, depth + 1)}",
+                    _ => $@"
+                            var value{depth} = {CompileDecodeField(mt.ValueType, depth)}; 
+                            collection{depth}.Add(key{depth}, value{depth});"
+                }}
+       
+                        }}
+   {(depth == 0 ? $"return collection{depth};" : $"")}
+
+",
                 ScalarType st => st.BaseType switch
                 {
                     BaseType.Bool => "view.ReadByte() != 0",
@@ -293,6 +337,7 @@ namespace Compiler.Generators.CSharp
         public string CompileEncodeHelper(IDefinition definition)
         {
             var builder = new StringBuilder();
+            builder.AppendLine($"     {HotPath}");
             builder.AppendLine($"    public static byte[] Encode(I{definition.Name.ToPascalCase()} message) {{");
             builder.AppendLine("        var view = new BebopView();");
             builder.AppendLine("        EncodeInto(message, view);");
@@ -329,14 +374,14 @@ namespace Compiler.Generators.CSharp
                     continue;
                 }
                 builder.AppendLine("");
-                builder.AppendLine($"      if (message.{field.Name.ToPascalCase()} != null) {{");
+                builder.AppendLine($"      if (message.{field.Name.ToPascalCase()}.HasValue) {{");
                 builder.AppendLine($"        view.WriteByte({field.ConstantValue});");
-                builder.AppendLine($"        {CompileEncodeField(field.Type, $"message.{field.Name.ToPascalCase()}")}");
+                builder.AppendLine($"        {CompileEncodeField(field.Type, $"message.{field.Name.ToPascalCase()}.Value")}");
                 builder.AppendLine("      }");
             }
             builder.AppendLine("      view.WriteByte(0);");
             builder.AppendLine("      var end = view.Length;");
-            builder.AppendLine("      view.FillMessageLength(pos, end - start);");
+            builder.AppendLine("      view.FillMessageLength(pos, unchecked((uint) unchecked(end - start)));");
             return builder.ToString();
         }
 
@@ -351,9 +396,15 @@ namespace Compiler.Generators.CSharp
             return builder.ToString();
         }
 
+        private string BuildVariableName(string target, int depth)
+        {
+            return @$"length{target.Replace("message.", string.Empty).Replace(".Key", string.Empty).Replace(".Value", string.Empty)}{depth}";
+        }
+
 
         private string CompileEncodeField(TypeBase type, string target, int depth = 0)
         {
+           var lengthVariable = BuildVariableName(target, depth);
             var indent = new string(' ', (depth + 3) * 2);
             var i = GeneratorUtils.LoopVariable(depth);
             return type switch
@@ -361,14 +412,14 @@ namespace Compiler.Generators.CSharp
                 ArrayType at when at.IsBytes() => $"view.WriteBytes({target});",
                 ArrayType at when at.IsFloat32s() => $"view.WriteFloat32s({target});",
                 ArrayType at when at.IsFloat64s() => $"view.WriteFloat64s({target});",
-                ArrayType at => $"var length{depth} = {target}.Length;\n" + indent +
+                ArrayType at => $"var length{depth} = unchecked((uint){target}.Length);\n" + indent +
                     $"view.WriteUInt32(length{depth});\n" + indent +
                     $"for (var {i} = 0; {i} < length{depth}; {i}++) {{\n" + indent +
                     $"  {CompileEncodeField(at.MemberType, $"{target}[{i}]", depth + 1)}\n" + indent + "}",
-                MapType mt => $"view.WriteUInt32({target}.Count);\n" + indent +
-                    $"foreach (var kv in {target}) {{\n" + indent +
-                    $"  {CompileEncodeField(mt.KeyType, "kv.Key", depth + 1)}\n" + indent +
-                    $"  {CompileEncodeField(mt.ValueType, "kv.Value", depth + 1)}\n" + indent +
+                MapType mt => $"view.WriteUInt32(unchecked((uint){target}.Count));\n" + indent +
+                    $"foreach (var kv{depth} in {target}) {{\n" + indent +
+                    $"  {CompileEncodeField(mt.KeyType, $"kv{depth}.Key", depth + 1)}\n" + indent +
+                    $"  {CompileEncodeField(mt.ValueType, $"kv{depth}.Value", depth + 1)}\n" + indent +
                     $"}}",
                 ScalarType st => st.BaseType switch
                 {

@@ -30,7 +30,7 @@ namespace Test
             input.WriteGuid(testGuid);
 
 
-            var output = BebopView.From(input.Data);
+            var output = BebopView.From(input.Slice());
 
             Assert.AreEqual(1000, output.ReadInt16());
             Assert.AreEqual(2000, output.ReadInt32());

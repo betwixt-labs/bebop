@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Net.NetworkInformation;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -33,7 +34,7 @@ namespace Bebop
     public ref struct BebopView
     {
     #if AGGRESSIVE_OPTIMIZE
-        internal const MethodImplOptions HotPath =
+        public const MethodImplOptions HotPath =
             MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization;
     #else
         internal const MethodImplOptions HotPath = MethodImplOptions.AggressiveInlining;
@@ -54,7 +55,7 @@ namespace Bebop
 
         public static BebopView From(ReadOnlyMemory<byte> buffer) => From(buffer.Span);
 
-        public static BebopView From(ReadOnlySpan<byte> buffer) => new BebopView(new Span<byte>(buffer.ToArray()));
+        public static BebopView From(ReadOnlySpan<byte> buffer) => new BebopView(buffer.ToArray().AsSpan());
 
         public static BebopView From(Memory<byte> buffer) => new BebopView(buffer.Span);
 
@@ -62,12 +63,20 @@ namespace Bebop
 
         public static BebopView From(Span<byte> buffer) => new BebopView(buffer);
 
-       
+
 
         /// <summary>
-        ///     Returns a read-only span of all the data present in the underlying <see cref="_buffer"/>
+        ///     Creates a read-only slice of the underlying <see cref="_buffer"/> containing all currently written data.
         /// </summary>
-        public ReadOnlySpan<byte> Data => _buffer.Slice(0, Length);
+        [MethodImpl(HotPath)]
+        public ReadOnlySpan<byte> Slice() => _buffer.Slice(0, Length);
+
+        /// <summary>
+        /// Copies the contents of <see cref="Slice"/> into a new array.  This heap
+        /// allocates, so should generally be avoided for writing and only used when setting a decoded message property.
+        /// </summary>
+        [MethodImpl(HotPath)]
+        public byte[] ToArray() => Slice().ToArray();
 
 
         /// <summary>
@@ -276,7 +285,7 @@ namespace Bebop
                 // eat bytes until we find the null terminator
                 while (ReadByte() != 0) { /*NOOP*/ }
 
-                var stringByteCount = Position - startIndex - 1;
+                var stringByteCount = unchecked(Position - startIndex - 1);
                 fixed (byte* o = &_buffer.Slice(startIndex, stringByteCount).GetPinnableReference())
                 {
                     var charCount = Encoding.UTF8.GetMaxCharCount(stringByteCount);
@@ -370,6 +379,12 @@ namespace Bebop
                     }
                 }
             }
+        }
+
+        [MethodImpl(HotPath)]
+        public void WriteByte(bool value)
+        {
+            WriteByte(!value ? 0 : 1);
         }
 
         [MethodImpl(HotPath)]
