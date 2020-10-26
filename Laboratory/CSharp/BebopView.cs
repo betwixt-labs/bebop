@@ -37,7 +37,7 @@ namespace Bebop
         public const MethodImplOptions HotPath =
             MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization;
     #else
-        internal const MethodImplOptions HotPath = MethodImplOptions.AggressiveInlining;
+        public const MethodImplOptions HotPath = MethodImplOptions.AggressiveInlining;
     #endif
 
         /// <summary>
@@ -384,7 +384,9 @@ namespace Bebop
         [MethodImpl(HotPath)]
         public void WriteByte(bool value)
         {
-            WriteByte(!value ? 0 : 1);
+            var index = Length;
+            GrowBy(1);
+            _buffer[index] = (!value ? 0 : 1);
         }
 
         [MethodImpl(HotPath)]

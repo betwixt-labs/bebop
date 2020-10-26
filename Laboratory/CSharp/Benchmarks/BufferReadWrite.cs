@@ -26,7 +26,7 @@ namespace Benchmarks
             input.WriteInt32(2000);
             input.WriteString(TestString);
             input.WriteGuid(_testGuid);
-            _testBuffer = input.Data.ToArray();
+            _testBuffer = input.ToArray();
         }
 
         [Benchmark]
