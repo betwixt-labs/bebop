@@ -76,6 +76,9 @@ namespace Compiler
         [CommandLineFlag("out", "The file generated code will be written to", "--lang cs --dir [input dir] --out [output file]")]
         public string? OutputFile { get; private set; }
 
+        [CommandLineFlag("check", "Only check a given schema is valid", "--check [file.bop] [file2.bop] ...")]
+        public List<string>? CheckSchemaFiles { get; private set; }
+
         /// <summary>
         /// When set to true the process will output the product version and exit with a zero return code.
         /// </summary>

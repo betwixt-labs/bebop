@@ -8,11 +8,6 @@ namespace Compiler.Meta.Interfaces
     public interface ISchema
     { 
         /// <summary>
-        /// A path to the schema on disk.
-        /// </summary>
-        public string SourcePath { get; }
-
-        /// <summary>
         /// An optional namespace that is provided to the compiler.
         /// </summary>
         public string Namespace { get; }

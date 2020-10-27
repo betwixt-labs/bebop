@@ -1,14 +1,16 @@
-﻿using Compiler.Meta.Interfaces;
+﻿using Compiler.Lexer.Tokenization.Models;
+using Compiler.Meta.Interfaces;
 
 namespace Compiler.Meta
 {
     /// <summary>
     /// A scalar type, like "int" or "byte". It represents *one* of its underlying base type.
     /// </summary>
-    class ScalarType : IType
+    class ScalarType : TypeBase
     {
         public BaseType BaseType { get; }
-        public ScalarType(BaseType baseType)
+
+        public ScalarType(BaseType baseType, Span span, string asString) : base(span, asString)
         {
             BaseType = baseType;
         }
@@ -17,10 +19,10 @@ namespace Compiler.Meta
     /// <summary>
     /// An array type, like "int[]" or "Foo[]". It represents an array of its underlying type.
     /// </summary>
-    class ArrayType : IType
+    class ArrayType : TypeBase
     {
-        public IType MemberType { get; }
-        public ArrayType(IType memberType)
+        public TypeBase MemberType { get; }
+        public ArrayType(TypeBase memberType, Span span, string asString) : base(span, asString)
         {
             MemberType = memberType;
         }
@@ -45,25 +47,25 @@ namespace Compiler.Meta
     /// A map type, like "map[int, int]" or "map[string, map[int, Foo]]".
     /// It represents a list of key-value pairs, where each key occurs only once.
     /// </summary>
-    class MapType : IType
+    class MapType : TypeBase
     {
-        public IType KeyType { get; }
-        public IType ValueType { get; }
-        public MapType(IType keyType, IType valueType)
+        public TypeBase KeyType { get; }
+        public TypeBase ValueType { get; }
+        public MapType(TypeBase keyType, TypeBase valueType, Span span, string asString) : base(span, asString)
         {
             KeyType = keyType;
             ValueType = valueType;
         }
     }
 
-    class DefinedType : IType
+    class DefinedType : TypeBase
     {
         /// <summary>
         /// The name of the defined type being referred to.
         /// </summary>
         public string Name { get; }
 
-        public DefinedType(string name)
+        public DefinedType(string name, Span span, string asString) : base(span, asString)
         {
             Name = name;
         }

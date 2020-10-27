@@ -24,22 +24,20 @@ namespace Compiler.Parser
         private uint _index;
         private readonly string _nameSpace;
         private Token[] _tokens = new Token[] { };
-        private readonly string _schemaPath;
 
         /// <summary>
-        /// Creates a new schema parser instance from a schema file on disk
+        /// Creates a new schema parser instance from some schema files on disk.
         /// </summary>
-        /// <param name="inputFile">The path to the Bebop schema file that will be parsed</param>
+        /// <param name="schemaPaths">The Bebop schema files that will be parsed</param>
         /// <param name="nameSpace"></param>
-        public SchemaParser(FileInfo inputFile, string nameSpace)
+        public SchemaParser(List<string> schemaPaths, string nameSpace)
         {
-            _lexer = SchemaLexer.FromSchemaPath(inputFile.FullName);
+            _lexer = SchemaLexer.FromSchemaPaths(schemaPaths);
             _nameSpace = nameSpace;
-            _schemaPath = inputFile.FullName;
         }
 
         /// <summary>
-        /// Creates a new schema parser instance and loads the schema into memory
+        /// Creates a new schema parser instance and loads the schema into memory.
         /// </summary>
         /// <param name="textualSchema">A string representation of a schema.</param>
         /// <param name="nameSpace"></param>
@@ -47,7 +45,6 @@ namespace Compiler.Parser
         {
             _lexer = SchemaLexer.FromTextualSchema(textualSchema);
             _nameSpace = nameSpace;
-            _schemaPath = string.Empty;
         }
 
         /// <summary>
@@ -95,7 +92,7 @@ namespace Compiler.Parser
         /// <returns></returns>
         private bool Eat(TokenKind kind)
         {
-            
+
             if (CurrentToken.Kind == kind)
             {
                 _index++;
@@ -113,7 +110,7 @@ namespace Compiler.Parser
         /// <returns></returns>
         private void Expect(TokenKind kind)
         {
-          
+
             // don't throw on block comment tokens
             if (CurrentToken.Kind == TokenKind.BlockComment)
             {
@@ -121,7 +118,7 @@ namespace Compiler.Parser
             }
             if (!Eat(kind))
             {
-                throw new UnexpectedTokenException(kind, CurrentToken, _schemaPath);
+                throw new UnexpectedTokenException(kind, CurrentToken);
             }
         }
 
@@ -155,20 +152,20 @@ namespace Compiler.Parser
             _index = 0;
             _definitions.Clear();
             _typeReferences.Clear();
-            
-            
+
+
             while (_index < _tokens.Length && !Eat(TokenKind.EndOfFile))
             {
-              
+
                 var definitionDocumentation = ConsumeBlockComments();
-                
+
                 var isReadOnly = Eat(TokenKind.ReadOnly);
                 var kind = CurrentToken switch
                 {
                     _ when Eat(TokenKind.Enum) => AggregateKind.Enum,
                     _ when Eat(TokenKind.Struct) => AggregateKind.Struct,
                     _ when Eat(TokenKind.Message) => AggregateKind.Message,
-                    _ => throw new UnexpectedTokenException(TokenKind.Message, CurrentToken, _schemaPath)
+                    _ => throw new UnexpectedTokenException(TokenKind.Message, CurrentToken)
                 };
                 DeclareAggregateType(CurrentToken, kind, isReadOnly, definitionDocumentation);
             }
@@ -176,10 +173,10 @@ namespace Compiler.Parser
             {
                 if (!_definitions.ContainsKey(typeToken.Lexeme))
                 {
-                    throw new UnrecognizedTypeException(typeToken, definitionToken.Lexeme, _schemaPath);
+                    throw new UnrecognizedTypeException(typeToken, definitionToken.Lexeme);
                 }
             }
-            return new BebopSchema(_schemaPath, _nameSpace, _definitions);
+            return new BebopSchema(_nameSpace, _definitions);
         }
 
 
@@ -199,7 +196,6 @@ namespace Compiler.Parser
             var definitionEnd = CurrentToken.Span;
             while (!Eat(TokenKind.CloseBrace))
             {
-                IType type = new ScalarType(BaseType.UInt32); // for enums
                 DeprecatedAttribute? deprecatedAttribute = null;
                 var value = 0;
 
@@ -210,15 +206,13 @@ namespace Compiler.Parser
                     break;
                 }
 
-                if (kind != AggregateKind.Enum)
-                {
-                    type = ParseType(definitionToken);
-                }
+                TypeBase type = kind == AggregateKind.Enum
+                    ? new ScalarType(BaseType.UInt32, definitionToken.Span, definitionToken.Lexeme)
+                    : ParseType(definitionToken);
 
-                Console.WriteLine(CurrentToken.Lexeme);
                 var fieldName = CurrentToken.Lexeme;
                 var fieldStart = CurrentToken.Span;
-               
+
                 Expect(TokenKind.Identifier);
 
                 if (kind != AggregateKind.Struct)
@@ -252,7 +246,7 @@ namespace Compiler.Parser
             var definition = new Definition(name, isReadOnly, definitionSpan, kind, fields, definitionDocumentation);
             if (_definitions.ContainsKey(name))
             {
-                throw new MultipleDefinitionsException(definition, _schemaPath);
+                throw new MultipleDefinitionsException(definition);
             }
             _definitions.Add(name, definition);
         }
@@ -266,18 +260,24 @@ namespace Compiler.Parser
         ///     This is used to track how DefinedTypes are referenced in definitions, and give useful error messages.
         /// </param>
         /// <returns>An IType object.</returns>
-        private IType ParseType(Token definitionToken)
+        private TypeBase ParseType(Token definitionToken)
         {
-            IType type;
+            TypeBase type;
+            Span span = CurrentToken.Span;
             if (Eat(TokenKind.Map))
             {
-                // Parse "map[k,v]".
+                // Parse "map[k, v]".
                 Expect(TokenKind.OpenBracket);
                 var keyType = ParseType(definitionToken);
+                if (!IsValidMapKeyType(keyType))
+                {
+                    throw new InvalidMapKeyTypeException(keyType);
+                }
                 Expect(TokenKind.Comma);
                 var valueType = ParseType(definitionToken);
+                span = span.Combine(CurrentToken.Span);
                 Expect(TokenKind.CloseBracket);
-                type = new MapType(keyType, valueType);
+                type = new MapType(keyType, valueType, span, $"map[{keyType.AsString}, {valueType.AsString}]");
             }
             else if (Eat(TokenKind.Array))
             {
@@ -285,16 +285,17 @@ namespace Compiler.Parser
                 Expect(TokenKind.OpenBracket);
                 var valueType = ParseType(definitionToken);
                 Expect(TokenKind.CloseBracket);
-                type = new ArrayType(valueType);
+                type = new ArrayType(valueType, span, $"array[{valueType.AsString}]");
             }
             else if (CurrentToken.TryParseBaseType(out var baseType))
             {
-                type = new ScalarType(baseType!.Value);
+                type = new ScalarType(baseType!.Value, span, CurrentToken.Lexeme);
                 // Consume the matched basetype name as an identifier:
                 Expect(TokenKind.Identifier);
-            } else
+            }
+            else
             {
-                type = new DefinedType(CurrentToken.Lexeme);
+                type = new DefinedType(CurrentToken.Lexeme, span, CurrentToken.Lexeme);
                 _typeReferences.Add((CurrentToken, definitionToken));
                 // Consume the type name as an identifier:
                 Expect(TokenKind.Identifier);
@@ -303,11 +304,17 @@ namespace Compiler.Parser
             // Parse any postfix "[]".
             while (Eat(TokenKind.OpenBracket))
             {
+                span = span.Combine(CurrentToken.Span);
                 Expect(TokenKind.CloseBracket);
-                type = new ArrayType(type);
+                type = new ArrayType(type, span, $"{type.AsString}[]");
             }
 
             return type;
+        }
+
+        private static bool IsValidMapKeyType(TypeBase keyType)
+        {
+            return keyType is ScalarType;
         }
     }
 }

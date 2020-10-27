@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Compiler.Exceptions;
 using Compiler.Generators;
@@ -29,6 +31,19 @@ namespace Compiler
                 Console.WriteLine(flags.HelpText);
             }
 
+            if (flags.CheckSchemaFiles != null)
+            {
+                if (flags.CheckSchemaFiles.Count > 0)
+                {
+                    return await CheckSchemas(flags.CheckSchemaFiles);
+                }
+                else
+                {
+                    Log.Error("Must specify at least one schema file to check.");
+                    return 1;
+                }
+            }
+
             if (flags.Version)
             {
                 Console.WriteLine($"{ReservedWords.CompilerName} {ReservedWords.CompilerVersion}");
@@ -54,9 +69,31 @@ namespace Compiler
                 return 1;
             }
 
-            if (string.IsNullOrWhiteSpace(flags.SchemaDirectory) && (flags.SchemaFiles?.Count ?? 0) == 0)
+            if (flags.SchemaDirectory != null && flags.SchemaFiles != null)
             {
-                Log.Error("No schema sources specified");
+                Log.Error("Can't specify both an input directory and individual input files");
+                return 1;
+            }
+
+            List<string> paths;
+
+            if (flags.SchemaDirectory != null)
+            {
+                paths = new DirectoryInfo(flags.SchemaDirectory!).GetFiles($"*.{ReservedWords.SchemaExt}", SearchOption.AllDirectories).Select(f => f.FullName).ToList();
+            }
+            else if (flags.SchemaFiles != null)
+            {
+                paths = flags.SchemaFiles;
+            }
+            else
+            {
+                Log.Error("Specify one or more input files with --dir or --files.");
+                return 1;
+            }
+
+            if (paths.Count == 0)
+            {
+                Log.Error("No input files were found at the specified target location.");
                 return 1;
             }
 
@@ -66,40 +103,20 @@ namespace Compiler
                 return 1;
             }
 
-            if (string.IsNullOrWhiteSpace(flags.Namespace) && flags.Language == "cs")
-            {
-                Log.Error("No namespace was specified");
-                return 1;
-            }
-
-            FileInfo? inputFile = null;
-
-            if (!string.IsNullOrWhiteSpace(flags.SchemaDirectory) &&
-                !SchemaFuser.TryCoalescing(flags.SchemaDirectory, out inputFile))
-            {
-                Log.Error($"Unable to coalesce schemas from {flags.SchemaDirectory}");
-                return 1;
-            }
-
-            if (flags.SchemaFiles != null && flags.SchemaFiles.Count > 0 && !SchemaFuser.TryCoalescing(flags.SchemaFiles, out inputFile))
-            {
-                Log.Error($"Unable to coalesce schemas: {string.Join(",", flags.SchemaFiles)}");
-                return 1;
-            }
-
-
-            if (!inputFile!.Exists)
-            {
-                Log.Error("Master source file not found after coalescing");
-                return 1;
-            }
-
-            return await CompileSchemas(GeneratorUtils.ImplementedGenerators[flags!.Language],
-                inputFile, new FileInfo(flags.OutputFile), flags.Namespace ?? "");
+            return await CompileSchema(GeneratorUtils.ImplementedGenerators[flags!.Language],
+                paths, new FileInfo(flags.OutputFile), flags.Namespace ?? "");
         }
 
-        private static async Task<int> CompileSchemas(Func<ISchema, Generator> makeGenerator,
-            FileInfo inputFile,
+        private static async Task<ISchema> ParseAndValidateSchemas(List<string> schemaPaths, string nameSpace)
+        {
+            var parser = new SchemaParser(schemaPaths, nameSpace);
+            var schema = await parser.Evaluate();
+            schema.Validate();
+            return schema;
+        }
+
+        private static async Task<int> CompileSchema(Func<ISchema, Generator> makeGenerator,
+            List<string> schemaPaths,
             FileInfo outputFile,
             string nameSpace)
         {
@@ -116,9 +133,7 @@ namespace Compiler
 
             try
             {
-                var parser = new SchemaParser(inputFile, nameSpace);
-                var schema = await parser.Evaluate();
-                schema.Validate();
+                var schema = await ParseAndValidateSchemas(schemaPaths, nameSpace);
                 var generator = makeGenerator(schema);
                 generator.WriteAuxiliaryFiles(outputFile.DirectoryName ?? string.Empty);
                 Log.Info("Auxiliary files written to output directory");
@@ -127,19 +142,41 @@ namespace Compiler
                 Log.Success($"Build complete -> \"{outputFile.FullName}\"");
                 return 0;
             }
-            catch (SpanException e)
+            catch (Exception e)
             {
-                Log.Error($"Error in {e.SourcePath} at {e.Span.StartColonString()}:", e);
+                ReportError(e);
             }
-            catch (FileNotFoundException)
+            return 1;
+        }
+
+        private static async Task<int> CheckSchemas(List<string> schemaPaths)
+        {
+            try
             {
-                Log.Error($"File {inputFile.FullName} was not found.");
+                await ParseAndValidateSchemas(schemaPaths, "CheckNameSpace");
+                return 0;
             }
             catch (Exception e)
             {
-                Log.Error($"Error when processing {inputFile.FullName}:", e);
+                ReportError(e);
+                return 1;
             }
-            return 1;
+        }
+
+        private static void ReportError(Exception exception)
+        {
+            switch (exception)
+            {
+                case SpanException e:
+                    Log.Error($"Error in {e.Span.FileName} at {e.Span.StartColonString()}: ", e);
+                    break;
+                case FileNotFoundException e:
+                    Log.Error($"File was not found.", e);
+                    break;
+                default:
+                    Log.Error($"Error when processing schemas:", exception);
+                    break;
+            }
         }
     }
 }

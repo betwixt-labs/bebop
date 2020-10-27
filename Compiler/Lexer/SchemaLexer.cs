@@ -10,24 +10,19 @@ using Compiler.Lexer.Tokenization.Models;
 
 namespace Compiler.Lexer
 {
-    public class SchemaLexer : LexerBase<Tokenizer>, IDisposable
+    public class SchemaLexer : LexerBase<Tokenizer>
     {
         private SchemaLexer(ISchemaReader schemaReader) : base(new Tokenizer(schemaReader)) { }
 
 
         public static SchemaLexer FromTextualSchema(string textualSchema)
         {
-            return new SchemaLexer(new SchemaReader(new MemoryStream(Encoding.UTF8.GetBytes(textualSchema)), "(unknown)"));
+            return new SchemaLexer(SchemaReader.FromTextualSchema(textualSchema));
         }
 
-        public static SchemaLexer FromSchemaPath(string schemaPath)
+        public static SchemaLexer FromSchemaPaths(IEnumerable<string> schemaPaths)
         {
-            return new SchemaLexer(new SchemaReader(File.OpenRead(schemaPath), schemaPath));
-        }
-
-        public void Dispose()
-        {
-            Tokenizer?.Dispose();
+            return new SchemaLexer(SchemaReader.FromSchemaPaths(schemaPaths));
         }
 
         public override IAsyncEnumerable<Token> TokenStream() => Tokenizer.TokenStream();

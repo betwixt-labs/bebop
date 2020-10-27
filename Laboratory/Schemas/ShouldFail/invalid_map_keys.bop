@@ -1,0 +1,3 @@
+struct Wrong {
+    map[bool[], bool] m1;
+}

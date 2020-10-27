@@ -16,7 +16,7 @@ namespace Compiler.Meta.Interfaces
         /// <summary>
         ///     The type of this field: a scalar, array, or defined type (enum/message/struct).
         /// </summary>
-        public IType Type { get; }
+        public TypeBase Type { get; }
 
         /// <summary>
         ///     The span where the member was found.

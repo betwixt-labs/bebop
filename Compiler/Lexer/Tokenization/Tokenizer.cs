@@ -21,11 +21,13 @@ namespace Compiler.Lexer.Tokenization
 
         protected int TokenCount { get; private set; }
 
-        protected Span CurrentTokenPosition { get; private set; }
+        protected Span TokenStart { get; private set; }
 
-        public void Dispose()
+        private Token MakeToken(TokenKind kind, string lexeme)
         {
-            _reader?.Dispose();
+            var tokenEnd = _reader.CurrentSpan();
+            var span = TokenStart.Combine(tokenEnd);
+            return new Token(kind, lexeme, span, TokenCount++);
         }
 
         /// <summary>
@@ -44,7 +46,6 @@ namespace Compiler.Lexer.Tokenization
         /// <returns></returns>
         public async IAsyncEnumerable<Token> TokenStream()
         {
-            CurrentTokenPosition = Span.Empty;
             TokenCount = 0;
             while (true)
             {
@@ -53,15 +54,12 @@ namespace Compiler.Lexer.Tokenization
                 Token? scan = TryScan(current);
                 if (!scan.HasValue)
                 {
-                    throw new UnrecognizedTokenException(current, CurrentTokenPosition, _reader.SourcePath);
+                    throw new UnrecognizedTokenException(current, TokenStart);
                 }
 
-                CurrentTokenPosition = scan.Value.Span.End;
                 yield return await Task.FromResult(scan.Value);
-                TokenCount++;
             }
-            ++TokenCount;
-            yield return new Token(TokenKind.EndOfFile, string.Empty, CurrentTokenPosition, TokenCount);
+            yield return MakeToken(TokenKind.EndOfFile, string.Empty);
         }
 
         /// <summary>
@@ -90,7 +88,6 @@ namespace Compiler.Lexer.Tokenization
                 }
                 if (isNewLine)
                 {
-                    CurrentTokenPosition = CurrentTokenPosition.StartOfNextLine;
                     inLineComment = false;
                     continue;
                 }
@@ -100,11 +97,11 @@ namespace Compiler.Lexer.Tokenization
                 if (c.IsWhitespace() || inLineComment)
                 {
                     _reader.GetChar();
-                    CurrentTokenPosition = CurrentTokenPosition.Next;
                     continue;
                 }
 
                 // This character starts the next token, unless it's the start of a line comment.
+                TokenStart = _reader.CurrentSpan();
                 c = _reader.GetChar();
                 if (c == '/' && _reader.PeekChar() == '/')
                 {
@@ -172,7 +169,7 @@ namespace Compiler.Lexer.Tokenization
             }
 
 
-            token = new Token(TokenKind.BlockComment, cleanedDocumentation.ToString().TrimStart().TrimEnd(), CurrentTokenPosition, TokenCount);
+            token = MakeToken(TokenKind.BlockComment, cleanedDocumentation.ToString().TrimStart().TrimEnd());
             return true;
         }
 
@@ -196,7 +193,7 @@ namespace Compiler.Lexer.Tokenization
             {
                 builder.Append(_reader.GetChar());
             }
-            token = new Token(TokenKind.Number, builder.ToString(), CurrentTokenPosition, TokenCount);
+            token = MakeToken(TokenKind.Number, builder.ToString());
             return true;
         }
 
@@ -245,7 +242,7 @@ namespace Compiler.Lexer.Tokenization
                 // EOF
                 return false;
             }
-            token = new Token(TokenKind.StringExpandable, builder.ToString(), CurrentTokenPosition, TokenCount);
+            token = MakeToken(TokenKind.StringExpandable, builder.ToString());
             return true;
         }
 
@@ -277,7 +274,7 @@ namespace Compiler.Lexer.Tokenization
                 // EOF
                 return false;
             }
-            token = new Token(TokenKind.StringLiteral, builder.ToString(), CurrentTokenPosition, TokenCount);
+            token = MakeToken(TokenKind.StringLiteral, builder.ToString());
             return true;
         }
 
@@ -292,7 +289,7 @@ namespace Compiler.Lexer.Tokenization
         {
             if (TokenizerExtensions.TryGetSymbol(surrogate, out var kind))
             {
-                token = new Token(kind, surrogate.ToString(), CurrentTokenPosition, TokenCount);
+                token = MakeToken(kind, surrogate.ToString());
                 return true;
             }
             token = default;
@@ -321,9 +318,7 @@ namespace Compiler.Lexer.Tokenization
             }
             var lexeme = builder.ToString();
 
-            token = TokenizerExtensions.TryGetKeyword(lexeme, out var kind)
-                ? new Token(kind, lexeme, CurrentTokenPosition, TokenCount)
-                : new Token(TokenKind.Identifier, lexeme, CurrentTokenPosition, TokenCount);
+            token = MakeToken(TokenizerExtensions.TryGetKeyword(lexeme, out var kind) ? kind : TokenKind.Identifier, lexeme);
             return true;
         }
     }

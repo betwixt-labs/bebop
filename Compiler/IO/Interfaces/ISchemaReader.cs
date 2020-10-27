@@ -1,21 +1,14 @@
-﻿using System;
+﻿using Compiler.Lexer.Tokenization.Models;
+using System;
 
 namespace Compiler.IO.Interfaces
 {
-    public interface ISchemaReader : IDisposable
+    public interface ISchemaReader
     {
         /// <summary>
-        /// Returns the file name of the schema.
+        ///     Returns an empty span at the current schema position.
         /// </summary>
-        public string SourcePath { get; }
-
-        /// <summary>
-        ///     Returns the current position in the file (index into a char array).
-        /// </summary>
-        /// <returns>
-        ///     An integer representing an index into the file.
-        /// </returns>
-        public int CurrentPosition { get; }
+        public Span CurrentSpan();
 
         /// <summary>
         ///     Returns the next available character but does not consume it.

@@ -20,7 +20,7 @@ namespace Benchmarks
         {
             var input = BebopView.Create();
             input.WriteString(TestString);
-            _testBuffer = input.Data.ToArray();
+            _testBuffer = input.ToArray();
         }
 
         [Benchmark]
