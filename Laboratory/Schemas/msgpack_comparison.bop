@@ -1,0 +1,31 @@
+// https://github.com/msgpack/msgpack-javascript/blob/master/benchmark/benchmark-from-msgpack-lite-data.json
+
+// These field names are extremely weirdly capitalized, because I wanted the
+// key names in JSON to be the same length while not coinciding with Bebop keywords.
+struct MsgpackComparison {
+  uint8 iNT0; // "int0": 0,
+  uint8 iNT1; // "int1": 1,
+  int16 iNT1_; // "int1-": -1,
+  uint8 iNT8; // "int8": 255,
+  int16 iNT8_; // "int8-": -255,
+  int16 iNT16; // "int16": 256,
+  int16 iNT16_; // "int16-": -256,
+  int32 iNT32; // "int32": 65536,
+  int32 iNT32_; // "int32-": -65536,
+  // int8 nIL; // "nil": null,
+  bool tRUE; // "true": true,
+  bool fALSE; // "false": false,
+  float64 fLOAT; // "float": 0.5,
+  float64 fLOAT_; // "float-": -0.5,
+  string sTRING0; // "string0": "",
+  string sTRING1; // "string1": "A",
+  string sTRING4; // "string4": "foobarbaz",
+  string sTRING8; // "string8": "Omnes viae Romam ducunt.",
+  string sTRING16; // "string16": "L’homme n’est qu’un roseau, ...",
+  int32[] aRRAY0; // "array0": [],
+  string[] aRRAY1; // "array1": [ "foo" ],
+  int32[] aRRAY8; // "array8": [ 1, 2, 4, 8, 16, ... ],
+  // Our Maps and JSON objects are hard to compare.
+  // int8 mAP0; // "map0": {},
+  // int8 mAP1; // "map1": { "foo": "bar" }
+}
