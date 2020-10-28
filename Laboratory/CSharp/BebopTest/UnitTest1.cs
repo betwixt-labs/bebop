@@ -3,6 +3,15 @@ using System.Collections.Generic;
 using Bebop;
 using NUnit.Framework;
 
+// I need to declare this, because I'm running into: https://github.com/dotnet/roslyn/issues/45510
+namespace System.Runtime.CompilerServices
+{
+    [ComponentModel.EditorBrowsable(ComponentModel.EditorBrowsableState.Never)]
+    public static class IsExternalInit
+    {
+    }
+}
+
 namespace Test
 {
     public class Tests

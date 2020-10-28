@@ -1,5 +1,5 @@
 message M { float32 a=1; float64 b=2; }
-struct S { int32 x; int32 y; }
+readonly struct S { int32 x; int32 y; }
 
 struct SomeMaps {
     map[bool, bool] m1;

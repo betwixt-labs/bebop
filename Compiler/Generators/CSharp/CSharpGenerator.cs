@@ -189,21 +189,7 @@ namespace Compiler.Generators.CSharp
             foreach (var field in definition.Fields)
             {
                 builder.AppendLine($"{TypeName(field.Type)} field{i};");
-                if (field.Type is MapType || field.Type is ArrayType)
-                {
-                    builder.AppendLine($"{HotPath}\nstatic {TypeName(field.Type)} Decode{field.Name.ToPascalCase()}(ref BebopView view) {{");
-                    builder.Indent(indentStep);
-                    builder.AppendLine($"{TypeName(field.Type)} x;");
-                    builder.AppendLine($"{CompileDecodeField(field.Type, "x")}");
-                    builder.AppendLine($"return x;");
-                    builder.Dedent(indentStep);
-                    builder.AppendLine($"}}");
-                    builder.AppendLine($"field{i} = Decode{field.Name.ToPascalCase()}(ref view);");
-                }
-                else
-                {
-                    builder.AppendLine($"{CompileDecodeField(field.Type, $"field{i}")}");
-                }
+                builder.AppendLine($"{CompileDecodeField(field.Type, $"field{i}")}");
                 i++;
             }
 
