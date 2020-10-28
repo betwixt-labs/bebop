@@ -11,26 +11,54 @@ const asciiToHex = [
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
 ];
 
+if (typeof require !== 'undefined') {
+    if (typeof TextDecoder === 'undefined') (global as any).TextDecoder = require('util').TextDecoder;
+    if (typeof TextEncoder === 'undefined') (global as any).TextEncoder = require('util').TextEncoder;
+}
+
 export class BebopView {
+    private static textDecoder = new TextDecoder;
+    private static textEncoder = new TextEncoder;
+    private static writeBuffer: Uint8Array = new Uint8Array(256);
+    private static writeBufferView: DataView = new DataView(BebopView.writeBuffer.buffer);
+    private static instance: BebopView;
+    public static getInstance(): BebopView {
+        if (!BebopView.instance) {
+            BebopView.instance = new BebopView();
+        }
+        return BebopView.instance;
+    }
+
     private buffer: Uint8Array;
     private view: DataView;
-    index: number;
     private byteToHex: string[] = []; // A lookup table: ['00', '01', ..., 'ff']
-    length: number;
+    index: number; // read pointer
+    length: number; // write pointer
 
-    constructor(data?: Uint8Array) {
-        if (data && !(data instanceof Uint8Array)) {
-            throw new Error("data is not a Uint8Array");
-        }
-        this.buffer = data || new Uint8Array(256);
-        this.view = new DataView(this.buffer.buffer);
+    private constructor() {
+        this.buffer = BebopView.writeBuffer
+        this.view = BebopView.writeBufferView
         this.index = 0;
-        this.length = data ? data.length : 0;
+        this.length = 0;
         for (const x of hexDigits) {
             for (const y of hexDigits) {
                 this.byteToHex.push(x + y);
             }
         }
+    }
+
+    startReading(buffer: Uint8Array): void {
+        this.buffer = buffer;
+        this.view = new DataView(this.buffer.buffer, this.buffer.byteOffset, this.buffer.byteLength);
+        this.index = 0;
+        this.length = buffer.length;
+    }
+
+    startWriting(): void {
+        this.buffer = BebopView.writeBuffer
+        this.view = BebopView.writeBufferView
+        this.index = 0;
+        this.length = 0;
     }
 
     private growBy(amount: number): void {
@@ -41,11 +69,6 @@ export class BebopView {
             this.view = new DataView(data.buffer);
         }
         this.length += amount;
-    }
-
-    rewind(): void {
-        this.index = 0;
-        this.length = 0;
     }
 
     skip(amount: number) {
@@ -93,6 +116,11 @@ export class BebopView {
      * Reads a null-terminated UTF-8-encoded string.
      */
     readString(): string {
+        const start = this.index;
+        while (this.buffer[this.index] !== 0) this.index++;
+        return BebopView.textDecoder.decode(this.buffer.subarray(start, this.index++));
+
+        /*
         let result = "";
 
         while (true) {
@@ -132,12 +160,23 @@ export class BebopView {
         }
 
         return result;
+        */
     }
 
     /**
      * Writes a null-terminated UTF-8-encoded string.
      */
     writeString(value: string): void {
+        // value.length * 3 is an upper limit for the space taken up by the string:
+        // https://developer.mozilla.org/en-US/docs/Web/API/TextEncoder/encodeInto#Buffer_Sizing
+        // We add 1 for our trailing null byte.
+        const maxBytes = value.length * 3 + 1;
+        this.growBy(maxBytes);
+        this.length -= maxBytes;
+        const stats = BebopView.textEncoder.encodeInto(value, this.buffer.subarray(this.length));
+        this.length += stats.written;
+        this.buffer[this.length++] = 0;
+        /*
         let codePoint: number;
 
         for (let i = 0; i < value.length; i++) {
@@ -176,6 +215,7 @@ export class BebopView {
 
         // write the null terminator
         this.writeByte(0);
+        */
     }
 
     readGuid(): string {

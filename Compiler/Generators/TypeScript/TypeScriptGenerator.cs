@@ -11,8 +11,9 @@ namespace Compiler.Generators.TypeScript
 {
     public class TypeScriptGenerator : Generator
     {
-        public TypeScriptGenerator(ISchema schema) : base(schema) { }
+        const int indentStep = 2;
 
+        public TypeScriptGenerator(ISchema schema) : base(schema) { }
 
         private string FormatDocumentation(string documentation, int spaces)
         {
@@ -75,24 +76,28 @@ namespace Compiler.Generators.TypeScript
             return builder.ToString();
         }
 
-        private string CompileEncodeField(TypeBase type, string target, int depth = 0)
+        private string CompileEncodeField(TypeBase type, string target, int depth = 0, int indentDepth = 0)
         {
-            var indent = new string(' ', (depth + 3) * 2);
+            var tab = new string(' ', indentStep);
+            var nl = "\n" + new string(' ', indentDepth * indentStep);
             var i = GeneratorUtils.LoopVariable(depth);
             return type switch
             {
                 ArrayType at when at.IsBytes() => $"view.writeBytes({target});",
-                ArrayType at => $"var length{depth} = {target}.length;\n" + indent +
-                    $"view.writeUint32(length{depth});\n" + indent +
-                    $"for (var {i} = 0; {i} < length{depth}; {i}++) {{\n" + indent +
-                    $"  {CompileEncodeField(at.MemberType, $"{target}[{i}]", depth + 1)}\n" + indent +
-                    "}",
-                MapType mt => $"var size{depth} = {target}.size;\n" + indent +
-                    $"view.writeUint32(size{depth});\n" + indent +
-                    $"{target}.forEach((v{depth},k{depth}) => {{\n" + indent +
-                    $"  {CompileEncodeField(mt.KeyType, $"k{depth}", depth + 1)}\n" + indent +
-                    $"  {CompileEncodeField(mt.ValueType, $"v{depth}", depth + 1)}\n" + indent +
-                    "});",
+                ArrayType at =>
+                    $"{{" + nl +
+                    $"{tab}const length{depth} = {target}.length;" + nl +
+                    $"{tab}view.writeUint32(length{depth});" + nl +
+                    $"{tab}for (let {i} = 0; {i} < length{depth}; {i}++) {{" + nl +
+                    $"{tab}{tab}{CompileEncodeField(at.MemberType, $"{target}[{i}]", depth + 1, indentDepth + 2)}" + nl +
+                    $"{tab}}}" + nl +
+                    $"}}",
+                MapType mt =>
+                    $"view.writeUint32({target}.size);" + nl +
+                    $"for (const [k{depth}, v{depth}] of {target}) {{" + nl +
+                    $"{tab}{CompileEncodeField(mt.KeyType, $"k{depth}", depth + 1, indentDepth + 1)}" + nl +
+                    $"{tab}{CompileEncodeField(mt.ValueType, $"v{depth}", depth + 1, indentDepth + 1)}" + nl +
+                    $"}}",
                 ScalarType st => st.BaseType switch
                 {
                     BaseType.Bool => $"view.writeByte(Number({target}));",
@@ -140,10 +145,6 @@ namespace Compiler.Generators.TypeScript
         private string CompileDecodeMessage(IDefinition definition)
         {
             var builder = new IndentedStringBuilder(6);
-            builder.AppendLine("if (!(view instanceof BebopView)) {");
-            builder.AppendLine("  view = new BebopView(view);");
-            builder.AppendLine("}");
-            builder.AppendLine("");
             builder.AppendLine($"let message: I{definition.Name} = {{}};");
             builder.AppendLine("const length = view.readMessageLength();");
             builder.AppendLine("const end = view.index + length;");
@@ -156,7 +157,7 @@ namespace Compiler.Generators.TypeScript
             foreach (var field in definition.Fields)
             {
                 builder.AppendLine($"  case {field.ConstantValue}:");
-                builder.AppendLine($"    message.{field.Name.ToCamelCase()} = {CompileDecodeField(field.Type)};");
+                builder.AppendLine($"    {CompileDecodeField(field.Type, $"message.{field.Name.ToCamelCase()}")}");
                 builder.AppendLine("    break;");
                 builder.AppendLine("");
             }
@@ -172,56 +173,74 @@ namespace Compiler.Generators.TypeScript
         private string CompileDecodeStruct(IDefinition definition)
         {
             var builder = new IndentedStringBuilder(6);
-            builder.AppendLine("if (!(view instanceof BebopView)) {");
-            builder.AppendLine("  view = new BebopView(view);");
-            builder.AppendLine("}");
-            builder.AppendLine("");
-            builder.AppendLine($"var message: I{definition.Name} = {{");
+            int i = 0;
             foreach (var field in definition.Fields)
             {
-                builder.AppendLine($"  {field.Name.ToCamelCase()}: {CompileDecodeField(field.Type)},");
+                builder.AppendLine($"let field{i}: {TypeName(field.Type)};");
+                builder.AppendLine(CompileDecodeField(field.Type, $"field{i}"));
+                i++;
+            }
+            builder.AppendLine($"let message: I{definition.Name} = {{");
+            i = 0;
+            foreach (var field in definition.Fields)
+            {
+                builder.AppendLine($"  {field.Name.ToCamelCase()}: field{i},");
+                i++;
             }
             builder.AppendLine("};");
             builder.AppendLine("return message;");
             return builder.ToString();
         }
 
-        private string CompileDecodeField(TypeBase type)
+        private string CompileDecodeField(TypeBase type, string target, int depth = 0)
         {
+            var tab = new string(' ', indentStep);
+            var nl = "\n" + new string(' ', depth * 2 * indentStep);
+            var i = GeneratorUtils.LoopVariable(depth);
             return type switch
             {
-                ArrayType at when at.IsBytes() => "view.readBytes()",
-                ArrayType at => @$"(() => {{
-                        let length = view.readUint32();
-                        const collection = new {TypeName(at)}(length);
-                        for (var i = 0; i < length; i++) collection[i] = {CompileDecodeField(at.MemberType)};
-                        return collection;
-                    }})()",
-                MapType mt => @$"(() => {{
-                        let size = view.readUint32();
-                        const collection = new {TypeName(mt)}();
-                        for (var i = 0; i < size; i++) collection.set({CompileDecodeField(mt.KeyType)}, {CompileDecodeField(mt.ValueType)});
-                        return collection;
-                    }})()",
+                ArrayType at when at.IsBytes() => $"{target} = view.readBytes();",
+                ArrayType at =>
+                    $"{{" + nl +
+                    $"{tab}let length{depth} = view.readUint32();" + nl +
+                    $"{tab}{target} = new {TypeName(at)}(length{depth});" + nl +
+                    $"{tab}for (let {i} = 0; {i} < length{depth}; {i}++) {{" + nl +
+                    $"{tab}{tab}let x{depth}: {TypeName(at.MemberType)};" + nl +
+                    $"{tab}{tab}{CompileDecodeField(at.MemberType, $"x{depth}", depth + 1)}" + nl +
+                    $"{tab}{tab}{target}[{i}] = x{depth};" + nl +
+                    $"{tab}}}" + nl +
+                    $"}}",
+                MapType mt =>
+                    $"{{" + nl +
+                    $"{tab}let length{depth} = view.readUint32();" + nl +
+                    $"{tab}{target} = new {TypeName(mt)}();" + nl +
+                    $"{tab}for (let {i} = 0; {i} < length{depth}; {i}++) {{" + nl +
+                    $"{tab}{tab}let k{depth}: {TypeName(mt.KeyType)};" + nl +
+                    $"{tab}{tab}let v{depth}: {TypeName(mt.ValueType)};" + nl +
+                    $"{tab}{tab}{CompileDecodeField(mt.KeyType, $"k{depth}", depth + 1)}" + nl +
+                    $"{tab}{tab}{CompileDecodeField(mt.ValueType, $"v{depth}", depth + 1)}" + nl +
+                    $"{tab}{tab}{target}.set(k{depth}, v{depth});" + nl +
+                    $"{tab}}}" + nl +
+                    $"}}",
                 ScalarType st => st.BaseType switch
                 {
-                    BaseType.Bool => "!!view.readByte()",
-                    BaseType.Byte => "view.readByte()",
-                    BaseType.UInt16 => "view.readUint16()",
-                    BaseType.Int16 => "view.readInt16()",
-                    BaseType.UInt32 => "view.readUint32()",
-                    BaseType.Int32 => "view.readInt32()",
-                    BaseType.UInt64 => "view.readUint64()",
-                    BaseType.Int64 => "view.readInt64()",
-                    BaseType.Float32 => "view.readFloat32()",
-                    BaseType.Float64 => "view.readFloat64()",
-                    BaseType.String => "view.readString()",
-                    BaseType.Guid => "view.readGuid()",
+                    BaseType.Bool => $"{target} = !!view.readByte();",
+                    BaseType.Byte => $"{target} = view.readByte();",
+                    BaseType.UInt16 => $"{target} = view.readUint16();",
+                    BaseType.Int16 => $"{target} = view.readInt16();",
+                    BaseType.UInt32 => $"{target} = view.readUint32();",
+                    BaseType.Int32 => $"{target} = view.readInt32();",
+                    BaseType.UInt64 => $"{target} = view.readUint64();",
+                    BaseType.Int64 => $"{target} = view.readInt64();",
+                    BaseType.Float32 => $"{target} = view.readFloat32();",
+                    BaseType.Float64 => $"{target} = view.readFloat64();",
+                    BaseType.String => $"{target} = view.readString();",
+                    BaseType.Guid => $"{target} = view.readGuid();",
                     _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                 },
                 DefinedType dt when Schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
-                    $"view.readUint32() as {dt.Name}",
-                DefinedType dt => $"{dt.Name}.decode(view)",
+                    $"{target} = view.readUint32() as {dt.Name};",
+                DefinedType dt => $"{target} = {dt.Name}.readFrom(view);",
                 _ => throw new InvalidOperationException($"CompileDecodeField: {type}")
             };
         }
@@ -319,7 +338,8 @@ namespace Compiler.Generators.TypeScript
 
                     builder.AppendLine($"  export const {definition.Name} = {{");
                     builder.AppendLine($"    encode(message: I{definition.Name}): Uint8Array {{");
-                    builder.AppendLine("      const view = new BebopView();");
+                    builder.AppendLine("      const view = BebopView.getInstance();");
+                    builder.AppendLine("      view.startWriting();");
                     builder.AppendLine("      this.encodeInto(message, view);");
                     builder.AppendLine("      return view.toArray();");
                     builder.AppendLine("    },");
@@ -328,8 +348,13 @@ namespace Compiler.Generators.TypeScript
                     builder.Append(CompileEncode(definition));
                     builder.AppendLine("    },");
                     builder.AppendLine("");
-
-                    builder.AppendLine($"    decode(view: BebopView | Uint8Array): I{definition.Name} {{");
+                    builder.AppendLine($"    decode(buffer: Uint8Array): I{definition.Name} {{");
+                    builder.AppendLine($"      const view = BebopView.getInstance();");
+                    builder.AppendLine($"      view.startReading(buffer);");
+                    builder.AppendLine($"      return this.readFrom(view);");
+                    builder.AppendLine($"    }},");
+                    builder.AppendLine($"");
+                    builder.AppendLine($"    readFrom(view: BebopView): I{definition.Name} {{");
                     builder.Append(CompileDecode(definition));
                     builder.AppendLine("    },");
                     builder.AppendLine("  };");
