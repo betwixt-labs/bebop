@@ -1,0 +1,3 @@
+struct ArrayOfStrings {
+    string[] strings;
+}

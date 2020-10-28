@@ -1,4 +1,4 @@
-import { ILibrary, Instrument, Library, ISong, Song } from '../test/generated/jazz';
+import { ILibrary, Instrument, Library, ISong, Song, Musician } from '../test/generated/jazz';
 import * as assert from "assert";
 import benchmark = require('benchmark');
 import { BebopView } from '../test/generated/BebopView';

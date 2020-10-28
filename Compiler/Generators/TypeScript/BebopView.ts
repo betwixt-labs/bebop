@@ -29,6 +29,7 @@ export class BebopView {
         return BebopView.instance;
     }
 
+    minimumTextDecoderLength: number = 200;
     private buffer: Uint8Array;
     private view: DataView;
     private byteToHex: string[] = []; // A lookup table: ['00', '01', ..., 'ff']
@@ -61,14 +62,18 @@ export class BebopView {
         this.length = 0;
     }
 
-    private growBy(amount: number): void {
-        if (this.length + amount > this.buffer.length) {
-            const data = new Uint8Array(this.length + amount << 1);
+    private guaranteeBufferLength(length: number): void {
+        if (length > this.buffer.length) {
+            const data = new Uint8Array(length << 1);
             data.set(this.buffer);
             this.buffer = data;
             this.view = new DataView(data.buffer);
         }
+    }
+
+    private growBy(amount: number): void {
         this.length += amount;
+        this.guaranteeBufferLength(this.length);
     }
 
     skip(amount: number) {
@@ -116,38 +121,32 @@ export class BebopView {
      * Reads a null-terminated UTF-8-encoded string.
      */
     readString(): string {
-        const start = this.index;
-        while (this.buffer[this.index] !== 0) this.index++;
-        return BebopView.textDecoder.decode(this.buffer.subarray(start, this.index++));
+        const lengthBytes = this.readUint32();
+        if (lengthBytes >= this.minimumTextDecoderLength) {
+            return BebopView.textDecoder.decode(this.buffer.subarray(this.index, this.index += lengthBytes));
+        }
 
-        /*
+        const end = this.index + lengthBytes;
         let result = "";
-
-        while (true) {
-            let codePoint: number;
-
+        let codePoint: number;
+        while (this.index < end) {
             // decode UTF-8
-            const a = this.readByte();
+            const a = this.buffer[this.index++];
             if (a < 0xC0) {
                 codePoint = a;
             } else {
-                const b = this.readByte();
+                const b = this.buffer[this.index++];
                 if (a < 0xE0) {
                     codePoint = ((a & 0x1F) << 6) | (b & 0x3F);
                 } else {
-                    const c = this.readByte();
+                    const c = this.buffer[this.index++];
                     if (a < 0xF0) {
                         codePoint = ((a & 0x0F) << 12) | ((b & 0x3F) << 6) | (c & 0x3F);
                     } else {
-                        const d = this.readByte();
+                        const d = this.buffer[this.index++];
                         codePoint = ((a & 0x07) << 18) | ((b & 0x3F) << 12) | ((c & 0x3F) << 6) | (d & 0x3F);
                     }
                 }
-            }
-
-            // strings are null-terminated
-            if (codePoint === 0) {
-                break;
             }
 
             // encode UTF-16
@@ -159,8 +158,10 @@ export class BebopView {
             }
         }
 
+        // Damage control, if the input is malformed UTF-8.
+        this.index = end;
+
         return result;
-        */
     }
 
     /**
@@ -169,13 +170,17 @@ export class BebopView {
     writeString(value: string): void {
         // value.length * 3 is an upper limit for the space taken up by the string:
         // https://developer.mozilla.org/en-US/docs/Web/API/TextEncoder/encodeInto#Buffer_Sizing
-        // We add 1 for our trailing null byte.
-        const maxBytes = value.length * 3 + 1;
-        this.growBy(maxBytes);
-        this.length -= maxBytes;
-        const stats = BebopView.textEncoder.encodeInto(value, this.buffer.subarray(this.length));
-        this.length += stats.written;
-        this.buffer[this.length++] = 0;
+        // We add 4 for our length prefix.
+        const maxBytes = 4 + value.length * 3;
+
+        // Reallocate if necessary, then write to this.length + 4.
+        this.guaranteeBufferLength(this.length + maxBytes);
+        const { written } = BebopView.textEncoder.encodeInto(value, this.buffer.subarray(this.length + 4));
+
+        // Write the length prefix, then skip over it and the written string.
+        this.view.setUint32(this.length, written, true);
+        this.length += 4 + written;
+
         /*
         let codePoint: number;
 
