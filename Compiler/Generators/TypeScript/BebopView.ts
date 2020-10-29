@@ -13,12 +13,10 @@ const asciiToHex = [
 
 if (typeof require !== 'undefined') {
     if (typeof TextDecoder === 'undefined') (global as any).TextDecoder = require('util').TextDecoder;
-    if (typeof TextEncoder === 'undefined') (global as any).TextEncoder = require('util').TextEncoder;
 }
 
 export class BebopView {
     private static textDecoder = new TextDecoder;
-    private static textEncoder = new TextEncoder;
     private static writeBuffer: Uint8Array = new Uint8Array(256);
     private static writeBufferView: DataView = new DataView(BebopView.writeBuffer.buffer);
     private static instance: BebopView;
@@ -29,7 +27,7 @@ export class BebopView {
         return BebopView.instance;
     }
 
-    minimumTextDecoderLength: number = 200;
+    minimumTextDecoderLength: number = 300;
     private buffer: Uint8Array;
     private view: DataView;
     private byteToHex: string[] = []; // A lookup table: ['00', '01', ..., 'ff']
@@ -118,7 +116,7 @@ export class BebopView {
     }
 
     /**
-     * Reads a null-terminated UTF-8-encoded string.
+     * Reads a length-prefixed UTF-8-encoded string.
      */
     readString(): string {
         const lengthBytes = this.readUint32();
@@ -127,7 +125,8 @@ export class BebopView {
         }
 
         const end = this.index + lengthBytes;
-        let result = "";
+        let result = new Array<number>(lengthBytes);
+        let i = 0;
         let codePoint: number;
         while (this.index < end) {
             // decode UTF-8
@@ -151,21 +150,24 @@ export class BebopView {
 
             // encode UTF-16
             if (codePoint < 0x10000) {
-                result += String.fromCharCode(codePoint);
+                result[i++] = codePoint;
             } else {
                 codePoint -= 0x10000;
-                result += String.fromCharCode((codePoint >> 10) + 0xD800, (codePoint & ((1 << 10) - 1)) + 0xDC00);
+                result[i++] = ((codePoint >> 10) + 0xD800);
+                result[i++] = (codePoint & ((1 << 10) - 1)) + 0xDC00;
             }
         }
+
 
         // Damage control, if the input is malformed UTF-8.
         this.index = end;
 
-        return result;
+        result.length = i;
+        return String.fromCharCode.apply(String, result);
     }
 
     /**
-     * Writes a null-terminated UTF-8-encoded string.
+     * Writes a length-prefixed UTF-8-encoded string.
      */
     writeString(value: string): void {
         // value.length * 3 is an upper limit for the space taken up by the string:
@@ -175,13 +177,11 @@ export class BebopView {
 
         // Reallocate if necessary, then write to this.length + 4.
         this.guaranteeBufferLength(this.length + maxBytes);
-        const { written } = BebopView.textEncoder.encodeInto(value, this.buffer.subarray(this.length + 4));
 
-        // Write the length prefix, then skip over it and the written string.
-        this.view.setUint32(this.length, written, true);
-        this.length += 4 + written;
+        // Start writing the string from here:
+        let w = this.length + 4;
+        const start = w;
 
-        /*
         let codePoint: number;
 
         for (let i = 0; i < value.length; i++) {
@@ -194,33 +194,31 @@ export class BebopView {
                 codePoint = (a << 10) + b + (0x10000 - (0xD800 << 10) - 0xDC00);
             }
 
-            // strings are null-terminated, so a string cannot contain a null character.
-            if (codePoint === 0) {
-                throw new Error("Cannot encode a string containing the null character");
-            }
-
             // encode UTF-8
             if (codePoint < 0x80) {
-                this.writeByte(codePoint);
+                this.buffer[w++] = codePoint;
             } else {
                 if (codePoint < 0x800) {
-                    this.writeByte(((codePoint >> 6) & 0x1F) | 0xC0);
+                    this.buffer[w++] = ((codePoint >> 6) & 0x1F) | 0xC0;
                 } else {
                     if (codePoint < 0x10000) {
-                        this.writeByte(((codePoint >> 12) & 0x0F) | 0xE0);
+                        this.buffer[w++] = ((codePoint >> 12) & 0x0F) | 0xE0;
                     } else {
-                        this.writeByte(((codePoint >> 18) & 0x07) | 0xF0);
-                        this.writeByte(((codePoint >> 12) & 0x3F) | 0x80);
+                        this.buffer[w++] = ((codePoint >> 18) & 0x07) | 0xF0;
+                        this.buffer[w++] = ((codePoint >> 12) & 0x3F) | 0x80;
                     }
-                    this.writeByte(((codePoint >> 6) & 0x3F) | 0x80);
+                    this.buffer[w++] = ((codePoint >> 6) & 0x3F) | 0x80;
                 }
-                this.writeByte((codePoint & 0x3F) | 0x80);
+                this.buffer[w++] = (codePoint & 0x3F) | 0x80;
             }
         }
 
-        // write the null terminator
-        this.writeByte(0);
-        */
+        // Count how many bytes we wrote.
+        const written = w - start;
+
+        // Write the length prefix, then skip over it and the written string.
+        this.view.setUint32(this.length, written, true);
+        this.length += 4 + written;
     }
 
     readGuid(): string {
