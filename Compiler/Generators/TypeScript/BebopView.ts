@@ -125,8 +125,7 @@ export class BebopView {
         }
 
         const end = this.index + lengthBytes;
-        let result = new Array<number>(lengthBytes);
-        let i = 0;
+        let result = "";
         let codePoint: number;
         while (this.index < end) {
             // decode UTF-8
@@ -150,20 +149,17 @@ export class BebopView {
 
             // encode UTF-16
             if (codePoint < 0x10000) {
-                result[i++] = codePoint;
+                result += String.fromCharCode(codePoint);
             } else {
                 codePoint -= 0x10000;
-                result[i++] = ((codePoint >> 10) + 0xD800);
-                result[i++] = (codePoint & ((1 << 10) - 1)) + 0xDC00;
+                result += String.fromCharCode((codePoint >> 10) + 0xD800, (codePoint & ((1 << 10) - 1)) + 0xDC00);
             }
         }
-
 
         // Damage control, if the input is malformed UTF-8.
         this.index = end;
 
-        result.length = i;
-        return String.fromCharCode.apply(String, result);
+        return result;
     }
 
     /**
