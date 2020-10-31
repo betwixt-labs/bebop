@@ -279,22 +279,18 @@ namespace Bebop
         [MethodImpl(HotPath)]
         public string ReadString()
         {
-            
-            var lengthBytes = unchecked((int)ReadUInt32());
-            if (lengthBytes == 0)
-            {
-                return string.Empty;
-            }
-            var index = Position;
-            Position += lengthBytes;
             unsafe
             {
-                var charCount = Encoding.UTF8.GetMaxCharCount(lengthBytes);
-                fixed (char* charPtr = charCount > MaxStackSize ? new char[charCount] : stackalloc char[charCount])
-                fixed (byte* bytesPtr = _buffer.Slice(index, lengthBytes))
+                var stringByteCount = unchecked((int)ReadUInt32());
+                fixed (byte* o = _buffer.Slice(Position, stringByteCount))
                 {
-                    var readChars = Encoding.UTF8.GetChars(bytesPtr, lengthBytes, charPtr, charCount);
-                    return new string(charPtr, 0, readChars);
+                    var charCount = Encoding.UTF8.GetMaxCharCount(stringByteCount);
+                    fixed (char* c = charCount > MaxStackSize ? new char[charCount] : stackalloc char[charCount])
+                    {
+                        var writtenChars = Encoding.UTF8.GetChars(o, stringByteCount, c, charCount);
+                        Position += stringByteCount;
+                        return new string(c, 0, writtenChars);
+                    }
                 }
             }
         }
@@ -366,22 +362,19 @@ namespace Bebop
         [MethodImpl(HotPath)]
         public void WriteString(string value)
         {
-            
             unsafe
             {
-                fixed (char* charsPtr = value)
+                fixed (char* c = value)
                 {
-                    var lengthBytes = Encoding.UTF8.GetByteCount(charsPtr, value.Length);
-                    GrowBy(lengthBytes + 4);
-                    var index = Length - 4;
-                    WriteUInt32(unchecked((uint)lengthBytes));
-                    fixed (byte* bytesPtr = _buffer.Slice(index, lengthBytes))
+                    var size = Encoding.UTF8.GetByteCount(c, value.Length);
+                    WriteUInt32(unchecked((uint) size));
+                    var index = Length;
+                    GrowBy(size);
+                    fixed (byte* o = _buffer.Slice(index, size))
                     {
-
-                        Encoding.UTF8.GetBytes(charsPtr, value.Length, bytesPtr, lengthBytes);
+                        Encoding.UTF8.GetBytes(c, value.Length, o, size);
                     }
                 }
-                
             }
         }
 
