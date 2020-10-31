@@ -279,18 +279,13 @@ namespace Bebop
         [MethodImpl(HotPath)]
         public string ReadString()
         {
+            var stringByteCount = unchecked((int)ReadUInt32());
             unsafe
             {
-                var stringByteCount = unchecked((int)ReadUInt32());
-                fixed (byte* o = _buffer.Slice(Position, stringByteCount))
+                fixed (byte* bytePtr = _buffer.Slice(Position, stringByteCount))
                 {
-                    var charCount = Encoding.UTF8.GetMaxCharCount(stringByteCount);
-                    fixed (char* c = charCount > MaxStackSize ? new char[charCount] : stackalloc char[charCount])
-                    {
-                        var writtenChars = Encoding.UTF8.GetChars(o, stringByteCount, c, charCount);
-                        Position += stringByteCount;
-                        return new string(c, 0, writtenChars);
-                    }
+                    Position += stringByteCount;
+                    return Encoding.UTF8.GetString(bytePtr, stringByteCount);
                 }
             }
         }
