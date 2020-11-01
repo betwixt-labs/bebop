@@ -1,0 +1,129 @@
+﻿using System.Collections.Generic;
+
+namespace Core.Meta
+{
+    public static class ReservedWords
+    {
+        public static readonly string CompilerVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version!.ToString()!;
+        public const string CompilerName = "bebopc";
+        public const string SchemaExt = "bop";
+
+        public static HashSet<string> Identifiers = new HashSet<string>
+        {
+            "BebopView"
+        };
+    }
+
+    /// <summary>
+    ///     Bebop base types are aligned with native types found in most programming languages.
+    /// </summary>
+    public enum BaseType
+    {
+        /// <summary>
+        ///     A simple type representing Boolean values of true or false.
+        ///     It is encoded as a single byte (false is 0, true is 1).
+        /// </summary>
+        Bool,
+
+        /// <summary>
+        ///     An integral type representing unsigned 8-bit integers with values between 0 and 255.
+        ///     It is encoded as a single byte.
+        /// </summary>
+        Byte,
+
+        /// <summary>
+        ///     An integral type representing unsigned 16-bit integers with values between 0 and 65535.
+        /// </summary>
+        UInt16,
+
+        /// <summary>
+        ///     An integral type representing signed 16-bit integers with values between -32768 and 32767.
+        /// </summary>
+        Int16,
+
+        /// <summary>
+        ///     An integral type representing unsigned 32-bit integers with values between 0 and 4294967295.
+        /// </summary>
+        UInt32,
+
+        /// <summary>
+        ///     An integral type representing signed 32-bit integers with values between -2147483648 and 2147483647.
+        /// </summary>
+        Int32,
+
+        /// <summary>
+        ///     An integral type representing unsigned 64-bit integers with values between 0 and 2^64-1.
+        /// </summary>
+        UInt64,
+
+        /// <summary>
+        ///     An integral type representing signed 64-bit integers with values between -2^63 and 2^63-1.
+        /// </summary>
+        Int64,
+
+        /// <summary>
+        ///     A 32-bit (single-precision) IEEE 754 floating point number.
+        ///     It is encoded as 4 bytes.
+        /// </summary>
+        Float32,
+
+        /// <summary>
+        ///     A 64-bit (double-precision) IEEE 754 floating point number.
+        ///     It is encoded as 8 bytes.
+        /// </summary>
+        Float64,
+
+        /// <summary>
+        ///     A UTF-8 encoded null-terminated string.
+        /// </summary>
+        String,
+
+        /// <summary>
+        ///     GUID (or UUID) is an acronym for 'Globally Unique Identifier' (or 'Universally Unique Identifier').
+        ///     It is a 128-bit integer number used to identify resources.
+        ///     It is encoded as 16 bytes (as returned by <see cref="System.Guid.ToByteArray"/>).
+        /// </summary>
+        Guid,
+    }
+
+    /// <summary>
+    ///     Aggregate kinds are data structures that can be constructed from multiple <see cref="ScalarType"/> members, and references to other aggregate kinds.
+    /// </summary>
+    public enum AggregateKind : uint
+    {
+        /// <summary>
+        ///     An enumeration type (or enum type) is a type defined by a set of named constants.
+        ///     It is restricted to the <see cref="BaseType.UInt32"/> integral numeric type.
+        /// </summary>
+        /// <remarks>
+        ///     It is possible to add new members to an enum in use by a <see cref="Message"/> while maintaining backwards
+        ///     compatibility.
+        /// </remarks>
+        Enum = 0,
+
+        /// <summary>
+        ///     A structure type (or struct type) is a type that can encapsulate data. All members are guaranteed to be present.
+        ///     The members of the struct are laid out sequentially, and are stored in the order in which they appear.
+        /// </summary>
+        /// <remarks>
+        ///     It is not possible for new members to be added to a struct once it is in use by a <see cref="Message"/>.
+        ///     <para/>
+        ///     Structures should be used when there is a need for performance or a guarantee data is available.
+        /// </remarks>
+        Struct = 1,
+
+        /// <summary>
+        ///     The message type is a data structure that combines state (members) as a single type-safe unit. All members of a
+        ///     message are optional.
+        ///     <para/>
+        ///     Members of the message may be any valid Bebop type.
+        ///     <para/>
+        /// </summary>
+        /// <remarks>
+        ///     It is possible to add new members to a members a <see cref="Message"/> while maintaining backwards comparability.
+        ///     <para/>
+        ///     Messages should be used to model more complex behavior, or data that is intended to be modified.
+        /// </remarks>
+        Message = 2
+    }
+}

@@ -1,0 +1,12 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+	  <TargetFramework>net5.0</TargetFramework>
+	  <Nullable>enable</Nullable>
+	  <LangVersion>9.0</LangVersion>
+	  <AssemblyName>BebopCore</AssemblyName>
+	  <RootNamespace>Core</RootNamespace>
+	  <Platforms>x64;x86</Platforms>
+  </PropertyGroup>
+
+</Project>
