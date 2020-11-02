@@ -6,20 +6,22 @@
 		<Nullable>enable</Nullable>
 		<LangVersion>9.0</LangVersion>
 		<AssemblyName>bebopc</AssemblyName>
-		<RuntimeIdentifiers>win-x64;osx-x64;linux-x64</RuntimeIdentifiers>
+		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
 		<Version>0.1.0</Version>
 		<Authors>Rainway, Inc.</Authors>
 		<PlatformTarget>x64</PlatformTarget>
 		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-		<OutputPath>../bin/$(Configuration)/</OutputPath>
-		<NativeOutputPath>../bin/$(Configuration)/native/</NativeOutputPath>
-		<PublishDir>../bin/$(Configuration)/publish</PublishDir>
+		<AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+		<OutputPath>../bin/compiler/$(Configuration)</OutputPath>
+		<NativeOutputPath>../bin/compiler/$(Configuration)/native/</NativeOutputPath>
+		<PublishDir>../bin/compiler/$(Configuration)/publish</PublishDir>
+		<Platforms>x64</Platforms>
 	</PropertyGroup>
 
 
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-		
+		<PlatformTarget>x64</PlatformTarget>
 	</PropertyGroup>
 
 
@@ -28,6 +30,7 @@
 		<IlcDisableReflection>true</IlcDisableReflection>
 		<IlcOptimizationPreference>Size</IlcOptimizationPreference>
 		<IlcDisableUnhandledExceptionExperience>true</IlcDisableUnhandledExceptionExperience>
+		<PlatformTarget>x64</PlatformTarget>
 		<RootAllApplicationAssemblies>false</RootAllApplicationAssemblies>
 		<IlcFoldIdenticalMethodBodies>true</IlcFoldIdenticalMethodBodies>
 		<IlcInvariantGlobalization>true</IlcInvariantGlobalization>
