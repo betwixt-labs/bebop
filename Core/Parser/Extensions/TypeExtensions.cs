@@ -24,6 +24,7 @@ namespace Core.Parser.Extensions
             {"float64", BaseType.Float64},
             {"string", BaseType.String},
             {"guid", BaseType.Guid},
+            {"date", BaseType.Date},
         };
         public static int FindToken(this Token[] tokens, Func<KeyValuePair<Token, int>, bool> predicate)
         {

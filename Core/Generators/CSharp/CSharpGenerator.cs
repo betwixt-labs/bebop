@@ -152,6 +152,7 @@ namespace Core.Generators.CSharp
                         BaseType.Int16 => "short",
                         BaseType.UInt64 => "ulong",
                         BaseType.Int64 => "long",
+                        BaseType.Date => "System.DateTime",
                         _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                     };
                 case ArrayType at:
@@ -299,6 +300,7 @@ namespace Core.Generators.CSharp
                     BaseType.UInt64 => $"{target} = view.ReadUInt64();",
                     BaseType.Int64 => $"{target} = view.ReadInt64();",
                     BaseType.Float64 => $"{target} = view.ReadFloat64();",
+                    BaseType.Date => $"{target} = view.ReadDate();",
                     _ => throw new ArgumentOutOfRangeException()
                 },
                 DefinedType dt when Schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
@@ -434,6 +436,7 @@ namespace Core.Generators.CSharp
                     BaseType.Int16 => $"view.WriteInt16({target});",
                     BaseType.UInt64 => $"view.WriteUInt64({target});",
                     BaseType.Int64 => $"view.WriteInt64({target});",
+                    BaseType.Date => $"view.WriteDate({target});",
                     _ => throw new ArgumentOutOfRangeException()
                 },
                 DefinedType dt when Schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>

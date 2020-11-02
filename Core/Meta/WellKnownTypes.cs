@@ -84,6 +84,7 @@ namespace Core.Meta
         ///     It is encoded as 16 bytes (as returned by <see cref="System.Guid.ToByteArray"/>).
         /// </summary>
         Guid,
+        Date,
     }
 
     /// <summary>

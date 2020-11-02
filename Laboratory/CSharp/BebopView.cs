@@ -272,6 +272,12 @@ namespace Bebop
             WriteUnaligned(ref GetReference(_buffer.Slice(index, size)), value);
         }
 
+        [MethodImpl(HotPath)]
+        public DateTime ReadDate()
+        {
+            return new DateTime(ReadInt64());
+        }
+
         /// <summary>
         ///     Reads a null-terminated string from the underlying buffer
         /// </summary>
@@ -343,6 +349,12 @@ namespace Bebop
             var index = Length;
             GrowBy(value.Length);
             value.AsSpan().CopyTo(_buffer.Slice(index, value.Length));
+        }
+
+        [MethodImpl(HotPath)]
+        public void WriteDate(DateTime date)
+        {
+            WriteInt64(date.ToBinary());
         }
 
         [MethodImpl(HotPath)]
