@@ -2,8 +2,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Compiler.Generators;
-using Compiler.Meta;
+using Core.Generators;
+using Core.Meta;
 
 namespace Compiler
 {

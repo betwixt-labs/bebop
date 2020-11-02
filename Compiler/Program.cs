@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Compiler.Exceptions;
-using Compiler.Generators;
-using Compiler.IO;
-using Compiler.Meta;
-using Compiler.Meta.Interfaces;
-using Compiler.Parser;
+using Core.Exceptions;
+using Core.Generators;
+using Core.Logging;
+using Core.Meta;
+using Core.Meta.Interfaces;
+using Core.Parser;
 
 namespace Compiler
 {

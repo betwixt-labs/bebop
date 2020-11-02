@@ -1,9 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Net.NetworkInformation;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using static System.Runtime.CompilerServices.Unsafe;
+using static System.Runtime.InteropServices.MemoryMarshal;
 
 namespace Bebop
 {
@@ -33,7 +33,8 @@ namespace Bebop
     /// </summary>
     public ref struct BebopView
     {
-    #if AGGRESSIVE_OPTIMIZE
+        const int MaxStackSize = 256;
+#if AGGRESSIVE_OPTIMIZE
         public const MethodImplOptions HotPath =
             MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization;
     #else
@@ -64,7 +65,6 @@ namespace Bebop
         public static BebopView From(Span<byte> buffer) => new BebopView(buffer);
 
 
-
         /// <summary>
         ///     Creates a read-only slice of the underlying <see cref="_buffer"/> containing all currently written data.
         /// </summary>
@@ -72,8 +72,8 @@ namespace Bebop
         public ReadOnlySpan<byte> Slice() => _buffer.Slice(0, Length);
 
         /// <summary>
-        /// Copies the contents of <see cref="Slice"/> into a new array.  This heap
-        /// allocates, so should generally be avoided for writing and only used when setting a decoded message property.
+        ///     Copies the contents of <see cref="Slice"/> into a new array.  This heap
+        ///     allocates, so should generally be avoided for writing and only used when setting a decoded message property.
         /// </summary>
         [MethodImpl(HotPath)]
         public byte[] ToArray() => Slice().ToArray();
@@ -108,7 +108,7 @@ namespace Bebop
         public ushort ReadUInt16()
         {
             const int size = 2;
-            var value = MemoryMarshal.Read<ushort>(_buffer.Slice(Position, size));
+            var value = ReadUnaligned<ushort>(ref GetReference(_buffer.Slice(Position, size)));
             Position += size;
             return value;
         }
@@ -117,7 +117,7 @@ namespace Bebop
         public short ReadInt16()
         {
             const int size = 2;
-            var value = MemoryMarshal.Read<short>(_buffer.Slice(Position, size));
+            var value = ReadUnaligned<short>(ref GetReference(_buffer.Slice(Position, size)));
             Position += size;
             return value;
         }
@@ -126,7 +126,7 @@ namespace Bebop
         public uint ReadUInt32()
         {
             const int size = 4;
-            var value = MemoryMarshal.Read<uint>(_buffer.Slice(Position, size));
+            var value = ReadUnaligned<uint>(ref GetReference(_buffer.Slice(Position, size)));
             Position += size;
             return value;
         }
@@ -135,7 +135,7 @@ namespace Bebop
         public int ReadInt32()
         {
             const int size = 4;
-            var value = MemoryMarshal.Read<int>(_buffer.Slice(Position, size));
+            var value = ReadUnaligned<int>(ref GetReference(_buffer.Slice(Position, size)));
             Position += size;
             return value;
         }
@@ -144,7 +144,7 @@ namespace Bebop
         public ulong ReadUInt64()
         {
             const int size = 8;
-            var value = MemoryMarshal.Read<ulong>(_buffer.Slice(Position, size));
+            var value = ReadUnaligned<ulong>(ref GetReference(_buffer.Slice(Position, size)));
             Position += size;
             return value;
         }
@@ -153,7 +153,7 @@ namespace Bebop
         public long ReadInt64()
         {
             const int size = 8;
-            var value = MemoryMarshal.Read<long>(_buffer.Slice(Position, size));
+            var value = ReadUnaligned<long>(ref GetReference(_buffer.Slice(Position, size)));
             Position += size;
             return value;
         }
@@ -162,7 +162,7 @@ namespace Bebop
         public float ReadFloat32()
         {
             const int size = 4;
-            var value = MemoryMarshal.Read<float>(_buffer.Slice(Position, size));
+            var value = ReadUnaligned<float>(ref GetReference(_buffer.Slice(Position, size)));
             Position += size;
             return value;
         }
@@ -171,7 +171,7 @@ namespace Bebop
         public double ReadFloat64()
         {
             const int size = 8;
-            var value = MemoryMarshal.Read<double>(_buffer.Slice(Position, size));
+            var value = ReadUnaligned<double>(ref GetReference(_buffer.Slice(Position, size)));
             Position += size;
             return value;
         }
@@ -182,7 +182,7 @@ namespace Bebop
             const int size = 2;
             var index = Length;
             GrowBy(size);
-            MemoryMarshal.Write(_buffer.Slice(index, size), ref value);
+            WriteUnaligned(ref GetReference(_buffer.Slice(index, size)), value);
         }
 
         [MethodImpl(HotPath)]
@@ -197,7 +197,7 @@ namespace Bebop
             WriteUInt32(unchecked((uint) value.Length));
             var index = Length;
             GrowBy(value.Length);
-            MemoryMarshal.AsBytes(value.AsSpan()).CopyTo(_buffer.Slice(index, value.Length));
+            AsBytes(value.AsSpan()).CopyTo(_buffer.Slice(index, value.Length));
         }
 
         [MethodImpl(HotPath)]
@@ -206,7 +206,7 @@ namespace Bebop
             WriteUInt32(unchecked((uint) value.Length));
             var index = Length;
             GrowBy(value.Length);
-            MemoryMarshal.AsBytes(value.AsSpan()).CopyTo(_buffer.Slice(index, value.Length));
+            AsBytes(value.AsSpan()).CopyTo(_buffer.Slice(index, value.Length));
         }
 
         [MethodImpl(HotPath)]
@@ -215,7 +215,7 @@ namespace Bebop
             const int size = 2;
             var index = Length;
             GrowBy(size);
-            MemoryMarshal.Write(_buffer.Slice(index, size), ref value);
+            WriteUnaligned(ref GetReference(_buffer.Slice(index, size)), value);
         }
 
         [MethodImpl(HotPath)]
@@ -224,7 +224,7 @@ namespace Bebop
             const int size = 4;
             var index = Length;
             GrowBy(size);
-            MemoryMarshal.Write(_buffer.Slice(index, size), ref value);
+            WriteUnaligned(ref GetReference(_buffer.Slice(index, size)), value);
         }
 
         [MethodImpl(HotPath)]
@@ -233,7 +233,7 @@ namespace Bebop
             const int size = 4;
             var index = Length;
             GrowBy(size);
-            MemoryMarshal.Write(_buffer.Slice(index, size), ref value);
+            WriteUnaligned(ref GetReference(_buffer.Slice(index, size)), value);
         }
 
         [MethodImpl(HotPath)]
@@ -242,7 +242,7 @@ namespace Bebop
             const int size = 8;
             var index = Length;
             GrowBy(size);
-            MemoryMarshal.Write(_buffer.Slice(index, size), ref value);
+            WriteUnaligned(ref GetReference(_buffer.Slice(index, size)), value);
         }
 
         [MethodImpl(HotPath)]
@@ -251,7 +251,7 @@ namespace Bebop
             const int size = 8;
             var index = Length;
             GrowBy(size);
-            MemoryMarshal.Write(_buffer.Slice(index, size), ref value);
+            WriteUnaligned(ref GetReference(_buffer.Slice(index, size)), value);
         }
 
         [MethodImpl(HotPath)]
@@ -260,7 +260,7 @@ namespace Bebop
             const int size = 4;
             var index = Length;
             GrowBy(size);
-            MemoryMarshal.Write(_buffer.Slice(index, size), ref value);
+            WriteUnaligned(ref GetReference(_buffer.Slice(index, size)), value);
         }
 
         [MethodImpl(HotPath)]
@@ -269,7 +269,13 @@ namespace Bebop
             const int size = 8;
             var index = Length;
             GrowBy(size);
-            MemoryMarshal.Write(_buffer.Slice(index, size), ref value);
+            WriteUnaligned(ref GetReference(_buffer.Slice(index, size)), value);
+        }
+
+        [MethodImpl(HotPath)]
+        public DateTime ReadDate()
+        {
+            return new DateTime(ReadInt64());
         }
 
         /// <summary>
@@ -279,26 +285,18 @@ namespace Bebop
         [MethodImpl(HotPath)]
         public string ReadString()
         {
+            var stringByteCount = unchecked((int)ReadUInt32());
             unsafe
             {
-                var startIndex = Position;
-                // eat bytes until we find the null terminator
-                while (ReadByte() != 0) { /*NOOP*/ }
-
-                var stringByteCount = unchecked(Position - startIndex - 1);
-                fixed (byte* o = &_buffer.Slice(startIndex, stringByteCount).GetPinnableReference())
+                fixed (byte* bytePtr = _buffer.Slice(Position, stringByteCount))
                 {
-                    var charCount = Encoding.UTF8.GetMaxCharCount(stringByteCount);
-                    fixed (char* c = new char[charCount])
-                    {
-                        var writtenChars = Encoding.UTF8.GetChars(o, stringByteCount, c, charCount);
-                        return new string(c, 0, writtenChars);
-                    }
+                    Position += stringByteCount;
+                    return Encoding.UTF8.GetString(bytePtr, stringByteCount);
                 }
             }
         }
 
-       
+
         [MethodImpl(HotPath)]
         public byte ReadByte() => _buffer[Position++];
 
@@ -312,7 +310,7 @@ namespace Bebop
             const int size = 16;
             var index = Position;
             Position += size;
-            return MemoryMarshal.Read<Guid>(_buffer.Slice(index, size));
+            return ReadUnaligned<Guid>(ref GetReference(_buffer.Slice(index, size)));
         }
 
         [MethodImpl(HotPath)]
@@ -338,10 +336,10 @@ namespace Bebop
         [MethodImpl(HotPath)]
         public byte[] ReadBytes()
         {
-            var length = ReadUInt32();
-            var data = _buffer.Slice(Position, (int) length).ToArray();
-            Position += (int) length;
-            return data;
+            var length = unchecked((int) ReadUInt32());
+            var index = Position;
+            Position += length;
+            return _buffer.Slice(index, length).ToArray();
         }
 
         [MethodImpl(HotPath)]
@@ -354,12 +352,18 @@ namespace Bebop
         }
 
         [MethodImpl(HotPath)]
+        public void WriteDate(DateTime date)
+        {
+            WriteInt64(date.ToBinary());
+        }
+
+        [MethodImpl(HotPath)]
         public void WriteGuid(Guid guid)
         {
             const int size = 16;
             var index = Length;
             GrowBy(size);
-            MemoryMarshal.Write(_buffer.Slice(index), ref guid);
+            WriteUnaligned(ref GetReference(_buffer.Slice(index, size)), guid);
         }
 
         [MethodImpl(HotPath)]
@@ -370,12 +374,12 @@ namespace Bebop
                 fixed (char* c = value)
                 {
                     var size = Encoding.UTF8.GetByteCount(c, value.Length);
+                    WriteUInt32(unchecked((uint) size));
                     var index = Length;
                     GrowBy(size);
-                    fixed (byte* o = &_buffer.Slice(index, size).GetPinnableReference())
+                    fixed (byte* o = _buffer.Slice(index, size))
                     {
                         Encoding.UTF8.GetBytes(c, value.Length, o, size);
-                        WriteByte(0);
                     }
                 }
             }
@@ -384,16 +388,19 @@ namespace Bebop
         [MethodImpl(HotPath)]
         public void WriteByte(bool value)
         {
+            const int size = 1;
             var index = Length;
-            GrowBy(1);
-            _buffer[index] = (!value ? 0 : 1);
+            GrowBy(size);
+            _buffer[index] = !value ? 0 : 1;
         }
 
         [MethodImpl(HotPath)]
         public void WriteByte(byte value)
         {
+            const int size = 1;
+
             var index = Length;
-            GrowBy(1);
+            GrowBy(size);
             _buffer[index] = value;
         }
 
@@ -406,8 +413,9 @@ namespace Bebop
         [MethodImpl(HotPath)]
         public int ReserveMessageLength()
         {
+            const int size = 4;
             var i = Length;
-            GrowBy(4);
+            GrowBy(size);
             return i;
         }
 
@@ -419,7 +427,8 @@ namespace Bebop
         [MethodImpl(HotPath)]
         public void FillMessageLength(int position, uint messageLength)
         {
-            MemoryMarshal.Write(_buffer.Slice(position, 4), ref messageLength);
+            const int size = 4;
+            WriteUnaligned(ref GetReference(_buffer.Slice(position, size)), messageLength);
         }
 
         /// <summary>
@@ -428,8 +437,9 @@ namespace Bebop
         [MethodImpl(HotPath)]
         public uint ReadMessageLength()
         {
-            var result = MemoryMarshal.Read<uint>(_buffer.Slice(Position, 4));
-            Position += 4;
+            const int size = 4;
+            var result = ReadUnaligned<uint>(ref GetReference(_buffer.Slice(Position, size)));
+            Position += size;
             return result;
         }
     }
