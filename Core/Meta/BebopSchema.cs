@@ -37,15 +37,30 @@ namespace Core.Meta
                 {
                     throw new InvalidReadOnlyException(definition);
                 }
+                if (definition.OpcodeAttribute != null)
+                {
+                    if (definition.IsEnum())
+                    {
+                        throw new InvalidOpcodeAttributeUsageException(definition);
+                    }
+                    if (!definition.OpcodeAttribute.TryValidate(out var opcodeReason))
+                    {
+                        throw new InvalidOpcodeAttributeValueException(definition, opcodeReason);
+                    }
+                    if (Definitions.Values.Count(d => d.OpcodeAttribute != null && d.OpcodeAttribute.Value.Equals(definition.OpcodeAttribute.Value)) > 1)
+                    {
+                        throw new DuplicateOpcodeException(definition);
+                    }
+                }
                 foreach (var field in definition.Fields)
                 {
                     if (ReservedWords.Identifiers.Contains(field.Name))
                     {
                         throw new ReservedIdentifierException(field.Name, field.Span);
                     }
-                    if (field.DeprecatedAttribute.HasValue && !definition.IsMessage())
+                    if (field.DeprecatedAttribute != null && !definition.IsMessage())
                     {
-                        throw new InvalidDeprectedAttributeException(field);
+                        throw new InvalidDeprecatedAttributeUsageException(field);
                     }
                     switch (definition.Kind)
                     {

@@ -1,4 +1,5 @@
 ﻿using Core.Lexer.Tokenization.Models;
+using Core.Meta.Attributes;
 
 namespace Core.Meta.Interfaces
 {
@@ -26,7 +27,7 @@ namespace Core.Meta.Interfaces
         /// <summary>
         ///     Indicates if the member has been marked as no longer recommended for use.
         /// </summary>
-        public DeprecatedAttribute? DeprecatedAttribute { get; }
+        public BaseAttribute? DeprecatedAttribute { get; }
 
         /// <summary>
         ///     A literal value associated with the member.
