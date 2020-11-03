@@ -17,7 +17,7 @@ message RequestCatalog {
 	string secretTunnel = 2;
 }
 
-[opcode("0x31323334")]
+[opcode(0x31323334)]
 readonly struct RequestResponse {
     Furniture[] availableFurniture;
 }

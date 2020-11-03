@@ -10,8 +10,11 @@ namespace Core.Meta.Attributes
     /// </summary>
     public sealed class OpcodeAttribute : BaseAttribute
     {
-        public OpcodeAttribute(string value)
+        private readonly bool _isNumber;
+
+        public OpcodeAttribute(string value, bool isNumber)
         {
+            _isNumber = isNumber;
             Value = value;
         }
 
@@ -26,13 +29,19 @@ namespace Core.Meta.Attributes
                 message = "No opcode was provided.";
                return false;
             }
-     
-            if (Value.TryParseUInt(out var result))
+
+            if (_isNumber)
             {
+                if (!Value.TryParseUInt(out var result))
+                {
+                    message = $"Could not parse integer value \"{Value}\" of opcode attribute.";
+                    return false;
+                }
                 Value = $"0x{result:X}";
                 message = string.Empty;
                 return true;
             }
+
             switch (Value.Length)
             {
                 case 4 when Value.Any(ch => ch > sbyte.MaxValue):
@@ -46,7 +55,7 @@ namespace Core.Meta.Attributes
                     return true;
                 }
                 default:
-                    message = $"Opcode \"{Value}\" is not a valid unsigned integer.";
+                    message = $"Opcode \"{Value}\" is not a valid FourCC.";
                     return false;
             }
         }

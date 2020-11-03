@@ -47,15 +47,19 @@ namespace Core.Meta.Extensions
             {
                 return true;
             }
-            try
+            if (str.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
             {
-                result = Convert.ToUInt32(str, 16);
-                return true;
+                try
+                {
+                    result = Convert.ToUInt32(str, 16);
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
             }
-            catch
-            {
-                return false;
-            }
+            return false;
         }
     }
 }

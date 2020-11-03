@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Core.Exceptions;
 using Core.Lexer;
@@ -190,18 +191,27 @@ namespace Core.Parser
             if (Eat(TokenKind.OpenBracket))
             {
                 Expect(kind);
-                var message = "";
+                var value = string.Empty;
+                var isNumber = false;
                 if (Eat(TokenKind.OpenParenthesis))
                 {
-                    message = CurrentToken.Lexeme;
-                    Expect(TokenKind.StringExpandable);
+                    value = CurrentToken.Lexeme;
+                    if (Eat(TokenKind.StringExpandable) || Eat(TokenKind.StringLiteral) || kind.IsHybridValue() && Eat(TokenKind.Number))
+                    {
+                        isNumber = PeekToken(_index - 1).Kind == TokenKind.Number;
+                    }
+                    else
+                    {
+                        throw new UnexpectedTokenException(
+                            TokenKind.StringExpandable | TokenKind.StringLiteral | TokenKind.Number, CurrentToken);
+                    }
                     Expect(TokenKind.CloseParenthesis);
                 }
                 Expect(TokenKind.CloseBracket);
                 return kind switch
                 {
-                    TokenKind.Deprecated => new DeprecatedAttribute(message),
-                    TokenKind.Opcode => new OpcodeAttribute(message),
+                    TokenKind.Deprecated => new DeprecatedAttribute(value),
+                    TokenKind.Opcode => new OpcodeAttribute(value, isNumber),
                     _ => throw new UnexpectedTokenException(kind, CurrentToken)
                 };
             }
