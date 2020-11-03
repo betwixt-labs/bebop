@@ -46,7 +46,6 @@ namespace Core.Generators.CSharp
                 builder.AppendLine(GeneratedAttribute);
                 if (definition.IsEnum())
                 {
-                    builder.AppendLine(GeneratedAttribute);
                     builder.AppendLine($"public enum {definition.Name} : uint {{");
                     builder.Indent(indentStep);
                     for (var i = 0; i < definition.Fields.Count; i++)
