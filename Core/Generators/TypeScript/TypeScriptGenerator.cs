@@ -339,7 +339,7 @@ namespace Core.Generators.TypeScript
                     builder.AppendLine($"  export const {definition.Name} = {{");
                     if (definition.OpcodeAttribute != null)
                     {
-                        builder.AppendLine($"    Opcode: {definition.OpcodeAttribute.Value},");
+                        builder.AppendLine($"    opcode: {definition.OpcodeAttribute.Value},");
                     }
                     builder.AppendLine($"    encode(message: I{definition.Name}): Uint8Array {{");
                     builder.AppendLine("      const view = BebopView.getInstance();");
