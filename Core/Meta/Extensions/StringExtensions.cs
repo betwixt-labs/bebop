@@ -40,5 +40,26 @@ namespace Core.Meta.Extensions
 
             return f.ToLowerInvariant() + r;
         }
+
+        public static bool TryParseUInt(this string str, out uint result)
+        {
+            if (uint.TryParse(str, out result))
+            {
+                return true;
+            }
+            if (str.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    result = Convert.ToUInt32(str, 16);
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+            return false;
+        }
     }
 }

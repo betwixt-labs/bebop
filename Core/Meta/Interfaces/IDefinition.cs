@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Core.Lexer.Tokenization.Models;
+using Core.Meta.Attributes;
 
 namespace Core.Meta.Interfaces
 {
@@ -33,6 +34,8 @@ namespace Core.Meta.Interfaces
         /// The inner text of a block comment that preceded the definition.
         /// </summary>
         public string Documentation { get; }
+
+        public BaseAttribute? OpcodeAttribute { get; }
     }
 
     public static class DefinitionExtensions

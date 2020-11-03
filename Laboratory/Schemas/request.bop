@@ -1,0 +1,23 @@
+enum FurnitureFamily {
+    Bed = 0;
+    Table = 1;
+    Shoe = 2;
+}
+
+readonly struct Furniture {
+    string name;
+    uint32 price;
+	FurnitureFamily family;
+}
+
+[opcode("IKEA")]
+message RequestCatalog {
+    FurnitureFamily family = 1;
+	[deprecated("Nobody react to what I'm about to say...")]
+	string secretTunnel = 2;
+}
+
+[opcode(0x31323334)]
+readonly struct RequestResponse {
+    Furniture[] availableFurniture;
+}
