@@ -1,10 +1,12 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Core.Exceptions;
 using Core.Lexer;
 using Core.Lexer.Tokenization;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta;
+using Core.Meta.Attributes;
 using Core.Meta.Interfaces;
 using Core.Parser.Extensions;
 
@@ -157,6 +159,8 @@ namespace Core.Parser
 
                 var definitionDocumentation = ConsumeBlockComments();
 
+                var opcodeAttribute = EatAttribute(TokenKind.Opcode);
+
                 var isReadOnly = Eat(TokenKind.ReadOnly);
                 var kind = CurrentToken switch
                 {
@@ -165,7 +169,7 @@ namespace Core.Parser
                     _ when Eat(TokenKind.Message) => AggregateKind.Message,
                     _ => throw new UnexpectedTokenException(TokenKind.Message, CurrentToken)
                 };
-                DeclareAggregateType(CurrentToken, kind, isReadOnly, definitionDocumentation);
+                DeclareAggregateType(CurrentToken, kind, isReadOnly, definitionDocumentation, opcodeAttribute);
             }
             foreach (var (typeToken, definitionToken) in _typeReferences)
             {
@@ -177,6 +181,43 @@ namespace Core.Parser
             return new BebopSchema(_nameSpace, _definitions);
         }
 
+        /// <summary>
+        /// Consumes all the tokens belonging to an attribute
+        /// </summary>
+        /// <param name="kind">The kind of attribute that will be eaten</param>
+        /// <returns>An instance of the attribute.</returns>
+        private BaseAttribute? EatAttribute(TokenKind kind)
+        {
+            if (Eat(TokenKind.OpenBracket))
+            {
+                Expect(kind);
+                var value = string.Empty;
+                var isNumber = false;
+                if (Eat(TokenKind.OpenParenthesis))
+                {
+                    value = CurrentToken.Lexeme;
+                    if (Eat(TokenKind.StringExpandable) || Eat(TokenKind.StringLiteral) || kind.IsHybridValue() && Eat(TokenKind.Number))
+                    {
+                        isNumber = PeekToken(_index - 1).Kind == TokenKind.Number;
+                    }
+                    else
+                    {
+                        throw new UnexpectedTokenException(
+                            TokenKind.StringExpandable | TokenKind.StringLiteral | TokenKind.Number, CurrentToken);
+                    }
+                    Expect(TokenKind.CloseParenthesis);
+                }
+                Expect(TokenKind.CloseBracket);
+                return kind switch
+                {
+                    TokenKind.Deprecated => new DeprecatedAttribute(value),
+                    TokenKind.Opcode => new OpcodeAttribute(value, isNumber),
+                    _ => throw new UnexpectedTokenException(kind, CurrentToken)
+                };
+            }
+            return null;
+        }
+
 
         /// <summary>
         ///     Declares an aggregate data structure and adds it to the <see cref="_definitions"/> collection
@@ -185,7 +226,12 @@ namespace Core.Parser
         /// <param name="kind">The <see cref="AggregateKind"/> the type will represents.</param>
         /// <param name="isReadOnly"></param>
         /// <param name="definitionDocumentation"></param>
-        private void DeclareAggregateType(Token definitionToken, AggregateKind kind, bool isReadOnly, string definitionDocumentation)
+        /// <param name="opcodeAttribute"></param>
+        private void DeclareAggregateType(Token definitionToken,
+            AggregateKind kind,
+            bool isReadOnly,
+            string definitionDocumentation,
+            BaseAttribute? opcodeAttribute)
         {
             var fields = new List<IField>();
 
@@ -194,7 +240,7 @@ namespace Core.Parser
             var definitionEnd = CurrentToken.Span;
             while (!Eat(TokenKind.CloseBrace))
             {
-                DeprecatedAttribute? deprecatedAttribute = null;
+               
                 var value = 0;
 
                 var fieldDocumentation = ConsumeBlockComments();
@@ -203,6 +249,8 @@ namespace Core.Parser
                 {
                     break;
                 }
+
+                var deprecatedAttribute = EatAttribute(TokenKind.Deprecated);
 
                 TypeBase type = kind == AggregateKind.Enum
                     ? new ScalarType(BaseType.UInt32, definitionToken.Span, definitionToken.Lexeme)
@@ -219,19 +267,7 @@ namespace Core.Parser
                     value = int.Parse(CurrentToken.Lexeme);
                     Expect(TokenKind.Number);
                 }
-                if (Eat(TokenKind.OpenBracket))
-                {
-                    Expect(TokenKind.Deprecated);
-                    var message = "";
-                    if (Eat(TokenKind.OpenParenthesis))
-                    {
-                        message = CurrentToken.Lexeme;
-                        Expect(TokenKind.StringExpandable);
-                        Expect(TokenKind.CloseParenthesis);
-                    }
-                    Expect(TokenKind.CloseBracket);
-                    deprecatedAttribute = new DeprecatedAttribute(message);
-                }
+                
 
                 var fieldEnd = CurrentToken.Span;
                 Expect(TokenKind.Semicolon);
@@ -241,7 +277,7 @@ namespace Core.Parser
 
             var name = definitionToken.Lexeme;
             var definitionSpan = definitionToken.Span.Combine(definitionEnd);
-            var definition = new Definition(name, isReadOnly, definitionSpan, kind, fields, definitionDocumentation);
+            var definition = new Definition(name, isReadOnly, definitionSpan, kind, fields, definitionDocumentation, opcodeAttribute);
             if (_definitions.ContainsKey(name))
             {
                 throw new MultipleDefinitionsException(definition);

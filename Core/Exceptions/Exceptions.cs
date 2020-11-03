@@ -57,11 +57,37 @@ namespace Core.Exceptions
             : base($"'{definition.Name}' was declared readonly, but it is not a struct", definition.Span) { }
     }
 
-    class InvalidDeprectedAttributeException : SpanException
+    class InvalidDeprecatedAttributeUsageException : SpanException
     {
-        public InvalidDeprectedAttributeException(IField field)
-            : base($"'{field.Name}' was marked deprecated, but it is not part of a message", field.Span) { }
+        public InvalidDeprecatedAttributeUsageException(IField field)
+            : base($"'{field.Name}' was marked " +
+                $"deprecated" +
+                $", but it is not part of a message", field.Span) { }
     }
+
+    class InvalidOpcodeAttributeUsageException : SpanException
+    {
+        public InvalidOpcodeAttributeUsageException(IDefinition definition)
+            : base($"'{definition.Name}' was marked " +
+                $"opcode" +
+                $", but it is not part of a message or struct", definition.Span)
+        { }
+    }
+    class InvalidOpcodeAttributeValueException : SpanException
+    {
+        public InvalidOpcodeAttributeValueException(IDefinition definition, string reason)
+            : base($"'{definition.Name}' was marked " +
+                $"opcode" +
+                $", however it's value is invalid: {reason}", definition.Span)
+        { }
+    }
+
+    class DuplicateOpcodeException : SpanException
+    {
+        public DuplicateOpcodeException(IDefinition definition)
+            : base($"Multiple definitions for opcode '{definition.OpcodeAttribute?.Value}'", definition.Span) { }
+    }
+
 
     class InvalidMapKeyTypeException : SpanException
     {

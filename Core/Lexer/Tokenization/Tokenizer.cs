@@ -189,10 +189,22 @@ namespace Core.Lexer.Tokenization
             }
             var builder = new StringBuilder();
             builder.Append(surrogate);
-            while (_reader.PeekChar().IsDecimalDigit())
+            if (surrogate == '0' && _reader.PeekChar() == 'x')
             {
                 builder.Append(_reader.GetChar());
+                while (_reader.PeekChar().IsHexDigit())
+                {
+                    builder.Append(_reader.GetChar());
+                }
             }
+            else
+            {
+                while (_reader.PeekChar().IsDecimalDigit())
+                {
+                    builder.Append(_reader.GetChar());
+                }
+            }
+           
             token = MakeToken(TokenKind.Number, builder.ToString());
             return true;
         }

@@ -51,7 +51,7 @@ namespace Core.Generators.TypeScript
             builder.AppendLine($"const start = view.length;");
             foreach (var field in definition.Fields)
             {
-                if (field.DeprecatedAttribute.HasValue)
+                if (field.DeprecatedAttribute != null)
                 {
                     continue;
                 }
@@ -325,10 +325,10 @@ namespace Core.Generators.TypeScript
                         {
                             builder.Append(FormatDocumentation(field.Documentation, 3));
                         }
-                        if (field.DeprecatedAttribute.HasValue && !string.IsNullOrWhiteSpace(field.DeprecatedAttribute.Value.Message))
+                        if (field.DeprecatedAttribute != null)
                         {
                             builder.AppendLine("    /**");
-                            builder.AppendLine($"     * @deprecated {field.DeprecatedAttribute.Value.Message}");
+                            builder.AppendLine($"     * @deprecated {field.DeprecatedAttribute.Value}");
                             builder.AppendLine($"     */");
                         }
                         builder.AppendLine($"    {(definition.IsReadOnly ? "readonly " : "")}{field.Name.ToCamelCase()}{(definition.Kind == AggregateKind.Message ? "?" : "")}: {type}");
@@ -337,6 +337,10 @@ namespace Core.Generators.TypeScript
                     builder.AppendLine("");
 
                     builder.AppendLine($"  export const {definition.Name} = {{");
+                    if (definition.OpcodeAttribute != null)
+                    {
+                        builder.AppendLine($"    opcode: {definition.OpcodeAttribute.Value},");
+                    }
                     builder.AppendLine($"    encode(message: I{definition.Name}): Uint8Array {{");
                     builder.AppendLine("      const view = BebopView.getInstance();");
                     builder.AppendLine("      view.startWriting();");
@@ -370,8 +374,10 @@ namespace Core.Generators.TypeScript
 
         public override void WriteAuxiliaryFiles(string outputPath)
         {
-            var assembly = Assembly.GetExecutingAssembly();
-            using Stream stream = assembly.GetManifestResourceStream("Compiler.Generators.TypeScript.BebopView.ts")!;
+            var assembly = Assembly.GetEntryAssembly();
+            var tsView = assembly?.GetManifestResourceNames()?.FirstOrDefault(n => n.Contains("BebopView.ts"));
+           
+            using Stream stream = assembly.GetManifestResourceStream(tsView)!;
             using StreamReader reader = new StreamReader(stream);
             string result = reader.ReadToEnd();
             File.WriteAllText(Path.Join(outputPath, "BebopView.ts"), result);

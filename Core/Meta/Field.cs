@@ -1,4 +1,5 @@
 ﻿using Core.Lexer.Tokenization.Models;
+using Core.Meta.Attributes;
 using Core.Meta.Interfaces;
 
 namespace Core.Meta
@@ -8,7 +9,7 @@ namespace Core.Meta
         public Field(string name,
             in TypeBase type,
             in Span span,
-            in DeprecatedAttribute? deprecatedAttribute,
+            in BaseAttribute? deprecatedAttribute,
             in int constantValue, string documentation)
         {
             Name = name;
@@ -22,7 +23,7 @@ namespace Core.Meta
         public string Name { get; }
         public TypeBase Type { get; }
         public Span Span { get; }
-        public DeprecatedAttribute? DeprecatedAttribute { get; }
+        public BaseAttribute? DeprecatedAttribute { get; }
         public int ConstantValue { get; }
         public string Documentation { get; }
     }

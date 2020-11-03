@@ -66,6 +66,10 @@ namespace Core.Generators.CSharp
                     var baseName = "Base" + definitionName;
                     builder.AppendLine($"public abstract class {baseName} {{");
                     builder.Indent(indentStep);
+                    if (definition.OpcodeAttribute != null)
+                    {
+                        builder.AppendLine($"public const int Opcode = {definition.OpcodeAttribute.Value};");
+                    }
                     if (definition.IsMessage())
                     {
                         builder.AppendLine("#nullable enable");
@@ -78,10 +82,10 @@ namespace Core.Generators.CSharp
                         {
                             builder.AppendLine(FormatDocumentation(field.Documentation, 4));
                         }
-                        if (field.DeprecatedAttribute.HasValue &&
-                            !string.IsNullOrWhiteSpace(field.DeprecatedAttribute.Value.Message))
+                        if (field.DeprecatedAttribute != null &&
+                            !string.IsNullOrWhiteSpace(field.DeprecatedAttribute.Value))
                         {
-                            builder.AppendLine($"[System.Obsolete(\"{field.DeprecatedAttribute.Value.Message}\")]");
+                            builder.AppendLine($"[System.Obsolete(\"{field.DeprecatedAttribute.Value}\")]");
                         }
                         var type = TypeName(field.Type);
                         var opt = definition.Kind == AggregateKind.Message ? "?" : "";
@@ -376,7 +380,7 @@ namespace Core.Generators.CSharp
             builder.AppendLine($"var start = view.Length;");
             foreach (var field in definition.Fields)
             {
-                if (field.DeprecatedAttribute.HasValue)
+                if (field.DeprecatedAttribute != null)
                 {
                     continue;
                 }
