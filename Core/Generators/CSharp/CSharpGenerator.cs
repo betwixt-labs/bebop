@@ -345,7 +345,8 @@ namespace Core.Generators.CSharp
         public string CompileEncodeHelper(IDefinition definition)
         {
             var builder = new IndentedStringBuilder();
-            builder.AppendLine($"{HotPath}");
+            builder.AppendLine(GeneratedAttribute);
+            builder.AppendLine(HotPath);
             builder.AppendLine($"public static byte[] Encode(I{definition.Name.ToPascalCase()} message) {{");
             builder.Indent(indentStep);
             builder.AppendLine("var view = new BebopView();");
