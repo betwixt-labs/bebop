@@ -1,0 +1,181 @@
+body {
+    font: 14px/150% sans-serif;
+    margin: 50px 0 50px 50px;
+    background: #282a36;
+    color: #f8f8f2;
+}
+
+h1,
+p {
+    padding-right: 50px;
+    clear: both;
+}
+
+h1 {
+    margin-bottom: 50px;
+}
+
+p {
+    max-width: 800px;
+    margin: 0 0 30px 0;
+}
+
+a {
+    color: inherit;
+}
+
+textarea {
+    width: 100%;
+    height: 300px;
+    min-height: 300px;
+    resize: vertical;
+    margin: 0;
+    border: 1px solid #CCC;
+    border-radius: 5px;
+    padding: 5px;
+    font-family: 'Fira Code', monospace;
+    font-size: 13px;
+}
+
+
+
+    textarea:focus {
+        outline: none;
+        border-color: #777;
+        box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+    }
+
+code {
+    width: 100%;
+    height: 300px;
+    min-height: 300px;
+    resize: vertical;
+    margin: 0;
+    border: 1px solid #CCC;
+    border-radius: 5px;
+    padding: 5px;
+    font-family: 'Fira Code', monospace;
+    font-size: 15px;
+}
+
+section {
+    position: relative;
+    width: 50%;
+    float: left;
+    padding: 0 50px 50px 0;
+    box-sizing: border-box;
+}
+
+.spacer {
+    height: 50px;
+}
+
+.lds-ring {
+    display: inline-block;
+    position: relative;
+    width: 80px;
+    height: 80px;
+}
+
+    .lds-ring div {
+        box-sizing: border-box;
+        display: block;
+        position: absolute;
+        width: 64px;
+        height: 64px;
+        margin: 8px;
+        border: 8px solid #fff;
+        border-radius: 50%;
+        animation: lds-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+        border-color: #fff transparent transparent transparent;
+    }
+
+        .lds-ring div:nth-child(1) {
+            animation-delay: -0.45s;
+        }
+
+        .lds-ring div:nth-child(2) {
+            animation-delay: -0.3s;
+        }
+
+        .lds-ring div:nth-child(3) {
+            animation-delay: -0.15s;
+        }
+
+@keyframes lds-ring {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.hljs {
+    display: block;
+    overflow-x: auto;
+    padding: 0.5em;
+    background: #282a36;
+}
+
+.hljs-built_in,
+.hljs-selector-tag,
+.hljs-section,
+.hljs-link {
+    color: #8be9fd;
+}
+
+.hljs-keyword {
+    color: #ff79c6;
+}
+
+.hljs,
+.hljs-subst {
+    color: #f8f8f2;
+}
+
+.hljs-title {
+    color: #50fa7b;
+}
+
+.hljs-string,
+.hljs-meta,
+.hljs-name,
+.hljs-type,
+.hljs-attr,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition,
+.hljs-variable,
+.hljs-template-tag,
+.hljs-template-variable {
+    color: #f1fa8c;
+}
+
+.hljs-comment,
+.hljs-quote,
+.hljs-deletion {
+    color: #6272a4;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-title,
+.hljs-section,
+.hljs-doctag,
+.hljs-type,
+.hljs-name,
+.hljs-strong {
+    font-weight: bold;
+}
+
+.hljs-literal,
+.hljs-number {
+    color: #bd93f9;
+}
+
+.hljs-emphasis {
+    font-style: italic;
+}

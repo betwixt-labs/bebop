@@ -1,0 +1,67 @@
+﻿@page "/"
+@using Core.Parser
+@using Core.Generators
+@inject IJSRuntime JsRuntime
+
+
+<h1>Bebop</h1>
+
+<label for="generators">Choose a generator:</label>
+
+<select name="generators" id="generators">
+    <option value="cs" selected>C#</option>
+    <option value="ts">TypeScript</option>
+</select>
+
+<section>
+    <center><h2>Schema</h2></center>
+    <textarea id="schema" autofocus autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+              @oninput="Compile" placeholder="Type in this box to generate code."
+              onkeydown="if(event.keyCode===9){var v=this.value,s=this.selectionStart,e=this.selectionEnd;this.value=v.substring(0, s)+'\t'+v.substring(e);this.selectionStart=this.selectionEnd=s+1;return false;}"></textarea>
+</section>
+
+<section>
+    <center>  <h2>Code</h2> </center>
+    <pre><code id="output" class="language-csharp"></code></pre>
+
+</section>
+
+
+@code {
+
+
+    private string output = string.Empty;
+
+
+    private async Task Compile(ChangeEventArgs obj)
+    {
+
+
+      
+
+        if (obj.Value is string value && !string.IsNullOrWhiteSpace(value))
+        {
+            try
+            {
+                var parser = new SchemaParser(value, "Boo");
+                var schema = await parser.Evaluate();
+                schema.Validate();
+                output =  GeneratorUtils.ImplementedGenerators["cs"](schema).Compile();
+
+            }
+            catch (Exception e)
+            {
+                output = e.ToString();
+            }
+        }
+        else
+        {
+            output = string.Empty;
+        }
+     
+        await JsRuntime.InvokeVoidAsync("writeCode", output);
+
+    }
+
+}
+
