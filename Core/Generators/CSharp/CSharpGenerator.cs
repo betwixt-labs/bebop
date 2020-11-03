@@ -6,10 +6,11 @@ using Core.Meta.Interfaces;
 
 namespace Core.Generators.CSharp
 {
+    
     public class CSharpGenerator : Generator
     {
         const int indentStep = 2;
-
+        private static readonly string GeneratedAttribute = $"[System.CodeDom.Compiler.GeneratedCode(\"{ReservedWords.CompilerName}\", \"{ReservedWords.CompilerVersion}\")]";
         private const string HotPath = "[System.Runtime.CompilerServices.MethodImpl(BebopView.HotPath)]";
         public CSharpGenerator(ISchema schema) : base(schema) { }
 
@@ -42,8 +43,10 @@ namespace Core.Generators.CSharp
                 {
                     builder.AppendLine(FormatDocumentation(definition.Documentation, 2));
                 }
+                builder.AppendLine(GeneratedAttribute);
                 if (definition.IsEnum())
                 {
+                    builder.AppendLine(GeneratedAttribute);
                     builder.AppendLine($"public enum {definition.Name} : uint {{");
                     builder.Indent(indentStep);
                     for (var i = 0; i < definition.Fields.Count; i++)
@@ -60,8 +63,8 @@ namespace Core.Generators.CSharp
                 }
                 else if (definition.IsMessage() || definition.IsStruct())
                 {
-                    var interfaceName = "I" + definitionName;
-                    builder.AppendLine($"public abstract class {interfaceName} {{");
+                    var baseName = "Base" + definitionName;
+                    builder.AppendLine($"public abstract class {baseName} {{");
                     builder.Indent(indentStep);
                     if (definition.IsMessage())
                     {
@@ -93,18 +96,21 @@ namespace Core.Generators.CSharp
                     builder.AppendLine("}");
                     builder.AppendLine("");
                     builder.AppendLine("/// <inheritdoc />");
-                    builder.AppendLine($"public sealed class {definitionName} : {interfaceName} {{");
+                    builder.AppendLine(GeneratedAttribute);
+                    builder.AppendLine($"public sealed class {definitionName} : {baseName} {{");
                     builder.Indent(indentStep);
                     builder.AppendLine(CompileEncodeHelper(definition));
                     builder.AppendLine(HotPath);
-                    builder.AppendLine($"public static void EncodeInto({interfaceName} message, ref BebopView view) {{");
+                    builder.AppendLine(GeneratedAttribute);
+                    builder.AppendLine($"public static void EncodeInto({baseName} message, ref BebopView view) {{");
                     builder.Indent(indentStep);
                     builder.AppendLine(CompileEncode(definition));
                     builder.Dedent(indentStep);
                     builder.AppendLine("}");
                     builder.AppendLine("");
                     builder.AppendLine(HotPath);
-                    builder.AppendLine($"public static {interfaceName} DecodeFrom(ref BebopView view) {{");
+                    builder.AppendLine(GeneratedAttribute);
+                    builder.AppendLine($"public static {baseName} DecodeFrom(ref BebopView view) {{");
                     builder.Indent(indentStep);
                     builder.AppendLine(CompileDecode(definition));
                     builder.Dedent(indentStep);
