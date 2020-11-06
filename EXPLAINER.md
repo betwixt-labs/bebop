@@ -1,81 +1,101 @@
-# Pierogi VNext Message Format
+# Bebop - an efficient schema based binary serialization format for building cross-platform, real-time applications.
 
-# Why?
+We know what you're thinking: [yet another standard.](https://xkcd.com/927/) In a world of JSON, Protocol Buffers, MessagePack, and dozens of other formats why reinvent the wheel? 
 
-Pierogi is a binary wire format used by Rainway. Tradtionally, Pierogi today is used to transmit read-only volatile messages such as input, and by Fureai for passing signaling information. 
+At Rainway, we stream video games to client applications. Video and audio data needs to be delivered every 16.6 MS. Input from clients such as gamepad, mouse, keyboard, and touch data has to be processed and streamed back to a remote host, all in real-time. For us, every millisecond spent encoding and decoding matters. 
 
-But there in lies a design flaw. Because Pieorgi today isn't designed to accommodate things like variable length collections, strings, and other "complex" objects, the format forces applications to embed other formats as "payloads."
+In addition to requiring excellent performance for apps running on iOS, Android, embedded devices, and web browsers, we also have to make it easy for our development team to build across many languages and platforms with confidence.
 
-With multiple formats in use at Rainway (Boring, Sachiel, Pierogi, Quark, etc.) we have to increase the surface area for message serialization, and the subsequent handling of those messages. It doesn't scale, and it makes code harder to maintain.
+Our evaluation of other solutions found poor client-side serialization performance, large run-time overhead, poor browser support, and different trade-offs that drove us to create Bebop.
 
-Finally, Pierogis are today as code, which means the structure of a message must match the definition in a C# codebase. Reimplementation is prone to human error, and can result in increased development overhead.
+## Fast, Modern, and Strongly Typed
 
-# Goals
+For anyone who's wondering "is JSON good enough for my distributed/networked app's messaging?" it should be just as easy to use Bebop, but faster and safer.
 
-Create the next iteration of the Pierogi format, solving most of the issues mentioned above, and optimizing where other formats such as Google's [Protocol Buffer](https://developers.google.com/protocol-buffers/) fall short. 
+![](https://i.imgur.com/riuqcBC.png)
 
- - **Compiler**: VNext features a compiler that is capable of analyzing and validating Pierogi schemas.
- - **Extendable code generation**: A minimal API that allows for code generators to be written for any language.
- - **Efficient encoding**: Rather than storing types at their full width, VNext uses variable-length encoding to create smaller encoded values.
- - **Nesting**: Data structures can contain other data structures, such as a `message` that contains a `struct`.
- - **Attributes**: Attributes can be applied to fields to indicate metadata such as a field being deprecated.
- - **Comments**: Line comments can be added to a schema to provide context to humans.
- - **Detectable fields**: Protocol Buffers cannot detect the presense of data ahead of time, which leads to runtime errors.
- - **Linearizability**: Reading and writing at runtime should occur in a single operation to guarantee time complexity.
-
-# Format
-
- ## Scalar Types
- 
- Pierogi scalar types are aligned with native types found in most programming languages. All scalar types support being used as an array. A scalar type can only contain a "single" value whereas an aggregates can be constructed from multiple scalars (and possibly references to other aggregate kinds).
-
- - **bool**: A simple type representing Boolean values of true or false.
- - **byte**: An integral type representing unsigned 8-bit integers with values between 0 and 255.
- - **uint**: An integral type representing unsigned 32-bit integers with values between 0 and 4294967295.
- - **int**: An integral type representing signed 32-bit integers with values between -2147483648 and 2147483647.
- - **float**: A floating point type representing values ranging from approximately 5.0 x 10 -324 to 1.7 x 10 308 with a precision of 15-16 digits.
- - **string**: A UTF-8 encoded null-terminated string.
- - **guid**: GUID (or UUID) is an acronym for 'Globally Unique Identifier' (or 'Universally Unique Identifier'). It is a 128-bit integer number used to identify resources.
-
- ## Aggregate Data Types
-Aggregate kinds are data structures that can be constructed from multiple scalar type members, and references to other aggregate kinds.
-
-Wikipedia says, "In type theory, a kind is the type of a type constructor or, less commonly, the type of a higher-order type operator. A kind system is essentially a simply typed lambda calculus 'one level up,' endowed with a primitive type, denoted * and called 'type', which is the kind of any (monomorphic) data type."
-
-In layman's terms, a kind is an arity specifier, and the members defined in an aggregate make up an actual Type.
-
- - **enum**: n enumeration type (or enum type) is a type defined by a set of named constants. It is restricted to a uint integral numeric type.
-    - It is possible to add new members to an enum in use by a `message` while maintaining backwards compatibility.
- - **struct**: A structure type (or struct type) is a type that can encapsulate data. All members are guaranteed to be present. The members of the struct are laid out sequentially, and are stored in the order in which they appear.
-    - It is not possible for new members to be added to a struct once it is in use by a `message`.
-    - Structures should be used when there is a need for performance or a guarantee data is available.
- - **message**: The message type is a data structure that combines state (members) as a single type-safe unit. All members of a message are optional.
-    - It is possible to add new members to a members a `message` while maintaining backwards comparability.
-    - Messages should be used to model more complex behavior, or data that is intended to be modified.
-
-# Examples
+That speed and safety comes from the Bebop compiler which turns data structures into specialized statically typed models with tightly optimized encode / decode methods. There is no reflection, dynamic code, or arduous type-mapping
 
 ```
-package the.more.you.know;
+const song1: ISong = {
+    title: 'Donna Lee',
+    year: 1947,
+    performers: [
+        { name: 'Charlie Parker', plays: Instrument.Sax },
+        { name: 'Miles Davis', plays: Instrument.Trumpet },
+    ],
+};
 
-enum VideoCodec {
-  H264 = 0;
-  H265 = 1;
-}
-
-struct VideoData {
-  float timestamp;
-  uint width;
-  uint height;
-  byte[] fragment;
-}
-
-message MediaMessage {
-  VideoCodec codec = 0; 
-  string friendlyName = 1 [deprecated];
-  VideoData data = 2;
-}
-```
-
-
+const bebopEncodedSong1 = Song.encode(song1);
+``` 
  
+The code produced is also zero-copy which reduces garbage collection pressure and bottlenecking allocations.
+
+## A Simple Yet Powerful Schema
+
+Bebop schemas (`.bop`) from a syntax perspective are similar to `.proto` schemas, but with some extra features.
+
+```
+enum Instrument {
+    Sax = 0;
+    Trumpet = 1;
+    Clarinet = 2;
+}
+
+readonly struct Musician {
+    string name;
+    Instrument plays;
+}
+
+message Song {
+    string title = 1;
+    uint16 year = 2;
+    Musician[] performers = 3;
+}
+
+struct Library {
+    map[guid, Song] songs;
+}
+``` 
+
+Bebop features three aggregate types:
+- **enum**: A set of named constants of an underlying unsigned integer type.
+	- It is possible to add new members to an enum in use by a `message` or `struct` while maintaining backwards compatibility.
+- **struct**: A type that can encapsulate data. All members are guaranteed to be present. The members of the struct are laid out sequentially, and are stored in the order in which they appear.
+	- when the `readonly` attribute is present on a `struct` the data is immutable after decoding. 
+- **message**: A data structure that combines state (members) as a single type-safe unit. All members of a `message` are optional.
+	- It is possible to add new members to a `message` while maintaining backwards comparability.
+	- The presence of optional data is detectable.
+
+In addition to a plethora of base types that are aligned with native types found in most programming languages:
+
+- **bool**: A simple type representing Boolean values of true or false.
+- **byte**: An integral type representing unsigned 8-bit integers with values between 0 and 255.
+- **uint16**: An integral type representing unsigned 16-bit integers with values between 0 and 65535.
+- **int16**: An integral type representing signed 16-bit integers with values between -32768 and 32767.
+- **uint32**: An integral type representing unsigned 32-bit integers with values between 0 and 4294967295.
+- **int32**: An integral type representing signed 32-bit integers with values between -2147483648 and 2147483647.
+- **uint64**: An integral type representing unsigned 64-bit integers with values between 0 and 2^64-1.
+- **int64**: An integral type representing signed 64-bit integers with values between -2^63 and 2^63-1.
+- **float32**: A 32-bit (single-precision) IEEE 754 floating point number.
+- **float64**: A 64-bit (double-precision) IEEE 754 floating point number.
+- **string**: A length prefixed UTF-8 encoded string.
+- **date**: A type-safe way of representing a 64-bit unix timestamp.
+- **guid**: GUID (or UUID) is an acronym for 'Globally Unique Identifier' (or 'Universally Unique Identifier'). It is a 128-bit integer number used to identify resources.
+- **T[]**: All base types can be used as arrays by appending the `[]` suffix.
+- **map[T1, T2]**: A map type holds key-value pairs.
+
+You can read the entire Bebop schema language specification here.
+
+## Closing
+
+For the majority of people reading this, Bebop is cool. Still, you won't be jumping to integrate it into your existing applications. You've built around other solutions, and it is great they are working for you.
+
+So whether you're starting to build your next multiplayer app or refactor an RPC / IPC, or you need to increase app stability -- for performance and your overall productivity Bebop is here.
+
+- Live Demo (TODO)
+- Getting Started in C# (TODO)
+- Getting Started in TypeScript (TODO)
+- Contributing (TODO)
+
+_Bebop is currently available in C# and TypeScript with official C++, Dart, and PHP implementations releasing soon._
