@@ -112,11 +112,20 @@ namespace Compiler
         /// </summary>
         /// <param name="args">The flags to be parsed.</param>
         /// <returns>A dictionary containing all parsed flags and their value if any.</returns>
-        private static Dictionary<string, string> GetFlags(string[] args) => args
-            .Zip(args.Skip(1).Concat(new[] {string.Empty}), (first, second) => new {first, second})
-            .Where(pair => pair.first.StartsWith("-", StringComparison.Ordinal))
-            .ToDictionary(pair => new string(pair.first.SkipWhile(c => c == '-').ToArray()).ToLowerInvariant(),
-                g => g.second.StartsWith("-", StringComparison.Ordinal) ? string.Empty : g.second);
+        private static Dictionary<string, string> GetFlags(string[] args)
+        {
+            var arguments = new Dictionary<string, string>();
+            foreach (var token in args)
+            {
+                if (token.StartsWith("--"))
+                {
+                    var key = new string(token.SkipWhile(c => c == '-').ToArray()).ToLowerInvariant();
+                    var value = string.Join(" ", args.SkipWhile(i => i != $"--{key}").Skip(1).TakeWhile(i => !i.StartsWith("--")));
+                    arguments.Add(key, value);
+                }
+            }
+            return arguments;
+        }
 
 
         /// <summary>
@@ -207,7 +216,7 @@ namespace Compiler
                         errorMessage = $"Failed to activate \"{flag.Property.Name}\".";
                         return false;
                     }
-                    foreach (var item in parsedValue.Split(","))
+                    foreach (var item in parsedValue.Split(" ", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
                     {
                         genericList.Add(Convert.ChangeType(item.Trim(), itemType));
                     }
