@@ -296,6 +296,7 @@ export class BebopView {
     // 0.0001 is the number of milliseconds per "tick" (a tick is 100 ns).
     // 429496.7296 is the number of milliseconds in 2^32 ticks.
     // 0x3fffffff is a mask to ignore the "Kind" bits of the Date.ToBinary value.
+    // 0x40000000 is a mask to set the "Kind" bits to "DateTimeKind.Utc".
 
     readDate(): Date {
         const low = this.readUint32();
@@ -308,7 +309,7 @@ export class BebopView {
         const ms = date.getTime();
         const msSince1AD = ms + 62135596800000;
         const low = msSince1AD % 429496.7296 * 10000 | 0;
-        const high = msSince1AD / 429496.7296 | 0;
+        const high = msSince1AD / 429496.7296 | 0x40000000;
         this.writeUint32(low);
         this.writeUint32(high);
     }
