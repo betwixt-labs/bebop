@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
   <metadata>
     <id>bebop-tools</id>
-    <version>1</version>
+    <version>$version$</version>
     <title>bebop-tools</title>
     <authors>Rainway, Inc.</authors>
     <projectUrl>https://github.com/RainwayApp/bebop</projectUrl>
@@ -14,6 +14,6 @@
   <files>
 	<file src="build\bebop-tools.targets" target="build" />
     <file src="buildMultiTargeting\bebop-tools.targets" target="buildMultiTargeting" />
-    <file src="..\bin\compiler\Release\publish\bebopc.exe" target="tools\windows\bebopc.exe" />
+    <file src="..\..\bin\compiler\Release\publish\bebopc.exe" target="tools\windows\bebopc.exe" />
   </files>
 </package>
