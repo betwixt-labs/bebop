@@ -11,4 +11,5 @@ struct BasicTypes {
     float64 a_float64;
     string a_string;
     guid a_guid;
+    date a_date;
 }

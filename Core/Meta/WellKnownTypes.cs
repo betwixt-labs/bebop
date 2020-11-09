@@ -84,6 +84,12 @@ namespace Core.Meta
         ///     It is encoded as 16 bytes (as returned by <see cref="System.Guid.ToByteArray"/>).
         /// </summary>
         Guid,
+
+        /// <summary>
+        ///    A UTC-based date, stored as a 62-bit number of 100-nanosecond "ticks" since 00:00 on January 1 of year 1 AD.
+        ///    It is stored as a 64-bit unsigned integer whose top two bits are to be ignored.
+        ///    This binary format is compatible with C#'s DateTime.ToBinary().
+        /// </summary>
         Date,
     }
 

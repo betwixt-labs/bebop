@@ -7,6 +7,9 @@
     "@types/jest": "^26.0.15",
     "@types/node": "^14.14.6",
     "benchmark": "^2.1.4",
+    "gulp": "^4.0.2",
+    "gulp-exec": "^5.0.0",
+    "gulp-jest": "^4.0.3",
     "ts-jest": "^26.4.3",
     "ts-node": "^9.0.0"
   }

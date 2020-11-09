@@ -291,6 +291,29 @@ export class BebopView {
         v.setUint32(i + 12, a, false);
     }
 
+    // A note on these numbers:
+    // 62135596800000 ms is the difference between the C# epoch (0001-01-01) and the Unix epoch (1970-01-01).
+    // 0.0001 is the number of milliseconds per "tick" (a tick is 100 ns).
+    // 429496.7296 is the number of milliseconds in 2^32 ticks.
+    // 0x3fffffff is a mask to ignore the "Kind" bits of the Date.ToBinary value.
+    // 0x40000000 is a mask to set the "Kind" bits to "DateTimeKind.Utc".
+
+    readDate(): Date {
+        const low = this.readUint32();
+        const high = this.readUint32() & 0x3fffffff;
+        const msSince1AD = 429496.7296 * high + 0.0001 * low;
+        return new Date(msSince1AD - 62135596800000);
+    }
+
+    writeDate(date: Date) {
+        const ms = date.getTime();
+        const msSince1AD = ms + 62135596800000;
+        const low = msSince1AD % 429496.7296 * 10000 | 0;
+        const high = msSince1AD / 429496.7296 | 0x40000000;
+        this.writeUint32(low);
+        this.writeUint32(high);
+    }
+
     writeEnum(value: any): void {
         var encoded = value as number;
         if (encoded === void 0) throw new Error("Couldn't convert enum value");
