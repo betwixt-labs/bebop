@@ -16,6 +16,7 @@ it("Basic types roundtrip", () => {
         a_float64: 9,
         a_string: 'hello world',
         a_guid: '01234567-0123-0123-0123-0123456789ab',
+        a_date: new Date(1996, 1, 7),
     };
     const bytes = BasicTypes.encode(obj);
     const obj2 = BasicTypes.decode(bytes);

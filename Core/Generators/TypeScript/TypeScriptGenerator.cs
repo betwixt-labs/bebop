@@ -112,6 +112,7 @@ namespace Core.Generators.TypeScript
                     BaseType.Float64 => $"view.writeFloat64({target});",
                     BaseType.String => $"view.writeString({target});",
                     BaseType.Guid => $"view.writeGuid({target});",
+                    BaseType.Date => $"view.writeDate({target});",
                     _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                 },
                 DefinedType dt when Schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
@@ -236,6 +237,7 @@ namespace Core.Generators.TypeScript
                     BaseType.Float64 => $"{target} = view.readFloat64();",
                     BaseType.String => $"{target} = view.readString();",
                     BaseType.Guid => $"{target} = view.readGuid();",
+                    BaseType.Date => $"{target} = view.readDate();",
                     _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                 },
                 DefinedType dt when Schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
@@ -262,6 +264,7 @@ namespace Core.Generators.TypeScript
                             BaseType.Float32 or BaseType.Float64 => "number",
                         BaseType.UInt64 or BaseType.Int64 => "bigint",
                         BaseType.String or BaseType.Guid => "string",
+                        BaseType.Date => "Date",
                         _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                     };
                 case ArrayType at when at.IsBytes():
@@ -374,8 +377,8 @@ namespace Core.Generators.TypeScript
 
         public override void WriteAuxiliaryFiles(string outputPath)
         {
-            var assembly = Assembly.GetEntryAssembly();
-            var tsView = assembly?.GetManifestResourceNames()?.FirstOrDefault(n => n.Contains("BebopView.ts"));
+            var assembly = Assembly.GetEntryAssembly()!;
+            var tsView = assembly.GetManifestResourceNames()!.FirstOrDefault(n => n.Contains("BebopView.ts"))!;
            
             using Stream stream = assembly.GetManifestResourceStream(tsView)!;
             using StreamReader reader = new StreamReader(stream);
