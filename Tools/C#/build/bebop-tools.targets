@@ -33,14 +33,13 @@
 		<_Bebopc Condition="'$(IsOSX)' == 'true'">$(_BebopcRoot)macos\bebopc"</_Bebopc>
 		<_Bebopc Condition="'$(IsLinux)' == 'true'">$(_BebopcRoot)linux\bebopc"</_Bebopc>
 		<_BebopSchemas>"@(Bebop -> '%(FullPath)', ' ')"</_BebopSchemas>
-		<_BebopNamespace>"@(Bebop -> '%(Namespace)', '')"</_BebopNamespace>
 	</PropertyGroup>
 
 
 	<Target Name="CompileBops" BeforeTargets="CoreCompile" DependsOnTargets="PrepareForBuild">
 
 
-		<Error Text="No schemas" Code="0" Condition="'@(BebopSchemas)' == ' '" />
+		<Error Text="No schemas" Code="0" Condition="'$(_BebopSchemas)' == ' '" />
 
 		<Error Text="No output file was specified." Code="1" Condition=" '%(Bebop.OutputFile)' == ''" />
 
@@ -48,7 +47,7 @@
 
 
 		<Exec
-			Command="$(_Bebopc) --lang %(Bebop.Generator) $(_BebopNamespace) --files $(_BebopSchemas) --out &quot;$([System.IO.Path]::GetFullPath('%(Bebop.OutputDir)'))\%(Bebop.OutputFile)"
+			Command="$(_Bebopc) --lang %(Bebop.Generator) --namespace %(Bebop.Namespace) --files $(_BebopSchemas) --out &quot;$([System.IO.Path]::GetFullPath('%(Bebop.OutputDir)'))\%(Bebop.OutputFile)"
 			EchoOff='true'
 			StandardErrorImportance='high'
 			StandardOutputImportance='low'
