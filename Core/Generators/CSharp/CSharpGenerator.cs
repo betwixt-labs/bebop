@@ -170,7 +170,7 @@ namespace Core.Generators.CSharp
                     return $"System.Collections.Generic.Dictionary<{TypeName(mt.KeyType)}, {TypeName(mt.ValueType)}>";
                 case DefinedType dt:
                     var isEnum = Schema.Definitions[dt.Name].Kind == AggregateKind.Enum;
-                    return $"{(isEnum ? string.Empty : "I")}{dt.Name}";
+                    return $"{(isEnum ? string.Empty : "Base")}{dt.Name}";
             }
             throw new InvalidOperationException($"GetTypeName: {type}");
         }
@@ -321,23 +321,6 @@ namespace Core.Generators.CSharp
         }
 
         /// <summary>
-        ///     Generates the body of a helper method to decode the given <see cref="IDefinition"/>
-        /// </summary>
-        /// <param name="definition"></param>
-        /// <returns></returns>
-        public string CompileDecodeHelper(IDefinition definition)
-        {
-            var builder = new IndentedStringBuilder();
-            builder.AppendLine($"public static I{definition.Name.ToPascalCase()} Decode(byte[] message) {{");
-            builder.Indent(indentStep);
-            builder.AppendLine("var view = new BebopView(message);");
-            builder.AppendLine("return DecodeFrom(ref view);");
-            builder.Dedent(indentStep);
-            builder.AppendLine("}");
-            return builder.ToString();
-        }
-
-        /// <summary>
         ///     Generates the body of a helper method to encode the given <see cref="IDefinition"/>
         /// </summary>
         /// <param name="definition"></param>
@@ -347,7 +330,7 @@ namespace Core.Generators.CSharp
             var builder = new IndentedStringBuilder();
             builder.AppendLine(GeneratedAttribute);
             builder.AppendLine(HotPath);
-            builder.AppendLine($"public static byte[] Encode(I{definition.Name.ToPascalCase()} message) {{");
+            builder.AppendLine($"public static byte[] Encode(Base{definition.Name.ToPascalCase()} message) {{");
             builder.Indent(indentStep);
             builder.AppendLine("var view = new BebopView();");
             builder.AppendLine("EncodeInto(message, ref view);");

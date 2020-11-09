@@ -268,3 +268,4 @@ __pycache__/
 /Rainway/submodules
 *.law
 !*.law.template
+Tools/C#/.nuget
