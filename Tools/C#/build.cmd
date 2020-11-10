@@ -12,15 +12,11 @@ IF NOT EXIST %LocalAppData%\NuGet md %LocalAppData%\NuGet
 @powershell -NoProfile -ExecutionPolicy unrestricted -Command "$ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest 'https://dist.nuget.org/win-x86-commandline/latest/nuget.exe' -OutFile '%CACHED_NUGET%'"
 
 :copynuget
-IF EXIST .nuget\NuGet.exe goto restore
+IF EXIST .nuget\NuGet.exe goto run
 md .nuget
 copy %CACHED_NUGET% .nuget\NuGet.exe > nul
 .nuget\NuGet.exe Update -Self
 
-:restore
-IF NOT EXIST packages.config goto run
-.nuget\NuGet.exe Install packages.config -OutputDirectory packages -ExcludeVersion
-
 :run
 set /p Build=<version.txt
-.nuget\NuGet.exe Pack bebop-tools.nuspec -OutputDirectory packages -Version %Build%
+.nuget\NuGet.exe Pack bebop-tool.nuspec -OutputDirectory packages -Version %Build%

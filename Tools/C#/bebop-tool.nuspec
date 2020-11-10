@@ -1,19 +1,20 @@
 <?xml version="1.0"?>
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
   <metadata>
-    <id>bebop-tools</id>
+    <id>bebop-tool</id>
     <version>$version$</version>
-    <title>bebop-tools</title>
+    <title>bebop-tool</title>
     <authors>Rainway, Inc.</authors>
     <projectUrl>https://github.com/RainwayApp/bebop</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
+	<license type="expression">Apache-2.0</license>
     <description>The Bebop compiler for managed C# projects.</description>
     <copyright>Copyright © Rainway, Inc.</copyright>
 	<developmentDependency>true</developmentDependency>
   </metadata>
   <files>
-	<file src="build\bebop-tools.targets" target="build" />
-    <file src="buildMultiTargeting\bebop-tools.targets" target="buildMultiTargeting" />
+	<file src="build\bebop-tool.targets" target="build" />
+    <file src="buildMultiTargeting\bebop-tool.targets" target="buildMultiTargeting" />
     <file src="..\..\bin\compiler\Release\publish\bebopc.exe" target="tools\windows\bebopc.exe" />
   </files>
 </package>
