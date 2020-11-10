@@ -354,7 +354,7 @@ namespace Bebop
         [MethodImpl(HotPath)]
         public void WriteDate(DateTime date)
         {
-            WriteInt64(date.ToBinary());
+            WriteInt64(date.ToUniversalTime().ToBinary());
         }
 
         [MethodImpl(HotPath)]

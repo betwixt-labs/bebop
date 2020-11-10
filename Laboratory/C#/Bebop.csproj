@@ -4,11 +4,14 @@
 	  <TargetFrameworks>net5.0;net472</TargetFrameworks>
 	  <Nullable>enable</Nullable>
 	  <LangVersion>9.0</LangVersion>
-	  <Description>Provides simple access to fast and efficient "Bebop" serialization from .NET applications</Description>
-	  <PackageId>bebop-net</PackageId>
+	  <Description>The .NET runtime for Bebop, a schema-based binary serialization format.</Description>
+	  <PackageId>bebop</PackageId>
 	  <Authors>Rainway, Inc.</Authors>
 	  <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 	  <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	  <Version>0.1.0-preview</Version>
+	  <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+	  <PackageProjectUrl>https://github.com/RainwayApp/bebop</PackageProjectUrl>
   </PropertyGroup>
 
 

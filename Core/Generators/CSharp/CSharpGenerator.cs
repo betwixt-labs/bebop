@@ -313,7 +313,7 @@ namespace Core.Generators.CSharp
                     _ => throw new ArgumentOutOfRangeException()
                 },
                 DefinedType dt when Schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
-                    $"{target} = view.ReadUint() as {dt.Name};",
+                    $"{target} = ({dt.Name}) view.ReadUInt32();",
                 DefinedType dt =>
                     $"{target} = {(string.IsNullOrWhiteSpace(Schema.Namespace) ? string.Empty : $"{Schema.Namespace.ToPascalCase()}.")}{dt.Name.ToPascalCase()}.DecodeFrom(ref view);",
                 _ => throw new InvalidOperationException($"CompileDecodeField: {type}")
@@ -368,10 +368,17 @@ namespace Core.Generators.CSharp
                     continue;
                 }
                 builder.AppendLine("");
-                builder.AppendLine($"if (message.{field.Name.ToPascalCase()}.HasValue) {{");
+
+                var isNullableType = IsNullableType(field.Type);
+
+                builder.AppendLine(isNullableType
+                    ? $"if (message.{field.Name.ToPascalCase()}.HasValue) {{"
+                    : $"if (message.{field.Name.ToPascalCase()} != null) {{");
                 builder.Indent(indentStep);
                 builder.AppendLine($"view.WriteByte({field.ConstantValue});");
-                builder.AppendLine($"{CompileEncodeField(field.Type, $"message.{field.Name.ToPascalCase()}.Value")}");
+                builder.AppendLine(isNullableType
+                    ? $"{CompileEncodeField(field.Type, $"message.{field.Name.ToPascalCase()}.Value")}"
+                    : $"{CompileEncodeField(field.Type, $"message.{field.Name.ToPascalCase()}")}");
                 builder.Dedent(indentStep);
                 builder.AppendLine("}");
             }
@@ -390,6 +397,20 @@ namespace Core.Generators.CSharp
             }
             return builder.ToString();
         }
+
+        private bool IsNullableType(TypeBase type)
+        {
+            return type switch
+            {
+                DefinedType dt when Schema.Definitions[dt.Name].Kind == AggregateKind.Enum => true,
+                DefinedType => false,
+                ArrayType => true,
+                MapType => true,
+                ScalarType => true,
+                _ => throw new InvalidOperationException($"CompileEncodeField: {type}")
+            };
+        }
+
 
         private string CompileEncodeField(TypeBase type, string target, int depth = 0, int indentDepth = 0)
         {
