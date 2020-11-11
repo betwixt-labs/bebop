@@ -269,3 +269,4 @@ __pycache__/
 *.law
 !*.law.template
 Tools/C#/.nuget
+Laboratory/C#/Benchmarks/BenchmarkDotNet.Artifacts
