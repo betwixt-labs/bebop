@@ -28,14 +28,19 @@
 
 	<PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
 		<PublishSingleFile>true</PublishSingleFile>
-		<IlcDisableReflection>true</IlcDisableReflection>
+    <PlatformTarget>x64</PlatformTarget>
+
+		<!--
+    <IlcDisableReflection>true</IlcDisableReflection>
 		<IlcOptimizationPreference>Size</IlcOptimizationPreference>
 		<IlcDisableUnhandledExceptionExperience>true</IlcDisableUnhandledExceptionExperience>
-		<PlatformTarget>x64</PlatformTarget>
+		
 		<RootAllApplicationAssemblies>false</RootAllApplicationAssemblies>
 		<IlcFoldIdenticalMethodBodies>true</IlcFoldIdenticalMethodBodies>
 		<IlcInvariantGlobalization>true</IlcInvariantGlobalization>
 		<IlcGenerateCompleteTypeMetadata>true</IlcGenerateCompleteTypeMetadata>
+      -->
+		
 	</PropertyGroup>
 
 
