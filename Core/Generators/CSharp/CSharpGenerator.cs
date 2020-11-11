@@ -133,9 +133,25 @@ namespace Core.Generators.CSharp
 
                     builder.AppendLine(HotPath);
                     builder.AppendLine(GeneratedAttribute);
-                    builder.AppendLine($"private static T DecodeFrom<T>(ref BebopView view) where T: {baseName}, new() {{");
+                    builder.AppendLine(EditorBrowsableAttribute);
+                    builder.AppendLine($"internal static {definitionName} DecodeFrom(ref BebopView view) {{");
                     builder.Indent(indentStep);
-                    builder.AppendLine(CompileDecode(definition));
+                    // when you do new T() the compile uses System.Activator::CreateInstance
+                    // this non-generic variant avoids that and boxing.
+                    // https://devblogs.microsoft.com/premier-developer/dissecting-the-new-constraint-in-c-a-perfect-example-of-a-leaky-abstraction/
+                    builder.AppendLine(CompileDecode(definition, false));
+                    builder.Dedent(indentStep);
+                    builder.AppendLine("}");
+
+                    builder.AppendLine(HotPath);
+                    builder.AppendLine(GeneratedAttribute);
+                    builder.AppendLine(EditorBrowsableAttribute);
+                    builder.AppendLine($"internal static T DecodeFrom<T>(ref BebopView view) where T: {baseName}, new() {{");
+                    builder.Indent(indentStep);
+                    // a generic decode method that allows for run-time polymorphism 
+                    // this will initiate objects via a slower .ctor reflection
+                    // the last 16 objects are cached.
+                    builder.AppendLine(CompileDecode(definition, true));
                     builder.Dedent(indentStep);
                     builder.AppendLine("}");
 
@@ -201,18 +217,18 @@ namespace Core.Generators.CSharp
         /// </summary>
         /// <param name="definition">The definition to generate code for.</param>
         /// <returns>The generated C# <c>DecodeFrom</c> function body.</returns>
-        public string CompileDecode(IDefinition definition)
+        public string CompileDecode(IDefinition definition, bool useGenerics)
         {
             return definition.Kind switch
             {
-                AggregateKind.Message => CompileDecodeMessage(definition),
-                AggregateKind.Struct => CompileDecodeStruct(definition),
+                AggregateKind.Message => CompileDecodeMessage(definition, useGenerics),
+                AggregateKind.Struct => CompileDecodeStruct(definition, useGenerics),
                 _ => throw new InvalidOperationException(
                     $"invalid CompileDecode kind: {definition.Kind} in {definition}")
             };
         }
 
-        private string CompileDecodeStruct(IDefinition definition)
+        private string CompileDecodeStruct(IDefinition definition, bool useGenerics)
         {
             var builder = new IndentedStringBuilder();
             int i = 0;
@@ -223,7 +239,7 @@ namespace Core.Generators.CSharp
                 i++;
             }
 
-            builder.AppendLine($"return new T {{");
+            builder.AppendLine($"return new {(useGenerics ? "T" : definition.Name.ToPascalCase())} {{");
             builder.Indent(indentStep);
             i = 0;
             foreach (var field in definition.Fields)
@@ -241,10 +257,10 @@ namespace Core.Generators.CSharp
         /// </summary>
         /// <param name="definition">The message definition to generate code for.</param>
         /// <returns>The generated C# <c>DecodeFrom</c> function body.</returns>
-        private string CompileDecodeMessage(IDefinition definition)
+        private string CompileDecodeMessage(IDefinition definition, bool useGenerics)
         {
             var builder = new IndentedStringBuilder();
-            builder.AppendLine($"var message = new T();");
+            builder.AppendLine($"var message = new {(useGenerics ? "T" : definition.Name.ToPascalCase())}();");
             builder.AppendLine("var length = view.ReadMessageLength();");
             builder.AppendLine("var end = unchecked((int) (view.Position + length));");
             builder.AppendLine("while (true) {");
@@ -342,7 +358,7 @@ namespace Core.Generators.CSharp
         }
 
         /// <summary>
-        ///     Generates the body of a helper method to encode the given <see cref="IDefinition"/>
+        ///     Generates the body of various helper methods to encode the given <see cref="IDefinition"/>
         /// </summary>
         /// <param name="definition"></param>
         /// <returns></returns>
@@ -372,7 +388,7 @@ namespace Core.Generators.CSharp
         }
 
         /// <summary>
-        ///     Generates the body of a helper method to decode the given <see cref="IDefinition"/>
+        ///     Generates the body of various helper methods to decode the given <see cref="IDefinition"/>
         /// </summary>
         /// <param name="definition"></param>
         /// <returns></returns>
@@ -381,7 +397,7 @@ namespace Core.Generators.CSharp
             var builder = new IndentedStringBuilder();
             builder.AppendLine(GeneratedAttribute);
             builder.AppendLine(HotPath);
-            builder.AppendLine($"public static T Decode<T>(byte[] message) where T : Base{definition.Name.ToPascalCase()}, new() {{");
+            builder.AppendLine($"public static T DecodeAs<T>(byte[] message) where T : Base{definition.Name.ToPascalCase()}, new() {{");
             builder.Indent(indentStep);
             builder.AppendLine("var view = BebopView.From(message);");
             builder.AppendLine("return DecodeFrom<T>(ref view) as T;");
@@ -393,18 +409,10 @@ namespace Core.Generators.CSharp
             builder.AppendLine($"public static {definition.Name.ToPascalCase()} Decode(byte[] message) {{");
             builder.Indent(indentStep);
             builder.AppendLine("var view = BebopView.From(message);");
-            builder.AppendLine($"return DecodeFrom<{definition.Name.ToPascalCase()}>(ref view);");
+            builder.AppendLine($"return DecodeFrom(ref view);");
             builder.Dedent(indentStep);
             builder.AppendLine("}");
             builder.AppendLine("");
-            builder.AppendLine(GeneratedAttribute);
-            builder.AppendLine(HotPath);
-            builder.AppendLine(EditorBrowsableAttribute);
-            builder.AppendLine($"internal static {definition.Name.ToPascalCase()} DecodeFrom(ref BebopView view) {{");
-            builder.Indent(indentStep);
-            builder.AppendLine($"return DecodeFrom<{definition.Name.ToPascalCase()}>(ref view);");
-            builder.Dedent(indentStep);
-            builder.AppendLine("}");
             return builder.ToString();
         }
 
