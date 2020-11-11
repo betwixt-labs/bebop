@@ -287,7 +287,7 @@ namespace Core.Generators.TypeScript
         public override string Compile()
         {
             var builder = new StringBuilder();
-            builder.AppendLine("import { BebopView } from \"./BebopView\";");
+            builder.AppendLine("import { BebopView } from \"bebop-ts\";");
             builder.AppendLine("");
             if (!string.IsNullOrWhiteSpace(Schema.Namespace))
             {
@@ -377,13 +377,7 @@ namespace Core.Generators.TypeScript
 
         public override void WriteAuxiliaryFiles(string outputPath)
         {
-            var assembly = Assembly.GetEntryAssembly()!;
-            var tsView = assembly.GetManifestResourceNames()!.FirstOrDefault(n => n.Contains("BebopView.ts"))!;
-           
-            using Stream stream = assembly.GetManifestResourceStream(tsView)!;
-            using StreamReader reader = new StreamReader(stream);
-            string result = reader.ReadToEnd();
-            File.WriteAllText(Path.Join(outputPath, "BebopView.ts"), result);
+            // There is nothing to do here now that BebopView.ts is an npm package.
         }
     }
 }

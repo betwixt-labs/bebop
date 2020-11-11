@@ -6,6 +6,7 @@
     "@msgpack/msgpack": "^2.3.0",
     "@types/jest": "^26.0.15",
     "@types/node": "^14.14.6",
+    "bebop-ts": "file:../../Runtime/TypeScript",
     "benchmark": "^2.1.4",
     "gulp": "^4.0.2",
     "gulp-exec": "^5.0.0",

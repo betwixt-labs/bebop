@@ -10,9 +10,4 @@
 	  <PlatformTarget>x64</PlatformTarget>
 	  <Platforms>x64</Platforms>
   </PropertyGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Include="Generators\TypeScript\BebopView.ts" />
-  </ItemGroup>
-
 </Project>
