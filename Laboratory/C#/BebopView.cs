@@ -275,7 +275,7 @@ namespace Bebop
         [MethodImpl(HotPath)]
         public DateTime ReadDate()
         {
-            return new DateTime(ReadInt64());
+            return DateTime.FromBinary(ReadInt64());
         }
 
         /// <summary>
