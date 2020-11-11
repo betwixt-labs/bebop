@@ -38,11 +38,6 @@
 		<IlcGenerateCompleteTypeMetadata>true</IlcGenerateCompleteTypeMetadata>
 	</PropertyGroup>
 
-
-	<ItemGroup>
-		<EmbeddedResource Include="..\Core\Generators\TypeScript\BebopView.ts" />
-	</ItemGroup>
-
 	<ItemGroup>
 	  <ProjectReference Include="..\Core\Core.csproj" />
 	</ItemGroup>
