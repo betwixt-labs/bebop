@@ -409,8 +409,8 @@ namespace Core.Generators.CSharp
                 ScalarType st => st.BaseType switch
                 {
                     BaseType.String => false,
-                    BaseType.Guid =>  false,
-                    BaseType.Date => false,
+                    BaseType.Guid =>  true,
+                    BaseType.Date => true,
                     _ => true
                 },
                 ScalarType => true,
