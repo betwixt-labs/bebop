@@ -400,7 +400,7 @@ namespace Core.Generators.CSharp
             builder.AppendLine($"public static T DecodeAs<T>(byte[] message) where T : Base{definition.Name.ToPascalCase()}, new() {{");
             builder.Indent(indentStep);
             builder.AppendLine("var view = BebopView.From(message);");
-            builder.AppendLine("return DecodeFrom<T>(ref view) as T;");
+            builder.AppendLine("return DecodeFrom<T>(ref view);");
             builder.Dedent(indentStep);
             builder.AppendLine("}");
             builder.AppendLine("");
