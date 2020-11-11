@@ -413,7 +413,6 @@ namespace Core.Generators.CSharp
                     BaseType.Date => true,
                     _ => true
                 },
-                ScalarType => true,
                 _ => throw new InvalidOperationException($"CompileEncodeField: {type}")
             };
         }
