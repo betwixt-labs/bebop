@@ -11,6 +11,7 @@ namespace Core.Generators.CSharp
     {
         const int indentStep = 2;
         private static readonly string GeneratedAttribute = $"[System.CodeDom.Compiler.GeneratedCode(\"{ReservedWords.CompilerName}\", \"{ReservedWords.CompilerVersion}\")]";
+        private static readonly string EditorBrowsableAttribute = "[System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]";
         private const string HotPath = "[System.Runtime.CompilerServices.MethodImpl(BebopView.HotPath)]";
 
         private static readonly string WarningBlock = $@"//------------------------------------------------------------------------------
@@ -121,7 +122,8 @@ namespace Core.Generators.CSharp
                     builder.AppendLine(CompileEncodeHelper(definition));
                     builder.AppendLine(HotPath);
                     builder.AppendLine(GeneratedAttribute);
-                    builder.AppendLine($"private static void EncodeInto({baseName} message, ref BebopView view) {{");
+                    builder.AppendLine(EditorBrowsableAttribute);
+                    builder.AppendLine($"internal static void EncodeInto({baseName} message, ref BebopView view) {{");
                     builder.Indent(indentStep);
                     builder.AppendLine(CompileEncode(definition));
                     builder.Dedent(indentStep);
@@ -333,7 +335,7 @@ namespace Core.Generators.CSharp
                 },
                 DefinedType dt when Schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
                     $"{target} = view.ReadEnum<{dt.Name}>();",
-                DefinedType dt =>
+                DefinedType dt => 
                     $"{target} = {(string.IsNullOrWhiteSpace(Schema.Namespace) ? string.Empty : $"{Schema.Namespace.ToPascalCase()}.")}{dt.Name.ToPascalCase()}.DecodeFrom(ref view);",
                 _ => throw new InvalidOperationException($"CompileDecodeField: {type}")
             };
@@ -391,6 +393,15 @@ namespace Core.Generators.CSharp
             builder.AppendLine($"public static {definition.Name.ToPascalCase()} Decode(byte[] message) {{");
             builder.Indent(indentStep);
             builder.AppendLine("var view = BebopView.From(message);");
+            builder.AppendLine($"return DecodeFrom<{definition.Name.ToPascalCase()}>(ref view);");
+            builder.Dedent(indentStep);
+            builder.AppendLine("}");
+            builder.AppendLine("");
+            builder.AppendLine(GeneratedAttribute);
+            builder.AppendLine(HotPath);
+            builder.AppendLine(EditorBrowsableAttribute);
+            builder.AppendLine($"internal static {definition.Name.ToPascalCase()} DecodeFrom(ref BebopView view) {{");
+            builder.Indent(indentStep);
             builder.AppendLine($"return DecodeFrom<{definition.Name.ToPascalCase()}>(ref view);");
             builder.Dedent(indentStep);
             builder.AppendLine("}");
