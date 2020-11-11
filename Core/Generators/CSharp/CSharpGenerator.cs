@@ -332,7 +332,7 @@ namespace Core.Generators.CSharp
                     _ => throw new ArgumentOutOfRangeException()
                 },
                 DefinedType dt when Schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
-                    $"{target} = ({dt.Name}) view.ReadUInt32();",
+                    $"{target} = view.ReadEnum<{dt.Name}>();",
                 DefinedType dt =>
                     $"{target} = {(string.IsNullOrWhiteSpace(Schema.Namespace) ? string.Empty : $"{Schema.Namespace.ToPascalCase()}.")}{dt.Name.ToPascalCase()}.DecodeFrom(ref view);",
                 _ => throw new InvalidOperationException($"CompileDecodeField: {type}")
@@ -517,7 +517,7 @@ namespace Core.Generators.CSharp
                     _ => throw new ArgumentOutOfRangeException()
                 },
                 DefinedType dt when Schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
-                    $"view.WriteEnum({target});",
+                    $"view.WriteEnum<{dt.Name}>({target});",
                 DefinedType dt =>
                     $"{(string.IsNullOrWhiteSpace(Schema.Namespace) ? string.Empty : $"{Schema.Namespace.ToPascalCase()}.")}{dt.Name.ToPascalCase()}.EncodeInto({target}, ref view);",
                 _ => throw new InvalidOperationException($"CompileEncodeField: {type}")

@@ -186,9 +186,23 @@ namespace Bebop
         }
 
         [MethodImpl(HotPath)]
-        public void WriteEnum(Enum value)
+        private static uint ConvertEnum<T>(T enumValue) where T : struct, Enum =>
+           As<T, uint>(ref enumValue);
+
+        [MethodImpl(HotPath)]
+        private static T ConvertFrom<T>(uint constant) where T : struct, Enum =>
+            As<uint, T>(ref constant);
+
+        [MethodImpl(HotPath)]
+        public T ReadEnum<T>() where T : struct, Enum
         {
-            WriteUInt32(Convert.ToUInt32(value));
+           return ConvertFrom<T>(ReadUInt32());
+        }
+
+        [MethodImpl(HotPath)]
+        public void WriteEnum<T>(T value) where T : struct, Enum
+        {
+            WriteUInt32(ConvertEnum<T>(value));
         }
 
         [MethodImpl(HotPath)]
