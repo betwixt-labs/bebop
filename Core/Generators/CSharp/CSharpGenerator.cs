@@ -404,8 +404,15 @@ namespace Core.Generators.CSharp
             {
                 DefinedType dt when Schema.Definitions[dt.Name].Kind == AggregateKind.Enum => true,
                 DefinedType => false,
-                ArrayType => true,
-                MapType => true,
+                ArrayType => false,
+                MapType => false,
+                ScalarType st => st.BaseType switch
+                {
+                    BaseType.String => false,
+                    BaseType.Guid =>  false,
+                    BaseType.Date => false,
+                    _ => true
+                },
                 ScalarType => true,
                 _ => throw new InvalidOperationException($"CompileEncodeField: {type}")
             };
