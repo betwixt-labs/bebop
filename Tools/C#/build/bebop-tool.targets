@@ -29,9 +29,9 @@
 
 	<PropertyGroup>
 		<_BebopcRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../tools/'))</_BebopcRoot>
-		<_Bebopc Condition="'$(IsWindows)' == 'true'">$(_BebopcRoot)windows\bebopc.exe"</_Bebopc>
-		<_Bebopc Condition="'$(IsOSX)' == 'true'">$(_BebopcRoot)macos\bebopc"</_Bebopc>
-		<_Bebopc Condition="'$(IsLinux)' == 'true'">$(_BebopcRoot)linux\bebopc"</_Bebopc>
+		<_Bebopc Condition="'$(IsWindows)' == 'true'">"$(_BebopcRoot)windows\bebopc.exe"</_Bebopc>
+		<_Bebopc Condition="'$(IsOSX)' == 'true'">"$(_BebopcRoot)macos\bebopc"</_Bebopc>
+		<_Bebopc Condition="'$(IsLinux)' == 'true'">"$(_BebopcRoot)linux\bebopc"</_Bebopc>
 		<_BebopSchemas>"@(Bebop -> '%(FullPath)', ' ')"</_BebopSchemas>
 	</PropertyGroup>
 
