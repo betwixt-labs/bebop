@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using Core.Lexer.Tokenization;
 using Core.Lexer.Tokenization.Attributes;
@@ -18,6 +19,10 @@ namespace Core.Lexer.Extensions
         /// </summary>
         private static readonly Dictionary<char, TokenKind> Symbols = PopulateKinds<char, SymbolAttribute>();
 
+        internal static string[] GetKeywords()
+        {
+            return Keywords.Keys.ToArray();
+        }
 
         /// <summary>
         ///     Creates a dictionary using a source value type and an attribute that is applied to <see cref="TokenKind"/> fields.

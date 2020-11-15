@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Core.Lexer.Extensions;
 
 namespace Core.Meta
 {
@@ -8,10 +9,12 @@ namespace Core.Meta
         public const string CompilerName = "bebopc";
         public const string SchemaExt = "bop";
 
-        public static HashSet<string> Identifiers = new HashSet<string>
+        public static HashSet<string> Identifiers = new()
         {
             "BebopView"
         };
+
+     
     }
 
     /// <summary>
