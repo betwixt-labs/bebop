@@ -1,32 +1,12 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Text;
+using Bebop.Exceptions;
 using static System.Runtime.CompilerServices.Unsafe;
 using static System.Runtime.InteropServices.MemoryMarshal;
 
 namespace Bebop
 {
-    /// <summary>
-    ///     Represents an error that occurs during Bebop reading and writing
-    /// </summary>
-    public class BebopException : Exception
-    {
-        public BebopException()
-        {
-        }
-
-        public BebopException(string message)
-            : base(message)
-        {
-        }
-
-        public BebopException(string message, Exception inner)
-            : base(message, inner)
-        {
-        }
-    }
-
     /// <summary>
     ///     A low-level interface for encoding and decoding Bebop structured data
     ///     TODO disable big-endian systems
@@ -332,7 +312,7 @@ namespace Bebop
         {
             if ((Length & 0xC0000000) != 0)
             {
-                throw new BebopException("A Bebop View cannot grow beyond 2 gigabytes.");
+                throw new BebopViewException("A Bebop View cannot grow beyond 2 gigabytes.");
             }
             if (Length + amount > _buffer.Length)
             {
