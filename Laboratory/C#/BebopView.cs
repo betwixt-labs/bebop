@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Bebop.Exceptions;
@@ -13,6 +14,9 @@ namespace Bebop
     /// </summary>
     public ref struct BebopView
     {
+        private static readonly UTF8Encoding UTF8 = new UTF8Encoding();
+
+
         const int MaxStackSize = 256;
 #if AGGRESSIVE_OPTIMIZE
         public const MethodImplOptions HotPath =
@@ -31,18 +35,16 @@ namespace Bebop
         /// </summary>
         /// <returns></returns>
         [MethodImpl(HotPath)]
-        public static BebopView Create() => new BebopView(Array.Empty<byte>());
+        public static BebopView Create() => new(Array.Empty<byte>());
 
+        [MethodImpl(HotPath)]
+        public static BebopView From(Memory<byte> buffer) => From(buffer.Span);
 
-        public static BebopView From(ReadOnlyMemory<byte> buffer) => From(buffer.Span);
+        [MethodImpl(HotPath)]
+        public static BebopView From(byte[] buffer) => new(buffer);
 
-        public static BebopView From(ReadOnlySpan<byte> buffer) => new BebopView(buffer.ToArray().AsSpan());
-
-        public static BebopView From(Memory<byte> buffer) => new BebopView(buffer.Span);
-
-        public static BebopView From(byte[] buffer) => new BebopView(buffer);
-
-        public static BebopView From(Span<byte> buffer) => new BebopView(buffer);
+        [MethodImpl(HotPath)]
+        public static BebopView From(Span<byte> buffer) => new(buffer);
 
 
         /// <summary>
@@ -58,13 +60,12 @@ namespace Bebop
         [MethodImpl(HotPath)]
         public byte[] ToArray() => Slice().ToArray();
 
-
-        /// <summary>
-        ///     Creates a new Bebop view
-        /// </summary>
-        /// <param name="buffer">the buffer of data that will be read from / written to</param>
         private BebopView(Span<byte> buffer)
         {
+            if (!BitConverter.IsLittleEndian)
+            {
+                throw new BebopViewException("Big-endian systems are not supported by Bebop.");
+            }
             _buffer = buffer;
             Position = 0;
             Length = _buffer.Length;
@@ -279,15 +280,22 @@ namespace Bebop
         [MethodImpl(HotPath)]
         public string ReadString()
         {
-            var stringByteCount = unchecked((int)ReadUInt32());
+            var stringByteCount = unchecked((int) ReadUInt32());
+            var stringSpan = _buffer.Slice(Position, stringByteCount);
+            Position += stringByteCount;
+
+
+        #if AGGRESSIVE_OPTIMIZE
+            return UTF8.GetString(stringSpan);
+        #else
             unsafe
             {
-                fixed (byte* bytePtr = _buffer.Slice(Position, stringByteCount))
+                fixed (byte* bytePtr = stringSpan)
                 {
-                    Position += stringByteCount;
-                    return Encoding.UTF8.GetString(bytePtr, stringByteCount);
+                    return UTF8.GetString(bytePtr, stringByteCount);
                 }
             }
+        #endif
         }
 
 
@@ -316,6 +324,7 @@ namespace Bebop
             }
             if (Length + amount > _buffer.Length)
             {
+
                 var newBuffer = new Span<byte>(new byte[(Length + amount) << 1]);
                 _buffer.CopyTo(newBuffer);
                 _buffer = newBuffer;
@@ -367,13 +376,13 @@ namespace Bebop
             {
                 fixed (char* c = value)
                 {
-                    var size = Encoding.UTF8.GetByteCount(c, value.Length);
+                    var size = UTF8.GetByteCount(c, value.Length);
                     WriteUInt32(unchecked((uint) size));
                     var index = Length;
                     GrowBy(size);
                     fixed (byte* o = _buffer.Slice(index, size))
                     {
-                        Encoding.UTF8.GetBytes(c, value.Length, o, size);
+                        UTF8.GetBytes(c, value.Length, o, size);
                     }
                 }
             }
