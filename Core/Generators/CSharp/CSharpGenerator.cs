@@ -11,6 +11,7 @@ namespace Core.Generators.CSharp
     {
         const int indentStep = 2;
         private static readonly string GeneratedAttribute = $"[System.CodeDom.Compiler.GeneratedCode(\"{ReservedWords.CompilerName}\", \"{ReservedWords.CompilerVersion}\")]";
+        private static readonly string BebopMarkerAttribute = $"[Bebop.Extensions.BebopMarkerAttribute]";
         private static readonly string EditorBrowsableAttribute = "[System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]";
         private const string HotPath = "[System.Runtime.CompilerServices.MethodImpl(BebopView.HotPath)]";
 
@@ -84,7 +85,7 @@ namespace Core.Generators.CSharp
                     builder.Indent(indentStep);
                     if (definition.OpcodeAttribute != null)
                     {
-                        builder.AppendLine($"public const int Opcode = {definition.OpcodeAttribute.Value};");
+                        builder.AppendLine($"public const uint OpCode = {definition.OpcodeAttribute.Value};");
                     }
                     if (definition.IsMessage())
                     {
@@ -112,11 +113,14 @@ namespace Core.Generators.CSharp
                     {
                         builder.AppendLine("#nullable disable");
                     }
+
+
                     builder.Dedent(indentStep);
                     builder.AppendLine("}");
                     builder.AppendLine("");
                     builder.AppendLine("/// <inheritdoc />");
                     builder.AppendLine(GeneratedAttribute);
+                    builder.AppendLine(BebopMarkerAttribute);
                     builder.AppendLine($"public sealed class {definitionName} : {baseName} {{");
                     builder.Indent(indentStep);
                     builder.AppendLine(CompileEncodeHelper(definition));
