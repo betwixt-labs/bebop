@@ -5,47 +5,47 @@ using Bebop.Exceptions;
 namespace Bebop
 {
     /// <summary>
-    ///     A wrapper for Bebop aggregate types
+    ///     A virtual wrapper for a Bebop record
     /// </summary>
-    public class BebopType
+    public class BebopRecord
     {
         /// <summary>
         ///     Don't allow this type to be created manually.
         /// </summary>
-        protected BebopType()
+        protected BebopRecord()
         {
         }
 
-        ///<inheritdoc cref="BebopType{T}.Class"/>
+        ///<inheritdoc cref="BebopRecord{T}.Class"/>
         public virtual Type Class { get; } = null!;
 
-        ///<inheritdoc cref="BebopType{T}.OpCode"/>
+        ///<inheritdoc cref="BebopRecord{T}.OpCode"/>
         public virtual int OpCode { get; }
 
-        ///<inheritdoc cref="BebopType{T}.Encode"/>
+        ///<inheritdoc cref="BebopRecord{T}.Encode"/>
         public virtual byte[] Encode(object message) => throw new NotImplementedException();
 
-        ///<inheritdoc cref="BebopType{T}.Encode{T}"/>
+        ///<inheritdoc cref="BebopRecord{T}.Encode{T}"/>
         public virtual byte[] Encode<T>(T message) where T : class, new() => throw new NotImplementedException();
 
-        ///<inheritdoc cref="BebopType{T}.Decode{T}"/>
+        ///<inheritdoc cref="BebopRecord{T}.Decode{T}"/>
         public virtual T Decode<T>(byte[] data) where T : class, new() => throw new NotImplementedException();
 
-        ///<inheritdoc cref="BebopType{T}.Decode"/>
+        ///<inheritdoc cref="BebopRecord{T}.Decode"/>
         public virtual object Decode(byte[] data) => throw new NotImplementedException();
 
-        ///<inheritdoc cref="BebopType{T}.Equals(BebopType)"/>
-        public virtual bool Equals(BebopType? other) => throw new NotImplementedException();
+        ///<inheritdoc cref="BebopRecord{T}.Equals(BebopRecord)"/>
+        public virtual bool Equals(BebopRecord? other) => throw new NotImplementedException();
     }
 
     /// <summary>
-    ///     A generic wrapper for Bebop aggregate types
+    ///     A concrete wrapper for a Bebop record
     /// </summary>
     /// <typeparam name="T">
     ///     The type of a sealed Bebop implementation that was marked with <see cref="BebopMarkerAttribute"/>
     ///     and corresponds to a defined Bebop type
     /// </typeparam>
-    public sealed class BebopType<T> : BebopType, IEquatable<BebopType> where T : class, new()
+    public sealed class BebopRecord<T> : BebopRecord, IEquatable<BebopRecord> where T : class, new()
     {
         /// <summary>
         ///     A delegate to the static decode method of <typeparamref name="T"/>
@@ -58,7 +58,7 @@ namespace Bebop
         private readonly Func<T, byte[]> _encodeDelegate;
 
         /// <summary>
-        ///     Creates a new <see cref="BebopType{T}"/> instance
+        ///     Creates a new <see cref="BebopRecord{T}"/> instance
         /// </summary>
         /// <param name="type">The underlying <see cref="Type"/> that belongs to <typeparamref name="T"/></param>
         /// <param name="encodeMethod">
@@ -70,7 +70,7 @@ namespace Bebop
         ///     <typeparamref name="T"/>
         /// </param>
         /// <param name="opcode">The opcode constant (if any) that is in <typeparamref name="T"/></param>
-        private BebopType(Type type, MethodInfo encodeMethod, MethodInfo decodeMethod, int opcode)
+        private BebopRecord(Type type, MethodInfo encodeMethod, MethodInfo decodeMethod, int opcode)
         {
             // create delegates to the encode and decode methods so we have a pointer.
             _encodeDelegate = (encodeMethod.CreateDelegate(typeof(Func<T, byte[]>)) as Func<T, byte[]>)!;
@@ -93,12 +93,12 @@ namespace Bebop
         public override Type Class { get; }
 
         /// <summary>Determines whether the specified object is equal to the current object.</summary>
-        /// <param name="other">The <see cref="BebopType"/> to compare with the current object.</param>
+        /// <param name="other">The <see cref="BebopRecord"/> to compare with the current object.</param>
         /// <returns>
-        ///     <see langword="true"/> if the specified <see cref="BebopType"/> is equal to the current <see cref="BebopType"/>;
+        ///     <see langword="true"/> if the specified <see cref="BebopRecord"/> is equal to the current <see cref="BebopRecord"/>;
         ///     otherwise, <see langword="false"/>.
         /// </returns>
-        public override bool Equals(BebopType? other)
+        public override bool Equals(BebopRecord? other)
             => other is not null && Class == other.Class && OpCode == other.OpCode;
 
         /// <summary>
@@ -152,7 +152,7 @@ namespace Bebop
         /// <inheritdoc/>
         public override bool Equals(object? obj) => obj switch
         {
-            BebopType type => Equals(type),
+            BebopRecord type => Equals(type),
             null => false,
             _ => false
         };

@@ -7,7 +7,7 @@ namespace Bebop.Exceptions
     /// </summary>
     public class BebopRuntimeException : Exception
     {
-        public BebopRuntimeException(BebopType first, BebopType second) : base($"Bebop type \"{first.Class.FullName}\" and \"{second.Class.FullName}\" cannot have same opcode\"{first.OpCode}\"")
+        public BebopRuntimeException(BebopRecord first, BebopRecord second) : base($"Bebop type \"{first.Class.FullName}\" and \"{second.Class.FullName}\" cannot have same opcode\"{first.OpCode}\"")
         {
         }
 
