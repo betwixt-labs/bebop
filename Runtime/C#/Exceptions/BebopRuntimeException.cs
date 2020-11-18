@@ -22,6 +22,7 @@ namespace Bebop.Exceptions
         {
         }
 
+        // ReSharper disable once UnusedMember.Global
         public BebopRuntimeException(string message, Exception inner)
             : base(message, inner)
         {

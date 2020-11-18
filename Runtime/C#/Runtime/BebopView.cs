@@ -13,7 +13,7 @@ namespace Bebop.Runtime
     /// </summary>
     public ref struct BebopView
     {
-        private static readonly UTF8Encoding UTF8 = new UTF8Encoding();
+        private static readonly UTF8Encoding UTF8 = new();
 
 
         private const int MaxStackSize = 256;

@@ -25,6 +25,7 @@ namespace Bebop.Runtime
         public virtual Type Type { get; } = null!;
 
         ///<inheritdoc cref="BebopRecord{T}.OpCode"/>
+        // ReSharper disable once UnassignedGetOnlyAutoProperty
         public virtual int OpCode { get; }
 
         ///<inheritdoc cref="BebopRecord{T}.Encode"/>

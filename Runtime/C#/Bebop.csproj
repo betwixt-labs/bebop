@@ -21,6 +21,11 @@
     <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.4" />
 	</ItemGroup>
 
+
+	<ItemGroup>
+	  <PackageReference Include="JetBrains.Annotations" Version="2020.1.0" />
+	</ItemGroup>
+
 	<PropertyGroup Condition="'$(TargetFramework)'=='net5.0'">
 		<DefineConstants>$(DefineConstants);AGGRESSIVE_OPTIMIZE</DefineConstants>
 	</PropertyGroup>
