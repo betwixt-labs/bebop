@@ -9,10 +9,10 @@ namespace Bebop.Runtime
 {
     /// <summary>
     ///     A low-level interface for encoding and decoding Bebop structured data
-    ///     TODO disable big-endian systems
     /// </summary>
     public ref struct BebopView
     {
+
         private static readonly UTF8Encoding UTF8 = new();
 
 

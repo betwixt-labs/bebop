@@ -5,13 +5,14 @@ using System.Reflection;
 using Bebop.Attributes;
 using Bebop.Exceptions;
 using Bebop.Extensions;
+using JetBrains.Annotations;
 
 namespace Bebop.Runtime
 {
     /// <summary>
-    ///     A fast static window that enables dynamic defined record access during runtime.  
+    ///     A fast reflection based analysis that enables dynamic defined record access during runtime.  
     /// </summary>
-    public static class BebopWindow
+    public static class BebopMirror
     {
         /// <summary>
         ///     A read-only dictionary of <see cref="BebopRecord{T}"/> types which are keyed via their opcode.
@@ -45,7 +46,7 @@ namespace Bebop.Runtime
         /// <summary>
         ///     Resolve all records before any members are referenced.
         /// </summary>
-        static BebopWindow()
+        static BebopMirror()
         {
             ResolveRecords();
         }
