@@ -1,4 +1,5 @@
 using Bebop;
+using Bebop.Runtime;
 
 namespace Test {
   public abstract class IM {

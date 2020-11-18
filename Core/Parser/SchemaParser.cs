@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Core.Exceptions;
 using Core.Lexer;
+using Core.Lexer.Extensions;
 using Core.Lexer.Tokenization;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta;
@@ -257,6 +259,10 @@ namespace Core.Parser
                     : ParseType(definitionToken);
 
                 var fieldName = CurrentToken.Lexeme;
+                if (TokenizerExtensions.GetKeywords().Contains(fieldName))
+                {
+                    throw new ReservedIdentifierException(fieldName, CurrentToken.Span);
+                }
                 var fieldStart = CurrentToken.Span;
 
                 Expect(TokenKind.Identifier);

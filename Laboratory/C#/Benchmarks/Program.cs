@@ -7,7 +7,7 @@ namespace Benchmarks
     {
         static void Main(string[] args)
         {
-            BenchmarkRunner.Run<BufferReadWrite>();
+            BenchmarkRunner.Run<Decoding>();
         }
     }
 }

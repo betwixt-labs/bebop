@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Bebop;
+using Bebop.Runtime;
 using NUnit.Framework;
 
 // I need to declare this, because I'm running into: https://github.com/dotnet/roslyn/issues/45510
@@ -40,7 +41,7 @@ namespace Test
             input.WriteGuid(testGuid);
 
 
-            var output = BebopView.From(input.Slice());
+            var output = BebopView.From(input.ToArray());
 
             Assert.AreEqual(1000, output.ReadInt16());
             Assert.AreEqual(2000, output.ReadInt32());

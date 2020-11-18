@@ -1,40 +1,23 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Text;
+using Bebop.Exceptions;
 using static System.Runtime.CompilerServices.Unsafe;
 using static System.Runtime.InteropServices.MemoryMarshal;
 
-namespace Bebop
+namespace Bebop.Runtime
 {
     /// <summary>
-    ///     Represents an error that occurs during Bebop reading and writing
-    /// </summary>
-    public class BebopException : Exception
-    {
-        public BebopException()
-        {
-        }
-
-        public BebopException(string message)
-            : base(message)
-        {
-        }
-
-        public BebopException(string message, Exception inner)
-            : base(message, inner)
-        {
-        }
-    }
-
-    /// <summary>
     ///     A low-level interface for encoding and decoding Bebop structured data
-    ///     TODO disable big-endian systems
     /// </summary>
     public ref struct BebopView
     {
-        const int MaxStackSize = 256;
-#if AGGRESSIVE_OPTIMIZE
+
+        private static readonly UTF8Encoding UTF8 = new();
+
+
+        private const int MaxStackSize = 256;
+    #if AGGRESSIVE_OPTIMIZE
         public const MethodImplOptions HotPath =
             MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization;
     #else
@@ -51,18 +34,16 @@ namespace Bebop
         /// </summary>
         /// <returns></returns>
         [MethodImpl(HotPath)]
-        public static BebopView Create() => new BebopView(Array.Empty<byte>());
+        public static BebopView Create() => new(Array.Empty<byte>());
 
+        [MethodImpl(HotPath)]
+        public static BebopView From(Memory<byte> buffer) => From(buffer.Span);
 
-        public static BebopView From(ReadOnlyMemory<byte> buffer) => From(buffer.Span);
+        [MethodImpl(HotPath)]
+        public static BebopView From(byte[] buffer) => new(buffer);
 
-        public static BebopView From(ReadOnlySpan<byte> buffer) => new BebopView(buffer.ToArray().AsSpan());
-
-        public static BebopView From(Memory<byte> buffer) => new BebopView(buffer.Span);
-
-        public static BebopView From(byte[] buffer) => new BebopView(buffer);
-
-        public static BebopView From(Span<byte> buffer) => new BebopView(buffer);
+        [MethodImpl(HotPath)]
+        public static BebopView From(Span<byte> buffer) => new(buffer);
 
 
         /// <summary>
@@ -78,13 +59,12 @@ namespace Bebop
         [MethodImpl(HotPath)]
         public byte[] ToArray() => Slice().ToArray();
 
-
-        /// <summary>
-        ///     Creates a new Bebop view
-        /// </summary>
-        /// <param name="buffer">the buffer of data that will be read from / written to</param>
         private BebopView(Span<byte> buffer)
         {
+            if (!BitConverter.IsLittleEndian)
+            {
+                throw new BebopViewException("Big-endian systems are not supported by Bebop.");
+            }
             _buffer = buffer;
             Position = 0;
             Length = _buffer.Length;
@@ -187,22 +167,19 @@ namespace Bebop
 
         [MethodImpl(HotPath)]
         private static uint ConvertEnum<T>(T enumValue) where T : struct, Enum =>
-           As<T, uint>(ref enumValue);
+            As<T, uint>(ref enumValue);
 
         [MethodImpl(HotPath)]
         private static T ConvertFrom<T>(uint constant) where T : struct, Enum =>
             As<uint, T>(ref constant);
 
         [MethodImpl(HotPath)]
-        public T ReadEnum<T>() where T : struct, Enum
-        {
-           return ConvertFrom<T>(ReadUInt32());
-        }
+        public T ReadEnum<T>() where T : struct, Enum => ConvertFrom<T>(ReadUInt32());
 
         [MethodImpl(HotPath)]
         public void WriteEnum<T>(T value) where T : struct, Enum
         {
-            WriteUInt32(ConvertEnum<T>(value));
+            WriteUInt32(ConvertEnum(value));
         }
 
         [MethodImpl(HotPath)]
@@ -287,10 +264,7 @@ namespace Bebop
         }
 
         [MethodImpl(HotPath)]
-        public DateTime ReadDate()
-        {
-            return DateTime.FromBinary(ReadInt64());
-        }
+        public DateTime ReadDate() => DateTime.FromBinary(ReadInt64());
 
         /// <summary>
         ///     Reads a null-terminated string from the underlying buffer
@@ -299,15 +273,22 @@ namespace Bebop
         [MethodImpl(HotPath)]
         public string ReadString()
         {
-            var stringByteCount = unchecked((int)ReadUInt32());
+            var stringByteCount = unchecked((int) ReadUInt32());
+            var stringSpan = _buffer.Slice(Position, stringByteCount);
+            Position += stringByteCount;
+
+
+        #if AGGRESSIVE_OPTIMIZE
+            return UTF8.GetString(stringSpan);
+        #else
             unsafe
             {
-                fixed (byte* bytePtr = _buffer.Slice(Position, stringByteCount))
+                fixed (byte* bytePtr = stringSpan)
                 {
-                    Position += stringByteCount;
-                    return Encoding.UTF8.GetString(bytePtr, stringByteCount);
+                    return UTF8.GetString(bytePtr, stringByteCount);
                 }
             }
+        #endif
         }
 
 
@@ -332,7 +313,7 @@ namespace Bebop
         {
             if ((Length & 0xC0000000) != 0)
             {
-                throw new BebopException("A Bebop View cannot grow beyond 2 gigabytes.");
+                throw new BebopViewException("A Bebop View cannot grow beyond 2 gigabytes.");
             }
             if (Length + amount > _buffer.Length)
             {
@@ -387,13 +368,13 @@ namespace Bebop
             {
                 fixed (char* c = value)
                 {
-                    var size = Encoding.UTF8.GetByteCount(c, value.Length);
+                    var size = UTF8.GetByteCount(c, value.Length);
                     WriteUInt32(unchecked((uint) size));
                     var index = Length;
                     GrowBy(size);
                     fixed (byte* o = _buffer.Slice(index, size))
                     {
-                        Encoding.UTF8.GetBytes(c, value.Length, o, size);
+                        UTF8.GetBytes(c, value.Length, o, size);
                     }
                 }
             }
