@@ -19,4 +19,4 @@ copy %CACHED_NUGET% .nuget\NuGet.exe > nul
 
 :run
 set /p Build=<version.txt
-.nuget\NuGet.exe Pack bebop-tool.nuspec -OutputDirectory packages -Version %Build%
+.nuget\NuGet.exe Pack bebop-tools.nuspec -OutputDirectory packages -Version %Build%

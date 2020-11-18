@@ -1,13 +1,12 @@
 ﻿using System;
-using JetBrains.Annotations;
+using Bebop.Runtime;
 
 namespace Bebop.Attributes
 {
     /// <summary>
-    /// Binds the specified <see cref="RecordType"/> to the attributed method for use with <see cref="Runtime.BebopWindow"/>
+    /// Binds the specified <see cref="RecordType"/> to the attributed method for use with <see cref="BebopMirror"/>
     /// </summary>
     [AttributeUsage(AttributeTargets.Method, Inherited = false)]
-    [MeansImplicitUse]
     public class BindRecordAttribute : Attribute
     {
 

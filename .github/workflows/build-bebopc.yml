@@ -1,0 +1,76 @@
+name: bebopc
+on:
+  # Trigger the workflow on push or pull request,
+  # but only for the main branch
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+jobs:
+  build-compiler:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+        include:
+          - os: macos-latest
+            CONFIGURATION: macOS-Release
+            RUNTIME: osx-x64
+            ARTIFACT: bebopc
+
+          - os: windows-latest
+            CONFIGURATION: Windows-Release
+            RUNTIME: win-x64
+            ARTIFACT: bebopc.exe
+    steps:
+      - uses: actions/checkout@v1
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: "5.0.x" # SDK Version to use; x will use the latest version of the 5.0 channel
+      - name: Restore Solution
+        run: dotnet restore
+      - name: Build bebopc
+        run: dotnet publish -c ${{matrix.CONFIGURATION}} -r ${{matrix.RUNTIME}}
+        working-directory: ./Compiler/
+
+      - name: Upload Build
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{matrix.os}}
+          path: ./bin/compiler/${{matrix.CONFIGURATION}}/publish/${{matrix.ARTIFACT}}
+
+  build-tools:
+    env:
+      TOOLS_ROOT: ${{github.workspace}}/Tools/C#
+      TOOLS_PATH: ${{github.workspace}}/Tools/C#/tools
+      WINDOWS_ARTIFACT: windows-latest
+      MAC_ARTIFACT: macos-latest
+    needs: build-compiler
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Download Windows Build
+        uses: actions/download-artifact@v2
+        with:
+          name: ${{env.WINDOWS_ARTIFACT}}
+          path: ${{env.TOOLS_PATH}}/windows/
+
+      - name: Download macOS Build
+        uses: actions/download-artifact@v2
+        with:
+          name: ${{env.MAC_ARTIFACT}}
+          path: ${{env.TOOLS_PATH}}/macos/
+
+      - name: Build bebop-tools NuGet Package
+        run: call ${{env.TOOLS_ROOT}}/build.cmd
+        shell: cmd
+        working-directory: ${{env.TOOLS_ROOT}}
+
+      - name: Upload bebop-tools Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: bebop-tools-latest
+          path: ${{env.TOOLS_ROOT}}/packages/

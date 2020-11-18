@@ -9,9 +9,9 @@ using Bebop.Extensions;
 namespace Bebop.Runtime
 {
     /// <summary>
-    ///     A fast static window that enables dynamic defined record access during runtime.  
+    ///     A fast reflection based analysis that enables dynamic defined record access during runtime.  
     /// </summary>
-    public static class BebopWindow
+    public static class BebopMirror
     {
         /// <summary>
         ///     A read-only dictionary of <see cref="BebopRecord{T}"/> types which are keyed via their opcode.
@@ -45,7 +45,7 @@ namespace Bebop.Runtime
         /// <summary>
         ///     Resolve all records before any members are referenced.
         /// </summary>
-        static BebopWindow()
+        static BebopMirror()
         {
             ResolveRecords();
         }
@@ -55,7 +55,7 @@ namespace Bebop.Runtime
         ///     <see cref="BebopRecord{T}"/>.
         /// </summary>
         /// <param name="recordName">The name of the desired Bebop record.</param>
-        /// <exception cref="BebopRuntimeException">Thrown when <param name="recordName"> cannot be mapped to a defined type.</param></exception>
+        /// <exception cref="BebopRuntimeException">Thrown when <paramref name="recordName"/> cannot be mapped to a defined type.</exception>
         /// <returns>A virtual <see cref="BebopRecord"/> accessor.</returns>
         public static BebopRecord GetRecord(string recordName) => DefinedRecords
                 .FirstOrDefault(definedType => definedType.Type.Name.Equals(recordName)) ??
@@ -67,7 +67,7 @@ namespace Bebop.Runtime
         ///     <see cref="BebopRecord{T}"/>.
         /// </summary>
         /// <param name="opcode">The unique opcode belonging to desired record</param>
-        /// <exception cref="BebopRuntimeException">Thrown when <param name="opcode"> does not correspond to any defined type.</param></exception>
+        /// <exception cref="BebopRuntimeException">Thrown when <paramref name="opcode"/> does not correspond to any defined type.</exception>
         /// <returns>A virtual <see cref="BebopRecord"/> accessor.</returns>
         public static BebopRecord GetRecordFromOpCode(uint opcode)
             => (_opcodeRecords.TryGetValue(opcode, out var type) ? type : null) ??

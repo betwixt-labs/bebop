@@ -32,7 +32,7 @@ namespace Benchmarks
         [Benchmark]
         public void DynamicDecode()
         {
-            _ = BebopWindow.GetRecordFromOpCode(0x54414843).Decode(_testBuffer);
+            _ = BebopMirror.GetRecordFromOpCode(0x54414843).Decode(_testBuffer);
         }
 
         [Benchmark]

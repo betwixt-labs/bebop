@@ -50,7 +50,7 @@ namespace Bebop.Runtime
         ///<inheritdoc cref="BebopRecord{T}.InvokeHandler{T}"/>
         public virtual void InvokeHandler<T>(object state, T record) => throw new NotImplementedException();
 
-        ///<inheritdoc cref="BebopRecord{T}.InvokeHandler"/>
+        ///<inheritdoc cref="BebopRecord{T}.InvokeHandler(object, object)"/>
         public virtual void InvokeHandler(object state, object record) => throw new NotImplementedException();
     }
 
