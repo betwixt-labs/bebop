@@ -1,12 +1,11 @@
 ﻿using System;
-using System.Buffers;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Bebop.Exceptions;
 using static System.Runtime.CompilerServices.Unsafe;
 using static System.Runtime.InteropServices.MemoryMarshal;
 
-namespace Bebop
+namespace Bebop.Runtime
 {
     /// <summary>
     ///     A low-level interface for encoding and decoding Bebop structured data
@@ -17,8 +16,8 @@ namespace Bebop
         private static readonly UTF8Encoding UTF8 = new UTF8Encoding();
 
 
-        const int MaxStackSize = 256;
-#if AGGRESSIVE_OPTIMIZE
+        private const int MaxStackSize = 256;
+    #if AGGRESSIVE_OPTIMIZE
         public const MethodImplOptions HotPath =
             MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization;
     #else
@@ -168,22 +167,19 @@ namespace Bebop
 
         [MethodImpl(HotPath)]
         private static uint ConvertEnum<T>(T enumValue) where T : struct, Enum =>
-           As<T, uint>(ref enumValue);
+            As<T, uint>(ref enumValue);
 
         [MethodImpl(HotPath)]
         private static T ConvertFrom<T>(uint constant) where T : struct, Enum =>
             As<uint, T>(ref constant);
 
         [MethodImpl(HotPath)]
-        public T ReadEnum<T>() where T : struct, Enum
-        {
-           return ConvertFrom<T>(ReadUInt32());
-        }
+        public T ReadEnum<T>() where T : struct, Enum => ConvertFrom<T>(ReadUInt32());
 
         [MethodImpl(HotPath)]
         public void WriteEnum<T>(T value) where T : struct, Enum
         {
-            WriteUInt32(ConvertEnum<T>(value));
+            WriteUInt32(ConvertEnum(value));
         }
 
         [MethodImpl(HotPath)]
@@ -268,10 +264,7 @@ namespace Bebop
         }
 
         [MethodImpl(HotPath)]
-        public DateTime ReadDate()
-        {
-            return DateTime.FromBinary(ReadInt64());
-        }
+        public DateTime ReadDate() => DateTime.FromBinary(ReadInt64());
 
         /// <summary>
         ///     Reads a null-terminated string from the underlying buffer
@@ -324,7 +317,6 @@ namespace Bebop
             }
             if (Length + amount > _buffer.Length)
             {
-
                 var newBuffer = new Span<byte>(new byte[(Length + amount) << 1]);
                 _buffer.CopyTo(newBuffer);
                 _buffer = newBuffer;
