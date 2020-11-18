@@ -248,7 +248,7 @@ namespace Bebop.Extensions
             }
             catch (ReflectionTypeLoadException e)
             {
-                return e.Types.Where(t => t is not null and t.GetCustomAttribute<T>() is not null);
+                return e.Types.Where(t => t is not null && t.GetCustomAttribute<T>() is not null);
             }
         }
     }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Bebop;
+using Bebop.Runtime;
 using NUnit.Framework;
 
 // I need to declare this, because I'm running into: https://github.com/dotnet/roslyn/issues/45510

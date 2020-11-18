@@ -3,13 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30615.102
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Bebop", "Bebop.csproj", "{FAB6A625-EF9E-4422-BFF0-FCB3157681B9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Bebop", "..\..\Runtime\C#\Bebop.csproj", "{FAB6A625-EF9E-4422-BFF0-FCB3157681B9}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Test", "BebopTest\Test.csproj", "{A54205BB-1ECC-4901-9CDA-2F2186AD0584}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Test", "Test\Test.csproj", "{A54205BB-1ECC-4901-9CDA-2F2186AD0584}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Benchmarks", "Benchmarks\Benchmarks.csproj", "{32498399-92F5-47C8-B792-235A7E311F95}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sandbox", "..\Sandbox\Sandbox.csproj", "{E6F4D515-691A-4098-AEDE-3A8C73FEDDFC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -29,10 +27,6 @@ Global
 		{32498399-92F5-47C8-B792-235A7E311F95}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{32498399-92F5-47C8-B792-235A7E311F95}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{32498399-92F5-47C8-B792-235A7E311F95}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E6F4D515-691A-4098-AEDE-3A8C73FEDDFC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E6F4D515-691A-4098-AEDE-3A8C73FEDDFC}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E6F4D515-691A-4098-AEDE-3A8C73FEDDFC}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E6F4D515-691A-4098-AEDE-3A8C73FEDDFC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

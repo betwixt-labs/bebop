@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Bebop;
+using Bebop.Runtime;
 using BenchmarkDotNet.Attributes;
 
 namespace Benchmarks

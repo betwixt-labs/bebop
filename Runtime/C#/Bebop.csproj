@@ -25,12 +25,4 @@
 		<DefineConstants>$(DefineConstants);AGGRESSIVE_OPTIMIZE</DefineConstants>
 	</PropertyGroup>
 
-	<ItemGroup>
-    <Compile Remove="BebopTest\**" />
-    <Compile Remove="Benchmarks\**" />
-    <EmbeddedResource Remove="BebopTest\**" />
-    <EmbeddedResource Remove="Benchmarks\**" />
-    <None Remove="BebopTest\**" />
-    <None Remove="Benchmarks\**" />
-  </ItemGroup>
 </Project>
