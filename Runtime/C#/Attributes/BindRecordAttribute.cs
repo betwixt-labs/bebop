@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Bebop.Runtime;
 
 namespace Bebop.Attributes
