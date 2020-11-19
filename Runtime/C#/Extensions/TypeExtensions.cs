@@ -212,13 +212,13 @@ namespace Bebop.Extensions
 
         /// <summary>
         ///     Determines if the specified
-        ///     <param name="type"></param>
+        ///     <paramref name="type"/>
         ///     has a parameterless constructor
         /// </summary>
         /// <param name="type"></param>
         /// <returns>
         ///     <see langword="true"/> if the specified
-        ///     <param name="type"></param>
+        ///     <paramref name="type"/>
         ///     has a parameterless constructor;
         ///     otherwise, <see langword="false"/>.
         /// </returns>

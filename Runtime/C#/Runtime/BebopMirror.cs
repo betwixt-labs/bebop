@@ -1,11 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Bebop.Attributes;
 using Bebop.Exceptions;
 using Bebop.Extensions;
-using JetBrains.Annotations;
 
 namespace Bebop.Runtime
 {
@@ -56,7 +55,7 @@ namespace Bebop.Runtime
         ///     <see cref="BebopRecord{T}"/>.
         /// </summary>
         /// <param name="recordName">The name of the desired Bebop record.</param>
-        /// <exception cref="BebopRuntimeException">Thrown when <param name="recordName"> cannot be mapped to a defined type.</param></exception>
+        /// <exception cref="BebopRuntimeException">Thrown when <paramref name="recordName"/> cannot be mapped to a defined type.</exception>
         /// <returns>A virtual <see cref="BebopRecord"/> accessor.</returns>
         public static BebopRecord GetRecord(string recordName) => DefinedRecords
                 .FirstOrDefault(definedType => definedType.Type.Name.Equals(recordName)) ??
@@ -68,7 +67,7 @@ namespace Bebop.Runtime
         ///     <see cref="BebopRecord{T}"/>.
         /// </summary>
         /// <param name="opcode">The unique opcode belonging to desired record</param>
-        /// <exception cref="BebopRuntimeException">Thrown when <param name="opcode"> does not correspond to any defined type.</param></exception>
+        /// <exception cref="BebopRuntimeException">Thrown when <paramref name="opcode"/> does not correspond to any defined type.</exception>
         /// <returns>A virtual <see cref="BebopRecord"/> accessor.</returns>
         public static BebopRecord GetRecordFromOpCode(uint opcode)
             => (_opcodeRecords.TryGetValue(opcode, out var type) ? type : null) ??

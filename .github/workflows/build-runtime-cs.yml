@@ -1,0 +1,28 @@
+name: Bebop .NET Runtime
+on:
+  push:
+    paths:
+      - "Runtime/C#/**"
+jobs:
+  build-runtime:
+    env:
+      RUNTIME_ROOT: ${{github.workspace}}/Runtime/C#
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: "5.0.x" # SDK Version to use; x will use the latest version of the 5.0 channel
+      - name: Restore Project
+        run: dotnet restore
+        working-directory: ${{env.RUNTIME_ROOT}}
+      - name: Build Runtime
+        run: dotnet build -c Release
+        working-directory: ${{env.RUNTIME_ROOT}}
+
+      - name: Upload Package
+        uses: actions/upload-artifact@v2
+        with:
+          name: bebop-runtime-cs-latest
+          path: ${{env.RUNTIME_ROOT}}/bin/Release/*.nupkg
