@@ -61,7 +61,7 @@ namespace Compiler
     /// </summary>
     public class CommandLineFlags
     {
-        [CommandLineFlag("lang", "Generate source file for a given language", "--lang (ts|cs)")]
+        [CommandLineFlag("lang", "Generate source file for a given language", "--lang (ts|cs|dart)")]
         public string? Language { get; private set; }
 
         [CommandLineFlag("namespace", "When this option is specified generated code will use namespaces", "--lang cs --namespace [package]")]

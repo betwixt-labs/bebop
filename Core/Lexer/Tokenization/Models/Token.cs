@@ -45,7 +45,7 @@ namespace Core.Lexer.Tokenization.Models
             Kind = kind;
             Lexeme = lexeme;
             Index = index;
-            Length = (uint) (Lexeme?.Length ?? 0);
+            Length = (uint) Lexeme.Length;
             Span = span;
         }
 
