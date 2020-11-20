@@ -176,14 +176,8 @@ namespace Core.Generators.Dart
                 builder.AppendLine(CompileDecodeField(field.Type, $"field{i}"));
                 i++;
             }
-            builder.AppendLine($"return {definition.Name}()");
-            i = 0;
-            foreach (var field in definition.Fields)
-            {
-                var semi = i + 1 == definition.Fields.Count ? ";" : "";
-                builder.AppendLine($"  ..{field.Name} = field{i}{semi}");
-                i++;
-            }
+            var args = string.Join(", ", definition.Fields.Select((field, i) => $"{field.Name}: field{i}"));
+            builder.AppendLine($"return {definition.Name}({args});");
             return builder.ToString();
         }
 
@@ -281,6 +275,7 @@ namespace Core.Generators.Dart
         {
             var builder = new StringBuilder();
             builder.AppendLine("import 'dart:typed_data';");
+            builder.AppendLine("import 'package:meta/meta.dart';");
             builder.AppendLine("import 'package:bebop_dart/bebop_dart.dart';");
             builder.AppendLine("");
 
@@ -324,12 +319,27 @@ namespace Core.Generators.Dart
                             {
                                 builder.AppendLine($"  /// @deprecated {field.DeprecatedAttribute.Value}");
                             }
-                            builder.AppendLine($"  {type} {field.Name};");
+                            var final = definition.IsReadOnly ? "final " : "";
+                            builder.AppendLine($"  {final}{type} {field.Name};");
                         }
-                        builder.AppendLine($"  {definition.Name}();");
+                        if (definition.Kind == AggregateKind.Message)
+                        {
+                            builder.AppendLine($"  {definition.Name}();");
+                        }
+                        else
+                        {
+                            builder.AppendLine($"  {(definition.IsReadOnly ? "const " : "")}{definition.Name}({{");
+                            foreach (var field in definition.Fields)
+                            {
+                                builder.AppendLine($"    @required this.{field.Name},");
+                            }
+                            builder.AppendLine("  });");
+                        }
+                        builder.AppendLine("");
                         if (definition.OpcodeAttribute != null)
                         {
                             builder.AppendLine($"  static const int opcode = {definition.OpcodeAttribute.Value};");
+                            builder.AppendLine("");
                         }
                         builder.AppendLine($"  static Uint8List encode({definition.Name} message) {{");
                         builder.AppendLine("    final writer = BebopWriter();");
@@ -342,10 +352,12 @@ namespace Core.Generators.Dart
                         builder.AppendLine("  }");
                         builder.AppendLine("");
                         builder.AppendLine($"  static {definition.Name} decode(Uint8List buffer) => {definition.Name}.readFrom(BebopReader(buffer));");
+                        builder.AppendLine("");
                         builder.AppendLine($"  static {definition.Name} readFrom(BebopReader view) {{");
                         builder.Append(CompileDecode(definition));
                         builder.AppendLine("  }");
                         builder.AppendLine("}");
+                        builder.AppendLine("");
                         break;
                 }
             }
