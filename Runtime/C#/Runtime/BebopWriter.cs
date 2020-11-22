@@ -44,7 +44,7 @@ namespace Bebop.Runtime
         public byte[] ToArray() => Slice().ToArray();
 
         /// <summary>
-        ///     Allocates a new <see cref="BebopView"/> instance backed by an empty array.
+        ///     Allocates a new <see cref="BebopWriter"/> instance backed by an empty array.
         /// </summary>
         /// <returns></returns>
         [MethodImpl(BebopConstants.HotPath)]
@@ -85,6 +85,10 @@ namespace Bebop.Runtime
             Length += amount;
         }
 
+        /// <summary>
+        /// Writes a one-byte Boolean value to the current buffer, with 0 representing false and 1 representing true.
+        /// </summary>
+        /// <param name="value"></param>
         [MethodImpl(BebopConstants.HotPath)]
         public void WriteByte(bool value)
         {
@@ -94,6 +98,10 @@ namespace Bebop.Runtime
             _buffer[index] = !value ? 0 : 1;
         }
 
+        /// <summary>
+        /// Writes an unsigned byte to the current buffer and advances the position by one byte.
+        /// </summary>
+        /// <param name="value"></param>
         [MethodImpl(BebopConstants.HotPath)]
         public void WriteByte(byte value)
         {
@@ -104,12 +112,22 @@ namespace Bebop.Runtime
             _buffer[index] = value;
         }
 
+        /// <summary>
+        /// Writes an <see cref="Enum"/> value with an unsigned integer integral type to the current buffer and advances the position by four bytes.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="value"></param>
+
         [MethodImpl(BebopConstants.HotPath)]
         public void WriteEnum<T>(T value) where T : struct, Enum
         {
             WriteUInt32(ConvertEnum(value));
         }
 
+        /// <summary>
+        /// Writes a two-byte unsigned integer to the current buffer and advances the position by two bytes.
+        /// </summary>
+        /// <param name="value"></param>
         [MethodImpl(BebopConstants.HotPath)]
         public void WriteUInt16(ushort value)
         {
@@ -119,6 +137,23 @@ namespace Bebop.Runtime
             WriteUnaligned(ref GetReference(_buffer.Slice(index, size)), value);
         }
 
+        /// <summary>
+        /// Writes a two-byte signed integer to the current buffer and advances the position by two bytes.
+        /// </summary>
+        /// <param name="value"></param>
+        [MethodImpl(BebopConstants.HotPath)]
+        public void WriteInt16(short value)
+        {
+            const int size = 2;
+            var index = Length;
+            GrowBy(size);
+            WriteUnaligned(ref GetReference(_buffer.Slice(index, size)), value);
+        }
+
+        /// <summary>
+        /// Writes a four-byte unsigned integer to the current buffer and advances the position by four bytes.
+        /// </summary>
+        /// <param name="value"></param>
         [MethodImpl(BebopConstants.HotPath)]
         public void WriteUInt32(uint value)
         {
@@ -128,6 +163,10 @@ namespace Bebop.Runtime
             WriteUnaligned(ref GetReference(_buffer.Slice(index, size)), value);
         }
 
+        /// <summary>
+        /// Writes a four-byte signed integer to the current buffer and advances the position by four bytes.
+        /// </summary>
+        /// <param name="value"></param>
         [MethodImpl(BebopConstants.HotPath)]
         public void WriteInt32(int value)
         {
@@ -137,6 +176,11 @@ namespace Bebop.Runtime
             WriteUnaligned(ref GetReference(_buffer.Slice(index, size)), value);
         }
 
+
+        /// <summary>
+        /// Writes an eight-byte unsigned integer to the current buffer and advances the position by eight bytes.
+        /// </summary>
+        /// <param name="value"></param>
         [MethodImpl(BebopConstants.HotPath)]
         public void WriteUInt64(ulong value)
         {
@@ -145,6 +189,11 @@ namespace Bebop.Runtime
             GrowBy(size);
             WriteUnaligned(ref GetReference(_buffer.Slice(index, size)), value);
         }
+
+        /// <summary>
+        /// Writes an eight-byte signed integer to the current buffer and advances the position by eight bytes.
+        /// </summary>
+        /// <param name="value"></param>
 
         [MethodImpl(BebopConstants.HotPath)]
         public void WriteInt64(long value)
@@ -164,6 +213,11 @@ namespace Bebop.Runtime
             WriteUnaligned(ref GetReference(_buffer.Slice(index, size)), value);
         }
 
+
+        /// <summary>
+        /// Writes an eight-byte floating-point value to the current buffer and advances the position by eight bytes.
+        /// </summary>
+        /// <param name="value"></param>
         [MethodImpl(BebopConstants.HotPath)]
         public void WriteFloat64(double value)
         {
@@ -188,6 +242,10 @@ namespace Bebop.Runtime
             WriteUnaligned(ref GetReference(_buffer.Slice(index, size)), guid);
         }
 
+        /// <summary>
+        /// Writes a length-prefixed UTF-8 string to this buffer, and advances the current position of the buffer in accordance with the the specific characters being written to the buffer.
+        /// </summary>
+        /// <param name="value"></param>
         [MethodImpl(BebopConstants.HotPath)]
         public void WriteString(string value)
         {
@@ -208,10 +266,10 @@ namespace Bebop.Runtime
         }
 
         /// <summary>
-        ///     Reserve some space to write a message's length prefix, and return its index.
+        ///     Reserve some space to write a record's length prefix, and return its index.
         ///     The length is stored as a little-endian fixed-width unsigned 32 - bit integer, so 4 bytes are reserved.
         /// </summary>
-        /// <returns>The index to later write the message's length to.</returns>
+        /// <returns>The index to later write the record's length to.</returns>
         [MethodImpl(BebopConstants.HotPath)]
         public int ReserveRecordLength()
         {
@@ -222,7 +280,7 @@ namespace Bebop.Runtime
         }
 
         /// <summary>
-        ///     Fill in a message's length prefix.
+        ///     Fill in a record's length prefix.
         /// </summary>
         /// <param name="position">The position in the buffer of the message's length prefix.</param>
         /// <param name="messageLength">The message length to write.</param>
@@ -251,6 +309,10 @@ namespace Bebop.Runtime
             AsBytes(value.AsSpan()).CopyTo(_buffer.Slice(index, value.Length));
         }
 
+        /// <summary>
+        /// Writes a byte array to the underlying buffer.
+        /// </summary>
+        /// <param name="value"></param>
         [MethodImpl(BebopConstants.HotPath)]
         public void WriteBytes(byte[] value)
         {

@@ -85,7 +85,7 @@ namespace Core.Generators.CSharp
                     var baseName = "Base" + definitionName;
                     builder.AppendLine($"public abstract class {baseName} {{");
                     builder.Indent(indentStep);
-                    if (definition.OpcodeAttribute != null)
+                    if (definition.OpcodeAttribute is not null)
                     {
                         builder.AppendLine($"public const uint OpCode = {definition.OpcodeAttribute.Value};");
                     }
@@ -101,7 +101,7 @@ namespace Core.Generators.CSharp
                         {
                             builder.AppendLine(FormatDocumentation(field.Documentation, 4));
                         }
-                        if (field.DeprecatedAttribute != null &&
+                        if (field.DeprecatedAttribute is not null &&
                             !string.IsNullOrWhiteSpace(field.DeprecatedAttribute.Value))
                         {
                             builder.AppendLine($"[System.Obsolete(\"{field.DeprecatedAttribute.Value}\")]");
@@ -446,7 +446,7 @@ namespace Core.Generators.CSharp
             builder.AppendLine($"var start = writer.Length;");
             foreach (var field in definition.Fields)
             {
-                if (field.DeprecatedAttribute != null)
+                if (field.DeprecatedAttribute is not null)
                 {
                     continue;
                 }
@@ -454,9 +454,7 @@ namespace Core.Generators.CSharp
 
                 var isNullableType = IsNullableType(field.Type);
 
-                builder.AppendLine(isNullableType
-                    ? $"if (record.{field.Name.ToPascalCase()}.HasValue) {{"
-                    : $"if (record.{field.Name.ToPascalCase()} != null) {{");
+                builder.AppendLine($"if (record.{field.Name.ToPascalCase()} is not null) {{");
                 builder.Indent(indentStep);
                 builder.AppendLine($"writer.WriteByte({field.ConstantValue});");
                 builder.AppendLine(isNullableType
@@ -467,7 +465,7 @@ namespace Core.Generators.CSharp
             }
             builder.AppendLine("writer.WriteByte(0);");
             builder.AppendLine("var end = writer.Length;");
-            builder.AppendLine("writer.FillMessageLength(pos, unchecked((uint) unchecked(end - start)));");
+            builder.AppendLine("writer.FillRecordLength(pos, unchecked((uint) unchecked(end - start)));");
             return builder.ToString();
         }
 

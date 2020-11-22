@@ -9,14 +9,16 @@ namespace Bebop.Runtime
 {
     public ref struct BebopReader
     {
+
+        // ReSharper disable once InconsistentNaming
         private static readonly UTF8Encoding UTF8 = new();
 
         /// <summary>
         ///     A contiguous region of memory that contains the contents of a Bebop message
         /// </summary>
-        private readonly ReadOnlySpan<byte> _buffer;
+        private ReadOnlySpan<byte> _buffer;
 
-        public int Position { get; private set; }
+        public int Position { get; set; }
 
 
         [MethodImpl(BebopConstants.HotPath)]
@@ -37,6 +39,9 @@ namespace Bebop.Runtime
             _buffer = buffer;
             Position = 0;
         }
+
+        [MethodImpl(BebopConstants.HotPath)]
+        public byte ReadByte() => _buffer[Position++];
 
         [MethodImpl(BebopConstants.HotPath)]
         public ushort ReadUInt16()
@@ -144,9 +149,6 @@ namespace Bebop.Runtime
             }
         #endif
         }
-
-        [MethodImpl(BebopConstants.HotPath)]
-        public byte ReadByte() => _buffer[Position++];
 
         /// <summary>
         ///     Reads a <see cref="Guid"/> from the underlying buffer and advances the advances the current position by 16 bytes.
