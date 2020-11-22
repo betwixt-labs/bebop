@@ -23,6 +23,19 @@
 		<PackageReference Include="System.Buffers" Version="4.5.1" />
 		<PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.4" />
 	</ItemGroup>
+  
+
+
+	<ItemGroup>
+	  <PackageReference Include="ErrorProne.NET.CoreAnalyzers" Version="0.3.0-beta.0">
+	    <PrivateAssets>all</PrivateAssets>
+	    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+	  </PackageReference>
+	  <PackageReference Include="ErrorProne.NET.Structs" Version="0.3.0-beta.0">
+	    <PrivateAssets>all</PrivateAssets>
+	    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+	  </PackageReference>
+	</ItemGroup>
 	
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net472|AnyCPU'">
 	  <Optimize>true</Optimize>

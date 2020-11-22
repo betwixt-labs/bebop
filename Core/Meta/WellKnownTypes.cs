@@ -11,10 +11,13 @@ namespace Core.Meta
 
         public static HashSet<string> Identifiers = new()
         {
-            "BebopView"
+            "BebopView",
+            "BebopReader",
+            "BebopWriter",
+            "BebopRecord",
+            "BebopMirror",
+            "BebopConstants"
         };
-
-     
     }
 
     /// <summary>
