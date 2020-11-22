@@ -16,6 +16,7 @@ namespace Bebop.Runtime
         /// <summary>
         ///     A contiguous region of memory that contains the contents of a Bebop message
         /// </summary>
+        // ReSharper disable once FieldCanBeMadeReadOnly.Local
         private ReadOnlySpan<byte> _buffer;
 
         public int Position { get; set; }

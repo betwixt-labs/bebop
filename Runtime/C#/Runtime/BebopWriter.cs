@@ -9,6 +9,7 @@ namespace Bebop.Runtime
 {
     public ref struct BebopWriter
     {
+        // ReSharper disable once InconsistentNaming
         private static readonly UTF8Encoding UTF8 = new();
 
 
@@ -86,7 +87,7 @@ namespace Bebop.Runtime
         }
 
         /// <summary>
-        /// Writes a one-byte Boolean value to the current buffer, with 0 representing false and 1 representing true.
+        ///     Writes a one-byte Boolean value to the current buffer, with 0 representing false and 1 representing true.
         /// </summary>
         /// <param name="value"></param>
         [MethodImpl(BebopConstants.HotPath)]
@@ -99,7 +100,7 @@ namespace Bebop.Runtime
         }
 
         /// <summary>
-        /// Writes an unsigned byte to the current buffer and advances the position by one byte.
+        ///     Writes an unsigned byte to the current buffer and advances the position by one byte.
         /// </summary>
         /// <param name="value"></param>
         [MethodImpl(BebopConstants.HotPath)]
@@ -113,11 +114,11 @@ namespace Bebop.Runtime
         }
 
         /// <summary>
-        /// Writes an <see cref="Enum"/> value with an unsigned integer integral type to the current buffer and advances the position by four bytes.
+        ///     Writes an <see cref="Enum"/> value with an unsigned integer integral type to the current buffer and advances the
+        ///     position by four bytes.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="value"></param>
-
         [MethodImpl(BebopConstants.HotPath)]
         public void WriteEnum<T>(T value) where T : struct, Enum
         {
@@ -125,7 +126,7 @@ namespace Bebop.Runtime
         }
 
         /// <summary>
-        /// Writes a two-byte unsigned integer to the current buffer and advances the position by two bytes.
+        ///     Writes a two-byte unsigned integer to the current buffer and advances the position by two bytes.
         /// </summary>
         /// <param name="value"></param>
         [MethodImpl(BebopConstants.HotPath)]
@@ -138,7 +139,7 @@ namespace Bebop.Runtime
         }
 
         /// <summary>
-        /// Writes a two-byte signed integer to the current buffer and advances the position by two bytes.
+        ///     Writes a two-byte signed integer to the current buffer and advances the position by two bytes.
         /// </summary>
         /// <param name="value"></param>
         [MethodImpl(BebopConstants.HotPath)]
@@ -151,7 +152,7 @@ namespace Bebop.Runtime
         }
 
         /// <summary>
-        /// Writes a four-byte unsigned integer to the current buffer and advances the position by four bytes.
+        ///     Writes a four-byte unsigned integer to the current buffer and advances the position by four bytes.
         /// </summary>
         /// <param name="value"></param>
         [MethodImpl(BebopConstants.HotPath)]
@@ -164,7 +165,7 @@ namespace Bebop.Runtime
         }
 
         /// <summary>
-        /// Writes a four-byte signed integer to the current buffer and advances the position by four bytes.
+        ///     Writes a four-byte signed integer to the current buffer and advances the position by four bytes.
         /// </summary>
         /// <param name="value"></param>
         [MethodImpl(BebopConstants.HotPath)]
@@ -178,7 +179,7 @@ namespace Bebop.Runtime
 
 
         /// <summary>
-        /// Writes an eight-byte unsigned integer to the current buffer and advances the position by eight bytes.
+        ///     Writes an eight-byte unsigned integer to the current buffer and advances the position by eight bytes.
         /// </summary>
         /// <param name="value"></param>
         [MethodImpl(BebopConstants.HotPath)]
@@ -191,10 +192,9 @@ namespace Bebop.Runtime
         }
 
         /// <summary>
-        /// Writes an eight-byte signed integer to the current buffer and advances the position by eight bytes.
+        ///     Writes an eight-byte signed integer to the current buffer and advances the position by eight bytes.
         /// </summary>
         /// <param name="value"></param>
-
         [MethodImpl(BebopConstants.HotPath)]
         public void WriteInt64(long value)
         {
@@ -215,7 +215,7 @@ namespace Bebop.Runtime
 
 
         /// <summary>
-        /// Writes an eight-byte floating-point value to the current buffer and advances the position by eight bytes.
+        ///     Writes an eight-byte floating-point value to the current buffer and advances the position by eight bytes.
         /// </summary>
         /// <param name="value"></param>
         [MethodImpl(BebopConstants.HotPath)]
@@ -243,7 +243,8 @@ namespace Bebop.Runtime
         }
 
         /// <summary>
-        /// Writes a length-prefixed UTF-8 string to this buffer, and advances the current position of the buffer in accordance with the the specific characters being written to the buffer.
+        ///     Writes a length-prefixed UTF-8 string to this buffer, and advances the current position of the buffer in accordance
+        ///     with the the specific characters being written to the buffer.
         /// </summary>
         /// <param name="value"></param>
         [MethodImpl(BebopConstants.HotPath)]
@@ -310,7 +311,7 @@ namespace Bebop.Runtime
         }
 
         /// <summary>
-        /// Writes a byte array to the underlying buffer.
+        ///     Writes a byte array to the underlying buffer.
         /// </summary>
         /// <param name="value"></param>
         [MethodImpl(BebopConstants.HotPath)]

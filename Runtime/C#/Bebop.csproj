@@ -9,7 +9,9 @@
 	  <Authors>Rainway, Inc.</Authors>
 	  <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 	  <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-	  <Version>0.1.0-preview</Version>
+    <Version Condition="'$(ReleaseVersion)' != ''">$(ReleaseVersion)</Version>
+    <VersionPrefix Condition="'$(ReleaseVersion)' == ''">0.0.1</VersionPrefix>
+    <VersionSuffix Condition="'$(ReleaseVersion)' == ''">$([System.DateTime]::UtcNow.ToString(`yyyyMMdd-HHmm`))</VersionSuffix>
 	  <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
 	  <PackageProjectUrl>https://github.com/RainwayApp/bebop</PackageProjectUrl>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>

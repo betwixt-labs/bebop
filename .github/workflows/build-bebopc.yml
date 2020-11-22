@@ -26,6 +26,13 @@ jobs:
             ARTIFACT: bebopc.exe
     steps:
       - uses: actions/checkout@v1
+      
+      - name: Get Version
+        id: vars
+        run: echo ::set-output name=version::$(cat VERSION)
+      - name: Test output
+        run: echo ${{ steps.vars.outputs.version }}
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
         with:
@@ -33,7 +40,7 @@ jobs:
       - name: Restore Solution
         run: dotnet restore
       - name: Build bebopc
-        run: dotnet publish -c ${{matrix.CONFIGURATION}} -r ${{matrix.RUNTIME}}
+        run: dotnet publish -c ${{matrix.CONFIGURATION}} -r ${{matrix.RUNTIME}} -p:ReleaseVersion=${{ steps.vars.outputs.version }}
         working-directory: ./Compiler/
 
       - name: Upload Build

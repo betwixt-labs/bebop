@@ -10,6 +10,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
+
+      - name: Get Version
+        id: vars
+        run: echo ::set-output name=version::$(cat VERSION)
+      - name: Test output
+        run: echo ${{ steps.vars.outputs.version }}
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
         with:
@@ -18,7 +25,7 @@ jobs:
         run: dotnet restore
         working-directory: ${{env.RUNTIME_ROOT}}
       - name: Build Runtime
-        run: dotnet build -c Release
+        run: dotnet build -c Release -p:ReleaseVersion=${{ steps.vars.outputs.version }}
         working-directory: ${{env.RUNTIME_ROOT}}
 
       - name: Upload Package
