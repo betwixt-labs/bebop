@@ -11,8 +11,8 @@
 	  <Platforms>x64</Platforms>
 	  <Version>0.1.0</Version>
 	  <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-    <Version Condition="'$(RELEASE_VERSION)' != ''">$(RELEASE_VERSION)</Version>
-    <VersionPrefix Condition="'$(RELEASE_VERSION)' == ''">0.0.1</VersionPrefix>
-    <VersionSuffix Condition="'$(RELEASE_VERSION)' == ''">$([System.DateTime]::UtcNow.ToString(`yyyyMMdd-HHmm`))</VersionSuffix>
+    <Version Condition="'$(ReleaseVersion)' != ''">$(ReleaseVersion)</Version>
+    <VersionPrefix Condition="'$(ReleaseVersion)' == ''">0.0.1</VersionPrefix>
+    <VersionSuffix Condition="'$(ReleaseVersion)' == ''">$([System.DateTime]::UtcNow.ToString(`yyyyMMdd-HHmm`))</VersionSuffix>
   </PropertyGroup>
 </Project>

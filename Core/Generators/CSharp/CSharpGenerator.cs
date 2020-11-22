@@ -135,7 +135,10 @@ namespace Core.Generators.CSharp
                     builder.Dedent(indentStep);
                     builder.AppendLine("}");
                     builder.AppendLine("");
-                    builder.AppendLine(CompileDecodeHelper(definition));
+                    builder.AppendLine(CompileDecodeHelper(definition, "byte[]"));
+                    builder.AppendLine(CompileDecodeHelper(definition, "System.ReadOnlySpan<byte>"));
+                    builder.AppendLine(CompileDecodeHelper(definition, "System.ReadOnlyMemory<byte>"));
+                    builder.AppendLine(CompileDecodeHelper(definition, "System.ArraySegment<byte>"));
 
                     builder.AppendLine(HotPath);
                     builder.AppendLine(GeneratedAttribute);
@@ -398,13 +401,14 @@ namespace Core.Generators.CSharp
         ///     Generates the body of various helper methods to decode the given <see cref="IDefinition"/>
         /// </summary>
         /// <param name="definition"></param>
+        /// <param name="bufferType"></param>
         /// <returns></returns>
-        public string CompileDecodeHelper(IDefinition definition)
+        public string CompileDecodeHelper(IDefinition definition, string bufferType)
         {
             var builder = new IndentedStringBuilder();
             builder.AppendLine(GeneratedAttribute);
             builder.AppendLine(HotPath);
-            builder.AppendLine($"public static T DecodeAs<T>(byte[] record) where T : Base{definition.Name.ToPascalCase()}, new() {{");
+            builder.AppendLine($"public static T DecodeAs<T>({bufferType} record) where T : Base{definition.Name.ToPascalCase()}, new() {{");
             builder.Indent(indentStep);
             builder.AppendLine("var reader = BebopReader.From(record);");
             builder.AppendLine("return DecodeFrom<T>(ref reader);");
@@ -413,13 +417,14 @@ namespace Core.Generators.CSharp
             builder.AppendLine("");
             builder.AppendLine(GeneratedAttribute);
             builder.AppendLine(HotPath);
-            builder.AppendLine($"public static {definition.Name.ToPascalCase()} Decode(byte[] record) {{");
+            builder.AppendLine($"public static {definition.Name.ToPascalCase()} Decode({bufferType} record) {{");
             builder.Indent(indentStep);
             builder.AppendLine("var reader = BebopReader.From(record);");
             builder.AppendLine($"return DecodeFrom(ref reader);");
             builder.Dedent(indentStep);
             builder.AppendLine("}");
             builder.AppendLine("");
+
             return builder.ToString();
         }
 

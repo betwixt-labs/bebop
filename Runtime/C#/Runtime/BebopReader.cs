@@ -9,7 +9,6 @@ namespace Bebop.Runtime
 {
     public ref struct BebopReader
     {
-
         // ReSharper disable once InconsistentNaming
         private static readonly UTF8Encoding UTF8 = new();
 
@@ -30,6 +29,9 @@ namespace Bebop.Runtime
 
         [MethodImpl(BebopConstants.HotPath)]
         public static BebopReader From(ReadOnlyMemory<byte> buffer) => new(buffer.Span);
+
+        [MethodImpl(BebopConstants.HotPath)]
+        public static BebopReader From(ArraySegment<byte> buffer) => new(buffer);
 
         private BebopReader(ReadOnlySpan<byte> buffer)
         {
