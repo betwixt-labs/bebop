@@ -1,11 +1,12 @@
 ﻿using System.Collections.Generic;
+using System.Reflection;
 using Core.Lexer.Extensions;
 
 namespace Core.Meta
 {
     public static class ReservedWords
     {
-        public static readonly string CompilerVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version!.ToString()!;
+        public static readonly string CompilerVersion = Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion!;
         public const string CompilerName = "bebopc";
         public const string SchemaExt = "bop";
 

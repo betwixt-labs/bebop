@@ -26,12 +26,11 @@ jobs:
             ARTIFACT: bebopc.exe
     steps:
       - uses: actions/checkout@v1
+
+      - name: Get Enviorment Variables
+        id: dotenv
+        uses: falti/dotenv-action@v0.2.5
       
-      - name: Get Version
-        id: vars
-        run: echo ::set-output name=version::$(cat VERSION)
-      - name: Test output
-        run: echo ${{ steps.vars.outputs.version }}
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
@@ -40,7 +39,7 @@ jobs:
       - name: Restore Solution
         run: dotnet restore
       - name: Build bebopc
-        run: dotnet publish -c ${{matrix.CONFIGURATION}} -r ${{matrix.RUNTIME}} -p:ReleaseVersion=${{ steps.vars.outputs.version }}
+        run: dotnet publish -c ${{matrix.CONFIGURATION}} -r ${{matrix.RUNTIME}} -p:ReleaseVersion=${{ steps.dotenv.outputs.version }}
         working-directory: ./Compiler/
 
       - name: Upload Build
@@ -58,7 +57,16 @@ jobs:
     needs: build-compiler
     runs-on: windows-latest
     steps:
+
+      
       - uses: actions/checkout@v1
+
+
+      - name: Get Enviorment Variables
+        id: dotenv
+        uses: falti/dotenv-action@v0.2.5
+
+
       - name: Download Windows Build
         uses: actions/download-artifact@v2
         with:
@@ -72,7 +80,7 @@ jobs:
           path: ${{env.TOOLS_PATH}}/macos/
 
       - name: Build bebop-tools NuGet Package
-        run: call ${{env.TOOLS_ROOT}}/build.cmd
+        run: call ${{env.TOOLS_ROOT}}/build.cmd ${{ steps.dotenv.outputs.version }}
         shell: cmd
         working-directory: ${{env.TOOLS_ROOT}}
 

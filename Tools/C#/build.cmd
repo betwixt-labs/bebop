@@ -1,6 +1,8 @@
 @echo off
 rem Building Nuget bebop-tools Nuget package
 
+set version=%1
+
 cd %~dp0
 
 SETLOCAL
@@ -18,5 +20,4 @@ copy %CACHED_NUGET% .nuget\NuGet.exe > nul
 .nuget\NuGet.exe Update -Self
 
 :run
-set /p Build=<..\..\VERSION
-.nuget\NuGet.exe Pack bebop-tools.nuspec -OutputDirectory packages -Version %Build%
+.nuget\NuGet.exe Pack bebop-tools.nuspec -OutputDirectory packages -Version %version%
