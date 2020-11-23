@@ -10,6 +10,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
+
+      - name: Get Enviorment Variables
+        id: dotenv
+        uses: falti/dotenv-action@v0.2.5
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
         with:
@@ -18,7 +23,7 @@ jobs:
         run: dotnet restore
         working-directory: ${{env.RUNTIME_ROOT}}
       - name: Build Runtime
-        run: dotnet build -c Release
+        run: dotnet build -c Release -p:ReleaseVersion=${{ steps.dotenv.outputs.version }}
         working-directory: ${{env.RUNTIME_ROOT}}
 
       - name: Upload Package

@@ -19,7 +19,7 @@ namespace Benchmarks
 
         public StringReadWrite()
         {
-            var input = BebopView.Create();
+            var input = BebopWriter.Create();
             input.WriteString(TestString);
             _testBuffer = input.ToArray();
         }
@@ -27,14 +27,14 @@ namespace Benchmarks
         [Benchmark]
         public void Write()
         {
-            var input = BebopView.Create();
+            var input = BebopWriter.Create();
             input.WriteString(TestString);
         }
 
         [Benchmark]
         public void Read()
         {
-            var output = BebopView.From(_testBuffer);
+            var output = BebopReader.From(_testBuffer);
             _ = output.ReadString();
         }
     }

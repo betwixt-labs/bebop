@@ -21,7 +21,7 @@ namespace Benchmarks
         public BufferReadWrite()
         {
             _testGuid = Guid.Parse("02281d74-a708-4f64-8a5c-699100654587");
-            var input = BebopView.Create();
+            var input = BebopWriter.Create();
             input.WriteByte(0);
             input.WriteInt16(1000);
             input.WriteInt32(2000);
@@ -33,7 +33,7 @@ namespace Benchmarks
         [Benchmark]
         public void WriteBuffer()
         {
-            var input = BebopView.Create();
+            var input = BebopWriter.Create();
             input.WriteByte(0);
             input.WriteInt16(1000);
             input.WriteInt32(2000);
@@ -44,7 +44,7 @@ namespace Benchmarks
         [Benchmark]
         public void ReadBuffer()
         {
-            var output = BebopView.From(_testBuffer);
+            var output = BebopReader.From(_testBuffer);
             _ = output.ReadByte();
             _ = output.ReadInt16();
             _ = output.ReadInt32();

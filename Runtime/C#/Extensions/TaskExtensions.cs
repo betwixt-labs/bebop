@@ -24,7 +24,9 @@ namespace Bebop.Extensions
                 catch
                 {
                     // Nothing to do here
+#pragma warning disable ERP022 // Unobserved exception in a generic exception handler
                 }
+#pragma warning restore ERP022 // Unobserved exception in a generic exception handler
             }
         }
     }

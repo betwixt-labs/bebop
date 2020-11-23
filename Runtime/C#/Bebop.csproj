@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-	  <TargetFrameworks>net5.0;net472</TargetFrameworks>
+	  <TargetFrameworks>net5.0;net48;net472</TargetFrameworks>
 	  <Nullable>enable</Nullable>
 	  <LangVersion>9.0</LangVersion>
 	  <Description>The .NET runtime for Bebop, a schema-based binary serialization format.</Description>
@@ -9,7 +9,9 @@
 	  <Authors>Rainway, Inc.</Authors>
 	  <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 	  <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-	  <Version>0.1.0-preview</Version>
+    <Version Condition="'$(ReleaseVersion)' != ''">$(ReleaseVersion)</Version>
+    <VersionPrefix Condition="'$(ReleaseVersion)' == ''">0.0.1</VersionPrefix>
+    <VersionSuffix Condition="'$(ReleaseVersion)' == ''">$([System.DateTime]::UtcNow.ToString(`yyyyMMdd-HHmm`))</VersionSuffix>
 	  <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
 	  <PackageProjectUrl>https://github.com/RainwayApp/bebop</PackageProjectUrl>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -18,31 +20,35 @@
   
 
 
-	<ItemGroup Condition="'$(TargetFramework)' == 'net472'">
+	<ItemGroup Condition="$(TargetFramework.StartsWith('net4'))">
 		<PackageReference Include="System.Memory" Version="4.5.4" />
 		<PackageReference Include="System.Buffers" Version="4.5.1" />
+    <PackageReference Include="System.Collections.Immutable" Version="5.0.0" />
 		<PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.4" />
 	</ItemGroup>
-	
-	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net472|AnyCPU'">
-	  <Optimize>true</Optimize>
-  </PropertyGroup>
+  
 
-	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net472|AnyCPU'">
-	  <Optimize>false</Optimize>
-  </PropertyGroup>
+
+	<ItemGroup>
+	  <PackageReference Include="ErrorProne.NET.CoreAnalyzers" Version="0.3.0-beta.0">
+	    <PrivateAssets>all</PrivateAssets>
+	    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+	  </PackageReference>
+	  <PackageReference Include="ErrorProne.NET.Structs" Version="0.3.0-beta.0">
+	    <PrivateAssets>all</PrivateAssets>
+	    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+	  </PackageReference>
+	</ItemGroup>
 
 	<PropertyGroup Condition="'$(TargetFramework)'=='net5.0'">
 		<DefineConstants>TRACE;AGGRESSIVE_OPTIMIZE</DefineConstants>
 	</PropertyGroup>
-	
-	
 
-	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net5.0|AnyCPU'">
+	<PropertyGroup Condition="'$(Configuration)'=='Release'">
 	  <Optimize>true</Optimize>
   </PropertyGroup>
 
-	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net5.0|AnyCPU'">
+	<PropertyGroup Condition="'$(Configuration)'=='Debug'">
 	  <Optimize>false</Optimize>
   </PropertyGroup>
 
