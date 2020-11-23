@@ -19,9 +19,17 @@ namespace Bebop.Runtime
         // ReSharper disable once FieldCanBeMadeReadOnly.Local
         private ReadOnlySpan<byte> _buffer;
 
+        /// <summary>
+        /// 
+        /// </summary>
         public int Position { get; set; }
 
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <returns></returns>
         [MethodImpl(BebopConstants.HotPath)]
         public static BebopReader From(ReadOnlySpan<byte> buffer) => new(buffer);
 
@@ -170,6 +178,12 @@ namespace Bebop.Runtime
             return ReadUnaligned<Guid>(ref GetReference(_buffer.Slice(index, size)));
         }
 
+        /// <summary>
+        /// Converts an array into a <see cref="ImmutableArray{T}"/> without copying
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="array"></param>
+        /// <returns></returns>
         [MethodImpl(BebopConstants.HotPath)]
         public ImmutableArray<T> AsImmutable<T>(T[] array) => As<T[], ImmutableArray<T>>(ref array);
 
