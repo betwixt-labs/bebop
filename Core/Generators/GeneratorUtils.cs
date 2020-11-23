@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Core.Generators.CSharp;
+using Core.Generators.Dart;
 using Core.Generators.TypeScript;
 using Core.Meta.Interfaces;
 
@@ -17,7 +18,8 @@ namespace Core.Generators
         /// </remarks>
         public static Dictionary<string, Func<ISchema, Generator>> ImplementedGenerators  = new Dictionary<string, Func<ISchema, Generator>> {
             { "ts", s => new TypeScriptGenerator(s) },
-            { "cs", s => new CSharpGenerator(s) }
+            { "cs", s => new CSharpGenerator(s) },
+            { "dart", s => new DartGenerator(s) },
         };
    
         /// <summary>
