@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Bebop.Exceptions;
@@ -29,6 +30,9 @@ namespace Bebop.Runtime
 
         [MethodImpl(BebopConstants.HotPath)]
         public static BebopReader From(ReadOnlyMemory<byte> buffer) => new(buffer.Span);
+
+        [MethodImpl(BebopConstants.HotPath)]
+        public static BebopReader From(ImmutableArray<byte> buffer) => new(buffer.AsSpan());
 
         [MethodImpl(BebopConstants.HotPath)]
         public static BebopReader From(ArraySegment<byte> buffer) => new(buffer);
@@ -166,17 +170,24 @@ namespace Bebop.Runtime
             return ReadUnaligned<Guid>(ref GetReference(_buffer.Slice(index, size)));
         }
 
+        [MethodImpl(BebopConstants.HotPath)]
+        public ImmutableArray<T> AsImmutable<T>(T[] array) 
+        {
+            return As<T[], ImmutableArray<T>>(ref array);
+        }
+
         /// <summary>
         ///     Reads a length-prefixed byte array from the buffer
         /// </summary>
         /// <returns>An array of bytes</returns>
         [MethodImpl(BebopConstants.HotPath)]
-        public byte[] ReadBytes()
+        public ImmutableArray<byte> ReadBytes()
         {
             var length = unchecked((int) ReadUInt32());
             var index = Position;
             Position += length;
-            return _buffer.Slice(index, length).ToArray();
+            var data = _buffer.Slice(index, length).ToArray();
+            return As<byte[], ImmutableArray<byte>>(ref data);
         }
 
         /// <summary>

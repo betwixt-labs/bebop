@@ -44,6 +44,7 @@ namespace Core.Generators.CSharp
         {
             var builder = new IndentedStringBuilder();
             builder.AppendLine(WarningBlock);
+            builder.AppendLine("using global::System.Collections.Immutable;");
             builder.AppendLine("using global::Bebop.Attributes;");
             builder.AppendLine("using global::Bebop.Runtime;");
             builder.AppendLine("//");
@@ -106,7 +107,7 @@ namespace Core.Generators.CSharp
                         {
                             builder.AppendLine($"[System.Obsolete(\"{field.DeprecatedAttribute.Value}\")]");
                         }
-                        var type = TypeName(field.Type);
+                        var type = TypeName(field.Type, string.Empty, true);
                         var opt = definition.Kind == AggregateKind.Message ? "?" : "";
                         var setOrInit = definition.IsReadOnly ? "init" : "set";
                         builder.AppendLine($"public {type}{opt} {field.Name.ToPascalCase()} {{ get; {setOrInit}; }}");
@@ -187,8 +188,9 @@ namespace Core.Generators.CSharp
         /// </summary>
         /// <param name="type">The field type to generate code for.</param>
         /// <param name="arraySizeVar">A variable name that will be formatted into the array initializer</param>
+        /// <param name="isProperty">If true the specified type may need special formatting applied.</param>
         /// <returns>The C# type name.</returns>
-        private string TypeName(in TypeBase type, string arraySizeVar = "")
+        private string TypeName(in TypeBase type, string arraySizeVar = "", bool isProperty = false)
         {
             switch (type)
             {
@@ -210,6 +212,10 @@ namespace Core.Generators.CSharp
                         BaseType.Date => "System.DateTime",
                         _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                     };
+                case ArrayType at when at.MemberType is ScalarType { BaseType: BaseType.Byte } || isProperty:
+                {
+                    return $"ImmutableArray<{TypeName(at.MemberType)}>";
+                }
                 case ArrayType at:
                     return $"{(at.MemberType is ArrayType ? ($"{TypeName(at.MemberType, arraySizeVar)}[]") : $"{TypeName(at.MemberType)}[{arraySizeVar}]")}";
                 case MapType mt:
@@ -253,7 +259,14 @@ namespace Core.Generators.CSharp
             i = 0;
             foreach (var field in definition.Fields)
             {
-                builder.AppendLine($"{field.Name.ToPascalCase()} = field{i++},");
+                if (field.Type is ArrayType {MemberType: not ScalarType {BaseType: BaseType.Byte}} at)
+                {
+                    builder.AppendLine($"{field.Name.ToPascalCase()} = reader.AsImmutable(field{i++}),");
+                }
+                else
+                {
+                    builder.AppendLine($"{field.Name.ToPascalCase()} = field{i++},");
+                }
             }
             builder.Dedent(indentStep);
             builder.AppendLine("};");

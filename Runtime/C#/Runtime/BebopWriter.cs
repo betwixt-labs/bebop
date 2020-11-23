@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Bebop.Exceptions;
@@ -308,6 +309,19 @@ namespace Bebop.Runtime
             var index = Length;
             GrowBy(value.Length);
             AsBytes(value.AsSpan()).CopyTo(_buffer.Slice(index, value.Length));
+        }
+
+        /// <summary>
+        ///     Writes a byte array to the underlying buffer.
+        /// </summary>
+        /// <param name="value"></param>
+        [MethodImpl(BebopConstants.HotPath)]
+        public void WriteBytes(ImmutableArray<byte> value)
+        {
+            WriteUInt32(unchecked((uint)value.Length));
+            var index = Length;
+            GrowBy(value.Length);
+            value.AsSpan().CopyTo(_buffer.Slice(index, value.Length));
         }
 
         /// <summary>
