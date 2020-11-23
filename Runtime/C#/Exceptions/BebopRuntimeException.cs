@@ -6,6 +6,7 @@ namespace Bebop.Exceptions
     /// <summary>
     ///     Represents an error that occurs while dynamically accessing Bebop types.
     /// </summary>
+    [Serializable]
     public class BebopRuntimeException : Exception
     {
         public BebopRuntimeException(BebopRecord first, BebopRecord second) : base(
@@ -30,6 +31,10 @@ namespace Bebop.Exceptions
 
         public BebopRuntimeException(Type first, Type second) : base(
             $"Bebop type \"{first.FullName}\" does not align with \"{second.FullName}\"")
+        {
+        }
+
+        public BebopRuntimeException()
         {
         }
     }

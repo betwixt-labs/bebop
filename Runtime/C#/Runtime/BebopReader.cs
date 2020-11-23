@@ -171,10 +171,7 @@ namespace Bebop.Runtime
         }
 
         [MethodImpl(BebopConstants.HotPath)]
-        public ImmutableArray<T> AsImmutable<T>(T[] array) 
-        {
-            return As<T[], ImmutableArray<T>>(ref array);
-        }
+        public ImmutableArray<T> AsImmutable<T>(T[] array) => As<T[], ImmutableArray<T>>(ref array);
 
         /// <summary>
         ///     Reads a length-prefixed byte array from the buffer
