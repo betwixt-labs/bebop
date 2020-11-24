@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Core.Generators;
+using Core.Logging;
 using Core.Meta;
 
 namespace Compiler
@@ -58,6 +59,7 @@ namespace Compiler
 #endregion
 
     /// <summary>
+    /// A class for constructing and parsing all available commands.
     /// </summary>
     public class CommandLineFlags
     {
@@ -91,7 +93,13 @@ namespace Compiler
         [CommandLineFlag("help", "Show this text and exit.", "")]
         public bool Help { get; private set; }
 
-        public string? HelpText { get; private init; }
+        /// <summary>
+        ///     Controls how loggers format data.
+        /// </summary>
+        [CommandLineFlag("log-format", "Defines the formatter that will be used with logging.", "--formatter (structured|msbuild)")]
+        public LogFormatter LogFormatter { get; private set; }
+
+        public string HelpText { get; private init; }
 
         #region Static
 
@@ -221,6 +229,14 @@ namespace Compiler
                         genericList.Add(Convert.ChangeType(item.Trim(), itemType));
                     }
                     flag.Property.SetValue(flagStore, genericList, null);
+                } else  if (propertyType.IsEnum)
+                {
+                    if (!Enum.TryParse(propertyType, parsedValue, true, out var parsedEnum))
+                    {
+                        errorMessage = $"Failed to parse \"{parsedValue}\" into a member of \"{propertyType}\".";
+                        return false;
+                    }
+                    flag.Property.SetValue(flagStore, parsedEnum, null);
                 }
                 else
                 {
