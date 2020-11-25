@@ -108,7 +108,7 @@ namespace Core.Generators.CSharp
                             builder.AppendLine($"[System.Obsolete(\"{field.DeprecatedAttribute.Value}\")]");
                         }
                         var type = TypeName(field.Type, string.Empty, true);
-                        var opt = definition.Kind == AggregateKind.Message ? "?" : "";
+                        var opt = definition.Kind == AggregateKind.Message && IsNullableType(field.Type) ? "?" : "";
                         var setOrInit = definition.IsReadOnly ? "init" : "set";
                         builder.AppendLine($"public {type}{opt} {field.Name.ToPascalCase()} {{ get; {setOrInit}; }}");
                     }
@@ -212,7 +212,7 @@ namespace Core.Generators.CSharp
                         BaseType.Date => "System.DateTime",
                         _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                     };
-                case ArrayType at when at.MemberType is ScalarType { BaseType: BaseType.Byte } || isProperty:
+                case ArrayType {MemberType: ScalarType { BaseType: BaseType.Byte }} at:
                 {
                     return $"ImmutableArray<{TypeName(at.MemberType)}>";
                 }
@@ -259,14 +259,7 @@ namespace Core.Generators.CSharp
             i = 0;
             foreach (var field in definition.Fields)
             {
-                if (field.Type is ArrayType {MemberType: not ScalarType {BaseType: BaseType.Byte}} at)
-                {
-                    builder.AppendLine($"{field.Name.ToPascalCase()} = reader.AsImmutable(field{i++}),");
-                }
-                else
-                {
-                    builder.AppendLine($"{field.Name.ToPascalCase()} = field{i++},");
-                }
+                builder.AppendLine($"{field.Name.ToPascalCase()} = field{i++},");
             }
             builder.Dedent(indentStep);
             builder.AppendLine("};");
@@ -471,11 +464,11 @@ namespace Core.Generators.CSharp
                 builder.AppendLine("");
 
                 var isNullableType = IsNullableType(field.Type);
-
-                builder.AppendLine($"if (record.{field.Name.ToPascalCase()} is not null) {{");
+                var nullCheck = isNullableType ? "is not null" : "!= null";
+                builder.AppendLine($"if (record.{field.Name.ToPascalCase()} {nullCheck}) {{");
                 builder.Indent(indentStep);
                 builder.AppendLine($"writer.WriteByte({field.ConstantValue});");
-                builder.AppendLine(isNullableType
+                builder.AppendLine(isNullableType && field.Type is ScalarType
                     ? $"{CompileEncodeField(field.Type, $"record.{field.Name.ToPascalCase()}.Value")}"
                     : $"{CompileEncodeField(field.Type, $"record.{field.Name.ToPascalCase()}")}");
                 builder.Dedent(indentStep);
@@ -497,21 +490,15 @@ namespace Core.Generators.CSharp
             return builder.ToString();
         }
 
-        private bool IsNullableType(TypeBase type)
+        private static bool IsNullableType(TypeBase type)
         {
             return type switch
             {
-                DefinedType dt when Schema.Definitions[dt.Name].Kind == AggregateKind.Enum => true,
-                DefinedType => false,
-                ArrayType => false,
-                MapType => false,
-                ScalarType st => st.BaseType switch
-                {
-                    BaseType.String => false,
-                    BaseType.Guid =>  true,
-                    BaseType.Date => true,
-                    _ => true
-                },
+                DefinedType => true,
+                ArrayType { MemberType: ScalarType { BaseType: BaseType.Byte } } => false,
+                ArrayType => true,
+                MapType => true,
+                ScalarType => true,
                 _ => throw new InvalidOperationException($"CompileEncodeField: {type}")
             };
         }
