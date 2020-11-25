@@ -38,21 +38,13 @@
 
 	<Target Name="CompileBops" BeforeTargets="CoreCompile" DependsOnTargets="PrepareForBuild">
 
-
-		<Error Text="No schemas" Code="0" Condition="'$(_BebopSchemas)' == ' '" />
-
-		<Error Text="No output file was specified." Code="1" Condition=" '%(Bebop.OutputFile)' == ''" />
-
-		<Error Text="No generator specified." Code="1" Condition=" '%(Bebop.Generator)' == ''" />
-
-
 		<Exec
 			Command="$(_Bebopc) --lang %(Bebop.Generator) --namespace %(Bebop.Namespace) --files $(_BebopSchemas) --out &quot;$([System.IO.Path]::GetFullPath('%(Bebop.OutputDir)'))\%(Bebop.OutputFile)"
 			EchoOff='true'
 			StandardErrorImportance='high'
 			StandardOutputImportance='low'
 			ConsoleToMSBuild='true'
-			ContinueOnError='true'
+			ContinueOnError='false'
 			StdOutEncoding='utf-8'>
 			<Output TaskParameter="ConsoleOutput" PropertyName="_BebopCompiler" />
 			<Output TaskParameter="ExitCode" PropertyName="MSBuildLastExitCode" />

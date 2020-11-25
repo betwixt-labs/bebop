@@ -14,97 +14,103 @@ namespace Compiler
 {
     internal class Program
     {
-        private static readonly Lager Log = Lager.CreateLogger("Compiler");
+        private static Lager _log;
+        private static CommandLineFlags? _flags;
+
+        private static async Task WriteHelpText()
+        {
+            if (_flags is not null)
+            {
+                await Lager.StandardOut(string.Empty);
+                await Lager.StandardOut(_flags.HelpText);
+            }
+        }
 
         private static async Task<int> Main(string[] args)
         {
-            if (!CommandLineFlags.TryParse(args, out var flags, out var message))
+            var formatter = CommandLineFlags.FindLogFormatter(args);
+            _log = Lager.CreateLogger(formatter);
+
+            if (!CommandLineFlags.TryParse(args, out _flags, out var message))
             {
-                Log.Error(message);
-                Console.WriteLine(flags.HelpText);
+                await _log.Error(new CompilerException(message));
                 return 1;
             }
 
-            void WriteHelpText()
+            if (_flags.Version)
             {
-                Console.WriteLine();
-                Console.WriteLine(flags.HelpText);
-            }
-
-            if (flags.CheckSchemaFiles != null)
-            {
-                if (flags.CheckSchemaFiles.Count > 0)
-                {
-                    return await CheckSchemas(flags.CheckSchemaFiles);
-                }
-                else
-                {
-                    Log.Error("Must specify at least one schema file to check.");
-                    return 1;
-                }
-            }
-
-            if (flags.Version)
-            {
-                Console.WriteLine($"{ReservedWords.CompilerName} {ReservedWords.CompilerVersion}");
+                await Lager.StandardOut($"{ReservedWords.CompilerName} {ReservedWords.CompilerVersion}");
                 return 0;
             }
 
-            if (flags.Help)
+            if (_flags.Help)
             {
-                WriteHelpText();
+                await WriteHelpText();
                 return 0;
             }
 
-            if (string.IsNullOrWhiteSpace(flags.Language))
+            if (_flags.CheckSchemaFiles is not null)
             {
-                Log.Error("No code generator was specified");
-                WriteHelpText();
+                if (_flags.CheckSchemaFiles.Count > 0)
+                {
+                    return await CheckSchemas(_flags.CheckSchemaFiles);
+                }
+                await _log.Error(new CompilerException("No schemas specified in check."));
                 return 1;
             }
 
-            if (!GeneratorUtils.ImplementedGenerators.ContainsKey(flags.Language))
+            if (string.IsNullOrWhiteSpace(_flags.Language))
             {
-                Log.Error($"\"{flags.Language}\" is not a recognized code generator");
+                await _log.Error(new CompilerException("No code generator was specified."));
                 return 1;
             }
 
-            if (flags.SchemaDirectory != null && flags.SchemaFiles != null)
+            if (!GeneratorUtils.ImplementedGenerators.ContainsKey(_flags.Language))
             {
-                Log.Error("Can't specify both an input directory and individual input files");
+                await _log.Error(new CompilerException($"\"{_flags.Language}\" is not a recognized code generator"));
+                return 1;
+            }
+
+            if (_flags.SchemaDirectory is not null && _flags.SchemaFiles is not null)
+            {
+                await _log.Error(
+                    new CompilerException("Can't specify both an input directory and individual input files"));
                 return 1;
             }
 
             List<string> paths;
 
-            if (flags.SchemaDirectory != null)
+            if (_flags.SchemaDirectory is not null)
             {
-                paths = new DirectoryInfo(flags.SchemaDirectory!).GetFiles($"*.{ReservedWords.SchemaExt}", SearchOption.AllDirectories).Select(f => f.FullName).ToList();
+                paths = new DirectoryInfo(_flags.SchemaDirectory!)
+                    .GetFiles($"*.{ReservedWords.SchemaExt}", SearchOption.AllDirectories)
+                    .Select(f => f.FullName)
+                    .ToList();
             }
-            else if (flags.SchemaFiles != null)
+            else if (_flags.SchemaFiles is not null)
             {
-                paths = flags.SchemaFiles;
+                paths = _flags.SchemaFiles;
             }
             else
             {
-                Log.Error("Specify one or more input files with --dir or --files.");
+                await _log.Error(new CompilerException("Specify one or more input files with --dir or --files."));
                 return 1;
             }
 
             if (paths.Count == 0)
             {
-                Log.Error("No input files were found at the specified target location.");
+                await _log.Error(new CompilerException("No input files were found at the specified target location."));
                 return 1;
             }
 
-            if (string.IsNullOrWhiteSpace(flags.OutputFile))
+            if (string.IsNullOrWhiteSpace(_flags.OutputFile))
             {
-                Log.Error("No output file was specified");
+                await _log.Error(new CompilerException("No output file was specified."));
                 return 1;
             }
 
-            return await CompileSchema(GeneratorUtils.ImplementedGenerators[flags!.Language],
-                paths, new FileInfo(flags.OutputFile), flags.Namespace ?? "");
+            return await CompileSchema(GeneratorUtils.ImplementedGenerators[_flags!.Language],
+                paths, new FileInfo(_flags.OutputFile), _flags.Namespace ?? "");
         }
 
         private static async Task<ISchema> ParseAndValidateSchemas(List<string> schemaPaths, string nameSpace)
@@ -120,15 +126,13 @@ namespace Compiler
             FileInfo outputFile,
             string nameSpace)
         {
-            if (outputFile.Directory != null && !outputFile.Directory.Exists)
+            if (outputFile.Directory is not null && !outputFile.Directory.Exists)
             {
                 outputFile.Directory.Create();
-                Log.Info($"Created output directory: {outputFile.Directory.FullName}");
             }
             if (outputFile.Exists)
             {
                 File.Delete(outputFile.FullName);
-                Log.Warn($"Deleted previously generated file: {outputFile.FullName}");
             }
 
             try
@@ -136,15 +140,13 @@ namespace Compiler
                 var schema = await ParseAndValidateSchemas(schemaPaths, nameSpace);
                 var generator = makeGenerator(schema);
                 generator.WriteAuxiliaryFiles(outputFile.DirectoryName ?? string.Empty);
-                Log.Info("Auxiliary files written to output directory");
                 var compiled = generator.Compile();
                 await File.WriteAllTextAsync(outputFile.FullName, compiled);
-                Log.Success($"Build complete -> \"{outputFile.FullName}\"");
                 return 0;
             }
             catch (Exception e)
             {
-                ReportError(e);
+                await ReportError(e);
             }
             return 1;
         }
@@ -158,25 +160,14 @@ namespace Compiler
             }
             catch (Exception e)
             {
-                ReportError(e);
+                await ReportError(e);
                 return 1;
             }
         }
 
-        private static void ReportError(Exception exception)
+        private static async Task ReportError(Exception exception)
         {
-            switch (exception)
-            {
-                case SpanException e:
-                    Log.Error($"Error in {e.Span.FileName} at {e.Span.StartColonString()}: ", e);
-                    break;
-                case FileNotFoundException e:
-                    Log.Error($"File was not found.", e);
-                    break;
-                default:
-                    Log.Error($"Error when processing schemas:", exception);
-                    break;
-            }
+            await _log.Error(exception);
         }
     }
 }

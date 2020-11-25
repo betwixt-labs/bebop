@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Core.Generators;
+using Core.Logging;
 using Core.Meta;
 
 namespace Compiler
@@ -58,6 +59,7 @@ namespace Compiler
 #endregion
 
     /// <summary>
+    /// A class for constructing and parsing all available commands.
     /// </summary>
     public class CommandLineFlags
     {
@@ -91,7 +93,13 @@ namespace Compiler
         [CommandLineFlag("help", "Show this text and exit.", "")]
         public bool Help { get; private set; }
 
-        public string? HelpText { get; private init; }
+        /// <summary>
+        ///     Controls how loggers format data.
+        /// </summary>
+        [CommandLineFlag("log-format", "Defines the formatter that will be used with logging.", "--formatter (structured|msbuild)")]
+        public LogFormatter LogFormatter { get; private set; }
+
+        public string HelpText { get; private init; }
 
         #region Static
 
@@ -125,6 +133,24 @@ namespace Compiler
                 }
             }
             return arguments;
+        }
+
+        /// <summary>
+        /// Attempts to find the <see cref="LogFormatter"/> flag and parse it's value.
+        /// </summary>
+        /// <param name="args">The commandline arguments to sort through</param>
+        /// <returns>If the <see cref="LogFormatter"/> flag was present an had a valid value, that enum member will be returned. Otherwise the default formatter is used.</returns>
+        public static LogFormatter FindLogFormatter(string[] args)
+        {
+            var flags = GetFlags(args);
+            foreach (var flag in flags)
+            {
+                if (flag.Key.Equals("log-format", StringComparison.OrdinalIgnoreCase) && Enum.TryParse<Core.Logging.LogFormatter>(flag.Value, true, out var parsedEnum))
+                {
+                    return parsedEnum;
+                }
+            }
+            return LogFormatter.Structured;
         }
 
 
@@ -169,6 +195,7 @@ namespace Compiler
             flagStore = new CommandLineFlags {HelpText = stringBuilder.ToString()};
 
             var parsedFlags = GetFlags(args);
+           
             if (parsedFlags.Count == 0)
             {
                 errorMessage = "No commandline flags found.";
@@ -221,6 +248,14 @@ namespace Compiler
                         genericList.Add(Convert.ChangeType(item.Trim(), itemType));
                     }
                     flag.Property.SetValue(flagStore, genericList, null);
+                } else  if (propertyType.IsEnum)
+                {
+                    if (!Enum.TryParse(propertyType, parsedValue, true, out var parsedEnum))
+                    {
+                        errorMessage = $"Failed to parse \"{parsedValue}\" into a member of \"{propertyType}\".";
+                        return false;
+                    }
+                    flag.Property.SetValue(flagStore, parsedEnum, null);
                 }
                 else
                 {
