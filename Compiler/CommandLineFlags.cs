@@ -135,6 +135,24 @@ namespace Compiler
             return arguments;
         }
 
+        /// <summary>
+        /// Attempts to find the <see cref="LogFormatter"/> flag and parse it's value.
+        /// </summary>
+        /// <param name="args">The commandline arguments to sort through</param>
+        /// <returns>If the <see cref="LogFormatter"/> flag was present an had a valid value, that enum member will be returned. Otherwise the default formatter is used.</returns>
+        public static LogFormatter FindLogFormatter(string[] args)
+        {
+            var flags = GetFlags(args);
+            foreach (var flag in flags)
+            {
+                if (flag.Key.Equals("log-format", StringComparison.OrdinalIgnoreCase) && Enum.TryParse<Core.Logging.LogFormatter>(flag.Value, true, out var parsedEnum))
+                {
+                    return parsedEnum;
+                }
+            }
+            return LogFormatter.Structured;
+        }
+
 
         /// <summary>
         ///     Attempts to parse commandline flags into a <see cref="CommandLineFlags"/> instance
@@ -177,6 +195,7 @@ namespace Compiler
             flagStore = new CommandLineFlags {HelpText = stringBuilder.ToString()};
 
             var parsedFlags = GetFlags(args);
+           
             if (parsedFlags.Count == 0)
             {
                 errorMessage = "No commandline flags found.";

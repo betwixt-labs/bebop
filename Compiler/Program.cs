@@ -28,16 +28,18 @@ namespace Compiler
 
         private static async Task<int> Main(string[] args)
         {
+            var formatter = CommandLineFlags.FindLogFormatter(args);
+            _log = Lager.CreateLogger(formatter);
+
             if (!CommandLineFlags.TryParse(args, out _flags, out var message))
             {
-                await Lager.StandardError(message);
-                await Lager.StandardOut(_flags.HelpText);
+                await _log.Error(new CompilerException(message));
                 return 1;
             }
 
             if (_flags.Version)
             {
-                Console.WriteLine($"{ReservedWords.CompilerName} {ReservedWords.CompilerVersion}");
+                await Lager.StandardOut($"{ReservedWords.CompilerName} {ReservedWords.CompilerVersion}");
                 return 0;
             }
 
@@ -46,9 +48,6 @@ namespace Compiler
                 await WriteHelpText();
                 return 0;
             }
-
-            _log = Lager.CreateLogger(_flags.LogFormatter);
-
 
             if (_flags.CheckSchemaFiles is not null)
             {
