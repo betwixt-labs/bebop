@@ -42,8 +42,8 @@ namespace Core.Logging
         {
             var message = _logFormatter switch
             {
-                LogFormatter.MSBuild => $"{ex.Span.FileName}({ex.Span.StartColonString(',')}) : error BOP{ex.ErrorCode}: Compiler error: {ex.Message}",
-                LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] Issue located in \"{ex.Span.FileName}\" at {ex.Span.StartColonString()}: {ex.Message}",
+                LogFormatter.MSBuild => $"{ex.Span.FileName}({ex.Span.StartColonString(',')}) : error BOP{ex.ErrorCode}: {ex.Message}",
+                LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] Issue located in '{ex.Span.FileName}' at {ex.Span.StartColonString()}: {ex.Message}",
                 _ => throw new ArgumentOutOfRangeException()
             };
             await Console.Error.WriteLineAsync(message).ConfigureAwait(false);
@@ -58,7 +58,7 @@ namespace Core.Logging
             var message = _logFormatter switch
             {
                 LogFormatter.MSBuild => $"{ReservedWords.CompilerName} : fatal error BOP{msBuildErrorCode}: cannot open file '{ex.FileName}'",
-                LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] Unable to open file \"{ex.FileName}\"",
+                LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] Unable to open file '{ex.FileName}'",
                 _ => throw new ArgumentOutOfRangeException()
             };
             await Console.Error.WriteLineAsync(message).ConfigureAwait(false);

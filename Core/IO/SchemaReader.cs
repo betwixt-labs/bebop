@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Core.IO.Interfaces;
@@ -34,7 +35,7 @@ namespace Core.IO
 
         public static SchemaReader FromSchemaPaths(IEnumerable<string> schemaPaths)
         {
-            return new SchemaReader(schemaPaths.Select(path => (path, File.ReadAllText(path))).ToList());
+            return new SchemaReader(schemaPaths.Select(path => (path, $"{File.ReadAllText(path)}{Environment.NewLine}")).ToList());
         }
 
         private string CurrentFile => _schemas[_schemaIndex].Item2;

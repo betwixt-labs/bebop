@@ -71,31 +71,27 @@ namespace Core.Exceptions
     class InvalidReadOnlyException : SpanException
     {
         public InvalidReadOnlyException(IDefinition definition)
-            : base($"'{definition.Name}' was declared readonly, but it is not a struct", definition.Span, 106) { }
+            : base($"The 'readonly' modifer cannot be applied to '{definition.Name}' as it is not a struct", definition.Span, 106) { }
     }
 
     class InvalidDeprecatedAttributeUsageException : SpanException
     {
         public InvalidDeprecatedAttributeUsageException(IField field)
-            : base($"'{field.Name}' was marked " +
-                $"deprecated" +
-                $", but it is not part of a message", field.Span, 107) { }
+            : base($"The field '{field.Name}' cannot be marked as 'deprecated' as it is not a member of a message", field.Span, 107) { }
     }
 
     class InvalidOpcodeAttributeUsageException : SpanException
     {
         public InvalidOpcodeAttributeUsageException(IDefinition definition)
-            : base($"'{definition.Name}' was marked " +
-                $"opcode" +
-                $", but it is not part of a message or struct", definition.Span, 108)
+            : base($"The definition '{definition.Name}' cannot be marked with an opcode attribute as it is not a message or struct", definition.Span, 108)
         { }
     }
     class InvalidOpcodeAttributeValueException : SpanException
     {
         public InvalidOpcodeAttributeValueException(IDefinition definition, string reason)
-            : base($"'{definition.Name}' was marked " +
-                $"opcode" +
-                $", however it's value is invalid: {reason}", definition.Span, 109)
+            : base($"The definition '{definition.Name}' was marked with an" +
+                $" opcode " +
+                $"attribute containing an invalid value: {reason}", definition.Span, 109)
         { }
     }
 

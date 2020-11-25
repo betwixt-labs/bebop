@@ -84,13 +84,13 @@ namespace Compiler
         /// <summary>
         /// When set to true the process will output the product version and exit with a zero return code.
         /// </summary>
-        [CommandLineFlag("version", "Show version info and exit.", "")]
+        [CommandLineFlag("version", "Show version info and exit.", "--version")]
         public bool Version { get; private set; }
 
         /// <summary>
         /// When set to true the process will output the <see cref="HelpText"/> and exit with a zero return code.
         /// </summary>
-        [CommandLineFlag("help", "Show this text and exit.", "")]
+        [CommandLineFlag("help", "Show this text and exit.", "--help")]
         public bool Help { get; private set; }
 
         /// <summary>
@@ -232,7 +232,7 @@ namespace Compiler
                 }
                 if (string.IsNullOrWhiteSpace(parsedValue))
                 {
-                    errorMessage = $"Commandline flag \"{flag.Attribute.Name}\" was not assigned a value.";
+                    errorMessage = $"Commandline flag '{flag.Attribute.Name}' was not assigned a value.";
                     return false;
                 }
                 if (propertyType.IsGenericType && propertyType.GetGenericTypeDefinition() == typeof(List<>))
@@ -240,7 +240,7 @@ namespace Compiler
                     Type itemType = propertyType.GetGenericArguments()[0];
                     if (!(Activator.CreateInstance(typeof(List<>).MakeGenericType(itemType)) is IList genericList))
                     {
-                        errorMessage = $"Failed to activate \"{flag.Property.Name}\".";
+                        errorMessage = $"Failed to activate '{flag.Property.Name}'.";
                         return false;
                     }
                     foreach (var item in parsedValue.Split(" ", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
@@ -252,7 +252,7 @@ namespace Compiler
                 {
                     if (!Enum.TryParse(propertyType, parsedValue, true, out var parsedEnum))
                     {
-                        errorMessage = $"Failed to parse \"{parsedValue}\" into a member of \"{propertyType}\".";
+                        errorMessage = $"Failed to parse '{parsedValue}' into a member of '{propertyType}'.";
                         return false;
                     }
                     flag.Property.SetValue(flagStore, parsedEnum, null);

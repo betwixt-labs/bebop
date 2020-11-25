@@ -67,7 +67,7 @@ namespace Compiler
 
             if (!GeneratorUtils.ImplementedGenerators.ContainsKey(_flags.Language))
             {
-                await _log.Error(new CompilerException($"\"{_flags.Language}\" is not a recognized code generator"));
+                await _log.Error(new CompilerException($"'{_flags.Language}' is not a recognized code generator"));
                 return 1;
             }
 
