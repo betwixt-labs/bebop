@@ -150,10 +150,10 @@ namespace Bebop.Runtime
                     {
                         continue;
                     }
-                    if (!handlerClass.HasDefaultConstructor())
+                    if (!handlerClass.IsStaticClass() && !handlerClass.HasDefaultConstructor())
                     {
                         throw new BebopRuntimeException(
-                            $"\"{handlerClass}\" does not contain an accessible default constructor");
+                            $"non-static class '{handlerClass}' does not contain an accessible default constructor");
                     }
 
                     handlers[handlerClass] = new List<(MethodInfo Method, Type RecordType)>();
@@ -209,7 +209,7 @@ namespace Bebop.Runtime
 
             foreach (var handler in handlers)
             {
-                var handlerInstance = Activator.CreateInstance(handler.Key);
+                var handlerInstance = !handler.Key.IsStaticClass() ? Activator.CreateInstance(handler.Key) : new StaticClass();
                 if (handlerInstance is null)
                 {
                     throw new BebopRuntimeException($"Unable to create instance of \"{handler.Key}\"");

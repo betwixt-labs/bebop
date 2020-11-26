@@ -14,7 +14,9 @@ namespace Bebop.Attributes
         {
             RecordType = recordType;
         }
-
+        /// <summary>
+        /// The <see cref="BebopRecord{T}"/> associated with the bound method.
+        /// </summary>
         public Type RecordType { get; init; }
     }
 }

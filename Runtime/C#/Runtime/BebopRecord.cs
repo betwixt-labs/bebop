@@ -221,22 +221,32 @@ namespace Bebop.Runtime
         {
             var paramTypes = methodInfo.GetParameters().Select(p => p.ParameterType);
             Type delegateType = Expression.GetDelegateType(paramTypes.Append(methodInfo.ReturnType).ToArray());
+            var isStaticHandler = handlerInstance is StaticClass;
 
             if (methodInfo.IsValueTask())
             {
                 _handlerValueTaskDelegate =
-                    (Func<object, T, ValueTask>) Delegate.CreateDelegate(delegateType, handlerInstance,
-                        methodInfo);
+                    (Func<object, T, ValueTask>) (isStaticHandler
+                        ? Delegate.CreateDelegate(delegateType,
+                            methodInfo)
+                        : Delegate.CreateDelegate(delegateType, handlerInstance,
+                            methodInfo));
             }
             else if (methodInfo.IsTask())
             {
                 _handlerTaskDelegate =
-                    (Func<object, T, Task>) Delegate.CreateDelegate(delegateType, handlerInstance, methodInfo);
+                    (Func<object, T, Task>) (isStaticHandler
+                        ? Delegate.CreateDelegate(delegateType,
+                            methodInfo)
+                        : Delegate.CreateDelegate(delegateType, handlerInstance, methodInfo));
             }
             else
             {
                 _handlerVoidDelegate =
-                    (Action<object, T>) Delegate.CreateDelegate(delegateType, handlerInstance, methodInfo);
+                    (Action<object, T>) (isStaticHandler
+                        ? Delegate.CreateDelegate(delegateType,
+                            methodInfo)
+                        : Delegate.CreateDelegate(delegateType, handlerInstance, methodInfo));
             }
             _handlerIsAsync = methodInfo.IsAsync();
         }

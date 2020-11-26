@@ -12,6 +12,10 @@ using Bebop.Runtime;
 namespace Bebop.Extensions
 {
     /// <summary>
+    /// A dummy type for identifying static classes in <see cref="BebopMirror"/> without using null.
+    /// </summary>
+    internal class StaticClass { }
+    /// <summary>
     ///     Handy dandy extension methods for working with <see cref="Type"/>
     /// </summary>
     internal static class TypeExtensions
@@ -124,7 +128,7 @@ namespace Bebop.Extensions
             {
                 throw new ArgumentNullException(nameof(type));
             }
-            foreach (var methodInfo in type.GetMethods(BindingFlags.Public | BindingFlags.Instance))
+            foreach (var methodInfo in type.GetMethods(type.IsStaticClass() ? BindingFlags.Public | BindingFlags.Static : BindingFlags.Public | BindingFlags.Instance))
             {
                 if (methodInfo.GetCustomAttribute<BindRecordAttribute>() is {RecordType: not null} attribute)
                 {
@@ -209,6 +213,16 @@ namespace Bebop.Extensions
         ///     <see langword="true"/> if the specified method returns a value,  otherwise <see langword="false"/>.
         /// </returns>
         internal static bool HasReturn(this MethodInfo info) => !info.IsTask() && !info.IsValueTask() && !info.IsVoid();
+
+        /// <summary>
+        /// Determines if the specified <paramref name="type"/> is a static class.
+        /// </summary>
+        /// <param name="type">the type to check.</param>
+        /// <returns>true if the class is static, otherwise false.</returns>
+        internal static bool IsStaticClass(this Type type)
+        {
+            return type.GetConstructor(Type.EmptyTypes) == null && type.IsAbstract && type.IsSealed;
+        }
 
         /// <summary>
         ///     Determines if the specified
