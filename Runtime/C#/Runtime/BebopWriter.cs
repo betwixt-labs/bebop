@@ -28,22 +28,18 @@ namespace Bebop.Runtime
         /// </summary>
         public int Length { get; private set; }
 
+        /// <summary>
+        /// Converts an array into a <see cref="ImmutableArray{T}"/> without copying
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="array"></param>
+        /// <returns></returns>
+        [MethodImpl(BebopConstants.HotPath)]
+        private static ImmutableArray<T> AsImmutable<T>(T[] array) => As<T[], ImmutableArray<T>>(ref array);
+
         [MethodImpl(BebopConstants.HotPath)]
         private static uint ConvertEnum<T>(T enumValue) where T : struct, Enum =>
             As<T, uint>(ref enumValue);
-
-        /// <summary>
-        ///     Creates a read-only slice of the underlying <see cref="_buffer"/> containing all currently written data.
-        /// </summary>
-        [MethodImpl(BebopConstants.HotPath)]
-        public ReadOnlySpan<byte> Slice() => _buffer.Slice(0, Length);
-
-        /// <summary>
-        ///     Copies the contents of <see cref="Slice"/> into a new array.  This heap
-        ///     allocates, so should generally be avoided for writing and only used when setting a decoded message property.
-        /// </summary>
-        [MethodImpl(BebopConstants.HotPath)]
-        public byte[] ToArray() => Slice().ToArray();
 
         /// <summary>
         ///     Allocates a new <see cref="BebopWriter"/> instance backed by an empty array.
@@ -60,6 +56,26 @@ namespace Bebop.Runtime
 
         [MethodImpl(BebopConstants.HotPath)]
         public static BebopWriter From(Span<byte> buffer) => new(buffer);
+
+        /// <summary>
+        ///     Creates a read-only slice of the underlying <see cref="_buffer"/> containing all currently written data.
+        /// </summary>
+        [MethodImpl(BebopConstants.HotPath)]
+        public ReadOnlySpan<byte> Slice() => _buffer.Slice(0, Length);
+
+        /// <summary>
+        ///     Copies the contents of <see cref="Slice"/> into a new array.  This heap
+        ///     allocates, so should generally be avoided for writing and only used when setting a decoded message property.
+        /// </summary>
+        [MethodImpl(BebopConstants.HotPath)]
+        public byte[] ToArray() => Slice().ToArray();
+
+        /// <summary>
+        ///     Copies the contents of <see cref="Slice"/> into a new immutable array.  This heap
+        ///     allocates, so should generally be avoided for writing and only used when setting a decoded message property.
+        /// </summary>
+        [MethodImpl(BebopConstants.HotPath)]
+        public ImmutableArray<byte> ToImmutableArray() => AsImmutable(Slice().ToArray());
 
         private BebopWriter(Span<byte> buffer)
         {
@@ -319,6 +335,10 @@ namespace Bebop.Runtime
         public void WriteBytes(ImmutableArray<byte> value)
         {
             WriteUInt32(unchecked((uint)value.Length));
+            if (value.Length == 0)
+            {
+                return;
+            }
             var index = Length;
             GrowBy(value.Length);
             value.AsSpan().CopyTo(_buffer.Slice(index, value.Length));

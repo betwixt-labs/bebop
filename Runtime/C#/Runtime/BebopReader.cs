@@ -185,7 +185,7 @@ namespace Bebop.Runtime
         /// <param name="array"></param>
         /// <returns></returns>
         [MethodImpl(BebopConstants.HotPath)]
-        public ImmutableArray<T> AsImmutable<T>(T[] array) => As<T[], ImmutableArray<T>>(ref array);
+        private static ImmutableArray<T> AsImmutable<T>(T[] array) => As<T[], ImmutableArray<T>>(ref array);
 
         /// <summary>
         ///     Reads a length-prefixed byte array from the buffer
@@ -195,6 +195,10 @@ namespace Bebop.Runtime
         public ImmutableArray<byte> ReadBytes()
         {
             var length = unchecked((int) ReadUInt32());
+            if (length == 0)
+            {
+                return ImmutableArray<byte>.Empty;
+            }
             var index = Position;
             Position += length;
             var data = _buffer.Slice(index, length).ToArray();
