@@ -126,11 +126,8 @@ namespace Core.Generators.CSharp
                     builder.AppendLine(RecordAttribute);
                     builder.AppendLine($"public sealed class {definitionName} : {baseName} {{");
                     builder.Indent(indentStep);
-                    builder.AppendLine(CompileEncodeHelper(definition, "byte[]"));
-                    builder.AppendLine(CompileEncodeHelper(definition, "System.ReadOnlySpan<byte>"));
-                    builder.AppendLine(CompileEncodeHelper(definition, "System.ReadOnlyMemory<byte>"));
-                    builder.AppendLine(CompileEncodeHelper(definition, "System.ArraySegment<byte>"));
-                    builder.AppendLine(CompileEncodeHelper(definition, "ImmutableArray<byte>"));
+                    builder.AppendLine(CompileEncodeHelper(definition, "byte[]", "Encode"));
+                    builder.AppendLine(CompileEncodeHelper(definition, "ImmutableArray<byte>", "EncodeAsImmutable"));
                     builder.AppendLine(HotPath);
                     builder.AppendLine(GeneratedAttribute);
                     builder.AppendLine(EditorBrowsableAttribute);
@@ -378,18 +375,23 @@ namespace Core.Generators.CSharp
             };
         }
 
+        public ArraySegment<byte> ToArray()
+        {
+            return new byte[0];
+        }
+
         /// <summary>
         ///     Generates the body of various helper methods to encode the given <see cref="IDefinition"/>
         /// </summary>
         /// <param name="definition"></param>
         /// <returns></returns>
-        public string CompileEncodeHelper(IDefinition definition, string bufferType)
+        public string CompileEncodeHelper(IDefinition definition, string bufferType, string methodName)
         {
             var returnMethod = bufferType.Equals("ImmutableArray<byte>") ? "ToImmutableArray" : "ToArray";
             var builder = new IndentedStringBuilder();
             builder.AppendLine(GeneratedAttribute);
             builder.AppendLine(HotPath);
-            builder.AppendLine($"public static {bufferType} Encode(Base{definition.Name.ToPascalCase()} record) {{");
+            builder.AppendLine($"public static {bufferType} {methodName}(Base{definition.Name.ToPascalCase()} record) {{");
             builder.Indent(indentStep);
             builder.AppendLine("var writer = BebopWriter.Create();");
             builder.AppendLine("EncodeInto(record, ref writer);");
@@ -399,7 +401,7 @@ namespace Core.Generators.CSharp
             builder.AppendLine("");
             builder.AppendLine(GeneratedAttribute);
             builder.AppendLine(HotPath);
-            builder.AppendLine($"public {bufferType} Encode() {{");
+            builder.AppendLine($"public {bufferType} {methodName}() {{");
             builder.Indent(indentStep);
             builder.AppendLine("var writer = BebopWriter.Create();");
             builder.AppendLine("EncodeInto(this, ref writer);");
