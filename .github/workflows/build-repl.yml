@@ -4,7 +4,7 @@ on:
     paths:
       - "Repl/**"
 jobs:
-  build-runtime:
+  build-repl:
     env:
       REPL_ROOT: ${{github.workspace}}/Repl
     runs-on: ubuntu-latest
@@ -22,7 +22,7 @@ jobs:
       - name: Restore Project
         run: dotnet restore
         working-directory: ${{env.REPL_ROOT}}
-      - name: Build Runtime
+      - name: Build REPL
         run: dotnet publish -c Release -p:ReleaseVersion=${{ steps.dotenv.outputs.version }}
         working-directory: ${{env.REPL_ROOT}}
 
