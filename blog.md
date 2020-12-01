@@ -1,6 +1,6 @@
-# Bebop - an efficient schema based binary serialization format for building cross-platform, real-time applications.
+# Bebop: an efficient, schema-based binary serialization format
 
-We know what you're thinking: [yet another standard.](https://xkcd.com/927/) In a world of JSON, Protocol Buffers, MessagePack, and dozens of other formats why reinvent the wheel? 
+We know what you're thinking: [yet another standard.](https://xkcd.com/927/) In a world of JSON, Protocol Buffers, MessagePack, and dozens of other formats, why reinvent the wheel? 
 
 At Rainway, we stream video games to client applications. At 60 frames per second, video and audio data needs to be delivered every 16 milliseconds. Gamepad, mouse or keyboard input has to be processed and streamed back to a remote host, all in real-time. For us, every millisecond spent encoding and decoding matters. 
 
@@ -10,13 +10,13 @@ Our evaluation of other solutions found poor client-side serialization performan
 
 ## Fast, Modern, and Strongly Typed
 
-For anyone who's wondering "is JSON good enough for my distributed/networked app's messaging?" it should be just as easy to use Bebop, but faster and safer.
+For anyone who's wondering "is JSON good enough for my distributed/networked app's messaging?" it should be just as easy to use Bebop, but faster and safer. (The graph below shows _operations per second_, so higher is faster.)
 
-![](https://i.imgur.com/riuqcBC.png)
+![A comparison of Bebop, JSON, and MessagePack encoding and decoding speed.](https://i.imgur.com/riuqcBC.png)
 
 That speed and safety comes from the Bebop compiler, which turns schemas describing data structures into tightly optimized "encode" and "decode" methods. The generated code is type-safe in languages that support it, and invoking it is dead simple.
 
-Here is an example of what using the Bebop-generated seralization code looks like in TypeScript:
+Here is an example of what using the Bebop-generated serialization code looks like in TypeScript:
 
 ```ts
 const mySong: ISong = {
@@ -60,7 +60,7 @@ struct Library {
 ``` 
 
 Much of the syntax is built to be obvious and convenient. Notably, there are two ways to aggregate data in a Bebop schema:
-* Use a `struct` when all fields will always be present, and there will never be more fields (like `struct Point { int32 x; int32 y; }`.)
+* Use a `struct` when all fields are always present, and you'll never add more fields (like `struct Point {int32 x; int32 y;}`.)
 * Use a `message` when fields can be missing, and it makes sense for more fields to be added in later versions of your app.
 
 Also, Bebop supplies useful base types like `date` and `guid` out of the box. That way, there's no "intermediary serialization step" of converting a date object to a Unix timestamp and back manually — Bebop is all about saving you effort.
