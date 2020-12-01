@@ -25,7 +25,7 @@ jobs:
             RUNTIME: win-x64
             ARTIFACT: bebopc.exe
 
-          - os: linux-latest
+          - os: ubuntu-latest
             CONFIGURATION: Linux-Release
             RUNTIME: linux-x64
             ARTIFACT: bebopc
@@ -50,15 +50,15 @@ jobs:
       - name: Upload Build
         uses: actions/upload-artifact@v2
         with:
-          name: ${{matrix.os}}
+          name: ${{matrix.RUNTIME}}
           path: ./bin/compiler/${{matrix.CONFIGURATION}}/publish/${{matrix.ARTIFACT}}
 
   build-tools:
     env:
       TOOLS_ROOT: ${{github.workspace}}/Tools/C#
       TOOLS_PATH: ${{github.workspace}}/Tools/C#/tools
-      WINDOWS_ARTIFACT: windows-latest
-      MAC_ARTIFACT: macos-latest
+      WINDOWS_ARTIFACT: win-x64
+      MAC_ARTIFACT: osx-x64
       LINUX_ARTIFACT: linux-latest
     needs: build-compiler
     runs-on: windows-latest
