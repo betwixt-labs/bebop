@@ -35,6 +35,11 @@ jobs:
       - name: Get Enviorment Variables
         id: dotenv
         uses: falti/dotenv-action@v0.2.5
+
+
+      - name: Install Dependencies
+        if: ${{matrix.os}} == 'ubuntu-latest'
+        run: sudo apt-get install libcurl4-openssl-dev zlib1g-dev libkrb5-dev
       
 
       - name: Setup .NET
