@@ -39,7 +39,7 @@ jobs:
 
       - name: Install Dependencies
         if: ${{matrix.os}} == 'ubuntu-latest'
-        run: sudo apt-get install libcurl4-openssl-dev zlib1g-dev libkrb5-dev
+        run: sudo apt-get install libcurl4-openssl-dev zlib1g-dev libkrb5-dev --fix-missing
       
 
       - name: Setup .NET
