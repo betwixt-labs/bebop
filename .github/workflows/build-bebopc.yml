@@ -64,7 +64,7 @@ jobs:
       TOOLS_PATH: ${{github.workspace}}/Tools/C#/tools
       WINDOWS_ARTIFACT: win-x64
       MAC_ARTIFACT: osx-x64
-      LINUX_ARTIFACT: linux-latest
+      LINUX_ARTIFACT: linux-x64
     needs: build-compiler
     runs-on: windows-latest
     steps:
