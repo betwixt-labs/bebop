@@ -24,6 +24,11 @@ jobs:
             CONFIGURATION: Windows-Release
             RUNTIME: win-x64
             ARTIFACT: bebopc.exe
+
+          - os: linux-latest
+            CONFIGURATION: Linux-Release
+            RUNTIME: linux-x64
+            ARTIFACT: bebopc
     steps:
       - uses: actions/checkout@v1
 
@@ -54,6 +59,7 @@ jobs:
       TOOLS_PATH: ${{github.workspace}}/Tools/C#/tools
       WINDOWS_ARTIFACT: windows-latest
       MAC_ARTIFACT: macos-latest
+      LINUX_ARTIFACT: linux-latest
     needs: build-compiler
     runs-on: windows-latest
     steps:
@@ -78,6 +84,12 @@ jobs:
         with:
           name: ${{env.MAC_ARTIFACT}}
           path: ${{env.TOOLS_PATH}}/macos/
+
+      - name: Download Linux Build
+        uses: actions/download-artifact@v2
+        with:
+          name: ${{env.LINUX_ARTIFACT}}
+          path: ${{env.TOOLS_PATH}}/linux/
 
       - name: Build bebop-tools NuGet Package
         run: call ${{env.TOOLS_ROOT}}/build.cmd ${{ steps.dotenv.outputs.version }}

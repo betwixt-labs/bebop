@@ -18,8 +18,8 @@
     <NativeOutputPath>../bin/compiler/$(Configuration)/native/</NativeOutputPath>
     <PublishDir>../bin/compiler/$(Configuration)/publish</PublishDir>
     <Platforms>x64</Platforms>
-    <RuntimeIdentifiers>win-x64;osx-x64</RuntimeIdentifiers>
-    <Configurations>Windows-Debug;Windows-Release;macOS-Debug;macOS-Release</Configurations>
+    <RuntimeIdentifiers>win-x64;osx-x64;linux-x64</RuntimeIdentifiers>
+    <Configurations>Windows-Debug;Windows-Release;macOS-Debug;macOS-Release;Linux-Debug;Linux-Release</Configurations>
   </PropertyGroup>
 
 
@@ -32,6 +32,15 @@
   </PropertyGroup>
 
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Linux-Debug|x64'">
+    <PlatformTarget>x64</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <Optimize>false</Optimize>
+    <DefineConstants>TRACE;DEBUG;NET;NET5_0;NETCOREAPP</DefineConstants>
+    <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
+  </PropertyGroup>
+
+
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Windows-Release|x64' ">
     <PublishSingleFile>true</PublishSingleFile>
     <PlatformTarget>x64</PlatformTarget>
@@ -40,6 +49,16 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <IlcOptimizationPreference>Size</IlcOptimizationPreference>
 
+  </PropertyGroup>
+
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Linux-Release|x64'">
+    <PublishSingleFile>true</PublishSingleFile>
+    <PlatformTarget>x64</PlatformTarget>
+    <Optimize>true</Optimize>
+    <DefineConstants>TRACE;RELEASE;NET;NET5_0;NETCOREAPP</DefineConstants>
+    <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
+    <IlcOptimizationPreference>Size</IlcOptimizationPreference>
   </PropertyGroup>
 
 

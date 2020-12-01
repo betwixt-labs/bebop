@@ -13,5 +13,6 @@
     <Version Condition="'$(ReleaseVersion)' != ''">$(ReleaseVersion)</Version>
     <VersionPrefix Condition="'$(ReleaseVersion)' == ''">0.0.1</VersionPrefix>
     <VersionSuffix Condition="'$(ReleaseVersion)' == ''">$([System.DateTime]::UtcNow.ToString(`yyyyMMdd-HHmm`))</VersionSuffix>
+    <Configurations>Debug;Release</Configurations>
   </PropertyGroup>
 </Project>

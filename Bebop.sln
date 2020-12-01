@@ -9,12 +9,17 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Compiler", "Compiler\Compil
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Linux-Debug|x64 = Linux-Debug|x64
+		Linux-Release|x64 = Linux-Release|x64
 		macOS-Debug|x64 = macOS-Debug|x64
 		macOS-Release|x64 = macOS-Release|x64
 		Windows-Debug|x64 = Windows-Debug|x64
 		Windows-Release|x64 = Windows-Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7AB412CB-1F1F-4449-9D51-A66E200F6248}.Linux-Debug|x64.ActiveCfg = Debug|x64
+		{7AB412CB-1F1F-4449-9D51-A66E200F6248}.Linux-Debug|x64.Build.0 = Debug|x64
+		{7AB412CB-1F1F-4449-9D51-A66E200F6248}.Linux-Release|x64.ActiveCfg = Release|x64
 		{7AB412CB-1F1F-4449-9D51-A66E200F6248}.macOS-Debug|x64.ActiveCfg = Debug|x64
 		{7AB412CB-1F1F-4449-9D51-A66E200F6248}.macOS-Debug|x64.Build.0 = Debug|x64
 		{7AB412CB-1F1F-4449-9D51-A66E200F6248}.macOS-Release|x64.ActiveCfg = Release|x64
@@ -23,6 +28,10 @@ Global
 		{7AB412CB-1F1F-4449-9D51-A66E200F6248}.Windows-Debug|x64.Build.0 = Debug|x64
 		{7AB412CB-1F1F-4449-9D51-A66E200F6248}.Windows-Release|x64.ActiveCfg = Release|x64
 		{7AB412CB-1F1F-4449-9D51-A66E200F6248}.Windows-Release|x64.Build.0 = Release|x64
+		{A509F5AB-5702-49EC-9B7F-09E8F24FC542}.Linux-Debug|x64.ActiveCfg = Linux-Debug|x64
+		{A509F5AB-5702-49EC-9B7F-09E8F24FC542}.Linux-Debug|x64.Build.0 = Linux-Debug|x64
+		{A509F5AB-5702-49EC-9B7F-09E8F24FC542}.Linux-Release|x64.ActiveCfg = Linux-Release|x64
+		{A509F5AB-5702-49EC-9B7F-09E8F24FC542}.Linux-Release|x64.Build.0 = Linux-Release|x64
 		{A509F5AB-5702-49EC-9B7F-09E8F24FC542}.macOS-Debug|x64.ActiveCfg = macOS-Debug|x64
 		{A509F5AB-5702-49EC-9B7F-09E8F24FC542}.macOS-Debug|x64.Build.0 = macOS-Debug|x64
 		{A509F5AB-5702-49EC-9B7F-09E8F24FC542}.macOS-Release|x64.ActiveCfg = macOS-Release|x64
