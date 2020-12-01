@@ -36,11 +36,9 @@ jobs:
         id: dotenv
         uses: falti/dotenv-action@v0.2.5
 
-
       - name: Install Dependencies
         if: ${{matrix.os}} == 'ubuntu-latest'
-        run: sudo apt-get install clang zlib1g-dev libkrb5-dev libtinfo5
-      
+        run: sudo apt-get install clang zlib1g-dev libkrb5-dev=1.16 libtinfo5
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
@@ -68,15 +66,11 @@ jobs:
     needs: build-compiler
     runs-on: windows-latest
     steps:
-
-      
       - uses: actions/checkout@v1
-
 
       - name: Get Enviorment Variables
         id: dotenv
         uses: falti/dotenv-action@v0.2.5
-
 
       - name: Download Windows Build
         uses: actions/download-artifact@v2
