@@ -105,6 +105,6 @@ namespace Core.Lexer.Tokenization.Models
 
         public override string ToString() => $"L{StartLine}C{StartColumn}:L{EndLine}C{EndColumn}";
 
-        public string StartColonString() => $"{StartLine + 1}:{StartColumn + 1}";
+        public string StartColonString(char separator = ':') => $"{StartLine + 1}{separator}{StartColumn + 1}";
     }
 }

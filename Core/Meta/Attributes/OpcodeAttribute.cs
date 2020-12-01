@@ -55,7 +55,7 @@ namespace Core.Meta.Attributes
                     return true;
                 }
                 default:
-                    message = $"Opcode \"{Value}\" is not a valid FourCC.";
+                    message = $"\"{Value}\" is not a valid FourCC.";
                     return false;
             }
         }

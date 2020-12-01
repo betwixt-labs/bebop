@@ -19,7 +19,7 @@
         {
             if (string.IsNullOrWhiteSpace(Value))
             {
-                message = "Deprecation reason was not provided.";
+                message = "deprecation attributes must contain a reason.";
                 return false;
             }
             message = string.Empty;

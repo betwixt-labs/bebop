@@ -1,16 +1,23 @@
 ﻿using System.Collections.Generic;
+using System.Reflection;
+using Core.Lexer.Extensions;
 
 namespace Core.Meta
 {
     public static class ReservedWords
     {
-        public static readonly string CompilerVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version!.ToString()!;
+        public static readonly string CompilerVersion = Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion!;
         public const string CompilerName = "bebopc";
         public const string SchemaExt = "bop";
 
-        public static HashSet<string> Identifiers = new HashSet<string>
+        public static HashSet<string> Identifiers = new()
         {
-            "BebopView"
+            "BebopView",
+            "BebopReader",
+            "BebopWriter",
+            "BebopRecord",
+            "BebopMirror",
+            "BebopConstants"
         };
     }
 
@@ -84,6 +91,12 @@ namespace Core.Meta
         ///     It is encoded as 16 bytes (as returned by <see cref="System.Guid.ToByteArray"/>).
         /// </summary>
         Guid,
+
+        /// <summary>
+        ///    A UTC-based date, stored as a 62-bit number of 100-nanosecond "ticks" since 00:00 on January 1 of year 1 AD.
+        ///    It is stored as a 64-bit unsigned integer whose top two bits are to be ignored.
+        ///    This binary format is compatible with C#'s DateTime.ToBinary().
+        /// </summary>
         Date,
     }
 

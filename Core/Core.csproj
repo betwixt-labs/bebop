@@ -1,13 +1,22 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+	  <TypeScriptCompileBlocked>true</TypeScriptCompileBlocked>
 	  <TargetFramework>net5.0</TargetFramework>
 	  <Nullable>enable</Nullable>
 	  <LangVersion>9.0</LangVersion>
 	  <AssemblyName>BebopCore</AssemblyName>
 	  <RootNamespace>Core</RootNamespace>
 	  <PlatformTarget>x64</PlatformTarget>
+<<<<<<< HEAD
 	  <Platforms>x64;AnyCPU</Platforms>
+=======
+	  <Platforms>x64</Platforms>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <Version Condition="'$(ReleaseVersion)' != ''">$(ReleaseVersion)</Version>
+    <VersionPrefix Condition="'$(ReleaseVersion)' == ''">0.0.1</VersionPrefix>
+    <VersionSuffix Condition="'$(ReleaseVersion)' == ''">$([System.DateTime]::UtcNow.ToString(`yyyyMMdd-HHmm`))</VersionSuffix>
+    <Configurations>Debug;Release</Configurations>
+>>>>>>> 735f0e7f4eba28cf9d9cff84d7ca05795b8b3b7a
   </PropertyGroup>
-
 </Project>

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<Project ToolsVersion="4.0" InitialTargets="CompileBops" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+	<PropertyGroup>
+		<IsWindows Condition="'$(OS)' == 'Windows_NT'">true</IsWindows>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(MSBuildRuntimeType)' == 'Core'">
+		<IsOSX
+			Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::OSX)))' == 'true'">
+			true
+		</IsOSX>
+		<IsLinux
+			Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true'">
+			true
+		</IsLinux>
+	</PropertyGroup>
+
+	<ItemDefinitionGroup>
+		<Bebop>
+			<Generator Condition="'%(Bebop.Generator)' == '' " />
+			<OutputDir Condition="'%(Bebop.OutputDir)' == '' " >$(MSBuildProjectDirectory)\</OutputDir>
+			<OutputFile Condition="'%(Bebop.OutputFile)' == '' " />
+			<Namespace Condition="'%(Bebop.Namespace)' == '' " />
+		</Bebop>
+	</ItemDefinitionGroup>
+
+
+	<PropertyGroup>
+		<_BebopcRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../tools/'))</_BebopcRoot>
+		<_Bebopc Condition="'$(IsWindows)' == 'true'">"$(_BebopcRoot)windows\bebopc.exe"</_Bebopc>
+		<_Bebopc Condition="'$(IsOSX)' == 'true'">"$(_BebopcRoot)macos\bebopc"</_Bebopc>
+		<_Bebopc Condition="'$(IsLinux)' == 'true'">"$(_BebopcRoot)linux\bebopc"</_Bebopc>
+		<_BebopSchemas>"@(Bebop -> '%(FullPath)', ' ')"</_BebopSchemas>
+	</PropertyGroup>
+
+
+	<Target Name="CompileBops" BeforeTargets="CoreCompile" DependsOnTargets="PrepareForBuild">
+
+		<Exec
+			Command="$(_Bebopc) --log-format MSBuild --lang %(Bebop.Generator) --namespace %(Bebop.Namespace) --files $(_BebopSchemas) --out &quot;$([System.IO.Path]::GetFullPath('%(Bebop.OutputDir)'))\%(Bebop.OutputFile)"
+			EchoOff='true'
+			StandardErrorImportance='high'
+			StandardOutputImportance='low'
+			ConsoleToMSBuild='true'
+			ContinueOnError='false'
+			StdOutEncoding='utf-8'>
+			<Output TaskParameter="ConsoleOutput" PropertyName="_BebopCompiler" />
+			<Output TaskParameter="ExitCode" PropertyName="MSBuildLastExitCode" />
+		</Exec>
+
+	</Target>
+
+
+</Project>

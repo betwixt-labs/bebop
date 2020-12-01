@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Core.Generators;
+using Core.Logging;
 using Core.Meta;
 
 namespace Compiler
@@ -58,10 +59,11 @@ namespace Compiler
 #endregion
 
     /// <summary>
+    /// A class for constructing and parsing all available commands.
     /// </summary>
     public class CommandLineFlags
     {
-        [CommandLineFlag("lang", "Generate source file for a given language", "--lang (ts|cs)")]
+        [CommandLineFlag("lang", "Generate source file for a given language", "--lang (ts|cs|dart)")]
         public string? Language { get; private set; }
 
         [CommandLineFlag("namespace", "When this option is specified generated code will use namespaces", "--lang cs --namespace [package]")]
@@ -82,16 +84,22 @@ namespace Compiler
         /// <summary>
         /// When set to true the process will output the product version and exit with a zero return code.
         /// </summary>
-        [CommandLineFlag("version", "Show version info and exit.", "")]
+        [CommandLineFlag("version", "Show version info and exit.", "--version")]
         public bool Version { get; private set; }
 
         /// <summary>
         /// When set to true the process will output the <see cref="HelpText"/> and exit with a zero return code.
         /// </summary>
-        [CommandLineFlag("help", "Show this text and exit.", "")]
+        [CommandLineFlag("help", "Show this text and exit.", "--help")]
         public bool Help { get; private set; }
 
-        public string? HelpText { get; private init; }
+        /// <summary>
+        ///     Controls how loggers format data.
+        /// </summary>
+        [CommandLineFlag("log-format", "Defines the formatter that will be used with logging.", "--formatter (structured|msbuild)")]
+        public LogFormatter LogFormatter { get; private set; }
+
+        public string HelpText { get; private init; }
 
         #region Static
 
@@ -112,11 +120,38 @@ namespace Compiler
         /// </summary>
         /// <param name="args">The flags to be parsed.</param>
         /// <returns>A dictionary containing all parsed flags and their value if any.</returns>
-        private static Dictionary<string, string> GetFlags(string[] args) => args
-            .Zip(args.Skip(1).Concat(new[] {string.Empty}), (first, second) => new {first, second})
-            .Where(pair => pair.first.StartsWith("-", StringComparison.Ordinal))
-            .ToDictionary(pair => new string(pair.first.SkipWhile(c => c == '-').ToArray()).ToLowerInvariant(),
-                g => g.second.StartsWith("-", StringComparison.Ordinal) ? string.Empty : g.second);
+        private static Dictionary<string, string> GetFlags(string[] args)
+        {
+            var arguments = new Dictionary<string, string>();
+            foreach (var token in args)
+            {
+                if (token.StartsWith("--"))
+                {
+                    var key = new string(token.SkipWhile(c => c == '-').ToArray()).ToLowerInvariant();
+                    var value = string.Join(" ", args.SkipWhile(i => i != $"--{key}").Skip(1).TakeWhile(i => !i.StartsWith("--")));
+                    arguments.Add(key, value);
+                }
+            }
+            return arguments;
+        }
+
+        /// <summary>
+        /// Attempts to find the <see cref="LogFormatter"/> flag and parse it's value.
+        /// </summary>
+        /// <param name="args">The commandline arguments to sort through</param>
+        /// <returns>If the <see cref="LogFormatter"/> flag was present an had a valid value, that enum member will be returned. Otherwise the default formatter is used.</returns>
+        public static LogFormatter FindLogFormatter(string[] args)
+        {
+            var flags = GetFlags(args);
+            foreach (var flag in flags)
+            {
+                if (flag.Key.Equals("log-format", StringComparison.OrdinalIgnoreCase) && Enum.TryParse<Core.Logging.LogFormatter>(flag.Value, true, out var parsedEnum))
+                {
+                    return parsedEnum;
+                }
+            }
+            return LogFormatter.Structured;
+        }
 
 
         /// <summary>
@@ -160,6 +195,7 @@ namespace Compiler
             flagStore = new CommandLineFlags {HelpText = stringBuilder.ToString()};
 
             var parsedFlags = GetFlags(args);
+           
             if (parsedFlags.Count == 0)
             {
                 errorMessage = "No commandline flags found.";
@@ -196,7 +232,7 @@ namespace Compiler
                 }
                 if (string.IsNullOrWhiteSpace(parsedValue))
                 {
-                    errorMessage = $"Commandline flag \"{flag.Attribute.Name}\" was not assigned a value.";
+                    errorMessage = $"Commandline flag '{flag.Attribute.Name}' was not assigned a value.";
                     return false;
                 }
                 if (propertyType.IsGenericType && propertyType.GetGenericTypeDefinition() == typeof(List<>))
@@ -204,14 +240,22 @@ namespace Compiler
                     Type itemType = propertyType.GetGenericArguments()[0];
                     if (!(Activator.CreateInstance(typeof(List<>).MakeGenericType(itemType)) is IList genericList))
                     {
-                        errorMessage = $"Failed to activate \"{flag.Property.Name}\".";
+                        errorMessage = $"Failed to activate '{flag.Property.Name}'.";
                         return false;
                     }
-                    foreach (var item in parsedValue.Split(","))
+                    foreach (var item in parsedValue.Split(" ", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
                     {
                         genericList.Add(Convert.ChangeType(item.Trim(), itemType));
                     }
                     flag.Property.SetValue(flagStore, genericList, null);
+                } else  if (propertyType.IsEnum)
+                {
+                    if (!Enum.TryParse(propertyType, parsedValue, true, out var parsedEnum))
+                    {
+                        errorMessage = $"Failed to parse '{parsedValue}' into a member of '{propertyType}'.";
+                        return false;
+                    }
+                    flag.Property.SetValue(flagStore, parsedEnum, null);
                 }
                 else
                 {
