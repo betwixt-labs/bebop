@@ -5,20 +5,22 @@
     <meta charset="utf-8" />
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap" rel="stylesheet">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Repl</title>
+    <title>Bebop REPL</title>
     <base href="/" />
     <link href="css/app.css" rel="stylesheet" />
     <link href="Repl.styles.css" rel="stylesheet" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js"></script>
-    <script>hljs.initHighlightingOnLoad();</script>
     <script>
-        window.writeCode = (code) => {
-            var output = document.getElementById("output");
-            output.innerHtml = '';
-            output.innerText = code;
-            document.querySelectorAll('pre code').forEach((block) => {
-                hljs.highlightBlock(block);
-            });
+        window.assemblyName = "Repl";
+        window.bebopc = {
+            version: function() {
+                return window.DotNet.invokeMethodAsync(assemblyName, 'GetCompilerVersion');
+            },
+            test: async function () {
+                return window.DotNet.invokeMethodAsync(assemblyName, 'TestSchema');
+            },
+            compile: async function (textualSchema, generatorAlias) {
+                return window.DotNet.invokeMethodAsync(assemblyName, 'CompileSchema', textualSchema, generatorAlias);
+            }
         };
     </script>
 </head>
