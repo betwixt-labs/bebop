@@ -25,7 +25,7 @@ jobs:
             RUNTIME: win-x64
             ARTIFACT: bebopc.exe
 
-          - os: ubuntu-latest
+          - os: ubuntu-16.04
             CONFIGURATION: Linux-Release
             RUNTIME: linux-x64
             ARTIFACT: bebopc
@@ -38,7 +38,7 @@ jobs:
 
 
       - name: Install Dependencies
-        if: ${{matrix.os}} == 'ubuntu-latest'
+        if: ${{matrix.os}} == 'ubuntu-16.04'
         run: sudo apt-get install libcurl4-openssl-dev zlib1g-dev libkrb5-dev --fix-missing
       
 
