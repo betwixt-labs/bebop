@@ -15,7 +15,7 @@ namespace Core.Generators.TypeScript
 
         public TypeScriptGenerator(ISchema schema) : base(schema) { }
 
-        private string FormatDocumentation(string documentation, int spaces)
+        private static string FormatDocumentation(string documentation, string deprecationReason, int spaces)
         {
             var builder = new IndentedStringBuilder();
             builder.Indent(spaces);
@@ -25,6 +25,21 @@ namespace Core.Generators.TypeScript
             {
                 builder.AppendLine($"* {line}");
             }
+            if (!string.IsNullOrWhiteSpace(deprecationReason))
+            {
+                builder.AppendLine($"* @deprecated {deprecationReason}");
+            }
+            builder.AppendLine("*/");
+            return builder.ToString();
+        }
+
+        private static string FormatDeprecationDoc(string deprecationReason, int spaces)
+        {
+            var builder = new IndentedStringBuilder();
+            builder.Indent(spaces);
+            builder.AppendLine("/**");
+            builder.Indent(1);
+            builder.AppendLine($"* @deprecated {deprecationReason}");
             builder.AppendLine("*/");
             return builder.ToString();
         }
@@ -298,7 +313,7 @@ namespace Core.Generators.TypeScript
             {
                 if(!string.IsNullOrWhiteSpace(definition.Documentation))
                 {
-                    builder.Append(FormatDocumentation(definition.Documentation, 2));
+                    builder.Append(FormatDocumentation(definition.Documentation, string.Empty, 2));
                 }
                 if (definition.Kind == AggregateKind.Enum)
                 {
@@ -307,10 +322,10 @@ namespace Core.Generators.TypeScript
                     {
                         var field = definition.Fields.ElementAt(i);
                         var comma = i + 1 < definition.Fields.Count ? "," : "";
-                        if (!string.IsNullOrWhiteSpace(field.Documentation))
-                        {
-                            builder.Append(FormatDocumentation(field.Documentation, 5));
-                        }
+                        var deprecationReason = field.DeprecatedAttribute?.Value ?? string.Empty;
+                        builder.Append(!string.IsNullOrWhiteSpace(field.Documentation)
+                            ? FormatDocumentation(field.Documentation, deprecationReason, 5)
+                            : FormatDeprecationDoc(deprecationReason, 5));
                         builder.AppendLine($"      {field.Name} = {field.ConstantValue}{comma}");
                     }
                     builder.AppendLine("  }");
@@ -324,16 +339,10 @@ namespace Core.Generators.TypeScript
                         var field = definition.Fields.ElementAt(i);
                         var type = TypeName(field.Type);
                         var comma = i + 1 < definition.Fields.Count ? "," : "";
-                        if (!string.IsNullOrWhiteSpace(field.Documentation))
-                        {
-                            builder.Append(FormatDocumentation(field.Documentation, 3));
-                        }
-                        if (field.DeprecatedAttribute != null)
-                        {
-                            builder.AppendLine("    /**");
-                            builder.AppendLine($"     * @deprecated {field.DeprecatedAttribute.Value}");
-                            builder.AppendLine($"     */");
-                        }
+                        var deprecationMessage = field.DeprecatedAttribute?.Value ?? string.Empty;
+                        builder.Append(!string.IsNullOrWhiteSpace(field.Documentation)
+                            ? FormatDocumentation(field.Documentation, deprecationMessage, 3)
+                            : FormatDeprecationDoc(deprecationMessage, 3));
                         builder.AppendLine($"    {(definition.IsReadOnly ? "readonly " : "")}{field.Name.ToCamelCase()}{(definition.Kind == AggregateKind.Message ? "?" : "")}: {type}");
                     }
                     builder.AppendLine("  }");

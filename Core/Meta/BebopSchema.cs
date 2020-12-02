@@ -58,7 +58,7 @@ namespace Core.Meta
                     {
                         throw new ReservedIdentifierException(field.Name, field.Span);
                     }
-                    if (field.DeprecatedAttribute != null && !definition.IsMessage())
+                    if (field.DeprecatedAttribute != null && definition.IsStruct())
                     {
                         throw new InvalidDeprecatedAttributeUsageException(field);
                     }

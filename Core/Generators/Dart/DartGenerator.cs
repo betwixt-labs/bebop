@@ -299,12 +299,14 @@ namespace Core.Generators.Dart
                             {
                                 builder.Append(FormatDocumentation(field.Documentation, 2));
                             }
+                            if (field.DeprecatedAttribute != null)
+                            {
+                                builder.AppendLine($"  /// @deprecated {field.DeprecatedAttribute.Value}");
+                            }
                             builder.AppendLine($"  static const {field.Name} = {definition.Name}.fromRawValue({field.ConstantValue});");
                         }
                         builder.AppendLine($"}}");
                         break;
-                    case AggregateKind.Message:
-                    case AggregateKind.Struct:
                     default:
                         builder.AppendLine($"class {definition.Name} {{");
                         for (var i = 0; i < definition.Fields.Count; i++)

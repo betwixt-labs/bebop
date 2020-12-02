@@ -76,6 +76,11 @@ namespace Core.Generators.CSharp
                         {
                             builder.AppendLine(FormatDocumentation(field.Documentation, 6));
                         }
+                        if (field.DeprecatedAttribute is not null &&
+                            !string.IsNullOrWhiteSpace(field.DeprecatedAttribute.Value))
+                        {
+                            builder.AppendLine($"[System.Obsolete(\"{field.DeprecatedAttribute.Value}\")]");
+                        }
                         builder.AppendLine($"{field.Name} = {field.ConstantValue}{(i + 1 < definition.Fields.Count ? "," : "")}");
                     }
                     builder.Dedent(indentStep);
