@@ -77,7 +77,7 @@ namespace Core.Exceptions
     class InvalidDeprecatedAttributeUsageException : SpanException
     {
         public InvalidDeprecatedAttributeUsageException(IField field)
-            : base($"The field '{field.Name}' cannot be marked as 'deprecated' as it is not a member of a message", field.Span, 107) { }
+            : base($"The field '{field.Name}' cannot be marked as 'deprecated' as it is not a member of a message or enum", field.Span, 107) { }
     }
 
     class InvalidOpcodeAttributeUsageException : SpanException
