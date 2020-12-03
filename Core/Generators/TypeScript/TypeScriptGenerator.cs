@@ -323,9 +323,13 @@ namespace Core.Generators.TypeScript
                         var field = definition.Fields.ElementAt(i);
                         var comma = i + 1 < definition.Fields.Count ? "," : "";
                         var deprecationReason = field.DeprecatedAttribute?.Value ?? string.Empty;
-                        builder.Append(!string.IsNullOrWhiteSpace(field.Documentation)
-                            ? FormatDocumentation(field.Documentation, deprecationReason, 5)
-                            : FormatDeprecationDoc(deprecationReason, 5));
+                        if (!string.IsNullOrWhiteSpace(field.Documentation))
+                        {
+                            builder.Append(FormatDocumentation(field.Documentation, deprecationReason, 5));
+                        } else if (string.IsNullOrWhiteSpace(field.Documentation) && !string.IsNullOrWhiteSpace(deprecationReason))
+                        {
+                            builder.Append(FormatDeprecationDoc(deprecationReason, 5));
+                        }
                         builder.AppendLine($"      {field.Name} = {field.ConstantValue}{comma}");
                     }
                     builder.AppendLine("  }");
@@ -339,10 +343,15 @@ namespace Core.Generators.TypeScript
                         var field = definition.Fields.ElementAt(i);
                         var type = TypeName(field.Type);
                         var comma = i + 1 < definition.Fields.Count ? "," : "";
-                        var deprecationMessage = field.DeprecatedAttribute?.Value ?? string.Empty;
-                        builder.Append(!string.IsNullOrWhiteSpace(field.Documentation)
-                            ? FormatDocumentation(field.Documentation, deprecationMessage, 3)
-                            : FormatDeprecationDoc(deprecationMessage, 3));
+                        var deprecationReason = field.DeprecatedAttribute?.Value ?? string.Empty;
+                        if (!string.IsNullOrWhiteSpace(field.Documentation))
+                        {
+                            builder.Append(FormatDocumentation(field.Documentation, deprecationReason, 3));
+                        }
+                        else if (string.IsNullOrWhiteSpace(field.Documentation) && !string.IsNullOrWhiteSpace(deprecationReason))
+                        {
+                            builder.Append(FormatDeprecationDoc(deprecationReason, 3));
+                        }
                         builder.AppendLine($"    {(definition.IsReadOnly ? "readonly " : "")}{field.Name.ToCamelCase()}{(definition.Kind == AggregateKind.Message ? "?" : "")}: {type}");
                     }
                     builder.AppendLine("  }");
