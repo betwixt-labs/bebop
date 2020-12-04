@@ -107,8 +107,9 @@ namespace Compiler
         /// <summary>
         ///     Hide the constructor to prevent direct initialization
         /// </summary>
-        private CommandLineFlags()
+        private CommandLineFlags(string helpText)
         {
+            HelpText = helpText;
         }
 
     #endregion
@@ -192,7 +193,7 @@ namespace Compiler
                 stringBuilder.AppendLine($"--{prop.Attribute.Name}  {prop.Attribute.HelpText}");
             }
 
-            flagStore = new CommandLineFlags {HelpText = stringBuilder.ToString()};
+            flagStore = new CommandLineFlags(helpText: stringBuilder.ToString());
 
             var parsedFlags = GetFlags(args);
            

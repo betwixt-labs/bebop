@@ -12,11 +12,11 @@ namespace Core.Logging
     /// </summary>
     public class Lager
     {
-        private readonly LogFormatter _logFormatter;
+        public LogFormatter Formatter { get; set; }
 
         private Lager(LogFormatter logFormatter)
         {
-            _logFormatter = logFormatter;
+            Formatter = logFormatter;
         }
 
         /// <summary>
@@ -40,7 +40,7 @@ namespace Core.Logging
         /// </summary>
         private async Task WriteSpanError(SpanException ex)
         {
-            var message = _logFormatter switch
+            var message = Formatter switch
             {
                 LogFormatter.MSBuild => $"{ex.Span.FileName}({ex.Span.StartColonString(',')}) : error BOP{ex.ErrorCode}: {ex.Message}",
                 LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] Issue located in '{ex.Span.FileName}' at {ex.Span.StartColonString()}: {ex.Message}",
@@ -55,7 +55,7 @@ namespace Core.Logging
         private async Task WriteFileNotFoundError(FileNotFoundException ex)
         {
             const int msBuildErrorCode = 404;
-            var message = _logFormatter switch
+            var message = Formatter switch
             {
                 LogFormatter.MSBuild => $"{ReservedWords.CompilerName} : fatal error BOP{msBuildErrorCode}: cannot open file '{ex.FileName}'",
                 LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] Unable to open file '{ex.FileName}'",
@@ -69,7 +69,7 @@ namespace Core.Logging
         /// </summary>
         private async Task WriteCompilerException(CompilerException ex)
         {
-            var message = _logFormatter switch
+            var message = Formatter switch
             {
                 LogFormatter.MSBuild => $"{ReservedWords.CompilerName} : fatal error BOP{ex.ErrorCode}: {ex.Message}",
                 LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] {ex.Message}",
@@ -85,7 +85,7 @@ namespace Core.Logging
         {
             // for when we don't know the actual error.
             const int msBuildErrorCode = 1000;
-            var message = _logFormatter switch
+            var message = Formatter switch
             {
                 LogFormatter.MSBuild => $"{ReservedWords.CompilerName} : fatal error BOP{msBuildErrorCode}: {ex.Message}",
                 LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] {ex.Message}",
