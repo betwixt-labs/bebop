@@ -7,17 +7,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Bebop REPL</title>
     <base href="./" />
-    <link href="./css/app.css" rel="stylesheet" />
-    <link href="./css/prism.css" rel="stylesheet" />
-    <link href="./Repl.styles.css" rel="stylesheet" />
-    <script src="./prism.js" data-manual></script>
+    <link href="css/app.css" rel="stylesheet" />
+    <link href="css/prism.css" rel="stylesheet" />
+    <link href="Repl.styles.css" rel="stylesheet" />
+    <script src="prism.js" data-manual></script>
     <script>
         window.Prism = window.Prism || {};
         Prism.manual = true;
-        window.showOutput = function(lang, ok, res) {
+        window.showOutput = function (lang, ok, res) {
             const code = document.getElementById('output');
             code.textContent = ok ? res : res.split('\n')[0];
-            code.className = ok ? `language-${lang}` : 'bebop-error';
+            code.className = ok ? 'language-' + lang : 'bebop-error';
             if (ok) Prism.highlightElement(code);
         }
         window.assemblyName = "Repl";
