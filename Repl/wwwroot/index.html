@@ -16,7 +16,6 @@
         Prism.manual = true;
         window.showOutput = function(lang, ok, res) {
             var code = document.getElementById('output');
-            console.log(res);
             code.textContent = ok ? res : res.split('\n')[0];
             code.className = ok ? 'language-' + lang : 'bebop-error';
             if (ok) Prism.highlightElement(code);
