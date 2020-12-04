@@ -21,7 +21,13 @@ namespace Core.Generators
             { "cs", s => new CSharpGenerator(s) },
             { "dart", s => new DartGenerator(s) },
         };
-   
+
+        public static Dictionary<string, string> ImplementedGeneratorNames  = new Dictionary<string, string> {
+            { "ts", "TypeScript" },
+            { "cs", "C#" },
+            { "dart", "Dart" },
+        };
+
         /// <summary>
         /// Returns a loop variable name based on the provided loop <paramref name="depth"/>
         /// </summary>
