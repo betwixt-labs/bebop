@@ -7,6 +7,7 @@
     <OutputPath>../bin/repl/$(Configuration)</OutputPath>
     <NativeOutputPath>../bin/repl/$(Configuration)/native/</NativeOutputPath>
     <PublishDir>../bin/repl/$(Configuration)/publish</PublishDir>
+    <BlazorCacheBootResources>false</BlazorCacheBootResources>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
