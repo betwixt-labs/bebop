@@ -1,181 +1,54 @@
+* { box-sizing: border-box; }
+
 body {
-    font: 14px/150% sans-serif;
-    margin: 50px 0 50px 50px;
-    background: #282a36;
-    color: #f8f8f2;
+    font: 14px 'Fira Code', monospace;
+    letter-spacing: -0.75px; 
+    margin: 0px;
+    background: #2F2D83;
+    color: rgb(245, 244, 252);
 }
 
-h1,
-p {
-    padding-right: 50px;
-    clear: both;
-}
+select { font: 14px 'Fira Code', monospace; letter-spacing: -0.75px; }
 
-h1 {
-    margin-bottom: 50px;
-}
+div.container { max-width: 1200px; margin-left: auto; margin-right: auto; }
+div.side-by-side { display: flex; justify-content: center; }
+section { flex: 1; margin: 4px; overflow: auto; }
+section.code-section { flex: 1.5; }
+div.toolbar { margin: 4px; text-align: right; }
 
-p {
-    max-width: 800px;
-    margin: 0 0 30px 0;
-}
-
-a {
-    color: inherit;
-}
-
-textarea {
-    width: 100%;
-    height: 300px;
-    min-height: 300px;
-    resize: vertical;
-    margin: 0;
-    border: 1px solid #CCC;
-    border-radius: 5px;
-    padding: 5px;
-    font-family: 'Fira Code', monospace;
-    font-size: 13px;
-}
-
-
-
-    textarea:focus {
-        outline: none;
-        border-color: #777;
-        box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
-    }
-
-code {
-    width: 100%;
-    height: 300px;
-    min-height: 300px;
-    resize: vertical;
-    margin: 0;
-    border: 1px solid #CCC;
-    border-radius: 5px;
-    padding: 5px;
-    font-family: 'Fira Code', monospace;
-    font-size: 15px;
-}
-
-section {
-    position: relative;
-    width: 50%;
-    float: left;
-    padding: 0 50px 50px 0;
-    box-sizing: border-box;
-}
-
-.spacer {
-    height: 50px;
-}
-
-.lds-ring {
-    display: inline-block;
-    position: relative;
-    width: 80px;
-    height: 80px;
-}
-
-    .lds-ring div {
-        box-sizing: border-box;
-        display: block;
-        position: absolute;
-        width: 64px;
-        height: 64px;
-        margin: 8px;
-        border: 8px solid #fff;
-        border-radius: 50%;
-        animation: lds-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
-        border-color: #fff transparent transparent transparent;
-    }
-
-        .lds-ring div:nth-child(1) {
-            animation-delay: -0.45s;
-        }
-
-        .lds-ring div:nth-child(2) {
-            animation-delay: -0.3s;
-        }
-
-        .lds-ring div:nth-child(3) {
-            animation-delay: -0.15s;
-        }
-
-@keyframes lds-ring {
-    0% {
-        transform: rotate(0deg);
-    }
-
-    100% {
-        transform: rotate(360deg);
-    }
-}
-
-.hljs {
+textarea, pre {
+    resize: none;
+    padding: .5em;
+	white-space: pre-wrap;
     display: block;
-    overflow-x: auto;
-    padding: 0.5em;
-    background: #282a36;
+    background: #2d2d2d;
+    color: #cccccc;
+    width: 100%;
+    height: calc(100vh - 50px);
+    overflow-y: scroll;
+    margin: 0;
+    border: 1px solid #00000040;
 }
 
-.hljs-built_in,
-.hljs-selector-tag,
-.hljs-section,
-.hljs-link {
-    color: #8be9fd;
+textarea:focus {
+    outline: none;
+    border: 1px solid #cccccc40;
 }
 
-.hljs-keyword {
-    color: #ff79c6;
+textarea, code, pre {
+    font-family: 'Fira Code', monospace !important;
+    letter-spacing: -0.75px;
+    font-size: 14px;
 }
 
-.hljs,
-.hljs-subst {
-    color: #f8f8f2;
+code, pre {
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
 }
 
-.hljs-title {
-    color: #50fa7b;
-}
+.bebop-error { color: #ff5555; }
 
-.hljs-string,
-.hljs-meta,
-.hljs-name,
-.hljs-type,
-.hljs-attr,
-.hljs-symbol,
-.hljs-bullet,
-.hljs-addition,
-.hljs-variable,
-.hljs-template-tag,
-.hljs-template-variable {
-    color: #f1fa8c;
-}
-
-.hljs-comment,
-.hljs-quote,
-.hljs-deletion {
-    color: #6272a4;
-}
-
-.hljs-keyword,
-.hljs-selector-tag,
-.hljs-literal,
-.hljs-title,
-.hljs-section,
-.hljs-doctag,
-.hljs-type,
-.hljs-name,
-.hljs-strong {
-    font-weight: bold;
-}
-
-.hljs-literal,
-.hljs-number {
-    color: #bd93f9;
-}
-
-.hljs-emphasis {
-    font-style: italic;
-}
+::-webkit-scrollbar { width: 8px;  }
+::-webkit-scrollbar-track { background: none; }
+::-webkit-scrollbar-thumb { background: #cccccc80; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #ccccccc0; }

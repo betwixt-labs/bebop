@@ -8,9 +8,20 @@
     <title>Bebop REPL</title>
     <base href="/" />
     <link href="css/app.css" rel="stylesheet" />
+    <link href="css/prism.css" rel="stylesheet" />
     <link href="Repl.styles.css" rel="stylesheet" />
+    <script src="prism.js" data-manual></script>
     <script>
+        window.Prism = window.Prism || {};
+        Prism.manual = true;
+        window.showOutput = function(lang, ok, res) {
+            var code = document.getElementById('output');
+            code.textContent = ok ? res : res.split('\n')[0];
+            code.className = ok ? 'language-' + lang : 'bebop-error';
+            if (ok) Prism.highlightElement(code);
+        }
         window.assemblyName = "Repl";
+        /*
         window.bebopc = {
             version: function() {
                 return window.DotNet.invokeMethodAsync(assemblyName, 'GetCompilerVersion');
@@ -22,6 +33,7 @@
                 return window.DotNet.invokeMethodAsync(assemblyName, 'CompileSchema', textualSchema, generatorAlias);
             }
         };
+        */
     </script>
 </head>
 
