@@ -11,6 +11,7 @@
                 @oninput="OnInput" placeholder="struct Point { int32 x; int32 y; }"></textarea>
         </section>
         <section class="code-section">
+            @* ReSharper disable once UnknownCssClass *@
             <pre class="language-ts"><code id="output">Generated code will appear here.</code></pre>
         </section>
     </div>
@@ -18,9 +19,9 @@
         <label for="generators">Generate code for:</label>
 
         <select @bind="SelectedGenerator" id="generators">
-            @foreach (var kv in GeneratorUtils.ImplementedGeneratorNames)
+            @foreach (var (key, value) in GeneratorUtils.ImplementedGeneratorNames)
             {
-                <option value="@kv.Key">@kv.Value</option>
+                <option value="@key">@value</option>
             }
         </select>
     </div>
@@ -33,7 +34,7 @@
         set {
             if (_selectedGenerator != value) {
                 _selectedGenerator = value;
-                ShowOutput();
+                ShowOutput().GetAwaiter().GetResult();
             }
         }
     }
