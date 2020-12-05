@@ -107,17 +107,14 @@ jobs:
 
   build-tools:
     env:
-      TOOLS_ROOT: ${{github.workspace}}/Tools/C#
-      TOOLS_PATH: ${{github.workspace}}/Tools/C#/tools
+      TOOLS_ROOT: ${{github.workspace}}\Tools\C#
+      TOOLS_PATH: ${{github.workspace}}\Tools\C#\tools
       WINDOWS_ARTIFACT: win-x64
-      WINDOWS_ARTIFACT_ZIP: /windows/bebopc.exe.zip
-      WINDOWS_ARTIFACT_EXECUTABLE: /windows/bebopc.exe
+      WINDOWS_ARTIFACT_ZIP: \windows\bebopc.exe.zip
       MAC_ARTIFACT: osx-x64
-      MAC_ARTIFACT_ZIP: /macos/bebopc.zip
-      MAC_ARTIFACT_EXECUTABLE: /macos/bebopc
+      MAC_ARTIFACT_ZIP: \macos\bebopc.zip
       LINUX_ARTIFACT: linux-x64
-      LINUX_ARTIFACT_ZIP: /linux/bebopc.zip
-      LINUX_ARTIFACT_EXECUTABLE: /linux/bebopc
+      LINUX_ARTIFACT_ZIP: \linux\bebopc.zip
     needs: build-compiler
     runs-on: windows-latest
     steps:
@@ -131,12 +128,12 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: ${{env.WINDOWS_ARTIFACT}}
-          path: ${{env.TOOLS_PATH}}/windows/
+          path: ${{env.TOOLS_PATH}}\windows\
 
       - name: Extract Windows Build
         shell: powershell
         run: |
-          Expand-Archive -Path ${{env.TOOLS_PATH}}${{env.WINDOWS_ARTIFACT_ZIP}} -DestinationPath ${{env.TOOLS_PATH}}${{env.WINDOWS_ARTIFACT_EXECUTABLE}}
+          Expand-Archive -Path ${{env.TOOLS_PATH}}${{env.WINDOWS_ARTIFACT_ZIP}} -DestinationPath ${{env.TOOLS_PATH}}\windows\
 
       - name: Download macOS Build
         uses: actions/download-artifact@v2
@@ -147,7 +144,7 @@ jobs:
       - name: Extract macOS Build
         shell: powershell
         run: |
-          Expand-Archive -Path ${{env.TOOLS_PATH}}${{env.MAC_ARTIFACT_ZIP}} -DestinationPath ${{env.TOOLS_PATH}}${{env.MAC_ARTIFACT_EXECUTABLE}}
+          Expand-Archive -Path ${{env.TOOLS_PATH}}${{env.MAC_ARTIFACT_ZIP}} -DestinationPath ${{env.TOOLS_PATH}}\macos\
 
       - name: Download Linux Build
         uses: actions/download-artifact@v2
@@ -158,7 +155,7 @@ jobs:
       - name: Extract Linux Build
         shell: powershell
         run: |
-          Expand-Archive -Path ${{env.TOOLS_PATH}}${{env.LINUX_ARTIFACT_ZIP}} -DestinationPath ${{env.TOOLS_PATH}}${{env.LINUX_ARTIFACT_EXECUTABLE}}
+          Expand-Archive -Path ${{env.TOOLS_PATH}}${{env.LINUX_ARTIFACT_ZIP}} -DestinationPath ${{env.TOOLS_PATH}}\linux\
 
       - name: Build bebop-tools NuGet Package
         run: call ${{env.TOOLS_ROOT}}/build.cmd ${{ steps.dotenv.outputs.version }}
