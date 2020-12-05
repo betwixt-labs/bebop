@@ -86,12 +86,12 @@ jobs:
         run: |
           unzip -j -o ${{env.BUILD_ZIP_ARTIFACT}}
           rm -f ${{env.BUILD_ZIP_ARTIFACT}} 
-          zip ${{env.BUILD_ZIP_ARTIFACT}} ${{env.BUILD_ARTIFACT}}
+          zip -j ${{env.BUILD_ZIP_ARTIFACT}} ${{env.BUILD_ARTIFACT}}
 
       - if: matrix.os == 'ubuntu-latest'
         name: ZIP Linux Build
         run: |
-          zip ${{env.BUILD_ZIP_ARTIFACT}} ${{env.BUILD_ARTIFACT}}
+          zip -j ${{env.BUILD_ZIP_ARTIFACT}} ${{env.BUILD_ARTIFACT}}
 
       - if: matrix.os == 'windows-latest'
         name: ZIP Windows Build
