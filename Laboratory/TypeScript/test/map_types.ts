@@ -1,4 +1,4 @@
-import { BebopView } from './generated/BebopView';
+import { BebopView } from 'bebop';
 import { ISomeMaps, SomeMaps } from './generated/map_types';
 import * as assert from "assert";
 

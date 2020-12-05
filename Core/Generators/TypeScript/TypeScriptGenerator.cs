@@ -302,7 +302,7 @@ namespace Core.Generators.TypeScript
         public override string Compile()
         {
             var builder = new StringBuilder();
-            builder.AppendLine("import { BebopView } from \"bebop-ts\";");
+            builder.AppendLine("import { BebopView } from \"bebop\";");
             builder.AppendLine("");
             if (!string.IsNullOrWhiteSpace(Schema.Namespace))
             {

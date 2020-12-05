@@ -1,5 +1,5 @@
 {
-  "name": "bebop-ts",
+  "name": "bebop",
   "version": "0.1.0",
   "description": "Bebop TypeScript runtime",
   "main": "dest/index.js",
