@@ -1,4 +1,4 @@
-import { BebopView } from './generated/BebopView';
+import { BebopView } from 'bebop';
 import { BasicArrays, IBasicArrays, TestInt32Array } from './generated/basic_arrays';
 import * as assert from "assert";
 
