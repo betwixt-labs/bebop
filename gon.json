@@ -2,7 +2,6 @@
     "source" : ["/Users/runner/work/bebop/bebop/bin/compiler/macOS-Release/publish/bebopc"],
     "bundle_id" : "sh.bebop",
     "apple_id": {
-		"username" :  "@env:AC_USERNAME",
         "password":  "@env:AC_PASSWORD"
     },
     "sign" :{
