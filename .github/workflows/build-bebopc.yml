@@ -139,7 +139,7 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: ${{env.MAC_ARTIFACT}}
-          path: ${{env.TOOLS_PATH}}/macos/
+          path: ${{env.TOOLS_PATH}}\macos\
 
       - name: Extract macOS Build
         shell: powershell
@@ -150,7 +150,7 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: ${{env.LINUX_ARTIFACT}}
-          path: ${{env.TOOLS_PATH}}/linux/
+          path: ${{env.TOOLS_PATH}}\linux\
 
       - name: Extract Linux Build
         shell: powershell
@@ -158,7 +158,7 @@ jobs:
           Expand-Archive -Path ${{env.TOOLS_PATH}}${{env.LINUX_ARTIFACT_ZIP}} -DestinationPath ${{env.TOOLS_PATH}}\linux\
 
       - name: Build bebop-tools NuGet Package
-        run: call ${{env.TOOLS_ROOT}}/build.cmd ${{ steps.dotenv.outputs.version }}
+        run: call ${{env.TOOLS_ROOT}}\build.cmd ${{ steps.dotenv.outputs.version }}
         shell: cmd
         working-directory: ${{env.TOOLS_ROOT}}
 
@@ -166,4 +166,4 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: bebop-tools-latest
-          path: ${{env.TOOLS_ROOT}}/packages/
+          path: ${{env.TOOLS_ROOT}}\packages\
