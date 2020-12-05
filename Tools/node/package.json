@@ -1,0 +1,16 @@
+{
+  "name": "bebop-tools",
+  "version": "0.0.1",
+  "description": "Bebop compiler for javascript projects.",
+  "main": "index.js",
+  "repository": "https://github.com/RainwayApp/bebop",
+  "author": "Evan Banyash",
+  "license": "RESTRICTED",
+  "private": false,
+  "scripts": {
+    "install": "node ./scripts/install.js"
+  },
+  "bin": {
+    "bebopc": "./bebopc.js"
+  }
+}
