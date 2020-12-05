@@ -8,7 +8,6 @@
   "license": "RESTRICTED",
   "private": false,
   "scripts": {
-    "install": "node ./scripts/install.js"
   },
   "bin": {
     "bebopc": "./bebopc.js"
