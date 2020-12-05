@@ -1,5 +1,8 @@
 name: Bebop .NET Runtime
 on:
+  workflow_dispatch:
+    branches:
+      - master
   push:
     paths:
       - "Runtime/C#/**"
