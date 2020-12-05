@@ -12,9 +12,9 @@ readonly struct Furniture {
 
 [opcode("IKEA")]
 message RequestCatalog {
-    FurnitureFamily family = 1;
+    1 -> FurnitureFamily family;
 	[deprecated("Nobody react to what I'm about to say...")]
-	string secretTunnel = 2;
+	2 -> string secretTunnel;
 }
 
 [opcode(0x31323334)]

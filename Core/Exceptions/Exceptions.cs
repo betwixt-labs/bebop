@@ -58,8 +58,9 @@ namespace Core.Exceptions
 
     class UnexpectedTokenException : SpanException
     {
-        public UnexpectedTokenException(TokenKind expectedKind, Token token)
-            : base($"Expected {expectedKind}, but got '{token.Lexeme}' of kind {token.Kind}", token.Span, 104) { }
+        public UnexpectedTokenException(TokenKind expectedKind, Token token, string? hint = null)
+            : base($"Expected {expectedKind}, but got '{token.Lexeme}' of kind {token.Kind}."
+                + (string.IsNullOrWhiteSpace(hint) ? "" : $" (Hint: {hint})"), token.Span, 104) { }
     }
 
     class UnrecognizedTypeException : SpanException

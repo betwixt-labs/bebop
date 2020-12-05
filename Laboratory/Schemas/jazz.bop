@@ -10,9 +10,9 @@ readonly struct Musician {
 }
 
 message Song {
-    string title = 1;
-    uint16 year = 2;
-    Musician[] performers = 3;
+    1 -> string title;
+    2 -> uint16 year;
+    3 -> Musician[] performers;
 }
 
 struct Library {

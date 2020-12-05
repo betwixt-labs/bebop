@@ -14,7 +14,7 @@ namespace Compiler
 {
     internal class Program
     {
-        private static Lager _log;
+        private static Lager _log = Lager.CreateLogger(LogFormatter.Structured);
         private static CommandLineFlags? _flags;
 
         private static async Task WriteHelpText()
@@ -28,8 +28,7 @@ namespace Compiler
 
         private static async Task<int> Main(string[] args)
         {
-            var formatter = CommandLineFlags.FindLogFormatter(args);
-            _log = Lager.CreateLogger(formatter);
+            _log.Formatter = CommandLineFlags.FindLogFormatter(args);
 
             if (!CommandLineFlags.TryParse(args, out _flags, out var message))
             {

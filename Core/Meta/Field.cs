@@ -24,6 +24,9 @@ namespace Core.Meta
         public TypeBase Type { get; }
         public Span Span { get; }
         public BaseAttribute? DeprecatedAttribute { get; }
+        /// <summary>
+        /// For enums, this is a constant value. For messages, this is a field index. For structs, this is unused.
+        /// </summary>
         public int ConstantValue { get; }
         public string Documentation { get; }
     }

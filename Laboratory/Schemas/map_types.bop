@@ -1,4 +1,4 @@
-message M { float32 a=1; float64 b=2; }
+message M { 1 -> float32 a; 2 -> float64 b; }
 readonly struct S { int32 x; int32 y; }
 
 struct SomeMaps {
