@@ -1,5 +1,5 @@
 {
-    "source" : ["@env:BEBOPC_DARWIN_BUILD"],
+    "source" : ["/Users/runner/work/bebop/bebop/bin/compiler/macOS-Release/publish/bebopc"],
     "bundle_id" : "sh.bebop",
     "apple_id": {
 		"username" :  "@env:AC_USERNAME",
