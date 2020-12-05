@@ -7,5 +7,9 @@
     },
     "sign" :{
         "application_identity" : "FB328BC574FB712798E2C79A237759ADB0839AAF"
+    },
+	"notarize" :{
+        "path" : "/Users/runner/work/bebop/bebop/bin/compiler/macOS-Release/publish/bebopc",
+		 "bundle_id" : "sh.bebop"
     }
 }
