@@ -55,6 +55,34 @@ jobs:
         run: dotnet publish -c ${{matrix.CONFIGURATION}} -r ${{matrix.RUNTIME}} -p:ReleaseVersion=${{ steps.dotenv.outputs.version }}
         working-directory: ./Compiler/
 
+        
+
+
+      - if: matrix.os == 'macos-latest'
+        name: Import Code-Signing Certificates
+        uses: Apple-Actions/import-codesign-certs@v1
+        with:
+          # The certificates in a PKCS12 file encoded as a base64 string
+          p12-file-base64: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_P12_BASE64 }}
+          # The password used to import the PKCS12 file.
+          p12-password: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_PASSWORD }}
+
+
+      - if: matrix.os == 'macos-latest'
+        name: Install gon via HomeBrew for Code Signing and App Notarization
+        run: |
+          brew tap mitchellh/gon
+          brew install mitchellh/gon/gon
+
+
+      - if: matrix.os == 'macos-latest'
+        name: Sign the macOS Binary
+        env:
+          BEBOPC_DARWIN_BUILD: ./bin/compiler/${{matrix.CONFIGURATION}}/publish/${{matrix.ARTIFACT}}
+        run: gon -log-level=debug -log-json ./gon.json
+
+
+  
       - name: Upload Build
         uses: actions/upload-artifact@v2
         with:
