@@ -1,4 +1,4 @@
-# bebop-ts
+# Bebop for TypeScript
 
 This is the Bebop runtime for TypeScript.
 
