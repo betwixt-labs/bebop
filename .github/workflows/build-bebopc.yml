@@ -32,6 +32,10 @@ jobs:
             CONFIGURATION: Linux-Release
             RUNTIME: linux-x64
             ARTIFACT: bebopc
+
+    env:
+      BUILD_ARTIFACT: ./bin/compiler/${{matrix.CONFIGURATION}}/publish/${{matrix.ARTIFACT}}
+      BUILD_ZIP_ARTIFACT: ./bin/compiler/${{matrix.CONFIGURATION}}/publish/${{matrix.ARTIFACT}}.zip
     steps:
       - uses: actions/checkout@v1
 
@@ -78,30 +82,42 @@ jobs:
         run: gon -log-level=debug -log-json ./gon.json
 
       - if: matrix.os == 'macos-latest'
-        name: Upload Notarization Zip
-        uses: actions/upload-artifact@v2
-        with:
-          name: bebopc-macos-notarized
-          path: ./bin/compiler/${{matrix.CONFIGURATION}}/publish/${{matrix.ARTIFACT}}.zip
-
-      - if: matrix.os == 'macos-latest'
-        name: Extract macOS Notarization Zip
+        name: ZIP macOS Notarization Build
         run: |
-          unzip -j -o ./bin/compiler/${{matrix.CONFIGURATION}}/publish/${{matrix.ARTIFACT}}.zip
+          unzip -j -o ${{env.BUILD_ZIP_ARTIFACT}}
+          rm -f ${{env.BUILD_ZIP_ARTIFACT}} 
+          zip ${{env.BUILD_ZIP_ARTIFACT}} ${{env.BUILD_ARTIFACT}}
+
+      - if: matrix.os == 'ubuntu-latest'
+        name: ZIP Linux Build
+        run: |
+          zip ${{env.BUILD_ZIP_ARTIFACT}} ${{env.BUILD_ARTIFACT}}
+
+      - if: matrix.os == 'windows-latest'
+        name: ZIP Windows Build
+        shell: powershell
+        run: |
+          Compress-Archive -Path ${{env.BUILD_ARTIFACT}} -DestinationPath ${{env.BUILD_ZIP_ARTIFACT}}
 
       - name: Upload Build
         uses: actions/upload-artifact@v2
         with:
           name: ${{matrix.RUNTIME}}
-          path: ./bin/compiler/${{matrix.CONFIGURATION}}/publish/${{matrix.ARTIFACT}}
+          path: ${{env.BUILD_ZIP_ARTIFACT}}
 
   build-tools:
     env:
       TOOLS_ROOT: ${{github.workspace}}/Tools/C#
       TOOLS_PATH: ${{github.workspace}}/Tools/C#/tools
       WINDOWS_ARTIFACT: win-x64
+      WINDOWS_ARTIFACT_ZIP: /windows/bebopc.exe.zip
+      WINDOWS_ARTIFACT_EXECUTABLE: /windows/bebopc.exe
       MAC_ARTIFACT: osx-x64
+      MAC_ARTIFACT_ZIP: /macos/bebopc.zip
+      MAC_ARTIFACT_EXECUTABLE: /macos/bebopc
       LINUX_ARTIFACT: linux-x64
+      LINUX_ARTIFACT_ZIP: /linux/bebopc.zip
+      LINUX_ARTIFACT_EXECUTABLE: /linux/bebopc
     needs: build-compiler
     runs-on: windows-latest
     steps:
@@ -117,17 +133,32 @@ jobs:
           name: ${{env.WINDOWS_ARTIFACT}}
           path: ${{env.TOOLS_PATH}}/windows/
 
+      - name: Extract Windows Build
+        shell: powershell
+        run: |
+          Expand-Archive -Path ${{env.TOOLS_PATH}}${{env.WINDOWS_ARTIFACT_ZIP}} -DestinationPath ${{env.TOOLS_PATH}}${{env.WINDOWS_ARTIFACT_EXECUTABLE}}
+
       - name: Download macOS Build
         uses: actions/download-artifact@v2
         with:
           name: ${{env.MAC_ARTIFACT}}
           path: ${{env.TOOLS_PATH}}/macos/
 
+      - name: Extract macOS Build
+        shell: powershell
+        run: |
+          Expand-Archive -Path ${{env.TOOLS_PATH}}${{env.MAC_ARTIFACT_ZIP}} -DestinationPath ${{env.TOOLS_PATH}}${{env.MAC_ARTIFACT_EXECUTABLE}}
+
       - name: Download Linux Build
         uses: actions/download-artifact@v2
         with:
           name: ${{env.LINUX_ARTIFACT}}
           path: ${{env.TOOLS_PATH}}/linux/
+
+      - name: Extract Linux Build
+        shell: powershell
+        run: |
+          Expand-Archive -Path ${{env.TOOLS_PATH}}${{env.LINUX_ARTIFACT_ZIP}} -DestinationPath ${{env.TOOLS_PATH}}${{env.LINUX_ARTIFACT_EXECUTABLE}}
 
       - name: Build bebop-tools NuGet Package
         run: call ${{env.TOOLS_ROOT}}/build.cmd ${{ steps.dotenv.outputs.version }}
