@@ -51,6 +51,7 @@
             if (await JS.InvokeAsync<bool>("hasExampleParam"))
             {
                 await JS.InvokeVoidAsync("setExampleSchema");
+                _schema = GetExampleSchema();
             }
         }
     }
