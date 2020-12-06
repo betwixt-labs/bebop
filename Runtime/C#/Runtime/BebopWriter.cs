@@ -362,6 +362,10 @@ namespace Bebop.Runtime
         public void WriteBytes(byte[] value)
         {
             WriteUInt32(unchecked((uint) value.Length));
+            if (value.Length == 0)
+            {
+                return;
+            }
             var index = Length;
             GrowBy(value.Length);
             value.AsSpan().CopyTo(_buffer.Slice(index, value.Length));

@@ -96,14 +96,7 @@ namespace Test
             // test date
             Assert.AreEqual(testDate, output.ReadDate());
             // test byte array
-            var byteArrayLength = output.ReadUInt32();
-            Assert.AreEqual(testBytes.Length, byteArrayLength);
-            var parsedBytes = new byte[byteArrayLength];
-            for (int i = 0; i < byteArrayLength; i++)
-            {
-                parsedBytes[i] = output.ReadByte();
-            }
-            CollectionAssert.AreEqual(testBytes, parsedBytes);
+            CollectionAssert.AreEqual(testBytes, output.ReadBytes());
             // test enum
             Assert.AreEqual(TestEnum.Ok, output.ReadEnum<TestEnum>());
 
