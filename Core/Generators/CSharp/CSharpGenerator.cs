@@ -115,7 +115,7 @@ namespace Core.Generators.CSharp
                         {
                             builder.AppendLine($"[System.Obsolete(\"{field.DeprecatedAttribute.Value}\")]");
                         }
-                        var type = TypeName(field.Type, string.Empty, true);
+                        var type = TypeName(field.Type, string.Empty);
                         var opt = definition.Kind == AggregateKind.Message && IsNullableType(field.Type) ? "?" : "";
                         var setOrInit = definition.IsReadOnly ? "init" : "set";
                         builder.AppendLine($"public {type}{opt} {field.Name.ToPascalCase()} {{ get; {setOrInit}; }}");
@@ -298,48 +298,44 @@ namespace Core.Generators.CSharp
         /// </summary>
         /// <param name="type">The field type to generate code for.</param>
         /// <param name="arraySizeVar">A variable name that will be formatted into the array initializer</param>
-        /// <param name="isProperty">If true the specified type may need special formatting applied.</param>
         /// <returns>The C# type name.</returns>
-        private string TypeName(in TypeBase type, string arraySizeVar = "", bool isProperty = false)
+        private string TypeName(in TypeBase type, string arraySizeVar = "")
         {
-            switch (type)
+            return type switch
             {
-                case ScalarType st:
-                    return st.BaseType switch
-                    {
-                        BaseType.Bool => "bool",
-                        BaseType.Byte => "byte",
-                        BaseType.UInt32 => "uint",
-                        BaseType.Int32 => "int",
-                        BaseType.Float32 => "float",
-                        BaseType.Float64 => "double",
-                        BaseType.String => "string",
-                        BaseType.Guid => "System.Guid",
-                        BaseType.UInt16 => "ushort",
-                        BaseType.Int16 => "short",
-                        BaseType.UInt64 => "ulong",
-                        BaseType.Int64 => "long",
-                        BaseType.Date => "System.DateTime",
-                        _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
-                    };
-                case ArrayType {MemberType: ScalarType { BaseType: BaseType.Byte }} at:
+                ScalarType st => st.BaseType switch
                 {
-                    return $"ImmutableArray<{TypeName(at.MemberType)}>";
-                }
-                case ArrayType at:
-                    return $"{(at.MemberType is ArrayType ? ($"{TypeName(at.MemberType, arraySizeVar)}[]") : $"{TypeName(at.MemberType)}[{arraySizeVar}]")}";
-                case MapType mt:
-                    return $"System.Collections.Generic.Dictionary<{TypeName(mt.KeyType)}, {TypeName(mt.ValueType)}>";
-                case DefinedType dt:
-                    return $"{(IsEnum(dt) ? string.Empty : "Base")}{dt.Name}";
-            }
-            throw new InvalidOperationException($"GetTypeName: {type}");
+                    BaseType.Bool => "bool",
+                    BaseType.Byte => "byte",
+                    BaseType.UInt32 => "uint",
+                    BaseType.Int32 => "int",
+                    BaseType.Float32 => "float",
+                    BaseType.Float64 => "double",
+                    BaseType.String => "string",
+                    BaseType.Guid => "System.Guid",
+                    BaseType.UInt16 => "ushort",
+                    BaseType.Int16 => "short",
+                    BaseType.UInt64 => "ulong",
+                    BaseType.Int64 => "long",
+                    BaseType.Date => "System.DateTime",
+                    _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
+                },
+                ArrayType {MemberType: ScalarType {BaseType: BaseType.Byte}} at =>
+                    $"ImmutableArray<{TypeName(at.MemberType)}>",
+                ArrayType at =>
+                    $"{(at.MemberType is ArrayType ? ($"{TypeName(at.MemberType, arraySizeVar)}[]") : $"{TypeName(at.MemberType)}[{arraySizeVar}]")}",
+                MapType mt =>
+                    $"System.Collections.Generic.Dictionary<{TypeName(mt.KeyType)}, {TypeName(mt.ValueType)}>",
+                DefinedType dt => $"{(IsEnum(dt) ? string.Empty : "Base")}{dt.Name}",
+                _ => throw new InvalidOperationException($"GetTypeName: {type}")
+            };
         }
 
         /// <summary>
         ///     Generate the body of the <c>DecodeFrom</c> function for the given <see cref="IDefinition"/>.
         /// </summary>
         /// <param name="definition">The definition to generate code for.</param>
+        /// <param name="useGenerics"></param>
         /// <returns>The generated C# <c>DecodeFrom</c> function body.</returns>
         public string CompileDecode(IDefinition definition, bool useGenerics)
         {
@@ -446,7 +442,7 @@ namespace Core.Generators.CSharp
                     $"{tab}}}" + nl +
                     $"}}",
                 MapType mt =>
-                    $"{{" + nl +
+                    "{" + nl +
                     $"{tab}var length{depth} = unchecked((int)reader.ReadUInt32());" + nl +
                     $"{tab}{target} = new {TypeName(mt)}(length{depth});" + nl +
                     $"{tab}for (var {i} = 0; {i} < length{depth}; {i}++) {{" + nl +
@@ -486,6 +482,8 @@ namespace Core.Generators.CSharp
         ///     Generates the body of various helper methods to encode the given <see cref="IDefinition"/>
         /// </summary>
         /// <param name="definition"></param>
+        /// <param name="bufferType"></param>
+        /// <param name="methodName"></param>
         /// <returns></returns>
         public string CompileEncodeHelper(IDefinition definition, string bufferType, string methodName)
         {

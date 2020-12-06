@@ -79,15 +79,15 @@ namespace Core.Meta
                         }
                         case AggregateKind.Message when definition.Fields.Count(f => f.ConstantValue == field.ConstantValue) > 1:
                         {
-                            throw new InvalidFieldException(field, "Message ID must be unique");
+                            throw new InvalidFieldException(field, "Message index must be unique");
                         }
                         case AggregateKind.Message when field.ConstantValue <= 0:
                         {
-                            throw new InvalidFieldException(field, "Message member IDs must start at 1");
+                            throw new InvalidFieldException(field, "Message member index must start at 1");
                         }
                         case AggregateKind.Message when field.ConstantValue > definition.Fields.Count:
                         {
-                            throw new InvalidFieldException(field, "Message ID is greater than field count");
+                            throw new InvalidFieldException(field, "Message index is greater than field count");
                         }
                         default:
                             break;
