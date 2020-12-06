@@ -8,6 +8,9 @@ using static System.Runtime.InteropServices.MemoryMarshal;
 
 namespace Bebop.Runtime
 {
+    /// <summary>
+    /// A Bebop reader runtime implementation for .NET
+    /// </summary>
     public ref struct BebopReader
     {
         // ReSharper disable once InconsistentNaming
@@ -20,31 +23,51 @@ namespace Bebop.Runtime
         private ReadOnlySpan<byte> _buffer;
 
         /// <summary>
-        /// 
+        /// The current cursor position of the reader.
         /// </summary>
         public int Position { get; set; }
 
 
         /// <summary>
-        /// 
+        /// Creates a new <see cref="BebopReader"/> from the specified <paramref name="buffer"/>
         /// </summary>
-        /// <param name="buffer"></param>
-        /// <returns></returns>
+        /// <param name="buffer">The buffer containing a Bebop record.</param>
+        /// <returns>A fully initialized <see cref="BebopReader"/> over the supplied <paramref name="buffer"/></returns>
         [MethodImpl(BebopConstants.HotPath)]
         public static BebopReader From(ReadOnlySpan<byte> buffer) => new(buffer);
-
+        /// <summary>
+        /// Creates a new <see cref="BebopReader"/> from the specified <paramref name="buffer"/>
+        /// </summary>
+        /// <param name="buffer">The buffer containing a Bebop record.</param>
+        /// <returns>A fully initialized <see cref="BebopReader"/> over the supplied <paramref name="buffer"/></returns>
         [MethodImpl(BebopConstants.HotPath)]
         public static BebopReader From(byte[] buffer) => new(buffer);
-
+        /// <summary>
+        /// Creates a new <see cref="BebopReader"/> from the specified <paramref name="buffer"/>
+        /// </summary>
+        /// <param name="buffer">The buffer containing a Bebop record.</param>
+        /// <returns>A fully initialized <see cref="BebopReader"/> over the supplied <paramref name="buffer"/></returns>
         [MethodImpl(BebopConstants.HotPath)]
         public static BebopReader From(ReadOnlyMemory<byte> buffer) => new(buffer.Span);
-
+        /// <summary>
+        /// Creates a new <see cref="BebopReader"/> from the specified <paramref name="buffer"/>
+        /// </summary>
+        /// <param name="buffer">The buffer containing a Bebop record.</param>
+        /// <returns>A fully initialized <see cref="BebopReader"/> over the supplied <paramref name="buffer"/></returns>
         [MethodImpl(BebopConstants.HotPath)]
         public static BebopReader From(ImmutableArray<byte> buffer) => new(buffer.AsSpan());
-
+        /// <summary>
+        /// Creates a new <see cref="BebopReader"/> from the specified <paramref name="buffer"/>
+        /// </summary>
+        /// <param name="buffer">The buffer containing a Bebop record.</param>
+        /// <returns>A fully initialized <see cref="BebopReader"/> over the supplied <paramref name="buffer"/></returns>
         [MethodImpl(BebopConstants.HotPath)]
         public static BebopReader From(ArraySegment<byte> buffer) => new(buffer);
 
+        /// <summary>
+        /// Creates a new <see cref="BebopReader"/> view over the supplied <paramref name="buffer"/>
+        /// </summary>
+        /// <param name="buffer">A buffer containing a Bebop record</param>
         private BebopReader(ReadOnlySpan<byte> buffer)
         {
             if (!BitConverter.IsLittleEndian)
@@ -55,6 +78,10 @@ namespace Bebop.Runtime
             Position = 0;
         }
 
+        /// <summary>
+        /// Reads a single <see cref="byte"/> from the buffer and advances the current position by 1.
+        /// </summary>
+        /// <returns></returns>
         [MethodImpl(BebopConstants.HotPath)]
         public byte ReadByte() => _buffer[Position++];
 

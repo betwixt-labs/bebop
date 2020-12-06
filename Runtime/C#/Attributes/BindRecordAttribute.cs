@@ -10,6 +10,10 @@ namespace Bebop.Attributes
     public class BindRecordAttribute : Attribute
     {
 
+        /// <summary>
+        /// Creates a new bound attribute.
+        /// </summary>
+        /// <param name="recordType"></param>
         public BindRecordAttribute(Type recordType)
         {
             RecordType = recordType;

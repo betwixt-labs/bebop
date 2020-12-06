@@ -136,37 +136,39 @@ namespace Core.Generators.CSharp
                     builder.AppendLine($"public sealed class {definitionName} : {baseName} {{");
                     builder.Indent(indentStep);
                     builder.AppendLine(CompileEncodeHelper(definition, "byte[]", "Encode"));
+                    builder.AppendLine();
                     builder.AppendLine(CompileEncodeHelper(definition, "ImmutableArray<byte>", "EncodeAsImmutable"));
+                    builder.AppendLine();
                     builder.AppendLine(HotPath);
-                    builder.AppendLine(GeneratedAttribute);
-                    builder.AppendLine(EditorBrowsableAttribute);
                     builder.AppendLine($"internal static void EncodeInto({baseName} record, ref BebopWriter writer) {{");
                     builder.Indent(indentStep);
                     builder.AppendLine(CompileEncode(definition));
                     builder.Dedent(indentStep);
                     builder.AppendLine("}");
-                    builder.AppendLine("");
+                    builder.AppendLine();
                     builder.AppendLine(CompileDecodeHelper(definition, "byte[]"));
+                    builder.AppendLine();
                     builder.AppendLine(CompileDecodeHelper(definition, "System.ReadOnlySpan<byte>"));
+                    builder.AppendLine();
                     builder.AppendLine(CompileDecodeHelper(definition, "System.ReadOnlyMemory<byte>"));
+                    builder.AppendLine();
                     builder.AppendLine(CompileDecodeHelper(definition, "System.ArraySegment<byte>"));
+                    builder.AppendLine();
                     builder.AppendLine(CompileDecodeHelper(definition, "ImmutableArray<byte>"));
-
+                    builder.AppendLine();
+                    builder.AppendLine();
                     builder.AppendLine(HotPath);
-                    builder.AppendLine(GeneratedAttribute);
-                    builder.AppendLine(EditorBrowsableAttribute);
                     builder.AppendLine($"internal static {definitionName} DecodeFrom(ref BebopReader reader) {{");
                     builder.Indent(indentStep);
+                    builder.AppendLine();
                     // when you do new T() the compile uses System.Activator::CreateInstance
                     // this non-generic variant avoids that penalty hit.
                     // https://devblogs.microsoft.com/premier-developer/dissecting-the-new-constraint-in-c-a-perfect-example-of-a-leaky-abstraction/
                     builder.AppendLine(CompileDecode(definition, false));
                     builder.Dedent(indentStep);
                     builder.AppendLine("}");
-
+                    builder.AppendLine();
                     builder.AppendLine(HotPath);
-                    builder.AppendLine(GeneratedAttribute);
-                    builder.AppendLine(EditorBrowsableAttribute);
                     builder.AppendLine($"internal static T DecodeFrom<T>(ref BebopReader reader) where T: {baseName}, new() {{");
                     builder.Indent(indentStep);
                     // a generic decode method that allows for run-time polymorphism 
@@ -489,7 +491,6 @@ namespace Core.Generators.CSharp
         {
             var returnMethod = bufferType.Equals("ImmutableArray<byte>") ? "ToImmutableArray" : "ToArray";
             var builder = new IndentedStringBuilder();
-            builder.AppendLine(GeneratedAttribute);
             builder.AppendLine(HotPath);
             builder.AppendLine($"public static {bufferType} {methodName}(Base{definition.Name.ToPascalCase()} record) {{");
             builder.Indent(indentStep);
@@ -499,7 +500,6 @@ namespace Core.Generators.CSharp
             builder.Dedent(indentStep);
             builder.AppendLine("}");
             builder.AppendLine("");
-            builder.AppendLine(GeneratedAttribute);
             builder.AppendLine(HotPath);
             builder.AppendLine($"public {bufferType} {methodName}() {{");
             builder.Indent(indentStep);
@@ -520,7 +520,6 @@ namespace Core.Generators.CSharp
         public string CompileDecodeHelper(IDefinition definition, string bufferType)
         {
             var builder = new IndentedStringBuilder();
-            builder.AppendLine(GeneratedAttribute);
             builder.AppendLine(HotPath);
             builder.AppendLine($"public static T DecodeAs<T>({bufferType} record) where T : Base{definition.Name.ToPascalCase()}, new() {{");
             builder.Indent(indentStep);
@@ -528,8 +527,7 @@ namespace Core.Generators.CSharp
             builder.AppendLine("return DecodeFrom<T>(ref reader);");
             builder.Dedent(indentStep);
             builder.AppendLine("}");
-            builder.AppendLine("");
-            builder.AppendLine(GeneratedAttribute);
+            builder.AppendLine();
             builder.AppendLine(HotPath);
             builder.AppendLine($"public static {definition.Name.ToPascalCase()} Decode({bufferType} record) {{");
             builder.Indent(indentStep);
@@ -537,7 +535,7 @@ namespace Core.Generators.CSharp
             builder.AppendLine($"return DecodeFrom(ref reader);");
             builder.Dedent(indentStep);
             builder.AppendLine("}");
-            builder.AppendLine("");
+            builder.AppendLine();
 
             return builder.ToString();
         }
