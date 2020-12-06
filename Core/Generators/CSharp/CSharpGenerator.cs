@@ -13,7 +13,6 @@ namespace Core.Generators.CSharp
         const int indentStep = 2;
         private static readonly string GeneratedAttribute = $"[System.CodeDom.Compiler.GeneratedCode(\"{ReservedWords.CompilerName}\", \"{ReservedWords.CompilerVersion}\")]";
         private static readonly string RecordAttribute = $"[BebopRecord]";
-        private static readonly string EditorBrowsableAttribute = "[System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]";
         private const string HotPath = "[System.Runtime.CompilerServices.MethodImpl(BebopConstants.HotPath)]";
 
         private static readonly string WarningBlock = $@"//------------------------------------------------------------------------------
