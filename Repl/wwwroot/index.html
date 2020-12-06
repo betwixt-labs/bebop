@@ -12,6 +12,7 @@
     <link href="Repl.styles.css" rel="stylesheet" />
     <script src="prism.js" data-manual></script>
     <script>
+        window.assemblyName = "Repl";
         window.Prism = window.Prism || {};
         Prism.manual = true;
         window.showOutput = function (lang, ok, res) {
@@ -20,7 +21,18 @@
             code.className = ok ? 'language-' + lang : 'bebop-error';
             if (ok) Prism.highlightElement(code);
         }
-        window.assemblyName = "Repl";
+        window.hasExampleParam = function () {
+            var url_string = "http://www.example.com/t.html?a=1&b=3&c=m2-m3-m4-m5"; //window.location.href
+            var url = new URL(window.location.href);
+            var c = url.searchParams.get("example");
+            return c == "1";
+        }
+        window.setExampleSchema = function () {
+            const exampleSchema = window.DotNet.invokeMethod(assemblyName, 'GetExampleSchema');
+            const schemaTextArea = document.getElementById('schema');
+            schemaTextArea.value = exampleSchema;
+        }
+
         /*
         window.bebopc = {
             version: function() {
@@ -39,7 +51,7 @@
 
 <body>
     <div id="app">Loading...</div>
-<script src="_framework/blazor.webassembly.js"></script>
+    <script src="_framework/blazor.webassembly.js"></script>
 </body>
 
 </html>

@@ -4,6 +4,7 @@
 @using Core.Parser
 @inject IJSRuntime JS
 
+
 <div class="container">
     <div class="side-by-side">
         <section>
@@ -29,19 +30,61 @@
 
 @code {
     string _selectedGenerator = "ts";
-    string SelectedGenerator {
+    string SelectedGenerator
+    {
         get => _selectedGenerator;
-        set {
-            if (_selectedGenerator != value) {
+        set
+        {
+            if (_selectedGenerator != value)
+            {
                 _selectedGenerator = value;
                 ShowOutput().GetAwaiter().GetResult();
             }
         }
     }
     string _schema = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            if (await JS.InvokeAsync<bool>("hasExampleParam"))
+            {
+                await JS.InvokeVoidAsync("setExampleSchema");
+            }
+        }
+    }
+
+
 }
 
 @functions {
+    [JSInvokable]
+    public static string GetExampleSchema()
+    {
+        const string exampleSchema = @"enum Instrument {
+Sax = 0;
+Trumpet = 1;
+Clarinet = 2;
+}
+
+readonly struct Musician {
+string name;
+Instrument plays;
+}
+
+message Song {
+1 -> string title;
+2 -> uint16 year;
+3 -> Musician[] performers;
+}
+
+struct Library {
+map[guid, Song] songs;
+}";
+        return exampleSchema;
+    }
+
     [JSInvokable]
     public static string GetCompilerName()
     {
@@ -108,7 +151,7 @@
     private async Task ShowOutput()
     {
         var co = await CompileSchema(_schema, SelectedGenerator);
-        await JS.InvokeVoidAsync("showOutput", SelectedGenerator, co.IsOk, co.Result); 
+        await JS.InvokeVoidAsync("showOutput", SelectedGenerator, co.IsOk, co.Result);
     }
 
     [JSInvokable]
