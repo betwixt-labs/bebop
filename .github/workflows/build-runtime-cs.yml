@@ -9,6 +9,7 @@ on:
 jobs:
   build-runtime:
     env:
+      TEST_ROOT: ${{github.workspace}}/Laboratory/C#/Test
       RUNTIME_ROOT: ${{github.workspace}}/Runtime/C#
     runs-on: ubuntu-latest
     steps:
@@ -22,9 +23,15 @@ jobs:
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: "5.0.x" # SDK Version to use; x will use the latest version of the 5.0 channel
+
+      - name: Run Test
+        run: dotnet test
+        working-directory: ${{env.TEST_ROOT}}
+
       - name: Restore Project
         run: dotnet restore
         working-directory: ${{env.RUNTIME_ROOT}}
+        
       - name: Build Runtime
         run: dotnet build -c Release -p:ReleaseVersion=${{ steps.dotenv.outputs.version }}
         working-directory: ${{env.RUNTIME_ROOT}}
