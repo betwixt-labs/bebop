@@ -64,24 +64,24 @@
     public static string GetExampleSchema()
     {
         const string exampleSchema = @"enum Instrument {
-Sax = 0;
-Trumpet = 1;
-Clarinet = 2;
+    Sax = 0;
+    Trumpet = 1;
+    Clarinet = 2;
 }
 
 readonly struct Musician {
-string name;
-Instrument plays;
+    string name;
+    Instrument plays;
 }
 
 message Song {
-1 -> string title;
-2 -> uint16 year;
-3 -> Musician[] performers;
+    1 -> string title;
+    2 -> uint16 year;
+    3 -> Musician[] performers;
 }
 
 struct Library {
-map[guid, Song] songs;
+    map[guid, Song] songs;
 }";
         return exampleSchema;
     }
