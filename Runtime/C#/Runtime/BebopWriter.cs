@@ -314,8 +314,13 @@ namespace Bebop.Runtime
         {
             WriteUInt32(unchecked((uint) value.Length));
             var index = Length;
-            GrowBy(value.Length);
-            AsBytes(value.AsSpan()).CopyTo(_buffer.Slice(index, value.Length));
+            var floatBytes = AsBytes<float>(value);
+            if (floatBytes.IsEmpty)
+            {
+                return;
+            }
+            GrowBy(floatBytes.Length);
+            floatBytes.CopyTo(_buffer.Slice(index, floatBytes.Length));
         }
 
         [MethodImpl(BebopConstants.HotPath)]
@@ -323,8 +328,13 @@ namespace Bebop.Runtime
         {
             WriteUInt32(unchecked((uint) value.Length));
             var index = Length;
-            GrowBy(value.Length);
-            AsBytes(value.AsSpan()).CopyTo(_buffer.Slice(index, value.Length));
+            var doubleBytes = AsBytes<double>(value);
+            if (doubleBytes.IsEmpty)
+            {
+                return;
+            }
+            GrowBy(doubleBytes.Length);
+            doubleBytes.CopyTo(_buffer.Slice(index, doubleBytes.Length));
         }
 
         /// <summary>
