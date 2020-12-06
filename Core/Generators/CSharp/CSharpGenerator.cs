@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Text;
 using Core.Meta;
 using Core.Meta.Extensions;
 using Core.Meta.Interfaces;
@@ -45,6 +46,7 @@ namespace Core.Generators.CSharp
             var builder = new IndentedStringBuilder();
             builder.AppendLine(WarningBlock);
             builder.AppendLine("using global::System.Collections.Immutable;");
+            builder.AppendLine("using global::System.Linq;");
             builder.AppendLine("using global::Bebop.Attributes;");
             builder.AppendLine("using global::Bebop.Runtime;");
             builder.AppendLine("//");
@@ -89,7 +91,7 @@ namespace Core.Generators.CSharp
                 else if (definition.IsMessage() || definition.IsStruct())
                 {
                     var baseName = "Base" + definitionName;
-                    builder.AppendLine($"public abstract class {baseName} {{");
+                    builder.AppendLine($"public abstract class {baseName} : System.IEquatable<{baseName}> {{");
                     builder.Indent(indentStep);
                     if (definition.OpcodeAttribute is not null)
                     {
@@ -121,6 +123,8 @@ namespace Core.Generators.CSharp
                     {
                         builder.AppendLine("#nullable disable");
                     }
+
+                    builder.AppendLine(GenerateEqualityMembers(definition));
 
 
                     builder.Dedent(indentStep);
@@ -182,6 +186,102 @@ namespace Core.Generators.CSharp
                 builder.Dedent(indentStep);
                 builder.AppendLine("}");
             }
+            return builder.ToString();
+        }
+        /// <summary>
+        /// Generates code to implement <see cref="IEquatable{T}"/> in the base defined type.
+        /// </summary>
+        /// <param name="definition"></param>
+        /// <returns></returns>
+        private string GenerateEqualityMembers(IDefinition definition)
+        {
+            var baseName = $"Base{definition.Name.ToPascalCase()}";
+            var builder = new IndentedStringBuilder();
+            builder.AppendLine($"public bool Equals({baseName} other) {{");
+            builder.Indent(indentStep);
+            builder.AppendLine("if (ReferenceEquals(null, other)) {");
+            builder.Indent(indentStep);
+            builder.AppendLine("return false;");
+            builder.Dedent(indentStep);
+            builder.AppendLine("}");
+            builder.AppendLine("if (ReferenceEquals(this, other)) {");
+            builder.Indent(indentStep);
+            builder.AppendLine("return true;");
+            builder.Dedent(indentStep);
+            builder.AppendLine("}");
+
+            var returnStatement = new StringBuilder("return");
+            for (var i = 0; i < definition.Fields.Count; i++)
+            {
+                var field = definition.Fields.ElementAt(i);
+                var fieldName = field.Name.ToPascalCase();
+                var and = $"{(i == definition.Fields.Count - 1 ? "" : " &&")}";
+                var isNullableType = IsNullableType(field.Type);
+                var nullCheck = isNullableType ? "is null" : "== null";
+
+                // for collections we try to be extra safe to avoid throwing exceptions.
+                returnStatement.Append(field.IsCollection()
+                    ? $" ({fieldName} {nullCheck} && other.{fieldName} {nullCheck} ? true : {fieldName} {nullCheck} || other.{fieldName} {nullCheck} ? false : {fieldName}.SequenceEqual(other.{fieldName})){and}"
+                    : $" {fieldName} == other.{fieldName}{and}");
+            }
+            returnStatement.Append(";");
+            builder.AppendLine(returnStatement.ToString());
+            builder.Dedent(indentStep);
+            builder.AppendLine("}");
+
+            builder.AppendLine();
+
+            builder.AppendLine("public override bool Equals(object obj) {");
+            builder.Indent(indentStep);
+            builder.AppendLine("if (ReferenceEquals(null, obj)) {");
+            builder.Indent(indentStep);
+            builder.AppendLine("return false;");
+            builder.Dedent(indentStep);
+            builder.AppendLine("}");
+            builder.AppendLine("if (ReferenceEquals(this, obj)) {");
+            builder.Indent(indentStep);
+            builder.AppendLine("return true;");
+            builder.Dedent(indentStep);
+            builder.AppendLine("}");
+            builder.AppendLine($"if (obj is not {baseName} baseType) {{");
+            builder.Indent(indentStep);
+            builder.AppendLine("return false;");
+            builder.Dedent(indentStep);
+            builder.AppendLine("}");
+
+            builder.AppendLine("return Equals(baseType);");
+            builder.Dedent(indentStep);
+            builder.AppendLine("}");
+            builder.AppendLine();
+            builder.AppendLine("public override int GetHashCode() {");
+            builder.Indent(indentStep);
+            builder.AppendLine("int hash = 1;");
+            for (var i = 0; i < definition.Fields.Count; i++)
+            {
+                var field = definition.Fields.ElementAt(i);
+                var fieldName = field.Name.ToPascalCase();
+                if (definition.IsMessage())
+                {
+                    var isNullableType = IsNullableType(field.Type);
+                    var nullCheck = isNullableType ? "is not null" : "!= null";
+                    var value = isNullableType && NeedsValueAppend(field.Type) && definition.IsMessage()
+                        ? $"{fieldName}.Value.GetHashCode();"
+                        : $"{fieldName}.GetHashCode();";
+                    builder.AppendLine($"if ({fieldName} {nullCheck}) hash ^= {value}");
+                }
+                else
+                {
+                    builder.AppendLine($"hash ^= {fieldName}.GetHashCode();");
+                }
+            }
+            builder.AppendLine("return hash;");
+            builder.Dedent(indentStep);
+            builder.AppendLine("}");
+            builder.AppendLine();
+            builder.AppendLine(
+                $"public static bool operator ==({baseName} left, {baseName} right) => Equals(left, right);");
+            builder.AppendLine(
+                $"public static bool operator !=({baseName} left, {baseName}  right) => !Equals(left, right);");
             return builder.ToString();
         }
 
@@ -380,11 +480,6 @@ namespace Core.Generators.CSharp
             };
         }
 
-        public ArraySegment<byte> ToArray()
-        {
-            return new byte[0];
-        }
-
         /// <summary>
         ///     Generates the body of various helper methods to encode the given <see cref="IDefinition"/>
         /// </summary>
@@ -481,7 +576,7 @@ namespace Core.Generators.CSharp
                 builder.AppendLine($"if (record.{field.Name.ToPascalCase()} {nullCheck}) {{");
                 builder.Indent(indentStep);
                 builder.AppendLine($"writer.WriteByte({field.ConstantValue});");
-                builder.AppendLine(isNullableType && field.Type is ScalarType
+                builder.AppendLine(isNullableType && NeedsValueAppend(field.Type)
                     ? $"{CompileEncodeField(field.Type, $"record.{field.Name.ToPascalCase()}.Value")}"
                     : $"{CompileEncodeField(field.Type, $"record.{field.Name.ToPascalCase()}")}");
                 builder.Dedent(indentStep);
@@ -516,6 +611,22 @@ namespace Core.Generators.CSharp
             };
         }
 
+        private bool NeedsValueAppend(TypeBase type)
+        {
+            return type switch
+            {
+                ScalarType { BaseType: BaseType.String }  => false,
+                DefinedType dt when IsEnum(dt) => true,
+                DefinedType => false,
+                ScalarType => true,
+                _ => false
+            };
+        }
+
+        private bool IsEnum(DefinedType dt)
+        {
+            return Schema.Definitions[dt.Name].Kind == AggregateKind.Enum;
+        }
 
         private string CompileEncodeField(TypeBase type, string target, int depth = 0, int indentDepth = 0)
         {
