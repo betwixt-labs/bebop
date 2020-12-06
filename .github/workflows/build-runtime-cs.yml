@@ -24,14 +24,22 @@ jobs:
         with:
           dotnet-version: "5.0.x" # SDK Version to use; x will use the latest version of the 5.0 channel
 
-      - name: Run Test
-        run: dotnet test
+      - name: Run Test .NET 5
+        run: dotnet test -c Release -f net5.0
+        working-directory: ${{env.TEST_ROOT}}
+
+      - name: Run Test .NET Framework 4.7.2
+        run: dotnet test -c Release -f net472
+        working-directory: ${{env.TEST_ROOT}}
+
+      - name: Run Test .NET Framework 4.8
+        run: dotnet test -c Release -f net48
         working-directory: ${{env.TEST_ROOT}}
 
       - name: Restore Project
         run: dotnet restore
         working-directory: ${{env.RUNTIME_ROOT}}
-        
+
       - name: Build Runtime
         run: dotnet build -c Release -p:ReleaseVersion=${{ steps.dotenv.outputs.version }}
         working-directory: ${{env.RUNTIME_ROOT}}
