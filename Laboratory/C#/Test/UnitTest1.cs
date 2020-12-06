@@ -45,8 +45,8 @@ namespace Test
             input.WriteInt64(long.MaxValue);
             input.WriteFloat32(float.MaxValue);
             input.WriteFloat64(double.MaxValue);
-            input.WriteFloat32s(testFloats);
-            input.WriteFloat64s(testDoubles);
+            input.WriteFloat32S(testFloats);
+            input.WriteFloat64S(testDoubles);
             input.WriteString(testString);
             input.WriteGuid(testGuid);
             input.WriteDate(testDate);

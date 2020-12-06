@@ -87,6 +87,7 @@ namespace Core.Generators.CSharp
                     }
                     builder.Dedent(indentStep);
                     builder.AppendLine("}");
+                    builder.AppendLine();
                 }
                 else if (definition.IsMessage() || definition.IsStruct())
                 {
@@ -123,9 +124,9 @@ namespace Core.Generators.CSharp
                     {
                         builder.AppendLine("#nullable disable");
                     }
-
+                    builder.AppendLine();
                     builder.AppendLine(GenerateEqualityMembers(definition));
-
+                    builder.AppendLine();
 
                     builder.Dedent(indentStep);
                     builder.AppendLine("}");
@@ -330,8 +331,7 @@ namespace Core.Generators.CSharp
                 case MapType mt:
                     return $"System.Collections.Generic.Dictionary<{TypeName(mt.KeyType)}, {TypeName(mt.ValueType)}>";
                 case DefinedType dt:
-                    var isEnum = Schema.Definitions[dt.Name].Kind == AggregateKind.Enum;
-                    return $"{(isEnum ? string.Empty : "Base")}{dt.Name}";
+                    return $"{(IsEnum(dt) ? string.Empty : "Base")}{dt.Name}";
             }
             throw new InvalidOperationException($"GetTypeName: {type}");
         }
@@ -634,8 +634,8 @@ namespace Core.Generators.CSharp
             return type switch
             {
                 ArrayType at when at.IsBytes() => $"writer.WriteBytes({target});",
-                ArrayType at when at.IsFloat32s() => $"writer.WriteFloat32s({target});",
-                ArrayType at when at.IsFloat64s() => $"writer.WriteFloat64s({target});",
+                ArrayType at when at.IsFloat32s() => $"writer.WriteFloat32S({target});",
+                ArrayType at when at.IsFloat64s() => $"writer.WriteFloat64S({target});",
                 ArrayType at =>
                     $"{{" + nl +
                     $"{tab}var length{depth} = unchecked((uint){target}.Length);" + nl +
