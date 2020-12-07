@@ -21,8 +21,9 @@ namespace Compiler
         /// </summary>
         /// <param name="name">The name of the commandline flag.</param>
         /// <param name="helpText">A detailed description of flag.</param>
-        /// <param name="usageExample"></param>
-        public CommandLineFlagAttribute(string name, string helpText, string usageExample = "")
+        /// <param name="usageExample">An example of how to use the attributed flag.</param>
+        /// <param name="isGeneratorFlag">Indicates if a flag is used to generate code.</param>
+        public CommandLineFlagAttribute(string name, string helpText, string usageExample = "", bool isGeneratorFlag = false)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -35,6 +36,7 @@ namespace Compiler
             Name = name;
             HelpText = helpText;
             UsageExample = usageExample;
+            IsGeneratorFlag = isGeneratorFlag;
         }
 
         /// <summary>
@@ -54,6 +56,10 @@ namespace Compiler
         ///     If any an example of the parameter that is used in conjunction with the flag
         /// </summary>
         public string UsageExample { get; }
+        /// <summary>
+        /// If this property is set to true the attributed commandline flag is used to instantiate a code generator. 
+        /// </summary>
+        public bool IsGeneratorFlag { get; }
     }
 
 #endregion
@@ -63,8 +69,12 @@ namespace Compiler
     /// </summary>
     public class CommandLineFlags
     {
-        [CommandLineFlag("lang", "Generate source file for a given language", "--lang (ts|cs|dart)")]
-        public string? Language { get; private set; }
+        [CommandLineFlag("cs", "Generate C# source code to the specified file", "--cs ./cowboy/bebop/HelloWorld.cs", true)]
+        public string? CSharpOutput { get; private set; }
+        [CommandLineFlag("ts", "Generate TypeScript source code to the specified file", "--ts ./cowboy/bebop/HelloWorld.ts", true)]
+        public string? TypeScriptOutput { get; private set; }
+        [CommandLineFlag("dart", "Generate Dart source code to the specified file", "--ts ./cowboy/bebop/HelloWorld.dart", true)]
+        public string? DartOutput { get; private set; }
 
         [CommandLineFlag("namespace", "When this option is specified generated code will use namespaces", "--lang cs --namespace [package]")]
         public string? Namespace { get; private set; }
@@ -74,9 +84,6 @@ namespace Compiler
 
         [CommandLineFlag("files", "Parse and generate code from a list of schemas", "--files [file1] [file2] ...")]
         public List<string>? SchemaFiles { get; private set; }
-
-        [CommandLineFlag("out", "The file generated code will be written to", "--lang cs --dir [input dir] --out [output file]")]
-        public string? OutputFile { get; private set; }
 
         [CommandLineFlag("check", "Only check a given schema is valid", "--check [file.bop] [file2.bop] ...")]
         public List<string>? CheckSchemaFiles { get; private set; }
@@ -100,6 +107,25 @@ namespace Compiler
         public LogFormatter LogFormatter { get; private set; }
 
         public string HelpText { get; private init; }
+
+        /// <summary>
+        /// Returns the alias and output file of all commandline specified code generators.
+        /// </summary>
+        public IEnumerable<(string Alias, string OutputFile)> GetParsedGenerators()
+        {
+            var props = (from p in typeof(CommandLineFlags).GetProperties()
+                let attr = p.GetCustomAttributes(typeof(CommandLineFlagAttribute), true)
+                where attr.Length == 1
+                select new { Property = p, Attribute = attr.First() as CommandLineFlagAttribute }).ToList();
+
+            foreach (var flag in props)
+            {
+                if (flag.Attribute.IsGeneratorFlag && flag.Property.GetValue(this) is string value)
+                {
+                    yield return (flag.Attribute.Name, value);
+                }
+            }
+        }
 
         #region Static
 
