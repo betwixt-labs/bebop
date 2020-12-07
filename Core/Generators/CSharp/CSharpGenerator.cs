@@ -1,13 +1,13 @@
-﻿using System;
-using System.Linq;
-using System.Text;
-using Core.Meta;
+﻿using Core.Meta;
 using Core.Meta.Extensions;
 using Core.Meta.Interfaces;
+using System;
+using System.Linq;
+using System.Text;
 
 namespace Core.Generators.CSharp
 {
-    
+
     public class CSharpGenerator : Generator
     {
         const int indentStep = 2;
