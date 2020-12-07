@@ -2,13 +2,13 @@
 
 namespace Bebop.Extensions
 {
-    public static class TaskExtensions
+    internal static class TaskExtensions
     {
         /// <summary>
         ///     Fires and forgets a <see cref="Task"/>
         /// </summary>
         /// <param name="task">The task to be executed.</param>
-        public static void Forget(this Task task)
+        internal static void Forget(this Task task)
         {
             if (!task.IsCompleted || task.IsFaulted)
             {

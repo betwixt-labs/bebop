@@ -18,4 +18,6 @@
     <ProjectReference Include="..\..\..\Runtime\C#\Bebop.csproj" />
   </ItemGroup>
 
+  <Import Project="..\GeneratedTestCode\GeneratedTestCode.projitems" Label="Shared" />
+
 </Project>

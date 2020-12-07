@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Core.Exceptions;
 using Core.Meta.Interfaces;
@@ -64,35 +65,31 @@ namespace Core.Meta
                     }
                     switch (definition.Kind)
                     {
-                        case AggregateKind.Enum:
-                            if (field.ConstantValue < 0)
-                            {
-                                throw new InvalidFieldException(field, "Enum values must start at 0");
-                            }
-                            if (definition.Fields.Count(f => f.ConstantValue == field.ConstantValue) > 1)
-                            {
-                                throw new InvalidFieldException(field, "Enum value must be unique");
-                            }
-                            break;
-                        case AggregateKind.Struct:
-                            if (field.Type is DefinedType dt && definition.Name.Equals(dt.Name))
-                            {
-                                throw new InvalidFieldException(field, "Struct contains itself");
-                            }
-                            break;
-                        case AggregateKind.Message:
-                            if (definition.Fields.Count(f => f.ConstantValue == field.ConstantValue) > 1)
-                            {
-                                throw new InvalidFieldException(field, "Message ID must be unique");
-                            }
-                            if (field.ConstantValue <= 0)
-                            {
-                                throw new InvalidFieldException(field, "Message member IDs must start at 1");
-                            }
-                            if (field.ConstantValue > definition.Fields.Count)
-                            {
-                                throw new InvalidFieldException(field, "Message ID is greater than field count");
-                            }
+                        case AggregateKind.Enum when field.ConstantValue < 0:
+                        {
+                            throw new InvalidFieldException(field, "Enum values must start at 0");
+                        }
+                        case AggregateKind.Enum when definition.Fields.Count(f => f.ConstantValue == field.ConstantValue) > 1:
+                        {
+                            throw new InvalidFieldException(field, "Enum value must be unique");
+                        }
+                        case AggregateKind.Struct when field.Type is DefinedType dt && definition.Name.Equals(dt.Name):
+                        {
+                            throw new InvalidFieldException(field, "Struct contains itself");
+                        }
+                        case AggregateKind.Message when definition.Fields.Count(f => f.ConstantValue == field.ConstantValue) > 1:
+                        {
+                            throw new InvalidFieldException(field, "Message index must be unique");
+                        }
+                        case AggregateKind.Message when field.ConstantValue <= 0:
+                        {
+                            throw new InvalidFieldException(field, "Message member index must start at 1");
+                        }
+                        case AggregateKind.Message when field.ConstantValue > definition.Fields.Count:
+                        {
+                            throw new InvalidFieldException(field, "Message index is greater than field count");
+                        }
+                        default:
                             break;
                     }
                 }

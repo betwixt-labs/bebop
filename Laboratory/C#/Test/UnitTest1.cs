@@ -1,21 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
-using Bebop;
+using System.Text;
+using Bebop.Codegen;
 using Bebop.Runtime;
 using NUnit.Framework;
 
-// I need to declare this, because I'm running into: https://github.com/dotnet/roslyn/issues/45510
-namespace System.Runtime.CompilerServices
-{
-    [ComponentModel.EditorBrowsable(ComponentModel.EditorBrowsableState.Never)]
-    public static class IsExternalInit
-    {
-    }
-}
-
 namespace Test
 {
-    public class Tests
+    enum TestEnum : uint
+    {
+        Bad = 0,
+        Ok = uint.MaxValue
+    }
+    public class RuntimeTest
     {
 
         [SetUp]
@@ -28,49 +25,101 @@ namespace Test
         /// Ensures values are being written and read at the correct alignment. 
         /// </summary>
         [Test]
-        public void AlignmentTest()
+        public void WriteRead()
         {
+            var testBytes = new byte[] {0x1, 0x2, 0x3};
+            var testFloats = new float[] {float.MinValue, float.MaxValue};
+            var testDoubles = new double[] { double.MinValue, double.MaxValue };
             var testGuid = Guid.Parse("81c6987b-48b7-495f-ad01-ec20cc5f5be1");
             const string testString = @"Hello 明 World!😊";
+            var testDate = DateTime.UtcNow;
 
-            var input = BebopView.Create();
-            input.WriteInt16(1000);
-            input.WriteInt32(2000);
-            input.WriteUInt64(3000);
+            var input = BebopWriter.Create();
+            input.WriteByte(false);
+            input.WriteByte(byte.MaxValue);
+            input.WriteUInt16(ushort.MaxValue);
+            input.WriteInt16(short.MaxValue);
+            input.WriteUInt32(uint.MaxValue);
+            input.WriteInt32(int.MaxValue);
+            input.WriteUInt64(ulong.MaxValue);
+            input.WriteInt64(long.MaxValue);
+            input.WriteFloat32(float.MaxValue);
+            input.WriteFloat64(double.MaxValue);
+            input.WriteFloat32S(testFloats);
+            input.WriteFloat64S(testDoubles);
             input.WriteString(testString);
             input.WriteGuid(testGuid);
+            input.WriteDate(testDate);
+            input.WriteBytes(testBytes);
+            input.WriteEnum(TestEnum.Ok);
 
 
-            var output = BebopView.From(input.ToArray());
+            var output = BebopReader.From(input.ToImmutableArray());
 
-            Assert.AreEqual(1000, output.ReadInt16());
-            Assert.AreEqual(2000, output.ReadInt32());
-            Assert.AreEqual(3000, output.ReadUInt64());
+            // test byte 
+            Assert.AreEqual(0, output.ReadByte());
+            Assert.AreEqual(byte.MaxValue, output.ReadByte());
+            // test short
+            Assert.AreEqual(ushort.MaxValue, output.ReadUInt16());
+            Assert.AreEqual(short.MaxValue, output.ReadInt16());
+            // test int
+            Assert.AreEqual(uint.MaxValue, output.ReadUInt32());
+            Assert.AreEqual(int.MaxValue, output.ReadInt32());
+            // test long
+            Assert.AreEqual(ulong.MaxValue, output.ReadUInt64());
+            Assert.AreEqual(long.MaxValue, output.ReadInt64());
+            // test float / double
+            Assert.AreEqual(float.MaxValue, output.ReadFloat32());
+            Assert.AreEqual(double.MaxValue, output.ReadFloat64());
+             // test float array
+            var floatArrayLength = output.ReadUInt32();
+            Assert.AreEqual(testFloats.Length, floatArrayLength);
+            var parsedFloats = new float[floatArrayLength];
+            for (int i = 0; i < floatArrayLength; i++)
+            {
+                parsedFloats[i] = output.ReadFloat32();
+            }
+            CollectionAssert.AreEqual(testFloats, parsedFloats);
+            // test double array
+            var doubleArrayLength = output.ReadUInt32();
+            Assert.AreEqual(testDoubles.Length, doubleArrayLength);
+            var parsedDoubles = new double[doubleArrayLength];
+            for (int i = 0; i < doubleArrayLength; i++)
+            {
+                parsedDoubles[i] = output.ReadFloat64();
+            }
+            CollectionAssert.AreEqual(testDoubles, parsedDoubles);
+            // test string
             Assert.AreEqual(testString, output.ReadString());
+            // test guid
             Assert.AreEqual(testGuid, output.ReadGuid());
+            // test date
+            Assert.AreEqual(testDate, output.ReadDate());
+            // test byte array
+            CollectionAssert.AreEqual(testBytes, output.ReadBytes());
+            // test enum
+            Assert.AreEqual(TestEnum.Ok, output.ReadEnum<TestEnum>());
 
             Assert.Pass();
         }
 
         [Test]
-        public void RoundTripMaps()
+        public void RoundTrip()
         {
-            var someMaps = new SomeMaps
+            var testGuid = Guid.Parse("81c6987b-48b7-495f-ad01-ec20cc5f5be1");
+            var song = new Song
             {
-                M1 = new Dictionary<bool, bool> { { false, true }, { true, false } },
-                M2 = new Dictionary<string, Dictionary<string, string>> { { "a", new Dictionary<string, string>{ { "b", "c" } }  }, { "d", new Dictionary<string, string>{ } } },
-                M3 = new Dictionary<int, Dictionary<bool, IS>[]>[] { new Dictionary<int, Dictionary<bool, IS>[]> { { 9, new Dictionary<bool, IS>[] { new Dictionary<bool, IS> { { true, new S { X = 1, Y = 2 } } } } } } },
-                M4 = new Dictionary<string, float[]>[] { },
-                M5 = new Dictionary<System.Guid, IM> { },
+                Title = "Donna Lee",
+                Year = 1974,
+                Performers = new BaseMusician[]
+                {
+                    new Musician {Name = "Charlie Parker", Plays = Instrument.Sax},
+                    new Musician {Name = "Miles Davis", Plays = Instrument.Trumpet}
+                }
             };
-            var bytes = SomeMaps.Encode(someMaps);
-            var view = BebopView.From(bytes);
-            var someMaps2 = SomeMaps.DecodeFrom(ref view);
-            Assert.AreEqual(someMaps.M1, someMaps2.M1);
-            Assert.AreEqual(someMaps.M2, someMaps2.M2);
-            Assert.AreEqual(someMaps.M3[0][9][0][true].Y, someMaps2.M3[0][9][0][true].Y);
-            Assert.AreEqual(someMaps.M4, someMaps2.M4);
-            Assert.AreEqual(someMaps.M5, someMaps2.M5);
+            var library = new Library {Songs = new Dictionary<Guid, BaseSong> {{testGuid, song}}};
+            var decodedLibrary = Library.Decode(library.EncodeAsImmutable());
+            Assert.AreEqual(library, decodedLibrary);
         }
     }
 }

@@ -3,6 +3,11 @@
     "Compiler": {
       "commandName": "Project",
       "commandLineArgs": "--version"
+    },
+    "Generate Test Code": {
+      "commandName": "Project",
+      "commandLineArgs": "--lang cs --namespace Bebop.Codegen --files ..\\Laboratory\\Schemas\\lab.bop ..\\Laboratory\\Schemas\\jazz.bop --out ..\\Laboratory\\C#\\GeneratedTestCode\\Output.g.cs",
+      "workingDirectory": "C:\\Users\\Andrew\\PierogiVNext\\Compiler"
     }
   }
 }

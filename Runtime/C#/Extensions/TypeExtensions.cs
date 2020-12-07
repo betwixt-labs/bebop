@@ -89,7 +89,7 @@ namespace Bebop.Extensions
         /// </exception>
         private static MethodInfo GetStaticEncode(this Type type)
         {
-            Debug.Assert(type.BaseType != null, "type.BaseType != null");
+            Debug.Assert(type.BaseType is not null, "type.BaseType is not null");
             var encodeMethod = type.GetMethod("Encode",
                 BindingFlags.Static | BindingFlags.Public,
                 null,

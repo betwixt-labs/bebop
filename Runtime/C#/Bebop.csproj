@@ -6,7 +6,7 @@
     <LangVersion>9.0</LangVersion>
     <Description>The .NET runtime for Bebop, a schema-based binary serialization format.</Description>
     <PackageId>bebop</PackageId>
-    <Authors>Rainway, Inc.</Authors>
+    <Authors>The Bebop Authors</Authors>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Version Condition="'$(ReleaseVersion)' != ''">$(ReleaseVersion)</Version>
@@ -17,6 +17,11 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <DocumentationFile>./bin/$(AssemblyName).xml</DocumentationFile>
     <IncludeContentInPack>true</IncludeContentInPack>
+    <Company></Company>
+    <PackageIcon>128.png</PackageIcon>
+    <RepositoryUrl>https://github.com/RainwayApp/bebop.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>binary serialization bebop encoding decoding</PackageTags>
   </PropertyGroup>
 
   <ItemGroup Condition="$(TargetFramework.StartsWith('net4')) Or $(TargetFramework.StartsWith('netcoreapp'))">
@@ -50,6 +55,14 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <None Include="..\..\assets\128.png">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
   </ItemGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'net5.0' Or '$(TargetFramework)' == 'netcoreapp3.1'">
