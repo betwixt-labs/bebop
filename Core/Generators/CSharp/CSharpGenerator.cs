@@ -221,9 +221,11 @@ namespace Core.Generators.CSharp
                 var isNullableType = IsNullableType(field.Type);
                 var nullCheck = isNullableType ? "is null" : "== null";
 
+                var notNullCheck = isNullableType ? "is not null" : "!= null";
                 // for collections we try to be extra safe to avoid throwing exceptions.
                 returnStatement.Append(field.IsCollection()
                     ? $" ({fieldName} {nullCheck} && other.{fieldName} {nullCheck} ? true : {fieldName} {nullCheck} || other.{fieldName} {nullCheck} ? false : {fieldName}.SequenceEqual(other.{fieldName})){and}"
+                    ? $" ({fieldName} {nullCheck} ? other.{fieldName} {nullCheck} : other.{fieldName} {notNullCheck} && {fieldName}.SequenceEqual(other.{fieldName})){and}"
                     : $" {fieldName} == other.{fieldName}{and}");
             }
             returnStatement.Append(";");
