@@ -114,6 +114,14 @@ namespace Core.Generators.CSharp
                         {
                             builder.AppendLine($"[System.Obsolete(\"{field.DeprecatedAttribute.Value}\")]");
                         }
+                        if (definition.IsStruct())
+                        {
+                            builder.AppendLine("[System.Diagnostics.CodeAnalysis.NotNull, System.Diagnostics.CodeAnalysis.DisallowNull]");
+                        } else if (definition.IsMessage())
+                        {
+                            builder.AppendLine(
+                                "[System.Diagnostics.CodeAnalysis.MaybeNull, System.Diagnostics.CodeAnalysis.AllowNull]");
+                        }
                         var type = TypeName(field.Type, string.Empty);
                         var opt = definition.Kind == AggregateKind.Message && IsNullableType(field.Type) ? "?" : "";
                         var setOrInit = definition.IsReadOnly ? "init" : "set";
