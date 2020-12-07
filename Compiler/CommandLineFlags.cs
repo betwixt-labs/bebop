@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Core.Generators;
 using Core.Logging;
@@ -69,6 +70,14 @@ namespace Compiler
     /// </summary>
     public class CommandLineFlags
     {
+        /// <summary>
+        /// The name of the config file used by bebopc.
+        /// </summary>
+        private const string ConfigFileName = "bebop.json";
+
+        [CommandLineFlag("config", "Initializes the compiler from the specified configuration file.", "--config bebop.json")]
+        public string? ConfigFile { get; private set; }
+
         [CommandLineFlag("cs", "Generate C# source code to the specified file", "--cs ./cowboy/bebop/HelloWorld.cs", true)]
         public string? CSharpOutput { get; private set; }
         [CommandLineFlag("ts", "Generate TypeScript source code to the specified file", "--ts ./cowboy/bebop/HelloWorld.ts", true)]
@@ -136,6 +145,29 @@ namespace Compiler
         private CommandLineFlags(string helpText)
         {
             HelpText = helpText;
+        }
+
+        /// <summary>
+        /// Searches recursively upward to locate the config file belonging to <see cref="ConfigFileName"/>.
+        /// </summary>
+        /// <returns>The fully qualified path to the config file, or null if not found.</returns>
+        public static string? FindBebopConfig()
+        {
+            var workingDirectory = Directory.GetCurrentDirectory();
+            var configFile = Directory.GetFiles(workingDirectory, ConfigFileName).FirstOrDefault();
+            while (string.IsNullOrWhiteSpace(configFile))
+            {
+                if (Directory.GetParent(workingDirectory) is not {Exists: true} parent)
+                {
+                    break;
+                }
+                workingDirectory = parent.FullName;
+                if (parent.GetFiles(ConfigFileName)?.FirstOrDefault() is {Exists: true} file)
+                {
+                    configFile = file.FullName;
+                }
+            }
+            return configFile;
         }
 
     #endregion
@@ -228,7 +260,6 @@ namespace Compiler
                 errorMessage = "No commandline flags found.";
                 return false;
             }
-
 
             if (parsedFlags.ContainsKey("help"))
             {
