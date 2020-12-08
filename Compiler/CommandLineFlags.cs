@@ -292,7 +292,12 @@ namespace Compiler
 
             if (parsedFlags.ContainsKey("config"))
             {
-                return TryParseConfig(flagStore, parsedFlags["config"]);
+                var configPath = parsedFlags["config"];
+                if (string.IsNullOrWhiteSpace(configPath))
+                {
+                    configPath = null;
+                }
+                return TryParseConfig(flagStore, configPath);
             }
 
             if (parsedFlags.ContainsKey("help"))
