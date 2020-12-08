@@ -60,7 +60,7 @@ namespace Core.Exceptions
     class UnexpectedTokenException : SpanException
     {
         public UnexpectedTokenException(TokenKind expectedKind, Token token, string? hint = null)
-            : base($"Expected {expectedKind}, but got '{token.Lexeme}' of kind {token.Kind}."
+            : base($"Expected {expectedKind}, but found '{token.Lexeme}' of kind {token.Kind}."
                 + (string.IsNullOrWhiteSpace(hint) ? "" : $" (Hint: {hint})"), token.Span, 104) { }
     }
     [Serializable]
