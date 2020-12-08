@@ -51,7 +51,15 @@ namespace Compiler
                 await WriteHelpText();
                 return 0;
             }
-
+            if (_flags.CheckSchemaFile is not null)
+            {
+                if (string.IsNullOrWhiteSpace(_flags.CheckSchemaFile))
+                {
+                    await Log.Error(new CompilerException("No textual schema was read from standard input."));
+                    return 1;
+                }
+                return await CheckSchema(_flags.CheckSchemaFile);
+            }
             if (_flags.CheckSchemaFiles is not null)
             {
                 if (_flags.CheckSchemaFiles.Count > 0)
@@ -118,6 +126,22 @@ namespace Compiler
                 }
             }
             return Ok;
+        }
+
+        private static async Task<int> CheckSchema(string textualSchema)
+        {
+            try
+            {
+                var parser = new SchemaParser(textualSchema, "CheckNameSpace");
+                var schema = await parser.Evaluate();
+                schema.Validate();
+                return Ok;
+            }
+            catch (Exception e)
+            {
+                await ReportError(e);
+                return Err;
+            }
         }
 
         private static async Task<ISchema> ParseAndValidateSchemas(List<string> schemaPaths, string nameSpace)
