@@ -26,6 +26,6 @@ it("Long int array roundtrip", () => {
     const obj = { a: new Array(100_000).fill(12345) };
     const bytes = TestInt32Array.encode(obj);
     const obj2 = TestInt32Array.decode(bytes);
-    expect(obj2.a.length).toEqual(100_000);
+    expect(obj2.a.length).toEqual(200_000);
     expect(obj).toEqual(obj2);
 })

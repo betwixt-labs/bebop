@@ -44,7 +44,7 @@ void main() {
       var decoded = Library.decode(buffer);
       expect(decoded.songs, hasLength(2));
       expect(decoded.songs[donna].performers, hasLength(2));
-      expect(decoded.songs[donna].performers[1].name, equals('Miles Davis'));
+      expect(decoded.songs[donna].performers[1].name, equals('Miles Daaavis'));
     });
   });
 }
