@@ -17,6 +17,10 @@
         ///         MSDocs for more information.
         ///     </see>
         /// </summary>
-        MSBuild
+        MSBuild,
+        /// <summary>
+        /// Data is serialized to JSON before being written.
+        /// </summary>
+        JSON
     }
 }

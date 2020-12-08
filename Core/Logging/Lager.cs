@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Core.Exceptions;
 using Core.Meta;
@@ -44,6 +45,7 @@ namespace Core.Logging
             {
                 LogFormatter.MSBuild => $"{ex.Span.FileName}({ex.Span.StartColonString(',')}) : error BOP{ex.ErrorCode}: {ex.Message}",
                 LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] Issue located in '{ex.Span.FileName}' at {ex.Span.StartColonString()}: {ex.Message}",
+                LogFormatter.JSON => JsonSerializer.Serialize(ex),
                 _ => throw new ArgumentOutOfRangeException()
             };
             await Console.Error.WriteLineAsync(message).ConfigureAwait(false);
@@ -59,6 +61,7 @@ namespace Core.Logging
             {
                 LogFormatter.MSBuild => $"{ReservedWords.CompilerName} : fatal error BOP{msBuildErrorCode}: cannot open file '{ex.FileName}'",
                 LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] Unable to open file '{ex.FileName}'",
+                LogFormatter.JSON => JsonSerializer.Serialize(ex),
                 _ => throw new ArgumentOutOfRangeException()
             };
             await Console.Error.WriteLineAsync(message).ConfigureAwait(false);
@@ -73,6 +76,7 @@ namespace Core.Logging
             {
                 LogFormatter.MSBuild => $"{ReservedWords.CompilerName} : fatal error BOP{ex.ErrorCode}: {ex.Message}",
                 LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] {ex.Message}",
+                LogFormatter.JSON => JsonSerializer.Serialize(ex),
                 _ => throw new ArgumentOutOfRangeException()
             };
             await Console.Error.WriteLineAsync(message).ConfigureAwait(false);
@@ -89,6 +93,7 @@ namespace Core.Logging
             {
                 LogFormatter.MSBuild => $"{ReservedWords.CompilerName} : fatal error BOP{msBuildErrorCode}: {ex.Message}",
                 LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] {ex.Message}",
+                LogFormatter.JSON => JsonSerializer.Serialize(ex),
                 _ => throw new ArgumentOutOfRangeException()
             };
             await Console.Error.WriteLineAsync(message).ConfigureAwait(false);
