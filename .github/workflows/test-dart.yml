@@ -3,7 +3,7 @@ on:
   push:
     branches:
       - master
-      - test-actions
+      - test-action-new-cli
 jobs:
   test-typescript:
     runs-on: ubuntu-latest
