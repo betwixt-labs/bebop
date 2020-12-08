@@ -11,6 +11,7 @@ namespace Core.Lexer.Tokenization.Models
     ///     VSCode)
     ///     will show the cursor position as being off by one from what is stored here.
     /// </remarks>
+    [Serializable]
     public readonly struct Span : IEquatable<Span>, IComparable<Span>
     {
         /// <summary>
