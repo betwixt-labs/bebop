@@ -38,6 +38,8 @@ namespace Compiler
                 return 1;
             }
 
+          
+
             if (_flags.Version)
             {
                 await Lager.StandardOut($"{ReservedWords.CompilerName} {ReservedWords.CompilerVersion}");
