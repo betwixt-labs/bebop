@@ -17,4 +17,4 @@ jobs:
           mkdir gen
           dotnet run --project ../../Compiler --lang dart --files ../Schemas/*.bop --out gen/gen.dart
           dart pub run test
-        working-directory: ./Laboratory/TypeScript
+        working-directory: ./Laboratory/Dart
