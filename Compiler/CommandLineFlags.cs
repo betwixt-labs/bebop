@@ -126,7 +126,7 @@ namespace Compiler
         ///     Controls how loggers format data.
         /// </summary>
         [CommandLineFlag("log-format", "Defines the formatter that will be used with logging.",
-            "--formatter (structured|msbuild)")]
+            "--log-format (structured|msbuild|json)")]
         public LogFormatter LogFormatter { get; private set; }
 
         public string HelpText { get; }
