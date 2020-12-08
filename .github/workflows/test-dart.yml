@@ -1,0 +1,22 @@
+name: Test Dart
+on:
+  push:
+    branches:
+      - master
+      - test-actions
+jobs:
+  test-typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: cedx/setup-dart@v2
+      - uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '5.0.x' # SDK Version to use; x will use the latest version of the 5.0 channel
+      - name: Build and run tests
+        run: |
+          mkdir gen
+          dotnet run --project ../../Compiler --lang dart --files ../Schemas/*.bop --out gen/gen.dart
+          dart pub get
+          dart pub run test
+        working-directory: ./Laboratory/Dart
