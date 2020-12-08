@@ -1,10 +1,11 @@
 import '../gen/gen.dart';
 import 'package:test/test.dart';
+import 'dart:io';
 
 void main() {
   group('Tests', () {
     test('ArrayOfStrings', () {
-      var test = ArrayOfStrings()..strings = ['abc', 'def'];
+      var test = ArrayOfStrings(strings: ['abc', 'def']);
       var buffer = ArrayOfStrings.encode(test);
       var expectedBuffer =
           [2, 0, 0, 0, 3, 0, 0, 0, 97] + [98, 99, 3, 0, 0, 0, 100, 101, 102];
@@ -23,8 +24,8 @@ void main() {
     });
 
     test('Library', () {
-      var test = Library()
-        ..songs = {
+      var test = Library(
+        songs: {
           '4f40c472-2eca-4375-b9c6-f8aa87684579': Song()
             ..title = 'Donna Lee'
             ..year = 1947
@@ -38,13 +39,24 @@ void main() {
             ..performers = [
               Musician(name: 'Dizzy Gillespie', plays: Instrument.Trumpet),
             ],
-        };
+        },
+      );
       var donna = '4f40c472-2eca-4375-b9c6-f8aa87684579';
       var buffer = Library.encode(test);
       var decoded = Library.decode(buffer);
       expect(decoded.songs, hasLength(2));
       expect(decoded.songs[donna].performers, hasLength(2));
       expect(decoded.songs[donna].performers[1].name, equals('Miles Davis'));
+    });
+
+    test('Library from binary', () async {
+      var buffer = await File('test/jazz-library.bin').readAsBytes();
+      var decoded = Library.decode(buffer);
+      expect(decoded.songs, hasLength(1));
+      var mySong = '81c6987b-48b7-495f-ad01-ec20cc5f5be1';
+      expect(decoded.songs[mySong].title, equals('Donna Lee'));
+      expect(decoded.songs[mySong].performers, hasLength(2));
+      expect(decoded.songs[mySong].performers[1].name, equals('Miles Davis'));
     });
   });
 }
