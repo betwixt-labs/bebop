@@ -1,13 +1,15 @@
 {
   "name": "bebop",
-  "version": "0.1.0",
-  "description": "Bebop TypeScript runtime",
+  "version": "2.0.0",
+  "description": "The TypeScript runtime for Bebop, a schema-based binary serialization format.",
+  "keywords": ["bebop", "serialization", "binary"],
+  "homepage": "https://github.com/RainwayApp/bebop",
   "main": "dest/index.js",
   "scripts": {
     "build": "tsc"
   },
-  "author": "Rainway, Inc.",
-  "license": "UNLICENSED",
+  "author": "The Bebop Authors",
+  "license": "Apache-2.0",
   "dependencies": {
     "@types/node": "^14.14.7"
   }
