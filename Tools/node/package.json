@@ -1,6 +1,6 @@
 {
   "name": "bebop-tools",
-  "version": "2.0.0",
+  "version": "2.0.2",
   "description": "Bebop compiler for Node projects.",
   "main": "dist/index.js",
   "repository": "https://github.com/RainwayApp/bebop",
