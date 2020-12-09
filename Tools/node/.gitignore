@@ -1,3 +1,4 @@
 tools/linux/*
 tools/macos/*
 tools/windows/*
+dist
