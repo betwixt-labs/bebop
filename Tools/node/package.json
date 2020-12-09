@@ -7,6 +7,7 @@
   "author": "Evan Banyash",
   "license": "Apache-2.0",
   "private": false,
+  "keywords": ["bebop", "binary", "serialization", "compiler"],
   "scripts": {
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./"
