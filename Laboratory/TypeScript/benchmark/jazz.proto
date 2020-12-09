@@ -1,0 +1,25 @@
+enum Instrument {
+    Sax = 0;
+    Trumpet = 1;
+    Clarinet = 2;
+}
+
+message Musician {
+    string name = 1;
+    Instrument plays = 2;
+}
+
+message Song {
+    string title = 1;
+    uint32 year = 2;
+    repeated Musician performers = 3;
+}
+
+message GuidSongPair {
+    string key = 1;
+    Song value = 2;
+}
+
+message Library {
+    repeated GuidSongPair songs = 1;
+}

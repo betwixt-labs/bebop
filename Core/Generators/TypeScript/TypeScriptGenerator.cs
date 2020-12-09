@@ -301,92 +301,94 @@ namespace Core.Generators.TypeScript
         /// <returns>The generated code.</returns>
         public override string Compile()
         {
-            var builder = new StringBuilder();
+            var builder = new IndentedStringBuilder();
             builder.AppendLine("import { BebopView } from \"bebop\";");
             builder.AppendLine("");
             if (!string.IsNullOrWhiteSpace(Schema.Namespace))
             {
                 builder.AppendLine($"export namespace {Schema.Namespace} {{");
+                builder.Indent(2);
             }
 
             foreach (var definition in Schema.Definitions.Values)
             {
                 if(!string.IsNullOrWhiteSpace(definition.Documentation))
                 {
-                    builder.Append(FormatDocumentation(definition.Documentation, string.Empty, 2));
+                    builder.AppendLine(FormatDocumentation(definition.Documentation, string.Empty, 0));
                 }
                 if (definition.Kind == AggregateKind.Enum)
                 {
-                    builder.AppendLine($"  export enum {definition.Name} {{");
+                    builder.AppendLine($"export enum {definition.Name} {{");
                     for (var i = 0; i < definition.Fields.Count; i++)
                     {
                         var field = definition.Fields.ElementAt(i);
-                        var comma = i + 1 < definition.Fields.Count ? "," : "";
                         var deprecationReason = field.DeprecatedAttribute?.Value ?? string.Empty;
                         if (!string.IsNullOrWhiteSpace(field.Documentation))
                         {
-                            builder.Append(FormatDocumentation(field.Documentation, deprecationReason, 5));
+                            builder.AppendLine(FormatDocumentation(field.Documentation, deprecationReason, 2));
                         } else if (string.IsNullOrWhiteSpace(field.Documentation) && !string.IsNullOrWhiteSpace(deprecationReason))
                         {
-                            builder.Append(FormatDeprecationDoc(deprecationReason, 5));
+                            builder.AppendLine(FormatDeprecationDoc(deprecationReason, 2));
                         }
-                        builder.AppendLine($"      {field.Name} = {field.ConstantValue}{comma}");
+                        builder.AppendLine($"  {field.Name} = {field.ConstantValue},");
                     }
-                    builder.AppendLine("  }");
+                    builder.AppendLine("}");
+                    builder.AppendLine("");
                 }
 
                 if (definition.Kind == AggregateKind.Message || definition.Kind == AggregateKind.Struct)
                 {
-                    builder.AppendLine($"  export interface I{definition.Name} {{");
+                    builder.AppendLine($"export interface I{definition.Name} {{");
                     for (var i = 0; i < definition.Fields.Count; i++)
                     {
                         var field = definition.Fields.ElementAt(i);
                         var type = TypeName(field.Type);
-                        var comma = i + 1 < definition.Fields.Count ? "," : "";
                         var deprecationReason = field.DeprecatedAttribute?.Value ?? string.Empty;
                         if (!string.IsNullOrWhiteSpace(field.Documentation))
                         {
-                            builder.Append(FormatDocumentation(field.Documentation, deprecationReason, 3));
+                            builder.AppendLine(FormatDocumentation(field.Documentation, deprecationReason, 2));
                         }
                         else if (string.IsNullOrWhiteSpace(field.Documentation) && !string.IsNullOrWhiteSpace(deprecationReason))
                         {
-                            builder.Append(FormatDeprecationDoc(deprecationReason, 3));
+                            builder.AppendLine(FormatDeprecationDoc(deprecationReason, 2));
                         }
-                        builder.AppendLine($"    {(definition.IsReadOnly ? "readonly " : "")}{field.Name.ToCamelCase()}{(definition.Kind == AggregateKind.Message ? "?" : "")}: {type}");
+                        builder.AppendLine($"  {(definition.IsReadOnly ? "readonly " : "")}{field.Name.ToCamelCase()}{(definition.Kind == AggregateKind.Message ? "?" : "")}: {type};");
                     }
-                    builder.AppendLine("  }");
+                    builder.AppendLine("}");
                     builder.AppendLine("");
 
-                    builder.AppendLine($"  export const {definition.Name} = {{");
+                    builder.AppendLine($"export const {definition.Name} = {{");
                     if (definition.OpcodeAttribute != null)
                     {
-                        builder.AppendLine($"    opcode: {definition.OpcodeAttribute.Value},");
+                        builder.AppendLine($"  opcode: {definition.OpcodeAttribute.Value},");
                     }
-                    builder.AppendLine($"    encode(message: I{definition.Name}): Uint8Array {{");
-                    builder.AppendLine("      const view = BebopView.getInstance();");
-                    builder.AppendLine("      view.startWriting();");
-                    builder.AppendLine("      this.encodeInto(message, view);");
-                    builder.AppendLine("      return view.toArray();");
-                    builder.AppendLine("    },");
+                    builder.AppendLine($"  encode(message: I{definition.Name}): Uint8Array {{");
+                    builder.AppendLine("    const view = BebopView.getInstance();");
+                    builder.AppendLine("    view.startWriting();");
+                    builder.AppendLine("    this.encodeInto(message, view);");
+                    builder.AppendLine("    return view.toArray();");
+                    builder.AppendLine("  },");
                     builder.AppendLine("");
-                    builder.AppendLine($"    encodeInto(message: I{definition.Name}, view: BebopView): void {{");
-                    builder.Append(CompileEncode(definition));
-                    builder.AppendLine("    },");
+                    builder.AppendLine($"  encodeInto(message: I{definition.Name}, view: BebopView): void {{");
+                    builder.AppendLine(CompileEncode(definition));
+                    builder.AppendLine("  },");
                     builder.AppendLine("");
-                    builder.AppendLine($"    decode(buffer: Uint8Array): I{definition.Name} {{");
-                    builder.AppendLine($"      const view = BebopView.getInstance();");
-                    builder.AppendLine($"      view.startReading(buffer);");
-                    builder.AppendLine($"      return this.readFrom(view);");
-                    builder.AppendLine($"    }},");
+                    builder.AppendLine($"  decode(buffer: Uint8Array): I{definition.Name} {{");
+                    builder.AppendLine($"    const view = BebopView.getInstance();");
+                    builder.AppendLine($"    view.startReading(buffer);");
+                    builder.AppendLine($"    return this.readFrom(view);");
+                    builder.AppendLine($"  }},");
                     builder.AppendLine($"");
-                    builder.AppendLine($"    readFrom(view: BebopView): I{definition.Name} {{");
-                    builder.Append(CompileDecode(definition));
-                    builder.AppendLine("    },");
-                    builder.AppendLine("  };");
+                    builder.AppendLine($"  readFrom(view: BebopView): I{definition.Name} {{");
+                    builder.AppendLine(CompileDecode(definition));
+                    builder.AppendLine("  },");
+                    builder.AppendLine("};");
+                    builder.AppendLine("");
                 }
             }
             if (!string.IsNullOrWhiteSpace(Schema.Namespace))
             {
+                builder.Dedent(2);
                 builder.AppendLine("}");
             }
 
