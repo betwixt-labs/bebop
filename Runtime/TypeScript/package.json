@@ -1,6 +1,6 @@
 {
   "name": "bebop",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "The TypeScript runtime for Bebop, a schema-based binary serialization format.",
   "keywords": [
     "bebop",
