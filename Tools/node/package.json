@@ -4,7 +4,7 @@
   "description": "Bebop compiler for javascript projects.",
   "main": "dist/index.js",
   "repository": "https://github.com/RainwayApp/bebop",
-  "author": "Evan Banyash",
+  "author": "The Bebop Authors",
   "license": "Apache-2.0",
   "private": false,
   "keywords": ["bebop", "binary", "serialization", "compiler"],
