@@ -1,29 +1,27 @@
-let preElem = document.querySelector('.logo-code')
-let originalCode = preElem.innerText
+let preElem = document.querySelector('.logo-code');
+let originalCode = preElem.innerText;
 
-console.log(originalCode)
-
-let newCharacters = ['0', '1']
+let newCharacters = ['0', '1'];
 function animateCode() {
-    preElem.innerText = originalCode
-    let newCode = ''
+    preElem.innerText = originalCode;
+    let newCode = '';
 
-    var s = preElem.innerText.split('')
+    var s = preElem.innerText.split('');
     for (var i = 0; i < s.length; i++) {
         if (Math.random() > 0.1) { 
-            newCode += s[i]
-            continue 
+            newCode += s[i];
+            continue;
         }
         if (s[i] == ' ' || s[i] == '\n') {
-            newCode += s[i]
+            newCode += s[i];
         }
         else {
-            s[i] = newCharacters[Math.floor(Math.random() * newCharacters.length)]
-            newCode += s[i]
+            s[i] = newCharacters[Math.floor(Math.random() * newCharacters.length)];
+            newCode += s[i];
         }
     }
 
-    preElem.innerText = newCode
+    preElem.innerText = newCode;
 }
 
-setInterval(animateCode, 200)
+setInterval(animateCode, 200);
