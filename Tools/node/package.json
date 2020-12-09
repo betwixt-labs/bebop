@@ -10,6 +10,7 @@
   "keywords": ["bebop", "binary", "serialization", "compiler"],
   "scripts": {
     "compile": "tsc -p ./",
+    "install": "node ./scripts/install.js",
     "watch": "tsc -watch -p ./"
   },
   "bin": {
