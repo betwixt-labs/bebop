@@ -9,7 +9,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Test", "Test\Test.csproj", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Benchmarks", "Benchmarks\Benchmarks.csproj", "{32498399-92F5-47C8-B792-235A7E311F95}"
 EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "GeneratedTestCode", "GeneratedTestCode\GeneratedTestCode.shproj", "{CADEF40F-BDCC-40EE-8995-C5D33194431B}"
+EndProject
 Global
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		GeneratedTestCode\GeneratedTestCode.projitems*{a54205bb-1ecc-4901-9cda-2f2186ad0584}*SharedItemsImports = 5
+		GeneratedTestCode\GeneratedTestCode.projitems*{cadef40f-bdcc-40ee-8995-c5d33194431b}*SharedItemsImports = 13
+	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU

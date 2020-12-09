@@ -44,4 +44,9 @@ namespace Core.Meta.Interfaces
         /// </summary>
         public string Documentation { get; }
     }
+
+    public static class FieldExtensions
+    {
+        public static bool IsCollection(this IField field) => field.Type is ArrayType || field.Type is MapType;
+    }
 }

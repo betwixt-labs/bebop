@@ -72,8 +72,12 @@ namespace Core.Lexer.Tokenization
             var inLineComment = false;
             while (true)
             {
-                // Parse \r or \n or \r\n as a newline.
                 var c = _reader.PeekChar();
+                
+                // Report EOF no matter what.
+                if (c == '\0') return c;
+                
+                // Parse \r or \n or \r\n as a newline.
                 var isNewLine = false;
                 if (c == '\r')
                 {

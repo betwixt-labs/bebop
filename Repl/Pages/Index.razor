@@ -2,11 +2,89 @@
 @using Core.Generators
 @using Core.Meta
 @using Core.Parser
+@inject IJSRuntime JS
 
 
-<h1>REPL - (@GetCompilerName() / @GetCompilerVersion())</h1>
+<div class="container">
+    <div class="side-by-side">
+        <section>
+            <textarea id="schema" autofocus autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+                @oninput="OnInput" placeholder="struct Point { int32 x; int32 y; }"></textarea>
+        </section>
+        <section class="code-section">
+            @* ReSharper disable once UnknownCssClass *@
+            <pre class="language-ts"><code id="output">Generated code will appear here.</code></pre>
+        </section>
+    </div>
+    <div class="toolbar">
+        <label for="generators">Generate code for:</label>
+
+        <select @bind="SelectedGenerator" id="generators">
+            @foreach (var (key, value) in GeneratorUtils.ImplementedGeneratorNames)
+            {
+                <option value="@key">@value</option>
+            }
+        </select>
+    </div>
+</div>
+
+@code {
+    string _selectedGenerator = "ts";
+    string SelectedGenerator
+    {
+        get => _selectedGenerator;
+        set
+        {
+            if (_selectedGenerator != value)
+            {
+                _selectedGenerator = value;
+                ShowOutput().GetAwaiter().GetResult();
+            }
+        }
+    }
+    string _schema = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            if (await JS.InvokeAsync<bool>("hasExampleParam"))
+            {
+                await JS.InvokeVoidAsync("setExampleSchema");
+                _schema = GetExampleSchema();
+            }
+        }
+    }
+
+
+}
 
 @functions {
+    [JSInvokable]
+    public static string GetExampleSchema()
+    {
+        const string exampleSchema = @"enum Instrument {
+    Sax = 0;
+    Trumpet = 1;
+    Clarinet = 2;
+}
+
+readonly struct Musician {
+    string name;
+    Instrument plays;
+}
+
+message Song {
+    1 -> string title;
+    2 -> uint16 year;
+    3 -> Musician[] performers;
+}
+
+struct Library {
+    map[guid, Song] songs;
+}";
+        return exampleSchema;
+    }
 
     [JSInvokable]
     public static string GetCompilerName()
@@ -71,38 +149,17 @@
         }
     }
 
-
-    [JSInvokable]
-    public static async Task<CompilerOutput> TestSchema()
+    private async Task ShowOutput()
     {
-        const string example =
-            @"
-enum FurnitureFamily {
-    Bed = 0;
-    Table = 1;
-    Shoe = 2;
-}
-
-readonly struct Furniture {
-    string name;
-    uint32 price;
-	FurnitureFamily family;
-}
-
-[opcode(""IKEA"")]
-message RequestCatalog {
-    FurnitureFamily family = 1;
-	[deprecated(""Nobody react to what I'm about to say..."")]
-	string secretTunnel = 2;
-}
-
-[opcode(0x31323334)]
-readonly struct RequestResponse {
-    Furniture[] availableFurniture;
-}
-";
-        return await CompileSchema(example, "cs");
+        var co = await CompileSchema(_schema, SelectedGenerator);
+        await JS.InvokeVoidAsync("showOutput", SelectedGenerator, co.IsOk, co.Result);
     }
 
+    [JSInvokable]
+    private async Task OnInput(ChangeEventArgs e)
+    {
+        _schema = e.Value as string;
+        await ShowOutput();
+    }
 
 }

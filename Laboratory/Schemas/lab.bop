@@ -7,10 +7,10 @@ struct Float64s { float64[] a; }
 
 enum VideoCodec { H264=0; H265=1; }
 struct VideoData { float64 time; uint32 width; uint32 height; byte[] fragment; }
-message MediaMessage { VideoCodec codec=1; VideoData data=2; }
+message MediaMessage { 1 -> VideoCodec codec; 2 -> VideoData data; }
 
 // Should be able to decode a "SkipTestNewContainer" as a "SkipTestOldContainer".
-message SkipTestOld { int32 x=1; int32 y=2; }
-message SkipTestNew { int32 x=1; int32 y=2; int32 z=3; }
-message SkipTestOldContainer { SkipTestOld s=1; int32 after=2; }
-message SkipTestNewContainer { SkipTestNew s=1; int32 after=2; }
+message SkipTestOld { 1->int32 x; 2->int32 y; }
+message SkipTestNew { 1->int32 x; 2->int32 y; 3->int32 z; }
+message SkipTestOldContainer { 1->SkipTestOld s; 2->int32 after; }
+message SkipTestNewContainer { 1->SkipTestNew s; 2->int32 after; }

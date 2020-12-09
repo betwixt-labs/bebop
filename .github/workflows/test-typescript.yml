@@ -1,0 +1,23 @@
+name: Test TypeScript
+on:
+  push:
+    branches:
+      - master
+      - test-action-new-cli
+jobs:
+  test-typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-node@v1
+        with:
+          node-version: '12'
+      - uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '5.0.x' # SDK Version to use; x will use the latest version of the 5.0 channel
+      - name: Build and run tests
+        run: |
+          npm install
+          bash compile-schemas.sh
+          npm run test
+        working-directory: ./Laboratory/TypeScript

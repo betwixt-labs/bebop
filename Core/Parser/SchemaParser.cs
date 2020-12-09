@@ -110,7 +110,7 @@ namespace Core.Parser
         /// </summary>
         /// <param name="kind">The <see cref="TokenKind"/> to eat</param>
         /// <returns></returns>
-        private void Expect(TokenKind kind)
+        private void Expect(TokenKind kind, string? hint = null)
         {
 
             // don't throw on block comment tokens
@@ -120,7 +120,7 @@ namespace Core.Parser
             }
             if (!Eat(kind))
             {
-                throw new UnexpectedTokenException(kind, CurrentToken);
+                throw new UnexpectedTokenException(kind, CurrentToken, hint);
             }
         }
 
@@ -236,8 +236,10 @@ namespace Core.Parser
             BaseAttribute? opcodeAttribute)
         {
             var fields = new List<IField>();
+            var kindName = kind switch { AggregateKind.Enum => "enum", AggregateKind.Struct => "struct", _ => "message" };
+            var aKindName = kind switch { AggregateKind.Enum => "an enum", AggregateKind.Struct => "a struct", _ => "a message" };
 
-            Expect(TokenKind.Identifier);
+            Expect(TokenKind.Identifier, hint: $"Did you forget to specify a name for this {kindName}?");
             Expect(TokenKind.OpenBrace);
             var definitionEnd = CurrentToken.Span;
             while (!Eat(TokenKind.CloseBrace))
@@ -254,6 +256,18 @@ namespace Core.Parser
 
                 var deprecatedAttribute = EatAttribute(TokenKind.Deprecated);
 
+                if (kind == AggregateKind.Message)
+                {
+                    var indexHint = "Fields in a message must be explicitly indexed: message A { 1 -> string s; 2 -> bool b; }";
+                    var indexLexeme = CurrentToken.Lexeme;
+                    Expect(TokenKind.Number, hint: indexHint);
+                    value = int.Parse(indexLexeme);
+                    // Parse an arrow ("->").
+                    Expect(TokenKind.Hyphen, hint: indexHint);
+                    Expect(TokenKind.CloseCaret, hint: indexHint);
+                }
+
+                // Parse a type name, if this isn't an enum:
                 TypeBase type = kind == AggregateKind.Enum
                     ? new ScalarType(BaseType.UInt32, definitionToken.Span, definitionToken.Lexeme)
                     : ParseType(definitionToken);
@@ -267,16 +281,17 @@ namespace Core.Parser
 
                 Expect(TokenKind.Identifier);
 
-                if (kind != AggregateKind.Struct)
+                if (kind == AggregateKind.Enum)
                 {
-                    Expect(TokenKind.Eq);
-                    value = int.Parse(CurrentToken.Lexeme);
-                    Expect(TokenKind.Number);
+                    Expect(TokenKind.Eq, hint: "Every constant in an enum must have an explicit literal value.");
+                    var valueLexeme = CurrentToken.Lexeme;
+                    Expect(TokenKind.Number, hint: "An enum constant must have a literal integer value.");
+                    value = int.Parse(valueLexeme);
                 }
                 
 
                 var fieldEnd = CurrentToken.Span;
-                Expect(TokenKind.Semicolon);
+                Expect(TokenKind.Semicolon, hint: $"Elements in {aKindName} are delimited using semicolons.");
                 fields.Add(new Field(fieldName, type, fieldStart.Combine(fieldEnd), deprecatedAttribute, value, fieldDocumentation));
                 definitionEnd = CurrentToken.Span;
             }
@@ -307,24 +322,26 @@ namespace Core.Parser
             if (Eat(TokenKind.Map))
             {
                 // Parse "map[k, v]".
-                Expect(TokenKind.OpenBracket);
+                var mapHint = "The syntax for map types is: map[KeyType, ValueType].";
+                Expect(TokenKind.OpenBracket, hint: mapHint);
                 var keyType = ParseType(definitionToken);
                 if (!IsValidMapKeyType(keyType))
                 {
                     throw new InvalidMapKeyTypeException(keyType);
                 }
-                Expect(TokenKind.Comma);
+                Expect(TokenKind.Comma, hint: mapHint);
                 var valueType = ParseType(definitionToken);
                 span = span.Combine(CurrentToken.Span);
-                Expect(TokenKind.CloseBracket);
+                Expect(TokenKind.CloseBracket, hint: mapHint);
                 type = new MapType(keyType, valueType, span, $"map[{keyType.AsString}, {valueType.AsString}]");
             }
             else if (Eat(TokenKind.Array))
             {
                 // Parse "array[v]".
-                Expect(TokenKind.OpenBracket);
+                var arrayHint = "The syntax for array types is either array[Type] or Type[].";
+                Expect(TokenKind.OpenBracket, hint: arrayHint);
                 var valueType = ParseType(definitionToken);
-                Expect(TokenKind.CloseBracket);
+                Expect(TokenKind.CloseBracket, hint: arrayHint);
                 type = new ArrayType(valueType, span, $"array[{valueType.AsString}]");
             }
             else if (CurrentToken.TryParseBaseType(out var baseType))
@@ -345,7 +362,7 @@ namespace Core.Parser
             while (Eat(TokenKind.OpenBracket))
             {
                 span = span.Combine(CurrentToken.Span);
-                Expect(TokenKind.CloseBracket);
+                Expect(TokenKind.CloseBracket, hint: "The syntax for array types is T[]. You can't specify a fixed size.");
                 type = new ArrayType(type, span, $"{type.AsString}[]");
             }
 

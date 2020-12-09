@@ -14,7 +14,9 @@ namespace Compiler
 {
     internal class Program
     {
-        private static Lager _log;
+        private const int Ok = 0;
+        private const int Err = 1;
+        private static readonly Lager Log = Lager.CreateLogger(LogFormatter.Structured);
         private static CommandLineFlags? _flags;
 
         private static async Task WriteHelpText()
@@ -28,14 +30,15 @@ namespace Compiler
 
         private static async Task<int> Main(string[] args)
         {
-            var formatter = CommandLineFlags.FindLogFormatter(args);
-            _log = Lager.CreateLogger(formatter);
+            Log.Formatter = CommandLineFlags.FindLogFormatter(args);
 
             if (!CommandLineFlags.TryParse(args, out _flags, out var message))
             {
-                await _log.Error(new CompilerException(message));
+                await Log.Error(new CompilerException(message));
                 return 1;
             }
+
+          
 
             if (_flags.Version)
             {
@@ -48,32 +51,34 @@ namespace Compiler
                 await WriteHelpText();
                 return 0;
             }
-
+            if (_flags.CheckSchemaFile is not null)
+            {
+                if (string.IsNullOrWhiteSpace(_flags.CheckSchemaFile))
+                {
+                    await Log.Error(new CompilerException("No textual schema was read from standard input."));
+                    return 1;
+                }
+                return await CheckSchema(_flags.CheckSchemaFile);
+            }
             if (_flags.CheckSchemaFiles is not null)
             {
                 if (_flags.CheckSchemaFiles.Count > 0)
                 {
                     return await CheckSchemas(_flags.CheckSchemaFiles);
                 }
-                await _log.Error(new CompilerException("No schemas specified in check."));
+                await Log.Error(new CompilerException("No schemas specified in check."));
                 return 1;
             }
 
-            if (string.IsNullOrWhiteSpace(_flags.Language))
+            if (!_flags.GetParsedGenerators().Any())
             {
-                await _log.Error(new CompilerException("No code generator was specified."));
-                return 1;
-            }
-
-            if (!GeneratorUtils.ImplementedGenerators.ContainsKey(_flags.Language))
-            {
-                await _log.Error(new CompilerException($"'{_flags.Language}' is not a recognized code generator"));
+                await Log.Error(new CompilerException("No code generators were specified."));
                 return 1;
             }
 
             if (_flags.SchemaDirectory is not null && _flags.SchemaFiles is not null)
             {
-                await _log.Error(
+                await Log.Error(
                     new CompilerException("Can't specify both an input directory and individual input files"));
                 return 1;
             }
@@ -93,24 +98,50 @@ namespace Compiler
             }
             else
             {
-                await _log.Error(new CompilerException("Specify one or more input files with --dir or --files."));
+                await Log.Error(new CompilerException("Specify one or more input files with --dir or --files."));
                 return 1;
             }
-
             if (paths.Count == 0)
             {
-                await _log.Error(new CompilerException("No input files were found at the specified target location."));
+                await Log.Error(new CompilerException("No input files were found at the specified target location."));
                 return 1;
             }
 
-            if (string.IsNullOrWhiteSpace(_flags.OutputFile))
+            foreach (var parsedGenerator in _flags.GetParsedGenerators())
             {
-                await _log.Error(new CompilerException("No output file was specified."));
-                return 1;
+                if (!GeneratorUtils.ImplementedGenerators.ContainsKey(parsedGenerator.Alias))
+                {
+                    await Log.Error(new CompilerException($"'{parsedGenerator.Alias}' is not a recognized code generator"));
+                    return 1;
+                }
+                if (string.IsNullOrWhiteSpace(parsedGenerator.OutputFile))
+                {
+                    await Log.Error(new CompilerException("No output file was specified."));
+                    return 1;
+                }
+                var result = await CompileSchema(GeneratorUtils.ImplementedGenerators[parsedGenerator.Alias], paths, new FileInfo(parsedGenerator.OutputFile), _flags.Namespace ?? "");
+                if (result != Ok)
+                {
+                    return result;
+                }
             }
+            return Ok;
+        }
 
-            return await CompileSchema(GeneratorUtils.ImplementedGenerators[_flags!.Language],
-                paths, new FileInfo(_flags.OutputFile), _flags.Namespace ?? "");
+        private static async Task<int> CheckSchema(string textualSchema)
+        {
+            try
+            {
+                var parser = new SchemaParser(textualSchema, "CheckNameSpace");
+                var schema = await parser.Evaluate();
+                schema.Validate();
+                return Ok;
+            }
+            catch (Exception e)
+            {
+                await ReportError(e);
+                return Err;
+            }
         }
 
         private static async Task<ISchema> ParseAndValidateSchemas(List<string> schemaPaths, string nameSpace)
@@ -142,13 +173,13 @@ namespace Compiler
                 generator.WriteAuxiliaryFiles(outputFile.DirectoryName ?? string.Empty);
                 var compiled = generator.Compile();
                 await File.WriteAllTextAsync(outputFile.FullName, compiled);
-                return 0;
+                return Ok;
             }
             catch (Exception e)
             {
                 await ReportError(e);
             }
-            return 1;
+            return Err;
         }
 
         private static async Task<int> CheckSchemas(List<string> schemaPaths)
@@ -156,18 +187,18 @@ namespace Compiler
             try
             {
                 await ParseAndValidateSchemas(schemaPaths, "CheckNameSpace");
-                return 0;
+                return Ok;
             }
             catch (Exception e)
             {
                 await ReportError(e);
-                return 1;
+                return Err;
             }
         }
 
         private static async Task ReportError(Exception exception)
         {
-            await _log.Error(exception);
+            await Log.Error(exception);
         }
     }
 }

@@ -1,6 +1,6 @@
 import { IArrayOfStrings, ArrayOfStrings } from '../test/generated/array_of_strings';
 import benchmark = require('benchmark');
-import { BebopView } from '../test/generated/BebopView';
+import { BebopView } from 'bebop';
 const suite = new benchmark.Suite();
 
 for (const length of [400, 380, 360, 340, 320, 300, 280, 260, 240, 220, 200]) {

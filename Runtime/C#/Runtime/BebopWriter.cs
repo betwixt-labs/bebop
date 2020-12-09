@@ -8,6 +8,9 @@ using static System.Runtime.InteropServices.MemoryMarshal;
 
 namespace Bebop.Runtime
 {
+    /// <summary>
+    /// A Bebop writer runtime implementation for .NET
+    /// </summary>
     public ref struct BebopWriter
     {
         // ReSharper disable once InconsistentNaming
@@ -37,9 +40,15 @@ namespace Bebop.Runtime
         [MethodImpl(BebopConstants.HotPath)]
         private static ImmutableArray<T> AsImmutable<T>(T[] array) => As<T[], ImmutableArray<T>>(ref array);
 
+        /// <summary>
+        /// Converts the specified <paramref name="enum"/> to an unsigned integer without boxing.
+        /// </summary>
+        /// <typeparam name="T">The type of enum.</typeparam>
+        /// <param name="enum">The enum member to convert.</param>
+        /// <returns>The constant of the provided <paramref name="enum"/></returns>
         [MethodImpl(BebopConstants.HotPath)]
-        private static uint ConvertEnum<T>(T enumValue) where T : struct, Enum =>
-            As<T, uint>(ref enumValue);
+        private static uint ConvertEnum<T>(T @enum) where T : struct, Enum =>
+            As<T, uint>(ref @enum);
 
         /// <summary>
         ///     Allocates a new <see cref="BebopWriter"/> instance backed by an empty array.
@@ -47,13 +56,25 @@ namespace Bebop.Runtime
         /// <returns></returns>
         [MethodImpl(BebopConstants.HotPath)]
         public static BebopWriter Create() => new(Array.Empty<byte>());
-
+        /// <summary>
+        /// Creates a new <see cref="BebopWriter"/> instance from the specified <paramref name="buffer"/>
+        /// </summary>
+        /// <param name="buffer">The buffer a Bebop record will be written to.</param>
+        /// <returns>The initialized <see cref="BebopWriter"/></returns>
         [MethodImpl(BebopConstants.HotPath)]
         public static BebopWriter From(Memory<byte> buffer) => From(buffer.Span);
-
+        /// <summary>
+        /// Creates a new <see cref="BebopWriter"/> instance from the specified <paramref name="buffer"/>
+        /// </summary>
+        /// <param name="buffer">The buffer a Bebop record will be written to.</param>
+        /// <returns>The initialized <see cref="BebopWriter"/></returns>
         [MethodImpl(BebopConstants.HotPath)]
         public static BebopWriter From(byte[] buffer) => new(buffer);
-
+        /// <summary>
+        /// Creates a new <see cref="BebopWriter"/> instance from the specified <paramref name="buffer"/>
+        /// </summary>
+        /// <param name="buffer">The buffer a Bebop record will be written to.</param>
+        /// <returns>The initialized <see cref="BebopWriter"/></returns>
         [MethodImpl(BebopConstants.HotPath)]
         public static BebopWriter From(Span<byte> buffer) => new(buffer);
 
@@ -64,19 +85,21 @@ namespace Bebop.Runtime
         public ReadOnlySpan<byte> Slice() => _buffer.Slice(0, Length);
 
         /// <summary>
-        ///     Copies the contents of <see cref="Slice"/> into a new array.  This heap
-        ///     allocates, so should generally be avoided for writing and only used when setting a decoded message property.
+        ///     Copies the contents of <see cref="Slice"/> into a new heap-allocated array.
         /// </summary>
         [MethodImpl(BebopConstants.HotPath)]
         public byte[] ToArray() => Slice().ToArray();
 
         /// <summary>
-        ///     Copies the contents of <see cref="Slice"/> into a new immutable array.  This heap
-        ///     allocates, so should generally be avoided for writing and only used when setting a decoded message property.
+        ///     Copies the contents of <see cref="Slice"/> into a new immutable heap-allocated array.
         /// </summary>
         [MethodImpl(BebopConstants.HotPath)]
         public ImmutableArray<byte> ToImmutableArray() => AsImmutable(Slice().ToArray());
 
+        /// <summary>
+        /// Creates a new writer from the specified <paramref name="buffer"/>.
+        /// </summary>
+        /// <param name="buffer"></param>
         private BebopWriter(Span<byte> buffer)
         {
             if (!BitConverter.IsLittleEndian)
@@ -87,6 +110,10 @@ namespace Bebop.Runtime
             Length = _buffer.Length;
         }
 
+        /// <summary>
+        /// Allocates more space to the current writing process.
+        /// </summary>
+        /// <param name="amount"></param>
         [MethodImpl(BebopConstants.HotPath)]
         private void GrowBy(int amount)
         {
@@ -221,6 +248,10 @@ namespace Bebop.Runtime
             WriteUnaligned(ref GetReference(_buffer.Slice(index, size)), value);
         }
 
+        /// <summary>
+        /// Writes an four-byte floating point value to the current buffer and advances the position by four bytes.
+        /// </summary>
+        /// <param name="value"></param>
         [MethodImpl(BebopConstants.HotPath)]
         public void WriteFloat32(float value)
         {
@@ -243,13 +274,20 @@ namespace Bebop.Runtime
             GrowBy(size);
             WriteUnaligned(ref GetReference(_buffer.Slice(index, size)), value);
         }
-
+        /// <summary>
+        /// Writes a <see cref="DateTime"/> (converted to UTC) to the current buffer and advances the position by eight bytes.
+        /// </summary>
+        /// <param name="date"></param>
         [MethodImpl(BebopConstants.HotPath)]
         public void WriteDate(DateTime date)
         {
             WriteInt64(date.ToUniversalTime().ToBinary());
         }
 
+        /// <summary>
+        /// Writes a <see cref="Guid"/> to the underlying buffer.
+        /// </summary>
+        /// <param name="guid"></param>
         [MethodImpl(BebopConstants.HotPath)]
         public void WriteGuid(Guid guid)
         {
@@ -309,22 +347,39 @@ namespace Bebop.Runtime
             WriteUnaligned(ref GetReference(_buffer.Slice(position, size)), messageLength);
         }
 
+        /// <summary>
+        /// Writes an array of <see cref="float"/> values to the underlying buffer.
+        /// </summary>
+        /// <param name="value"></param>
         [MethodImpl(BebopConstants.HotPath)]
-        public void WriteFloat32s(float[] value)
+        public void WriteFloat32S(float[] value)
         {
             WriteUInt32(unchecked((uint) value.Length));
             var index = Length;
-            GrowBy(value.Length);
-            AsBytes(value.AsSpan()).CopyTo(_buffer.Slice(index, value.Length));
+            var floatBytes = AsBytes<float>(value);
+            if (floatBytes.IsEmpty)
+            {
+                return;
+            }
+            GrowBy(floatBytes.Length);
+            floatBytes.CopyTo(_buffer.Slice(index, floatBytes.Length));
         }
-
+        /// <summary>
+        /// Writes an array of <see cref="double"/> values to the underlying buffer.
+        /// </summary>
+        /// <param name="value"></param>
         [MethodImpl(BebopConstants.HotPath)]
-        public void WriteFloat64s(double[] value)
+        public void WriteFloat64S(double[] value)
         {
             WriteUInt32(unchecked((uint) value.Length));
             var index = Length;
-            GrowBy(value.Length);
-            AsBytes(value.AsSpan()).CopyTo(_buffer.Slice(index, value.Length));
+            var doubleBytes = AsBytes<double>(value);
+            if (doubleBytes.IsEmpty)
+            {
+                return;
+            }
+            GrowBy(doubleBytes.Length);
+            doubleBytes.CopyTo(_buffer.Slice(index, doubleBytes.Length));
         }
 
         /// <summary>
@@ -352,6 +407,10 @@ namespace Bebop.Runtime
         public void WriteBytes(byte[] value)
         {
             WriteUInt32(unchecked((uint) value.Length));
+            if (value.Length == 0)
+            {
+                return;
+            }
             var index = Length;
             GrowBy(value.Length);
             value.AsSpan().CopyTo(_buffer.Slice(index, value.Length));

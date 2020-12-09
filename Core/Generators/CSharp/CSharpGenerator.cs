@@ -1,18 +1,18 @@
-﻿using System;
-using System.Linq;
-using Core.Meta;
+﻿using Core.Meta;
 using Core.Meta.Extensions;
 using Core.Meta.Interfaces;
+using System;
+using System.Linq;
+using System.Text;
 
 namespace Core.Generators.CSharp
 {
-    
+
     public class CSharpGenerator : Generator
     {
         const int indentStep = 2;
         private static readonly string GeneratedAttribute = $"[System.CodeDom.Compiler.GeneratedCode(\"{ReservedWords.CompilerName}\", \"{ReservedWords.CompilerVersion}\")]";
         private static readonly string RecordAttribute = $"[BebopRecord]";
-        private static readonly string EditorBrowsableAttribute = "[System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]";
         private const string HotPath = "[System.Runtime.CompilerServices.MethodImpl(BebopConstants.HotPath)]";
 
         private static readonly string WarningBlock = $@"//------------------------------------------------------------------------------
@@ -45,6 +45,7 @@ namespace Core.Generators.CSharp
             var builder = new IndentedStringBuilder();
             builder.AppendLine(WarningBlock);
             builder.AppendLine("using global::System.Collections.Immutable;");
+            builder.AppendLine("using global::System.Linq;");
             builder.AppendLine("using global::Bebop.Attributes;");
             builder.AppendLine("using global::Bebop.Runtime;");
             builder.AppendLine("//");
@@ -85,11 +86,12 @@ namespace Core.Generators.CSharp
                     }
                     builder.Dedent(indentStep);
                     builder.AppendLine("}");
+                    builder.AppendLine();
                 }
                 else if (definition.IsMessage() || definition.IsStruct())
                 {
                     var baseName = "Base" + definitionName;
-                    builder.AppendLine($"public abstract class {baseName} {{");
+                    builder.AppendLine($"public abstract class {baseName} : System.IEquatable<{baseName}> {{");
                     builder.Indent(indentStep);
                     if (definition.OpcodeAttribute is not null)
                     {
@@ -112,7 +114,15 @@ namespace Core.Generators.CSharp
                         {
                             builder.AppendLine($"[System.Obsolete(\"{field.DeprecatedAttribute.Value}\")]");
                         }
-                        var type = TypeName(field.Type, string.Empty, true);
+                        if (definition.IsStruct())
+                        {
+                            builder.AppendLine("[System.Diagnostics.CodeAnalysis.NotNull, System.Diagnostics.CodeAnalysis.DisallowNull]");
+                        } else if (definition.IsMessage())
+                        {
+                            builder.AppendLine(
+                                "[System.Diagnostics.CodeAnalysis.MaybeNull, System.Diagnostics.CodeAnalysis.AllowNull]");
+                        }
+                        var type = TypeName(field.Type, string.Empty);
                         var opt = definition.Kind == AggregateKind.Message && IsNullableType(field.Type) ? "?" : "";
                         var setOrInit = definition.IsReadOnly ? "init" : "set";
                         builder.AppendLine($"public {type}{opt} {field.Name.ToPascalCase()} {{ get; {setOrInit}; }}");
@@ -121,7 +131,9 @@ namespace Core.Generators.CSharp
                     {
                         builder.AppendLine("#nullable disable");
                     }
-
+                    builder.AppendLine();
+                    builder.AppendLine(GenerateEqualityMembers(definition));
+                    builder.AppendLine();
 
                     builder.Dedent(indentStep);
                     builder.AppendLine("}");
@@ -132,37 +144,39 @@ namespace Core.Generators.CSharp
                     builder.AppendLine($"public sealed class {definitionName} : {baseName} {{");
                     builder.Indent(indentStep);
                     builder.AppendLine(CompileEncodeHelper(definition, "byte[]", "Encode"));
+                    builder.AppendLine();
                     builder.AppendLine(CompileEncodeHelper(definition, "ImmutableArray<byte>", "EncodeAsImmutable"));
+                    builder.AppendLine();
                     builder.AppendLine(HotPath);
-                    builder.AppendLine(GeneratedAttribute);
-                    builder.AppendLine(EditorBrowsableAttribute);
                     builder.AppendLine($"internal static void EncodeInto({baseName} record, ref BebopWriter writer) {{");
                     builder.Indent(indentStep);
                     builder.AppendLine(CompileEncode(definition));
                     builder.Dedent(indentStep);
                     builder.AppendLine("}");
-                    builder.AppendLine("");
+                    builder.AppendLine();
                     builder.AppendLine(CompileDecodeHelper(definition, "byte[]"));
+                    builder.AppendLine();
                     builder.AppendLine(CompileDecodeHelper(definition, "System.ReadOnlySpan<byte>"));
+                    builder.AppendLine();
                     builder.AppendLine(CompileDecodeHelper(definition, "System.ReadOnlyMemory<byte>"));
+                    builder.AppendLine();
                     builder.AppendLine(CompileDecodeHelper(definition, "System.ArraySegment<byte>"));
+                    builder.AppendLine();
                     builder.AppendLine(CompileDecodeHelper(definition, "ImmutableArray<byte>"));
-
+                    builder.AppendLine();
+                    builder.AppendLine();
                     builder.AppendLine(HotPath);
-                    builder.AppendLine(GeneratedAttribute);
-                    builder.AppendLine(EditorBrowsableAttribute);
                     builder.AppendLine($"internal static {definitionName} DecodeFrom(ref BebopReader reader) {{");
                     builder.Indent(indentStep);
+                    builder.AppendLine();
                     // when you do new T() the compile uses System.Activator::CreateInstance
                     // this non-generic variant avoids that penalty hit.
                     // https://devblogs.microsoft.com/premier-developer/dissecting-the-new-constraint-in-c-a-perfect-example-of-a-leaky-abstraction/
                     builder.AppendLine(CompileDecode(definition, false));
                     builder.Dedent(indentStep);
                     builder.AppendLine("}");
-
+                    builder.AppendLine();
                     builder.AppendLine(HotPath);
-                    builder.AppendLine(GeneratedAttribute);
-                    builder.AppendLine(EditorBrowsableAttribute);
                     builder.AppendLine($"internal static T DecodeFrom<T>(ref BebopReader reader) where T: {baseName}, new() {{");
                     builder.Indent(indentStep);
                     // a generic decode method that allows for run-time polymorphism 
@@ -184,6 +198,102 @@ namespace Core.Generators.CSharp
             }
             return builder.ToString();
         }
+        /// <summary>
+        /// Generates code to implement <see cref="IEquatable{T}"/> in the base defined type.
+        /// </summary>
+        /// <param name="definition"></param>
+        /// <returns></returns>
+        private string GenerateEqualityMembers(IDefinition definition)
+        {
+            var baseName = $"Base{definition.Name.ToPascalCase()}";
+            var builder = new IndentedStringBuilder();
+            builder.AppendLine($"public bool Equals({baseName} other) {{");
+            builder.Indent(indentStep);
+            builder.AppendLine("if (ReferenceEquals(null, other)) {");
+            builder.Indent(indentStep);
+            builder.AppendLine("return false;");
+            builder.Dedent(indentStep);
+            builder.AppendLine("}");
+            builder.AppendLine("if (ReferenceEquals(this, other)) {");
+            builder.Indent(indentStep);
+            builder.AppendLine("return true;");
+            builder.Dedent(indentStep);
+            builder.AppendLine("}");
+
+            var returnStatement = new StringBuilder("return");
+            for (var i = 0; i < definition.Fields.Count; i++)
+            {
+                var field = definition.Fields.ElementAt(i);
+                var fieldName = field.Name.ToPascalCase();
+                var and = $"{(i == definition.Fields.Count - 1 ? "" : " &&")}";
+                var isNullableType = IsNullableType(field.Type);
+                var nullCheck = isNullableType ? "is null" : "== null";
+                var notNullCheck = isNullableType ? "is not null" : "!= null";
+                // for collections we try to be extra safe to avoid throwing exceptions.
+                returnStatement.Append(field.IsCollection()
+                    ? $" ({fieldName} {nullCheck} ? other.{fieldName} {nullCheck} : other.{fieldName} {notNullCheck} && {fieldName}.SequenceEqual(other.{fieldName})){and}"
+                    : $" {fieldName} == other.{fieldName}{and}");
+            }
+            returnStatement.Append(";");
+            builder.AppendLine(returnStatement.ToString());
+            builder.Dedent(indentStep);
+            builder.AppendLine("}");
+
+            builder.AppendLine();
+
+            builder.AppendLine("public override bool Equals(object obj) {");
+            builder.Indent(indentStep);
+            builder.AppendLine("if (ReferenceEquals(null, obj)) {");
+            builder.Indent(indentStep);
+            builder.AppendLine("return false;");
+            builder.Dedent(indentStep);
+            builder.AppendLine("}");
+            builder.AppendLine("if (ReferenceEquals(this, obj)) {");
+            builder.Indent(indentStep);
+            builder.AppendLine("return true;");
+            builder.Dedent(indentStep);
+            builder.AppendLine("}");
+            builder.AppendLine($"if (obj is not {baseName} baseType) {{");
+            builder.Indent(indentStep);
+            builder.AppendLine("return false;");
+            builder.Dedent(indentStep);
+            builder.AppendLine("}");
+
+            builder.AppendLine("return Equals(baseType);");
+            builder.Dedent(indentStep);
+            builder.AppendLine("}");
+            builder.AppendLine();
+            builder.AppendLine("public override int GetHashCode() {");
+            builder.Indent(indentStep);
+            builder.AppendLine("int hash = 1;");
+            for (var i = 0; i < definition.Fields.Count; i++)
+            {
+                var field = definition.Fields.ElementAt(i);
+                var fieldName = field.Name.ToPascalCase();
+                if (definition.IsMessage())
+                {
+                    var isNullableType = IsNullableType(field.Type);
+                    var nullCheck = isNullableType ? "is not null" : "!= null";
+                    var value = isNullableType && NeedsValueAppend(field.Type) && definition.IsMessage()
+                        ? $"{fieldName}.Value.GetHashCode();"
+                        : $"{fieldName}.GetHashCode();";
+                    builder.AppendLine($"if ({fieldName} {nullCheck}) hash ^= {value}");
+                }
+                else
+                {
+                    builder.AppendLine($"hash ^= {fieldName}.GetHashCode();");
+                }
+            }
+            builder.AppendLine("return hash;");
+            builder.Dedent(indentStep);
+            builder.AppendLine("}");
+            builder.AppendLine();
+            builder.AppendLine(
+                $"public static bool operator ==({baseName} left, {baseName} right) => Equals(left, right);");
+            builder.AppendLine(
+                $"public static bool operator !=({baseName} left, {baseName}  right) => !Equals(left, right);");
+            return builder.ToString();
+        }
 
         public override void WriteAuxiliaryFiles(string outputPath)
         {
@@ -195,49 +305,44 @@ namespace Core.Generators.CSharp
         /// </summary>
         /// <param name="type">The field type to generate code for.</param>
         /// <param name="arraySizeVar">A variable name that will be formatted into the array initializer</param>
-        /// <param name="isProperty">If true the specified type may need special formatting applied.</param>
         /// <returns>The C# type name.</returns>
-        private string TypeName(in TypeBase type, string arraySizeVar = "", bool isProperty = false)
+        private string TypeName(in TypeBase type, string arraySizeVar = "")
         {
-            switch (type)
+            return type switch
             {
-                case ScalarType st:
-                    return st.BaseType switch
-                    {
-                        BaseType.Bool => "bool",
-                        BaseType.Byte => "byte",
-                        BaseType.UInt32 => "uint",
-                        BaseType.Int32 => "int",
-                        BaseType.Float32 => "float",
-                        BaseType.Float64 => "double",
-                        BaseType.String => "string",
-                        BaseType.Guid => "System.Guid",
-                        BaseType.UInt16 => "ushort",
-                        BaseType.Int16 => "short",
-                        BaseType.UInt64 => "ulong",
-                        BaseType.Int64 => "long",
-                        BaseType.Date => "System.DateTime",
-                        _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
-                    };
-                case ArrayType {MemberType: ScalarType { BaseType: BaseType.Byte }} at:
+                ScalarType st => st.BaseType switch
                 {
-                    return $"ImmutableArray<{TypeName(at.MemberType)}>";
-                }
-                case ArrayType at:
-                    return $"{(at.MemberType is ArrayType ? ($"{TypeName(at.MemberType, arraySizeVar)}[]") : $"{TypeName(at.MemberType)}[{arraySizeVar}]")}";
-                case MapType mt:
-                    return $"System.Collections.Generic.Dictionary<{TypeName(mt.KeyType)}, {TypeName(mt.ValueType)}>";
-                case DefinedType dt:
-                    var isEnum = Schema.Definitions[dt.Name].Kind == AggregateKind.Enum;
-                    return $"{(isEnum ? string.Empty : "Base")}{dt.Name}";
-            }
-            throw new InvalidOperationException($"GetTypeName: {type}");
+                    BaseType.Bool => "bool",
+                    BaseType.Byte => "byte",
+                    BaseType.UInt32 => "uint",
+                    BaseType.Int32 => "int",
+                    BaseType.Float32 => "float",
+                    BaseType.Float64 => "double",
+                    BaseType.String => "string",
+                    BaseType.Guid => "System.Guid",
+                    BaseType.UInt16 => "ushort",
+                    BaseType.Int16 => "short",
+                    BaseType.UInt64 => "ulong",
+                    BaseType.Int64 => "long",
+                    BaseType.Date => "System.DateTime",
+                    _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
+                },
+                ArrayType {MemberType: ScalarType {BaseType: BaseType.Byte}} at =>
+                    $"ImmutableArray<{TypeName(at.MemberType)}>",
+                ArrayType at =>
+                    $"{(at.MemberType is ArrayType ? ($"{TypeName(at.MemberType, arraySizeVar)}[]") : $"{TypeName(at.MemberType)}[{arraySizeVar}]")}",
+                MapType mt =>
+                    $"System.Collections.Generic.Dictionary<{TypeName(mt.KeyType)}, {TypeName(mt.ValueType)}>",
+                DefinedType dt => $"{(IsEnum(dt) ? string.Empty : "Base")}{dt.Name}",
+                _ => throw new InvalidOperationException($"GetTypeName: {type}")
+            };
         }
 
         /// <summary>
         ///     Generate the body of the <c>DecodeFrom</c> function for the given <see cref="IDefinition"/>.
         /// </summary>
         /// <param name="definition">The definition to generate code for.</param>
+        /// <param name="useGenerics"></param>
         /// <returns>The generated C# <c>DecodeFrom</c> function body.</returns>
         public string CompileDecode(IDefinition definition, bool useGenerics)
         {
@@ -344,7 +449,7 @@ namespace Core.Generators.CSharp
                     $"{tab}}}" + nl +
                     $"}}",
                 MapType mt =>
-                    $"{{" + nl +
+                    "{" + nl +
                     $"{tab}var length{depth} = unchecked((int)reader.ReadUInt32());" + nl +
                     $"{tab}{target} = new {TypeName(mt)}(length{depth});" + nl +
                     $"{tab}for (var {i} = 0; {i} < length{depth}; {i}++) {{" + nl +
@@ -380,21 +485,17 @@ namespace Core.Generators.CSharp
             };
         }
 
-        public ArraySegment<byte> ToArray()
-        {
-            return new byte[0];
-        }
-
         /// <summary>
         ///     Generates the body of various helper methods to encode the given <see cref="IDefinition"/>
         /// </summary>
         /// <param name="definition"></param>
+        /// <param name="bufferType"></param>
+        /// <param name="methodName"></param>
         /// <returns></returns>
         public string CompileEncodeHelper(IDefinition definition, string bufferType, string methodName)
         {
             var returnMethod = bufferType.Equals("ImmutableArray<byte>") ? "ToImmutableArray" : "ToArray";
             var builder = new IndentedStringBuilder();
-            builder.AppendLine(GeneratedAttribute);
             builder.AppendLine(HotPath);
             builder.AppendLine($"public static {bufferType} {methodName}(Base{definition.Name.ToPascalCase()} record) {{");
             builder.Indent(indentStep);
@@ -404,7 +505,6 @@ namespace Core.Generators.CSharp
             builder.Dedent(indentStep);
             builder.AppendLine("}");
             builder.AppendLine("");
-            builder.AppendLine(GeneratedAttribute);
             builder.AppendLine(HotPath);
             builder.AppendLine($"public {bufferType} {methodName}() {{");
             builder.Indent(indentStep);
@@ -425,7 +525,6 @@ namespace Core.Generators.CSharp
         public string CompileDecodeHelper(IDefinition definition, string bufferType)
         {
             var builder = new IndentedStringBuilder();
-            builder.AppendLine(GeneratedAttribute);
             builder.AppendLine(HotPath);
             builder.AppendLine($"public static T DecodeAs<T>({bufferType} record) where T : Base{definition.Name.ToPascalCase()}, new() {{");
             builder.Indent(indentStep);
@@ -433,8 +532,7 @@ namespace Core.Generators.CSharp
             builder.AppendLine("return DecodeFrom<T>(ref reader);");
             builder.Dedent(indentStep);
             builder.AppendLine("}");
-            builder.AppendLine("");
-            builder.AppendLine(GeneratedAttribute);
+            builder.AppendLine();
             builder.AppendLine(HotPath);
             builder.AppendLine($"public static {definition.Name.ToPascalCase()} Decode({bufferType} record) {{");
             builder.Indent(indentStep);
@@ -442,7 +540,7 @@ namespace Core.Generators.CSharp
             builder.AppendLine($"return DecodeFrom(ref reader);");
             builder.Dedent(indentStep);
             builder.AppendLine("}");
-            builder.AppendLine("");
+            builder.AppendLine();
 
             return builder.ToString();
         }
@@ -481,7 +579,7 @@ namespace Core.Generators.CSharp
                 builder.AppendLine($"if (record.{field.Name.ToPascalCase()} {nullCheck}) {{");
                 builder.Indent(indentStep);
                 builder.AppendLine($"writer.WriteByte({field.ConstantValue});");
-                builder.AppendLine(isNullableType && field.Type is ScalarType
+                builder.AppendLine(isNullableType && NeedsValueAppend(field.Type)
                     ? $"{CompileEncodeField(field.Type, $"record.{field.Name.ToPascalCase()}.Value")}"
                     : $"{CompileEncodeField(field.Type, $"record.{field.Name.ToPascalCase()}")}");
                 builder.Dedent(indentStep);
@@ -516,6 +614,22 @@ namespace Core.Generators.CSharp
             };
         }
 
+        private bool NeedsValueAppend(TypeBase type)
+        {
+            return type switch
+            {
+                ScalarType { BaseType: BaseType.String }  => false,
+                DefinedType dt when IsEnum(dt) => true,
+                DefinedType => false,
+                ScalarType => true,
+                _ => false
+            };
+        }
+
+        private bool IsEnum(DefinedType dt)
+        {
+            return Schema.Definitions[dt.Name].Kind == AggregateKind.Enum;
+        }
 
         private string CompileEncodeField(TypeBase type, string target, int depth = 0, int indentDepth = 0)
         {
@@ -525,8 +639,8 @@ namespace Core.Generators.CSharp
             return type switch
             {
                 ArrayType at when at.IsBytes() => $"writer.WriteBytes({target});",
-                ArrayType at when at.IsFloat32s() => $"writer.WriteFloat32s({target});",
-                ArrayType at when at.IsFloat64s() => $"writer.WriteFloat64s({target});",
+                ArrayType at when at.IsFloat32s() => $"writer.WriteFloat32S({target});",
+                ArrayType at when at.IsFloat64s() => $"writer.WriteFloat64S({target});",
                 ArrayType at =>
                     $"{{" + nl +
                     $"{tab}var length{depth} = unchecked((uint){target}.Length);" + nl +

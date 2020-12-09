@@ -1,4 +1,4 @@
-import { BebopView } from './generated/BebopView';
+import { BebopView } from 'bebop';
 import { BasicTypes } from './generated/basic_types';
 import * as assert from "assert";
 

@@ -11,6 +11,7 @@ namespace Core.Lexer.Tokenization.Models
     ///     VSCode)
     ///     will show the cursor position as being off by one from what is stored here.
     /// </remarks>
+    [Serializable]
     public readonly struct Span : IEquatable<Span>, IComparable<Span>
     {
         /// <summary>
@@ -97,6 +98,12 @@ namespace Core.Lexer.Tokenization.Models
             if (c != 0) return c;
             c = EndColumn.CompareTo(other.EndColumn);
             return c;
+        }
+
+
+        public string ToJson()
+        {
+            return $"{{\"FileName\":\"{FileName.Replace("\\", "\\\\")}\",\"StartLine\":{StartLine},\"EndLine\":{EndLine},\"StartColumn\":{StartColumn},\"EndColumn\":{EndColumn},\"Lines\":{Lines}}}";
         }
 
         public override bool Equals(object? obj) => obj is Span span && Equals(span);

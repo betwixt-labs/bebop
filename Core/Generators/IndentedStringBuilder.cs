@@ -16,6 +16,11 @@ namespace Core.Generators
             Builder = new StringBuilder();
         }
 
+        public IndentedStringBuilder AppendLine()
+        {
+            return AppendLine(Environment.NewLine);
+        }
+
         public IndentedStringBuilder AppendLine(string text)
         {
             var indent = new string(' ', Spaces);
