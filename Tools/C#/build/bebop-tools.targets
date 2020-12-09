@@ -38,7 +38,7 @@
 	<Target Name="CompileBops" BeforeTargets="CoreCompile" DependsOnTargets="PrepareForBuild">
 
 		<Exec
-			Command="$(_Bebopc) --log-format MSBuild --cs &quot;$([System.IO.Path]::GetFullPath('%(Bebop.OutputDir)'))\%(Bebop.OutputFile) --namespace %(Bebop.Namespace) --files $(_BebopSchemas)"
+			Command="$(_Bebopc) --log-format MSBuild --cs &quot;$([System.IO.Path]::GetFullPath('%(Bebop.OutputDir)'))\%(Bebop.OutputFile)&quot; --namespace %(Bebop.Namespace) --files $(_BebopSchemas)"
 			EchoOff='true'
 			StandardErrorImportance='high'
 			StandardOutputImportance='low'
