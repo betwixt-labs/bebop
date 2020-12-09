@@ -116,5 +116,9 @@ jobs:
           cp -R ${{env.TOOLS_PATH}}/macos/ ${{env.NODE_TOOLS_PATH}}/macos/
           cp -R ${{env.TOOLS_PATH}}/linux/ ${{env.NODE_TOOLS_PATH}}/linux/
 
-      - name: Build bebop-tools NPM Package
+      - name: Set version in package.json
         run: node ${{env.NODE_TOOLS_ROOT}}/scripts/prepublish.js ${{ steps.dotenv.outputs.version }}
+
+      #- name: Publish NPM package
+      #  run: yarn publish
+      #  working-directory: ${{env.NODE_TOOLS_ROOT}}
