@@ -1,0 +1,25 @@
+{
+  "name": "bebop-tools",
+  "version": "2.0.0",
+  "description": "Bebop compiler for Node projects.",
+  "main": "dist/index.js",
+  "repository": "https://github.com/RainwayApp/bebop",
+  "author": "The Bebop Authors",
+  "license": "Apache-2.0",
+  "private": false,
+  "keywords": ["bebop", "binary", "serialization", "compiler"],
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "bin": {
+    "bebopc": "./bebopc.js"
+  },
+  "dependencies": {
+    "@types/node": "^14.14.10"
+  },
+  "devDependencies": {
+    "ts-node": "^9.1.1",
+    "typescript": "^4.1.2"
+  }
+}

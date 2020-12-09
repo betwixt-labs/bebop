@@ -107,6 +107,8 @@ jobs:
 
   build-tools:
     env:
+      NODE_TOOLS_ROOT: ${{github.workspace}}\Tools\node
+      NODE_TOOLS_PATH: ${{github.workspace}}\Tools\node\tools
       TOOLS_ROOT: ${{github.workspace}}\Tools\C#
       TOOLS_PATH: ${{github.workspace}}\Tools\C#\tools
       WINDOWS_ARTIFACT: win-x64
@@ -167,3 +169,21 @@ jobs:
         with:
           name: bebop-tools-latest
           path: ${{env.TOOLS_ROOT}}\packages\
+      
+      - name: Use node 15.x
+        uses: actions/setup-node@v1
+        with:
+          node-version: 15.x
+
+      - name: Copy Builds for NPM package
+        run: |
+          cp -R ${{env.TOOLS_PATH}}\windows\ ${{env.NODE_TOOLS_PATH}}\windows\
+          cp -R ${{env.TOOLS_PATH}}\macos\ ${{env.NODE_TOOLS_PATH}}\macos\
+          cp -R ${{env.TOOLS_PATH}}\linux\ ${{env.NODE_TOOLS_PATH}}\linux\
+
+      - name: Set version in package.json
+        run: node ${{env.NODE_TOOLS_ROOT}}\scripts\prepublish.js ${{ steps.dotenv.outputs.version }}
+
+      #- name: Publish NPM package
+      #  run: yarn publish
+      #  working-directory: ${{env.NODE_TOOLS_ROOT}}
