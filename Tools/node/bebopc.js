@@ -4,7 +4,7 @@ const child_process = require('child_process')
 const path = require('path')
 const toolsDir = path.resolve(__dirname, 'tools')
 
-const [, , ...args] = process.argv
+const args = process.argv.slice(2)
 let executable
 
 if (process.platform === "win32") {
