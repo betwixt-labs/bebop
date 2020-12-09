@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Text.Json;
 using Core.Generators;
 using Core.Logging;
@@ -107,8 +108,11 @@ namespace Compiler
         [CommandLineFlag("files", "Parse and generate code from a list of schemas", "--files [file1] [file2] ...")]
         public List<string>? SchemaFiles { get; private set; }
 
-        [CommandLineFlag("check", "Only check a given schema is valid", "--check [file.bop] [file2.bop] ...")]
+        [CommandLineFlag("check", "Checks that the provided schema files are valid", "--check [file.bop] [file2.bop] ...")]
         public List<string>? CheckSchemaFiles { get; private set; }
+
+        [CommandLineFlag("check-schema", "Reads a schema from stdin and validates it.", "--check-schema < [schema text]")]
+        public string? CheckSchemaFile { get; private set; }
 
         /// <summary>
         ///     When set to true the process will output the product version and exit with a zero return code.
@@ -321,6 +325,12 @@ namespace Compiler
 
                 var parsedValue = parsedFlags[flag.Attribute.Name]?.Trim();
                 var propertyType = flag.Property.PropertyType;
+                if (flag.Attribute.Name.Equals("check-schema"))
+                {
+                    using var reader = new StreamReader(Console.OpenStandardInput());
+                    flagStore.CheckSchemaFile = reader.ReadToEnd();
+                    continue;
+                }
                 if (propertyType == typeof(bool))
                 {
                     flag.Property.SetValue(flagStore, true);
