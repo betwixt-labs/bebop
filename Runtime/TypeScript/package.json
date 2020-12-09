@@ -1,7 +1,7 @@
 {
   "name": "bebop",
   "version": "2.0.0",
-  "description": "Bebop TypeScript runtime",
+  "description": "The TypeScript runtime for Bebop, a schema-based binary serialization format.",
   "keywords": ["bebop", "serialization", "binary"],
   "homepage": "https://github.com/RainwayApp/bebop",
   "main": "dest/index.js",
