@@ -49,7 +49,6 @@ export async function check(path: string): Promise<{error: boolean, issues?: Iss
     return new Promise((resolve, reject) => {
         child_process.exec(`${bebopc} --check ${path} --log-format JSON `, (error, stdout, stderr) => {
             if (stderr.trim().length > 0) {
-                console.log(stderr.trim())
                 const { Message, Span }: BebopcCheckResponse = JSON.parse(stderr.trim().replace(/\\/g, "\\"))
                 const issues: Issue[] = []
                 issues.push({
@@ -73,7 +72,7 @@ export async function check(path: string): Promise<{error: boolean, issues?: Iss
 }
 
 /** Validate schema passed as string. */
-export async function checkText(contents: string): Promise<{error: boolean, issues?: Issue[]}> {
+export async function checkSchema(contents: string): Promise<{error: boolean, issues?: Issue[]}> {
     return new Promise((resolve, reject) => {
         const compiler = child_process.spawn(bebopc, ['--log-format', 'JSON', '--check-schema'])
         let stderr: string = ""
@@ -82,8 +81,7 @@ export async function checkText(contents: string): Promise<{error: boolean, issu
         })
         compiler.on("close", (code: number) => {
             if (stderr.trim().length > 0) {
-                console.log(stderr.trim().replace(/\\/g, "\\\\"))
-                const { Message, Span }: BebopcCheckResponse = JSON.parse(stderr.trim().replace(/\\/g, "\\\\"))
+                const { Message, Span }: BebopcCheckResponse = JSON.parse(stderr.trim())
                 const issues: Issue[] = []
                 issues.push({
                     severity: 'error',
