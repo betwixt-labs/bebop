@@ -3,7 +3,7 @@
 # the version the nuget package will be built with
 VERSION=$1
 
-NUGET_PATH="$PWD/.nuget/NuGet.exe"
+NUGET_PATH="$PWD/.nuget"
 
 install_mono()
 {
@@ -23,15 +23,15 @@ install_mono()
 
 download_nuget() 
 {
-    if [ -f "$NUGET_PATH" ]; then
+    if [ -f "$NUGET_PATH/nuget.exe" ]; then
         echo "$NUGET_PATH exists."
     else    
         echo "$NUGET_PATH does not exist. Downloading."
-        wget https://dist.nuget.org/win-x86-commandline/latest/nuget.exe -O $NUGET_PATH
+        wget https://dist.nuget.org/win-x86-commandline/latest/nuget.exe -P $NUGET_PATH
     fi
 }
 
 echo "Building bebop-tools for .NET"
 install_mono
 download_nuget
-mono $NUGET_PATH Pack bebop-tools.nuspec -OutputDirectory packages -Version $VERSION
+mono $NUGET_PATH/nuget.exe Pack bebop-tools.nuspec -OutputDirectory packages -Version $VERSION
