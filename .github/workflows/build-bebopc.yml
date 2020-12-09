@@ -6,9 +6,17 @@ on:
   # Trigger the workflow on push or pull request,
   # but only for the main branch
   push:
+    paths:
+      - "Compiler/**"
+      - "Core/**"
+      - "Tools/**"
     branches:
       - master
   pull_request:
+    paths:
+      - "Compiler/**"
+      - "Core/**"
+      - "Tools/**"
     branches:
       - master
 jobs:
@@ -169,7 +177,7 @@ jobs:
         with:
           name: bebop-tools-latest
           path: ${{env.TOOLS_ROOT}}\packages\
-      
+
       - name: Use node 15.x
         uses: actions/setup-node@v1
         with:
@@ -183,7 +191,6 @@ jobs:
 
       - name: Set version in package.json
         run: node ${{env.NODE_TOOLS_ROOT}}\scripts\prepublish.js ${{ steps.dotenv.outputs.version }}
-
       #- name: Publish NPM package
       #  run: yarn publish
       #  working-directory: ${{env.NODE_TOOLS_ROOT}}
