@@ -41,7 +41,7 @@ jobs:
         name: Check if Versions Synced
         run: |
           if [[ ! refs/tags/v${{ steps.dotenv.outputs.version }} =~ ^(${{ github.ref }})$ ]]; then 
-            echo "${{ steps.dotenv.outputs.version }} is not the same as ${{ github.ref }}" 1>&2
+            echo "${{ steps.dotenv.outputs.version }} is not the same as ${{ github.ref }}. Did you bump the .env file?" 1>&2
             exit 1
           fi
 
