@@ -1,0 +1,332 @@
+name: publish bebop
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    # Sequence of patterns matched against refs/tags
+    tags:
+      - "v*" # Push events to matching v*, i.e. v1.0, v20.15.10
+
+jobs:
+  build-compiler:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+        include:
+          - os: macos-latest
+            CONFIGURATION: macOS-Release
+            RUNTIME: osx-x64
+            ARTIFACT: bebopc
+
+          - os: windows-latest
+            CONFIGURATION: Windows-Release
+            RUNTIME: win-x64
+            ARTIFACT: bebopc.exe
+
+          - os: ubuntu-latest
+            CONFIGURATION: Linux-Release
+            RUNTIME: linux-x64
+            ARTIFACT: bebopc
+
+    env:
+      BUILD_ARTIFACT: ./bin/compiler/${{matrix.CONFIGURATION}}/publish/${{matrix.ARTIFACT}}
+    steps:
+      - uses: actions/checkout@v1
+
+      - name: Get Environment Variables
+        id: dotenv
+        uses: falti/dotenv-action@v0.2.5
+
+      # ubuntu is the fastest OS to spin up and if one fails they all fail.
+      - if: matrix.os == 'ubuntu-latest'
+        name: Check if Versions Synced
+        run: |
+          if [[ ! v${{ steps.dotenv.outputs.version }} =~ ^(${{ github.ref }})$ ]]; then 
+            echo "${{ steps.dotenv.outputs.version }} is not the same as ${{ github.ref }}" 1>&2
+            exit 1
+          fi
+
+      - if: matrix.os == 'ubuntu-latest'
+        name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install clang zlib1g-dev libkrb5-dev libtinfo5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: "5.0.x" # SDK Version to use; x will use the latest version of the 5.0 channel
+
+      - name: Build bebopc
+        run: |
+          dotnet restore
+          dotnet publish -c ${{matrix.CONFIGURATION}} -r ${{matrix.RUNTIME}} -p:ReleaseVersion=${{ steps.dotenv.outputs.version }}
+        working-directory: ./Compiler/
+
+      - if: matrix.os == 'macos-latest'
+        name: Import Code-Signing Certificates
+        uses: Apple-Actions/import-codesign-certs@v1
+        with:
+          # The certificates in a PKCS12 file encoded as a base64 string
+          p12-file-base64: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_P12_BASE64 }}
+          # The password used to import the PKCS12 file.
+          p12-password: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_PASSWORD }}
+
+      - if: matrix.os == 'macos-latest'
+        name: Install gon via HomeBrew for Code Signing and App Notarization
+        run: |
+          brew tap mitchellh/gon
+          brew install mitchellh/gon/gon
+
+      - if: matrix.os == 'macos-latest'
+        name: Sign the macOS Binary
+        env:
+          AC_USERNAME: ${{ secrets.AC_USERNAME }}
+          AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
+        run: gon -log-level=debug -log-json ./gon.json
+
+      - if: matrix.os == 'macos-latest'
+        name: ZIP macOS Notarization Build
+        run: |
+          unzip -j -o ${{env.BUILD_ARTIFACT}}.zip
+          rm -f ${{env.BUILD_ARTIFACT}}.zip
+          zip -j ${{env.BUILD_ARTIFACT}}.zip ${{env.BUILD_ARTIFACT}}
+
+      - if: matrix.os == 'ubuntu-latest'
+        name: ZIP Linux Build
+        run: |
+          zip -j ${{env.BUILD_ARTIFACT}}.zip ${{env.BUILD_ARTIFACT}}
+
+      - if: matrix.os == 'windows-latest'
+        name: ZIP Windows Build
+        shell: powershell
+        run: |
+          Compress-Archive -Path ${{env.BUILD_ARTIFACT}} -DestinationPath ${{env.BUILD_ARTIFACT}}.zip
+
+      - name: Upload Build
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{matrix.RUNTIME}}
+          path: ${{env.BUILD_ARTIFACT}}.zip
+
+  build-runtimes:
+    env:
+      NET_TEST_ROOT: ${{github.workspace}}/Laboratory/C#/Test
+      NET_RUNTIME_ROOT: ${{github.workspace}}/Runtime/C#
+      TS_TEST_ROOT: ${{github.workspace}}/Laboratory/TypeScript
+      TS_RUNTIME_ROOT: ${{github.workspace}}/Runtime/TypeScript
+    runs-on: ubuntu-latest
+    needs: build-compiler
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-node@v1
+        with:
+          node-version: "14.15.1" # LTS
+
+      - name: Get Environment Variables
+        id: dotenv
+        uses: falti/dotenv-action@v0.2.5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: "5.0.x" # SDK Version to use; x will use the latest version of the 5.0 channel
+
+      - name: Test .NET Runtime
+        run: |
+          dotnet test -c Release -f net5.0
+          dotnet test -c Release -f net48
+          dotnet test -c Release -f net472
+        working-directory: ${{env.NET_TEST_ROOT}}
+
+      - name: Build .NET Runtime
+        run: |
+          dotnet restore
+          dotnet build -c Release -p:ReleaseVersion=${{ steps.dotenv.outputs.version }}
+        working-directory: ${{env.NET_RUNTIME_ROOT}}
+
+      - name: Upload .NET Runtime Package
+        uses: actions/upload-artifact@v2
+        with:
+          name: bebop-runtime-cs-${{ steps.dotenv.outputs.version }}
+          path: ${{env.NET_RUNTIME_ROOT}}/bin/Release/bebop.${{ steps.dotenv.outputs.version }}.nupkg
+
+      - name: Test TypeScript Runtime
+        run: |
+          npm install
+          bash compile-schemas.sh
+          npm run test
+        working-directory: ${{env.TS_TEST_ROOT}}
+
+      - name: Build TypeScript Runtime
+        run: |
+          jq '.version = "${{ steps.dotenv.outputs.version }}"' package.json > tmp && mv tmp package.json
+          npm install
+          npm pack
+        working-directory: ${{env.TS_RUNTIME_ROOT}}
+
+      - name: Upload TypeScript Runtime Package
+        uses: actions/upload-artifact@v2
+        with:
+          name: bebop-runtime-ts-${{ steps.dotenv.outputs.version }}
+          path: ${{env.TS_RUNTIME_ROOT}}/bebop-${{ steps.dotenv.outputs.version }}.tgz
+
+      - name: Build REPL
+        run: |
+          dotnet restore
+          dotnet publish -c Release -p:ReleaseVersion=${{ steps.dotenv.outputs.version }}
+        working-directory: ./Repl/
+
+      - name: Upload REPL Artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: bebop-repl-${{ steps.dotenv.outputs.version }}
+          path: ./bin/repl/Release/publish/wwwroot/
+
+  build-tools:
+    env:
+      TOOLS_ROOT: ${{github.workspace}}/Tools
+      BEBOPC_PATH: ${{github.workspace}}/Tools/bebopc
+    needs: build-compiler
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-node@v1
+        with:
+          node-version: "14.15.1" # LTS
+
+      - name: Get Environment Variables
+        id: dotenv
+        uses: falti/dotenv-action@v0.2.5
+
+      - name: Download Compiler Artifacts
+        uses: actions/download-artifact@v2
+
+      - name: Extract Compiler Artifacts
+        run: |
+          ls
+          unzip -j -o ./win-x64/bebopc.exe.zip -d ${{env.BEBOPC_PATH}}/windows
+          unzip -j -o ./osx-x64/bebopc.zip -d ${{env.BEBOPC_PATH}}/macos
+          unzip -j -o ./linux-x64/bebopc.zip -d ${{env.BEBOPC_PATH}}/linux
+
+      - name: Build NuGet Package
+        run: bash build.sh ${{ steps.dotenv.outputs.version }}
+        working-directory: ${{env.TOOLS_ROOT}}/C#
+
+      - name: Upload Nuget Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: bebop-tools-nuget-${{ steps.dotenv.outputs.version }}
+          path: ${{env.TOOLS_ROOT}}/C#/packages/bebop-tools.${{ steps.dotenv.outputs.version }}.nupkg
+
+      - name: Copy Compiler Builds for NPM package
+        run: |
+          mkdir -p ${{env.TOOLS_ROOT}}/node/tools && cp -a ${{env.BEBOPC_PATH}}/. ${{env.TOOLS_ROOT}}/node/tools
+
+      - name: Build Tools NPM Package
+        run: |
+          jq '.version = "${{ steps.dotenv.outputs.version }}"' package.json > tmp && mv tmp package.json
+          npm install
+          npm pack
+        working-directory: ${{env.TOOLS_ROOT}}/node
+
+      - name: Upload NPM Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: bebop-tools-npm-${{ steps.dotenv.outputs.version }}
+          path: ${{env.TOOLS_ROOT}}/node/bebop-tools-${{ steps.dotenv.outputs.version }}.tgz
+
+  publish-packages:
+    runs-on: ubuntu-latest
+    needs: [build-compiler, build-runtimes, build-tools]
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-node@v1
+        with:
+          node-version: "14.15.1" # LTS
+          registry-url: https://registry.npmjs.org/
+
+      - name: Get Environment Variables
+        id: dotenv
+        uses: falti/dotenv-action@v0.2.5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: "5.0.x" # SDK Version to use; x will use the latest version of the 5.0 channel
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v2
+
+      - name: Publish .NET Tools
+        run: dotnet nuget push bebop-tools-nuget-${{ steps.dotenv.outputs.version }}/bebop-tools.${{ steps.dotenv.outputs.version }}.nupkg -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json
+
+      - name: Publish .NET Runtime
+        run: dotnet nuget push bebop-runtime-cs-${{ steps.dotenv.outputs.version }}/bebop.${{ steps.dotenv.outputs.version }}.nupkg -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json
+
+      - name: Publish NodeJS Tools
+        run: npm publish "./bebop-tools-npm-${{ steps.dotenv.outputs.version }}/bebop-tools-${{ steps.dotenv.outputs.version }}.tgz" --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
+
+      - name: Publish TypeScript Runtime
+        run: npm publish "./bebop-runtime-ts-${{ steps.dotenv.outputs.version }}/bebop-${{ steps.dotenv.outputs.version }}.tgz" --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
+
+      - name: Stage Website
+        run: mkdir -p homepage/repl && cp -a bebop-repl-${{ steps.dotenv.outputs.version }}/. homepage/repl
+
+      - name: Publish Website
+        uses: jakejarvis/s3-sync-action@master
+        env:
+          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          SOURCE_DIR: homepage
+        with:
+          args: --delete
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Bebop ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Compiler for Windows x64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./win-x64/bebopc.exe.zip
+          asset_name: bebopc-win64.zip
+          asset_content_type: application/zip
+
+      - name: Upload Compiler for Mac x64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./osx-x64/bebopc.zip
+          asset_name: bebopc-mac64.zip
+          asset_content_type: application/zip
+
+      - name: Upload Compiler for Linux x64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./linux-x64/bebopc.zip
+          asset_name: bebopc-linux64.zip
+          asset_content_type: application/zip

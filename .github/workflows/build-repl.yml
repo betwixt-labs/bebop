@@ -1,9 +1,10 @@
 name: Bebop WebAssembly REPL
 on:
   workflow_dispatch:
-    branches:
-      - master
   push:
+    paths:
+      - "Repl/**"
+  pull_request:
     paths:
       - "Repl/**"
 jobs:
