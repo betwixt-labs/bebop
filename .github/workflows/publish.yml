@@ -36,7 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@v1
 
-      - name: Get Enviorment Variables
+      - name: Get Environment Variables
         id: dotenv
         uses: falti/dotenv-action@v0.2.5
 
@@ -126,7 +126,7 @@ jobs:
         with:
           node-version: "14.15.1" # LTS
 
-      - name: Get Enviorment Variables
+      - name: Get Environment Variables
         id: dotenv
         uses: falti/dotenv-action@v0.2.5
 
@@ -198,7 +198,7 @@ jobs:
         with:
           node-version: "14.15.1" # LTS
 
-      - name: Get Enviorment Variables
+      - name: Get Environment Variables
         id: dotenv
         uses: falti/dotenv-action@v0.2.5
 
@@ -249,7 +249,7 @@ jobs:
           node-version: "14.15.1" # LTS
           registry-url: https://registry.npmjs.org/
 
-      - name: Get Enviorment Variables
+      - name: Get Environment Variables
         id: dotenv
         uses: falti/dotenv-action@v0.2.5
 
