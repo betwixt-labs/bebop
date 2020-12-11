@@ -126,7 +126,7 @@ namespace Compiler
         /// <returns></returns>
         public string? GetValue()
         {
-            return Values.FirstOrDefault();
+            return Values.FirstOrDefault()?.Trim();
         }
 
         /// <summary>
