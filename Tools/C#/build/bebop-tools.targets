@@ -16,9 +16,9 @@
         <_Bebopc Condition="'$(IsWindows)' == 'true'">"$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\tools\windows\bebopc.exe'))"</_Bebopc>
         <_Bebopc Condition="'$(IsMac)' == 'true'">"$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../tools/macos/bebopc'))"</_Bebopc>
         <_Bebopc Condition="'$(IsLinux)' == 'true'">"$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../tools/linux/bebopc'))"</_Bebopc>
-        <_BebopSchemas>"@(Bebop -> '%(FullPath)', ' ')"</_BebopSchemas>
+        <_BebopSchemas>@(Bebop -> '"%(FullPath)"', ' ')</_BebopSchemas>
     </PropertyGroup>
-    <Target Name="CompileBops" BeforeTargets="CoreCompile" DependsOnTargets="PrepareForBuild">
+    <Target Name="CompileBops" BeforeTargets="CoreCompile" DependsOnTargets="PrepareForBuild" Condition="'$(_BebopSchemas)' != '' " >
         <Exec
             Command="$(_Bebopc) --log-format MSBuild --cs &quot;$([System.IO.Path]::GetFullPath('%(Bebop.OutputDir)'))%(Bebop.OutputFile)&quot; --namespace %(Bebop.Namespace) --files $(_BebopSchemas)"
             EchoOff='true'

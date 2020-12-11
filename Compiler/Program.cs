@@ -32,7 +32,7 @@ namespace Compiler
         {
             Log.Formatter = CommandLineFlags.FindLogFormatter(args);
 
-            if (!CommandLineFlags.TryParse(args, out _flags, out var message))
+            if (!CommandLineFlags.TryParse(Environment.CommandLine.Split(' '), out _flags, out var message))
             {
                 await Log.Error(new CompilerException(message));
                 return 1;

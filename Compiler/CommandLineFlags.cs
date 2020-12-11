@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Core.Generators;
 using Core.Logging;
 using Core.Meta;
@@ -95,7 +96,7 @@ namespace Compiler
         public string? TypeScriptOutput { get; private set; }
 
         [CommandLineFlag("dart", "Generate Dart source code to the specified file",
-            "--ts ./cowboy/bebop/HelloWorld.dart", true)]
+            "--dart ./cowboy/bebop/HelloWorld.dart", true)]
         public string? DartOutput { get; private set; }
 
         [CommandLineFlag("namespace", "When this option is specified generated code will use namespaces",
@@ -200,6 +201,16 @@ namespace Compiler
     #endregion
 
     #region Parsing
+
+        /// <summary>
+        /// Removes double quotes from the start and end of a string.
+        /// </summary>
+        /// <param name="input">the string to alter</param>
+        /// <returns>the string without double quotes.</returns>
+        private static string TrimDoubleQuotes(string input)
+        {
+            return input.Trim('"');
+        }
 
         /// <summary>
         ///     Parses an array of commandline flags into dictionary.
@@ -349,10 +360,16 @@ namespace Compiler
                         errorMessage = $"Failed to activate '{flag.Property.Name}'.";
                         return false;
                     }
-                    foreach (var item in parsedValue.Split(" ",
-                        StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+   
+                    // file paths wrapped in quotes may contain spaces. 
+                    foreach (var item in Regex.Matches(parsedValue, @"[\""].+?[\""]|[^ ]+").Select(m => m.Value))
                     {
-                        genericList.Add(Convert.ChangeType(item.Trim(), itemType));
+                        if (string.IsNullOrWhiteSpace(item))
+                        {
+                            continue;
+                        }
+                        // remove double quotes from the string so file paths can be parsed properly.
+                        genericList.Add(Convert.ChangeType(TrimDoubleQuotes(item).Trim(), itemType));
                     }
                     flag.Property.SetValue(flagStore, genericList, null);
                 }
@@ -364,6 +381,11 @@ namespace Compiler
                         return false;
                     }
                     flag.Property.SetValue(flagStore, parsedEnum, null);
+                }
+                else if (propertyType == typeof(string))
+                {
+                    flag.Property.SetValue(flagStore, Convert.ChangeType(TrimDoubleQuotes(parsedValue), flag.Property.PropertyType),
+                        null);
                 }
                 else
                 {
