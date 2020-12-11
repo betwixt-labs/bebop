@@ -132,7 +132,7 @@ namespace Compiler
         /// <summary>
         /// A collection of all values associated with the current flag.
         /// </summary>
-        public string[] Values { get; set; }
+        public string[] Values { get; init; }
         /// <summary>
         /// The name of the current flag.
         /// </summary>
