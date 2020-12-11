@@ -28,11 +28,11 @@ namespace Compiler
             }
         }
 
-        private static async Task<int> Main(string[] args)
+        private static async Task<int> Main()
         {
-            Log.Formatter = CommandLineFlags.FindLogFormatter(args);
+            Log.Formatter = CommandLineFlags.FindLogFormatter(Environment.GetCommandLineArgs());
 
-            if (!CommandLineFlags.TryParse(args, out _flags, out var message))
+            if (!CommandLineFlags.TryParse(Environment.GetCommandLineArgs(), out _flags, out var message))
             {
                 await Log.Error(new CompilerException(message));
                 return 1;
