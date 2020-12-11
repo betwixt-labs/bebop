@@ -491,18 +491,22 @@ namespace Compiler
             {
                 flagStore.SchemaDirectory = inputDirectoryElement.GetString();
             }
+            if (root.TryGetProperty("namespace", out var nameSpaceElement))
+            {
+                flagStore.Namespace = nameSpaceElement.GetString();
+            }
             if (root.TryGetProperty("generators", out var generatorsElement))
             {
                 foreach (var generatorElement in generatorsElement.EnumerateArray())
                 {
                     if (generatorElement.TryGetProperty("alias", out var aliasElement) &&
-                        generatorElement.TryGetProperty("destinationPath", out var destinationElement))
+                        generatorElement.TryGetProperty("outputFile", out var outputElement))
                     {
                         foreach (var flagAttribute in GetFlagAttributes()
                             .Where(flagAttribute => flagAttribute.Attribute.IsGeneratorFlag &&
                                 flagAttribute.Attribute.Name.Equals(aliasElement.GetString())))
                         {
-                            flagAttribute.Property.SetValue(flagStore, destinationElement.GetString());
+                            flagAttribute.Property.SetValue(flagStore, outputElement.GetString());
                         }
                     }
                 }
