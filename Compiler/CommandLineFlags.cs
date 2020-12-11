@@ -16,15 +16,15 @@ namespace Compiler
 #region FlagAttribute
 
     /// <summary>
-    ///     Models an application commandline flag.
+    ///     Models an application command-line flag.
     /// </summary>
     [AttributeUsage(AttributeTargets.Property)]
     public class CommandLineFlagAttribute : Attribute
     {
         /// <summary>
-        ///     Creates a new commandline flag attribute
+        ///     Creates a new command-line flag attribute
         /// </summary>
-        /// <param name="name">The name of the commandline flag.</param>
+        /// <param name="name">The name of the command-line flag.</param>
         /// <param name="helpText">A detailed description of flag.</param>
         /// <param name="usageExample">An example of how to use the attributed flag.</param>
         /// <param name="isGeneratorFlag">Indicates if a flag is used to generate code.</param>
@@ -48,7 +48,7 @@ namespace Compiler
         }
 
         /// <summary>
-        ///     The name commandline flag. This name is usually a single english word.
+        ///     The name command-line flag. This name is usually a single english word.
         /// </summary>
         /// <remarks>
         ///     For compound words you should use a hyphen separator rather than camel casing.
@@ -56,7 +56,7 @@ namespace Compiler
         public string Name { get; }
 
         /// <summary>
-        ///     A detailed description of the commandline flag.
+        ///     A detailed description of the command-line flag.
         /// </summary>
         public string HelpText { get; }
 
@@ -66,14 +66,14 @@ namespace Compiler
         public string UsageExample { get; }
 
         /// <summary>
-        ///     If this property is set to true the attributed commandline flag is used to instantiate a code generator.
+        ///     If this property is set to true the attributed command-line flag is used to instantiate a code generator.
         /// </summary>
         public bool IsGeneratorFlag { get; }
     }
 
 #endregion
     /// <summary>
-    /// Static extension methods for the commandline flag types.
+    /// Static extension methods for the command-line flag types.
     /// </summary>
     public static class CommandLineExtensions {
         /// <summary>
@@ -100,12 +100,12 @@ namespace Compiler
 
     }
     /// <summary>
-    /// Represents a parsed commandline flag and it's values.
+    /// Represents a parsed command-line flag and it's values.
     /// </summary>
     public class CommandLineFlag
     {
         /// <summary>
-        /// Creates a new commandline flag
+        /// Creates a new command-line flag
         /// </summary>
         /// <param name="name">The name of the flag</param>
         /// <param name="values">The values (if any) corresponding to the flag.</param>
@@ -203,7 +203,7 @@ namespace Compiler
         public string HelpText { get; }
 
         /// <summary>
-        ///     Returns the alias and output file of all commandline specified code generators.
+        ///     Returns the alias and output file of all command-line specified code generators.
         /// </summary>
         public IEnumerable<(string Alias, string OutputFile)> GetParsedGenerators()
         {
@@ -269,7 +269,7 @@ namespace Compiler
     #region Parsing
 
         /// <summary>
-        ///     Parses an array of commandline flags into dictionary.
+        ///     Parses an array of command-line flags into dictionary.
         /// </summary>
         /// <param name="args">The flags to be parsed.</param>
         /// <returns>A dictionary containing all parsed flags and their value if any.</returns>
@@ -292,7 +292,7 @@ namespace Compiler
         /// <summary>
         ///     Attempts to find the <see cref="LogFormatter"/> flag and parse it's value.
         /// </summary>
-        /// <param name="args">The commandline arguments to sort through</param>
+        /// <param name="args">The command-line arguments to sort through</param>
         /// <returns>
         ///     If the <see cref="LogFormatter"/> flag was present an had a valid value, that enum member will be returned.
         ///     Otherwise the default formatter is used.
@@ -313,7 +313,7 @@ namespace Compiler
 
 
         /// <summary>
-        ///     Attempts to parse commandline flags into a <see cref="CommandLineFlags"/> instance
+        ///     Attempts to parse command-line flags into a <see cref="CommandLineFlags"/> instance
         /// </summary>
         /// <param name="args">the array of arguments to parse</param>
         /// <param name="flagStore">An instance which contains all parsed flags and their values</param>
@@ -353,18 +353,13 @@ namespace Compiler
 
             if (parsedFlags.Count == 0)
             {
-                if (TryParseConfig(flagStore))
+                // if no flags passed in try and find the bebop.json config
+                if (TryParseConfig(flagStore, FindBebopConfig()))
                 {
                     return true;
                 }
-                errorMessage = "No commandline flags found.";
+                errorMessage = "No command-line flags found.";
                 return false;
-            }
-
-            if (parsedFlags.HasFlag("config"))
-            {
-                var configFlag = parsedFlags.GetFlag("config");
-                return TryParseConfig(flagStore, configFlag.GetValue());
             }
 
             if (parsedFlags.HasFlag("help"))
@@ -379,6 +374,23 @@ namespace Compiler
                 return true;
             }
 
+            // if the config flag is passed in load settings from that path, otherwise search for it.
+            var bebopConfig = parsedFlags.HasFlag("config")
+                ? parsedFlags.GetFlag("config").GetValue()
+                : FindBebopConfig();
+            // if bebop.json exist load it. the values in the JSON file are written to the store.
+            if (!string.IsNullOrWhiteSpace(bebopConfig) && new FileInfo(bebopConfig).Exists)
+            {
+                if (!TryParseConfig(flagStore, bebopConfig))
+                {
+                    errorMessage = $"Failed to parse bebop configuration file at '{bebopConfig}'";
+                    return false;
+                }
+            }
+
+
+            // parse all present command-line flags
+            // any flag on the command-line that was also present in bebop.json will be overwritten.
             foreach (var flag in props)
             {
                 if (!parsedFlags.HasFlag(flag.Attribute.Name))
@@ -401,7 +413,7 @@ namespace Compiler
                 }
                 if (!parsedFlag.HasValues())
                 {
-                    errorMessage = $"Commandline flag '{flag.Attribute.Name}' was not assigned any values.";
+                    errorMessage = $"command-line flag '{flag.Attribute.Name}' was not assigned any values.";
                     return false;
                 }
                 if (propertyType.IsGenericType && propertyType.GetGenericTypeDefinition() == typeof(List<>))
@@ -440,19 +452,19 @@ namespace Compiler
                         null);
                 }
             }
+
             errorMessage = string.Empty;
             return true;
         }
 
         /// <summary>
-        ///     Parses the bebop config file and assigns entries to their corresponding commandline flag.
+        ///     Parses the bebop config file and assigns entries to their corresponding command-line flag.
         /// </summary>
         /// <param name="flagStore">A <see cref="CommandLineFlags"/> instance.</param>
         /// <param name="configPath">The fully qualified path to the bebop config file, or null to trigger searching.</param>
         /// <returns>true if the config could be parsed without error, otherwise false.</returns>
-        private static bool TryParseConfig(CommandLineFlags flagStore, string? configPath = null)
+        private static bool TryParseConfig(CommandLineFlags flagStore, string? configPath)
         {
-            configPath ??= FindBebopConfig();
             if (string.IsNullOrWhiteSpace(configPath))
             {
                 return false;
@@ -479,18 +491,22 @@ namespace Compiler
             {
                 flagStore.SchemaDirectory = inputDirectoryElement.GetString();
             }
+            if (root.TryGetProperty("namespace", out var nameSpaceElement))
+            {
+                flagStore.Namespace = nameSpaceElement.GetString();
+            }
             if (root.TryGetProperty("generators", out var generatorsElement))
             {
                 foreach (var generatorElement in generatorsElement.EnumerateArray())
                 {
                     if (generatorElement.TryGetProperty("alias", out var aliasElement) &&
-                        generatorElement.TryGetProperty("destinationPath", out var destinationElement))
+                        generatorElement.TryGetProperty("outputFile", out var outputElement))
                     {
                         foreach (var flagAttribute in GetFlagAttributes()
                             .Where(flagAttribute => flagAttribute.Attribute.IsGeneratorFlag &&
                                 flagAttribute.Attribute.Name.Equals(aliasElement.GetString())))
                         {
-                            flagAttribute.Property.SetValue(flagStore, destinationElement.GetString());
+                            flagAttribute.Property.SetValue(flagStore, outputElement.GetString());
                         }
                     }
                 }
