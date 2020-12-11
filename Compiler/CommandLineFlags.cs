@@ -353,18 +353,13 @@ namespace Compiler
 
             if (parsedFlags.Count == 0)
             {
-                if (TryParseConfig(flagStore))
+                // if no flags passed in try and find the bebop.json config
+                if (TryParseConfig(flagStore, FindBebopConfig()))
                 {
                     return true;
                 }
                 errorMessage = "No commandline flags found.";
                 return false;
-            }
-
-            if (parsedFlags.HasFlag("config"))
-            {
-                var configFlag = parsedFlags.GetFlag("config");
-                return TryParseConfig(flagStore, configFlag.GetValue());
             }
 
             if (parsedFlags.HasFlag("help"))
@@ -379,6 +374,23 @@ namespace Compiler
                 return true;
             }
 
+            // if the config flag is passed in load settings from that path, otherwise search for it.
+            var bebopConfig = parsedFlags.HasFlag("config")
+                ? parsedFlags.GetFlag("config").GetValue()
+                : FindBebopConfig();
+            // if bebop.json exist load it. the values in the JSON file are written to the store.
+            if (!string.IsNullOrWhiteSpace(bebopConfig) && new FileInfo(bebopConfig).Exists)
+            {
+                if (!TryParseConfig(flagStore, bebopConfig))
+                {
+                    errorMessage = $"Failed to parse bebop configuration file at '{bebopConfig}'";
+                    return false;
+                }
+            }
+
+
+            // parse all present commandline flags
+            // any flag on the commandline that was also present in bebop.json will be overwritten.
             foreach (var flag in props)
             {
                 if (!parsedFlags.HasFlag(flag.Attribute.Name))
@@ -440,6 +452,7 @@ namespace Compiler
                         null);
                 }
             }
+
             errorMessage = string.Empty;
             return true;
         }
@@ -450,9 +463,8 @@ namespace Compiler
         /// <param name="flagStore">A <see cref="CommandLineFlags"/> instance.</param>
         /// <param name="configPath">The fully qualified path to the bebop config file, or null to trigger searching.</param>
         /// <returns>true if the config could be parsed without error, otherwise false.</returns>
-        private static bool TryParseConfig(CommandLineFlags flagStore, string? configPath = null)
+        private static bool TryParseConfig(CommandLineFlags flagStore, string? configPath)
         {
-            configPath ??= FindBebopConfig();
             if (string.IsNullOrWhiteSpace(configPath))
             {
                 return false;
