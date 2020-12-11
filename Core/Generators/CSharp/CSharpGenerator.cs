@@ -220,22 +220,31 @@ namespace Core.Generators.CSharp
             builder.Dedent(indentStep);
             builder.AppendLine("}");
 
-            var returnStatement = new StringBuilder("return");
-            for (var i = 0; i < definition.Fields.Count; i++)
+            if (definition is not {Fields: {Count: 0}})
             {
-                var field = definition.Fields.ElementAt(i);
-                var fieldName = field.Name.ToPascalCase();
-                var and = $"{(i == definition.Fields.Count - 1 ? "" : " &&")}";
-                var isNullableType = IsNullableType(field.Type);
-                var nullCheck = isNullableType ? "is null" : "== null";
-                var notNullCheck = isNullableType ? "is not null" : "!= null";
-                // for collections we try to be extra safe to avoid throwing exceptions.
-                returnStatement.Append(field.IsCollection()
-                    ? $" ({fieldName} {nullCheck} ? other.{fieldName} {nullCheck} : other.{fieldName} {notNullCheck} && {fieldName}.SequenceEqual(other.{fieldName})){and}"
-                    : $" {fieldName} == other.{fieldName}{and}");
+                var returnStatement = new StringBuilder("return");
+                for (var i = 0; i < definition.Fields.Count; i++)
+                {
+                    var field = definition.Fields.ElementAt(i);
+                    var fieldName = field.Name.ToPascalCase();
+                    var and = $"{(i == definition.Fields.Count - 1 ? "" : " &&")}";
+                    var isNullableType = IsNullableType(field.Type);
+                    var nullCheck = isNullableType ? "is null" : "== null";
+                    var notNullCheck = isNullableType ? "is not null" : "!= null";
+                    // for collections we try to be extra safe to avoid throwing exceptions.
+                    returnStatement.Append(field.IsCollection()
+                        ? $" ({fieldName} {nullCheck} ? other.{fieldName} {nullCheck} : other.{fieldName} {notNullCheck} && {fieldName}.SequenceEqual(other.{fieldName})){and}"
+                        : $" {fieldName} == other.{fieldName}{and}");
+                }
+                returnStatement.Append(";");
+                builder.AppendLine(returnStatement.ToString());
             }
-            returnStatement.Append(";");
-            builder.AppendLine(returnStatement.ToString());
+            else
+            {
+                // if the definition has no properties then we can just return true.
+                builder.AppendLine("return true;");
+            }
+
             builder.Dedent(indentStep);
             builder.AppendLine("}");
 
