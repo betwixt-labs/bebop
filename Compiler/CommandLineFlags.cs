@@ -72,6 +72,72 @@ namespace Compiler
     }
 
 #endregion
+    /// <summary>
+    /// Static extension methods for the commandline flag types.
+    /// </summary>
+    public static class CommandLineExtensions {
+        /// <summary>
+        /// Determines if the provided <paramref name="flags"/> contains the specified <paramref name="flagName"/>
+        /// </summary>
+        /// <param name="flags">The collection of flags to check.</param>
+        /// <param name="flagName">The name of the flag to look for.</param>
+        /// <returns>true if the flag is present, otherwise false.</returns>
+        public static bool HasFlag(this List<CommandLineFlag> flags, string flagName)
+        {
+            return flags.Any(f => f.Name.Equals(flagName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        /// <summary>
+        /// Finds the flag associated with the specified <paramref name="flagName"/>
+        /// </summary>
+        /// <param name="flags">The collection of flags to check.</param>
+        /// <param name="flagName">The name of the flag to look for.</param>
+        /// <returns>An instance of the desired flag.</returns>
+        public static CommandLineFlag GetFlag(this List<CommandLineFlag> flags, string flagName)
+        {
+            return flags.Find(f => f.Name.Equals(flagName, StringComparison.OrdinalIgnoreCase))!;
+        }
+
+    }
+    /// <summary>
+    /// Represents a parsed commandline flag and it's values.
+    /// </summary>
+    public class CommandLineFlag
+    {
+        /// <summary>
+        /// Creates a new commandline flag
+        /// </summary>
+        /// <param name="name">The name of the flag</param>
+        /// <param name="values">The values (if any) corresponding to the flag.</param>
+        public CommandLineFlag(string name, string[] values)
+        {
+            Name = name;
+            Values = values;
+        }
+        /// <summary>
+        /// Indicates if the current flag has any values assigned to it.
+        /// </summary>
+        /// <returns>true if the flag has values, otherwise false.</returns>
+        public bool HasValues() => Values is {Length: > 0};
+
+        /// <summary>
+        /// Returns the first value associated with the current flag.
+        /// </summary>
+        /// <returns></returns>
+        public string? GetValue()
+        {
+            return Values.FirstOrDefault();
+        }
+
+        /// <summary>
+        /// A collection of all values associated with the current flag.
+        /// </summary>
+        public string[] Values { get; set; }
+        /// <summary>
+        /// The name of the current flag.
+        /// </summary>
+        public string Name { get; init; }
+    }
 
     /// <summary>
     ///     A class for constructing and parsing all available commands.
@@ -203,34 +269,24 @@ namespace Compiler
     #region Parsing
 
         /// <summary>
-        /// Removes double quotes from the start and end of a string.
-        /// </summary>
-        /// <param name="input">the string to alter</param>
-        /// <returns>the string without double quotes.</returns>
-        private static string TrimDoubleQuotes(string input)
-        {
-            return input.Trim('"');
-        }
-
-        /// <summary>
         ///     Parses an array of commandline flags into dictionary.
         /// </summary>
         /// <param name="args">The flags to be parsed.</param>
         /// <returns>A dictionary containing all parsed flags and their value if any.</returns>
-        private static Dictionary<string, string> GetFlags(string[] args)
+        private static List<CommandLineFlag> GetFlags(string[] args)
         {
-            var arguments = new Dictionary<string, string>();
+            var flags = new List<CommandLineFlag>();
             foreach (var token in args)
             {
                 if (token.StartsWith("--"))
                 {
                     var key = new string(token.SkipWhile(c => c == '-').ToArray()).ToLowerInvariant();
-                    var value = string.Join(" ",
-                        args.SkipWhile(i => i != $"--{key}").Skip(1).TakeWhile(i => !i.StartsWith("--")));
-                    arguments.Add(key, value);
+                    var value = args.SkipWhile(i => i != $"--{key}").Skip(1).TakeWhile(i => !i.StartsWith("--")).ToArray();
+                    
+                    flags.Add(new CommandLineFlag(key, value));
                 }
             }
-            return arguments;
+            return flags;
         }
 
         /// <summary>
@@ -246,8 +302,8 @@ namespace Compiler
             var flags = GetFlags(args);
             foreach (var flag in flags)
             {
-                if (flag.Key.Equals("log-format", StringComparison.OrdinalIgnoreCase) &&
-                    Enum.TryParse<LogFormatter>(flag.Value, true, out var parsedEnum))
+                if (flag.Name.Equals("log-format", StringComparison.OrdinalIgnoreCase) &&
+                    Enum.TryParse<LogFormatter>(flag.GetValue(), true, out var parsedEnum))
                 {
                     return parsedEnum;
                 }
@@ -305,23 +361,19 @@ namespace Compiler
                 return false;
             }
 
-            if (parsedFlags.ContainsKey("config"))
+            if (parsedFlags.HasFlag("config"))
             {
-                var configPath = parsedFlags["config"];
-                if (string.IsNullOrWhiteSpace(configPath))
-                {
-                    configPath = null;
-                }
-                return TryParseConfig(flagStore, configPath);
+                var configFlag = parsedFlags.GetFlag("config");
+                return TryParseConfig(flagStore, configFlag.GetValue());
             }
 
-            if (parsedFlags.ContainsKey("help"))
+            if (parsedFlags.HasFlag("help"))
             {
                 flagStore.Help = true;
                 return true;
             }
 
-            if (parsedFlags.ContainsKey("version"))
+            if (parsedFlags.HasFlag("version"))
             {
                 flagStore.Version = true;
                 return true;
@@ -329,12 +381,12 @@ namespace Compiler
 
             foreach (var flag in props)
             {
-                if (!parsedFlags.ContainsKey(flag.Attribute.Name))
+                if (!parsedFlags.HasFlag(flag.Attribute.Name))
                 {
                     continue;
                 }
 
-                var parsedValue = parsedFlags[flag.Attribute.Name]?.Trim();
+                var parsedFlag = parsedFlags.GetFlag(flag.Attribute.Name);
                 var propertyType = flag.Property.PropertyType;
                 if (flag.Attribute.Name.Equals("check-schema"))
                 {
@@ -347,9 +399,9 @@ namespace Compiler
                     flag.Property.SetValue(flagStore, true);
                     continue;
                 }
-                if (string.IsNullOrWhiteSpace(parsedValue))
+                if (!parsedFlag.HasValues())
                 {
-                    errorMessage = $"Commandline flag '{flag.Attribute.Name}' was not assigned a value.";
+                    errorMessage = $"Commandline flag '{flag.Attribute.Name}' was not assigned any values.";
                     return false;
                 }
                 if (propertyType.IsGenericType && propertyType.GetGenericTypeDefinition() == typeof(List<>))
@@ -362,34 +414,29 @@ namespace Compiler
                     }
    
                     // file paths wrapped in quotes may contain spaces. 
-                    foreach (var item in Regex.Matches(parsedValue, @"[\""].+?[\""]|[^ ]+").Select(m => m.Value))
+                    foreach (var item in parsedFlag.Values)
                     {
                         if (string.IsNullOrWhiteSpace(item))
                         {
                             continue;
                         }
                         // remove double quotes from the string so file paths can be parsed properly.
-                        genericList.Add(Convert.ChangeType(TrimDoubleQuotes(item).Trim(), itemType));
+                        genericList.Add(Convert.ChangeType(item.Trim(), itemType));
                     }
                     flag.Property.SetValue(flagStore, genericList, null);
                 }
                 else if (propertyType.IsEnum)
                 {
-                    if (!Enum.TryParse(propertyType, parsedValue, true, out var parsedEnum))
+                    if (!Enum.TryParse(propertyType, parsedFlag.GetValue(), true, out var parsedEnum))
                     {
-                        errorMessage = $"Failed to parse '{parsedValue}' into a member of '{propertyType}'.";
+                        errorMessage = $"Failed to parse '{parsedFlag.GetValue()}' into a member of '{propertyType}'.";
                         return false;
                     }
                     flag.Property.SetValue(flagStore, parsedEnum, null);
                 }
-                else if (propertyType == typeof(string))
-                {
-                    flag.Property.SetValue(flagStore, Convert.ChangeType(TrimDoubleQuotes(parsedValue), flag.Property.PropertyType),
-                        null);
-                }
                 else
                 {
-                    flag.Property.SetValue(flagStore, Convert.ChangeType(parsedValue, flag.Property.PropertyType),
+                    flag.Property.SetValue(flagStore, Convert.ChangeType(parsedFlag.GetValue(), flag.Property.PropertyType),
                         null);
                 }
             }
