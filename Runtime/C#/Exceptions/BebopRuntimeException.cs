@@ -11,11 +11,11 @@ namespace Bebop.Exceptions
     {
         /// <inheritdoc />
         public BebopRuntimeException(BebopRecord first, BebopRecord second) : base(
-            $"Bebop type \"{first.Type.FullName}\" and \"{second.Type.FullName}\" cannot have same opcode\"{first.OpCode}\"")
+            $"Bebop type '{first.Type.FullName}' and '{second.Type.FullName}' cannot have same opcode'{first.OpCode}'")
         {
         }
         /// <inheritdoc />
-        public BebopRuntimeException(uint opcode) : base($"A Bebop type with opcode \"{opcode:X}\" does not exist.")
+        public BebopRuntimeException(uint opcode) : base($"A Bebop type with opcode 0x'{opcode:X}' does not exist.")
         {
         }
         /// <inheritdoc />
@@ -31,7 +31,7 @@ namespace Bebop.Exceptions
         }
         /// <inheritdoc />
         public BebopRuntimeException(Type first, Type second) : base(
-            $"Bebop type \"{first.FullName}\" does not align with \"{second.FullName}\"")
+            $"Bebop type '{first.FullName}' does not align with '{second.FullName}'")
         {
         }
         /// <inheritdoc />

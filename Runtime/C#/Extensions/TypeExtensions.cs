@@ -37,7 +37,7 @@ namespace Bebop.Extensions
                 null);
             if (decodeMethod is null)
             {
-                throw new BebopRuntimeException($"Unable to find static decode method in \"{type.FullName}\"");
+                throw new BebopRuntimeException($"Unable to find static decode method in '{type.FullName}'");
             }
             return decodeMethod;
         }
@@ -96,7 +96,7 @@ namespace Bebop.Extensions
 
             if (encodeMethod is null)
             {
-                throw new BebopRuntimeException($"Unable to find static encode method in \"{type.FullName}\"");
+                throw new BebopRuntimeException($"Unable to find static encode method in '{type.FullName}'");
             }
             return encodeMethod;
         }
@@ -175,7 +175,7 @@ namespace Bebop.Extensions
                         .Where(subHandler => subHandler.Value.Any(l => l.RecordType == binding.RecordType)))
                     {
                         throw new BebopRuntimeException(
-                            $"Duplicate bindings found for \"{binding.RecordType}\" in \"{handler.Key}\" and \"{subHandler.Key}\"");
+                            $"Duplicate bindings found for '{binding.RecordType}' in '{handler.Key}' and '{subHandler.Key}'");
                     }
                 }
             }

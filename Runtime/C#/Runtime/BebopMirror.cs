@@ -59,7 +59,7 @@ namespace Bebop.Runtime
         /// <returns>A virtual <see cref="BebopRecord"/> accessor.</returns>
         public static BebopRecord GetRecord(string recordName) => DefinedRecords
                 .FirstOrDefault(definedType => definedType.Type.Name.Equals(recordName)) ??
-            throw new BebopRuntimeException($"A record named \"{recordName}\" does not exist.");
+            throw new BebopRuntimeException($"A record named '{recordName}' does not exist.");
 
 
         /// <summary>
@@ -89,7 +89,7 @@ namespace Bebop.Runtime
                     return record;
                 }
             }
-            throw new BebopRuntimeException($"A record with the type of \"{nameof(T)}\" does not exist.");
+            throw new BebopRuntimeException($"A record with the type of '{nameof(T)}' does not exist.");
         }
 
         /// <summary>

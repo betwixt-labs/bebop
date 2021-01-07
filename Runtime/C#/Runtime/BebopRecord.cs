@@ -176,11 +176,11 @@ namespace Bebop.Runtime
         {
             if (record is not T r)
             {
-                throw new BebopRuntimeException($"The provided record \"{typeof(T1)}\" cannot be assigned to the defined type \"{typeof(T)}\"");
+                throw new BebopRuntimeException($"The provided record '{typeof(T1)}' cannot be assigned to the defined type '{typeof(T)}'");
             }
             if (_handlerTaskDelegate is null && _handlerValueTaskDelegate is null && _handlerVoidDelegate is null)
             {
-                throw new BebopRuntimeException($"No handler is assigned to \"{typeof(T)}\"");
+                throw new BebopRuntimeException($"No handler is assigned to '{typeof(T)}'");
             }
             InvokeHandler(state, r);
         }
@@ -195,11 +195,11 @@ namespace Bebop.Runtime
         {
             if (record is not T r)
             {
-                throw new BebopRuntimeException($"The provided record \"{record.GetType()}\" cannot be assigned to the defined type \"{typeof(T)}\"");
+                throw new BebopRuntimeException($"The provided record '{record.GetType()}' cannot be assigned to the defined type '{typeof(T)}'");
             }
             if (_handlerTaskDelegate is null && _handlerValueTaskDelegate is null && _handlerVoidDelegate is null)
             {
-                throw new BebopRuntimeException($"No handler is assigned to \"{typeof(T)}\"");
+                throw new BebopRuntimeException($"No handler is assigned to '{typeof(T)}'");
             }
             InvokeHandler(state, r);
         }
