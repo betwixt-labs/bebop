@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using Bebop.Exceptions;
 using static System.Runtime.CompilerServices.Unsafe;
@@ -213,7 +214,11 @@ namespace Bebop.Runtime
         [MethodImpl(BebopConstants.HotPath)]
         public string ReadString()
         {
-            var stringByteCount = unchecked((int) ReadUInt32());
+            var stringByteCount = unchecked((int)ReadUInt32());
+            if (stringByteCount == 0)
+            {
+                return string.Empty;
+            }
             var stringSpan = _buffer.Slice(Position, stringByteCount);
             Position += stringByteCount;
 

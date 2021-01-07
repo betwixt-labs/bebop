@@ -59,7 +59,7 @@ namespace Bebop.Runtime
         /// <returns>A virtual <see cref="BebopRecord"/> accessor.</returns>
         public static BebopRecord GetRecord(string recordName) => DefinedRecords
                 .FirstOrDefault(definedType => definedType.Type.Name.Equals(recordName)) ??
-            throw new BebopRuntimeException($"A record named \"{recordName}\" does not exist.");
+            throw new BebopRuntimeException($"A record named '{recordName}' does not exist.");
 
 
         /// <summary>
@@ -89,7 +89,7 @@ namespace Bebop.Runtime
                     return record;
                 }
             }
-            throw new BebopRuntimeException($"A record with the type of \"{nameof(T)}\" does not exist.");
+            throw new BebopRuntimeException($"A record with the type of '{nameof(T)}' does not exist.");
         }
 
         /// <summary>
@@ -212,7 +212,7 @@ namespace Bebop.Runtime
                 var handlerInstance = !handler.Key.IsStaticClass() ? Activator.CreateInstance(handler.Key) : new StaticClass();
                 if (handlerInstance is null)
                 {
-                    throw new BebopRuntimeException($"Unable to create instance of \"{handler.Key}\"");
+                    throw new BebopRuntimeException($"Unable to create instance of '{handler.Key}'");
                 }
                 foreach (var binding in handler.Value)
                 {
@@ -235,13 +235,13 @@ namespace Bebop.Runtime
                     {
                         record.AssignHandler(handlers.FindBindingInfo(record.GetType()).Method, handlerInstance);
                     }
-                    if (record is {OpCode: > -1})
+                    if (record is {OpCode: not null})
                     {
-                        if (opcodeTypes.ContainsKey((uint) record.OpCode))
+                        if (opcodeTypes.ContainsKey(record.OpCode.Value))
                         {
-                            throw new BebopRuntimeException(opcodeTypes[(uint) record.OpCode], record);
+                            throw new BebopRuntimeException(opcodeTypes[record.OpCode.Value], record);
                         }
-                        opcodeTypes.Add((uint) record.OpCode, record);
+                        opcodeTypes.Add(record.OpCode.Value, record);
                     }
                     concreteRecords[record.Type] = record;
                     definedRecords.Add(record);

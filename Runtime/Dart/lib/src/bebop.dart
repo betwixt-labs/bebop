@@ -13,7 +13,9 @@ class BebopReader {
   ByteData _view;
   int index = 0;
 
-  final Utf8Decoder _utf8Decoder = Utf8Decoder();
+  static const Utf8Decoder _utf8Decoder = Utf8Decoder();
+  static final Uint8List _emptyByteList = Uint8List(0);
+  static const String _emptyString = "";
 
   BebopReader._();
   static final BebopReader _instance = BebopReader._();
@@ -85,12 +87,23 @@ class BebopReader {
 
   Uint8List readBytes() {
     final length = readUint32();
+    if (length == 0) {
+      return _emptyByteList;
+    }
     final view = _buffer.asUint8List(index, length);
     index += length;
     return view;
   }
 
-  String readString() => _utf8Decoder.convert(readBytes());
+  String readString() {
+    final length = readUint32();
+    if (length == 0) {
+      return _emptyString;
+    }
+    final view = _buffer.asUint8List(index, length);
+    index += length;
+    return _utf8Decoder.convert(view);
+  }
 
   String readGuid() {
     var s = byteToHex[_bytes[index + 3]], d = '-';
@@ -140,7 +153,7 @@ class BebopWriter {
   ByteData _view;
   int length = 0;
 
-  final Utf8Encoder _utf8Encoder = Utf8Encoder();
+static const Utf8Encoder _utf8Encoder = Utf8Encoder();
 
   BebopWriter._() {
     _buffer = _bytes.buffer;
@@ -222,13 +235,21 @@ class BebopWriter {
   void writeBool(bool value) => writeByte(value ? 1 : 0);
 
   void writeBytes(Uint8List value) {
-    writeUint32(value.length);
+    final byteCount = value.length;
+    writeUint32(byteCount);
+    if (byteCount == 0) {
+      return;
+    }
     final index = length;
     _growBy(value.length);
     _bytes.setAll(index, value);
   }
 
   void writeString(String value) {
+    if (value.length == 0) {
+      writeUint32(0);
+      return;
+    }
     writeBytes(_utf8Encoder.convert(value));
   }
 
