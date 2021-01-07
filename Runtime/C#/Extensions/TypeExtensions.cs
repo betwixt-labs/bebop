@@ -56,7 +56,7 @@ namespace Bebop.Extensions
 
             if (type.BaseType is null)
             {
-                throw new BebopRuntimeException($"Provided type \"{type.FullName}\" does not contain a base class.");
+                throw new BebopRuntimeException($"Provided type '{type.FullName}' does not contain a base class.");
             }
 
             var decodeMethod = type.GetStaticDecode();
@@ -69,12 +69,10 @@ namespace Bebop.Extensions
             if (constructor is null)
             {
                 throw new BebopRuntimeException(
-                    $"Cannot locate constructor for BebopType<T> using \"{type.FullName}\"");
+                    $"Cannot locate constructor for BebopType<T> using '{type.FullName}'");
             }
 
-            var opcode = type.BaseType.GetField(opcodeFieldName)?.GetRawConstantValue() is uint v
-                ? (int) v
-                : -1;
+            uint? opcode = type.BaseType.GetField(opcodeFieldName)?.GetRawConstantValue() is uint v ? v : null;
 
             return (BebopRecord) constructor.Invoke(new object[] {type, encodeMethod, decodeMethod, opcode});
         }

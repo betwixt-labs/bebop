@@ -26,7 +26,7 @@ namespace Bebop.Runtime
 
         ///<inheritdoc cref="BebopRecord{T}.OpCode"/>
         // ReSharper disable once UnassignedGetOnlyAutoProperty
-        public virtual int OpCode { get; }
+        public virtual uint? OpCode { get; }
 
         ///<inheritdoc cref="BebopRecord{T}.Encode"/>
         public virtual byte[] Encode(object record) => throw new NotImplementedException();
@@ -94,7 +94,7 @@ namespace Bebop.Runtime
         ///     <typeparamref name="T"/>
         /// </param>
         /// <param name="opcode">The opcode constant (if any) that is in <typeparamref name="T"/></param>
-        private BebopRecord(Type type, MethodInfo encodeMethod, MethodInfo decodeMethod, int opcode)
+        private BebopRecord(Type type, MethodInfo encodeMethod, MethodInfo decodeMethod, uint? opcode)
         {
             // create delegates to the encode and decode methods so we have a pointer.
             _encodeDelegate = (encodeMethod.CreateDelegate(typeof(Func<T, byte[]>)) as Func<T, byte[]>)!;
@@ -106,10 +106,7 @@ namespace Bebop.Runtime
         /// <summary>
         ///     The opcode attribute constant
         /// </summary>
-        /// <remarks>
-        ///     -1 if no opcode was defined in <typeparamref name="T"/>
-        /// </remarks>
-        public override int OpCode { get; }
+        public override uint? OpCode { get; }
 
         /// <summary>
         ///     The actual Bebop aggregate implementation type
