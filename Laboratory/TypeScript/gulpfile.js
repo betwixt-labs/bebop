@@ -15,7 +15,7 @@ async function compile() {
 
   return gulp
       .src("../Schemas/*.bop")
-      .pipe(exec((file) => `..\\..\\bin\\compiler\\Debug\\bebopc.exe --lang ts --out test\\generated\\${file.stem}.ts --files ${file.path}`, options))
+      .pipe(exec((file) => `..\\..\\bin\\compiler\\Windows-Debug\\bebopc.exe --ts test\\generated\\${file.stem}.ts --files ${file.path}`, options))
       .pipe(exec.reporter(reportOptions));
 }
 
