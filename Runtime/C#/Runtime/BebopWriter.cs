@@ -305,6 +305,11 @@ namespace Bebop.Runtime
         [MethodImpl(BebopConstants.HotPath)]
         public void WriteString(string value)
         {
+            if (value.Length == 0)
+            {
+                WriteUInt32(0);
+                return;
+            }
             unsafe
             {
                 fixed (char* c = value)

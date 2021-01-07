@@ -11,6 +11,9 @@ const asciiToHex = [
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
 ];
 
+const emptyByteArray = new Uint8Array(0);
+const emptyString = "";
+
 if (typeof require !== 'undefined') {
     if (typeof TextDecoder === 'undefined') (global as any).TextDecoder = require('util').TextDecoder;
 }
@@ -35,8 +38,8 @@ export class BebopView {
     length: number; // write pointer
 
     private constructor() {
-        this.buffer = BebopView.writeBuffer
-        this.view = BebopView.writeBufferView
+        this.buffer = BebopView.writeBuffer;
+        this.view = BebopView.writeBufferView;
         this.index = 0;
         this.length = 0;
         for (const x of hexDigits) {
@@ -54,8 +57,8 @@ export class BebopView {
     }
 
     startWriting(): void {
-        this.buffer = BebopView.writeBuffer
-        this.view = BebopView.writeBufferView
+        this.buffer = BebopView.writeBuffer;
+        this.view = BebopView.writeBufferView;
         this.index = 0;
         this.length = 0;
     }
@@ -103,15 +106,23 @@ export class BebopView {
     writeFloat64(value: number): void { const index = this.length; this.growBy(8); this.view.setFloat64(index, value, true); }
 
     readBytes(): Uint8Array {
-        const length = this.readUint32(), start = this.index, end = start + length;
+        const length = this.readUint32();
+        if (length === 0) {
+            return emptyByteArray;
+        }
+        const start = this.index, end = start + length;
         this.index = end;
         return this.buffer.subarray(start, end);
     }
 
     writeBytes(value: Uint8Array): void {
-        this.writeUint32(value.length);
+        const byteCount = value.length;
+        this.writeUint32(byteCount);
+        if (byteCount === 0) {
+            return;
+        }
         const index = this.length;
-        this.growBy(value.length);
+        this.growBy(byteCount);
         this.buffer.set(value, index);
     }
 
@@ -120,6 +131,10 @@ export class BebopView {
      */
     readString(): string {
         const lengthBytes = this.readUint32();
+        // bail out early on an empty string
+        if (lengthBytes === 0) {
+            return emptyString;
+        }
         if (lengthBytes >= this.minimumTextDecoderLength) {
             return BebopView.textDecoder.decode(this.buffer.subarray(this.index, this.index += lengthBytes));
         }
@@ -166,10 +181,18 @@ export class BebopView {
      * Writes a length-prefixed UTF-8-encoded string.
      */
     writeString(value: string): void {
+
+        // The number of characters in the string
+        const stringLength = value.length;
+        // If the string is empty avoid unnecessary allocations by writing the zero length and returning. 
+        if (stringLength === 0) {
+            this.writeUint32(0);
+            return;
+        }
         // value.length * 3 is an upper limit for the space taken up by the string:
         // https://developer.mozilla.org/en-US/docs/Web/API/TextEncoder/encodeInto#Buffer_Sizing
         // We add 4 for our length prefix.
-        const maxBytes = 4 + value.length * 3;
+        const maxBytes = 4 + stringLength * 3;
 
         // Reallocate if necessary, then write to this.length + 4.
         this.guaranteeBufferLength(this.length + maxBytes);
@@ -180,10 +203,10 @@ export class BebopView {
 
         let codePoint: number;
 
-        for (let i = 0; i < value.length; i++) {
+        for (let i = 0; i < stringLength; i++) {
             // decode UTF-16
             const a = value.charCodeAt(i);
-            if (i + 1 === value.length || a < 0xD800 || a >= 0xDC00) {
+            if (i + 1 === stringLength || a < 0xD800 || a >= 0xDC00) {
                 codePoint = a;
             } else {
                 const b = value.charCodeAt(++i);
