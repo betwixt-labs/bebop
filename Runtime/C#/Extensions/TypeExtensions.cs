@@ -74,7 +74,7 @@ namespace Bebop.Extensions
 
             uint? opcode = type.BaseType.GetField(opcodeFieldName)?.GetRawConstantValue() is uint v ? v : null;
 
-            return (BebopRecord) constructor.Invoke(new object[] {type, encodeMethod, decodeMethod, opcode});
+            return (BebopRecord) constructor.Invoke(new object[] {type, encodeMethod, decodeMethod, opcode!});
         }
 
         /// <summary>
