@@ -26,7 +26,7 @@ namespace Core.Meta
 
             foreach (var definition in Definitions.Values)
             {
-                if (Definitions.Values.Count(d => d.Name.Equals(definition.Name)) > 1)
+                if (Definitions.Values.Count(d => d.Name.Equals(definition.Name, StringComparison.OrdinalIgnoreCase)) > 1)
                 {
                     throw new MultipleDefinitionsException(definition);
                 }
@@ -63,12 +63,12 @@ namespace Core.Meta
                     {
                         throw new InvalidDeprecatedAttributeUsageException(field);
                     }
+                    if (definition.Fields.Count(f => f.Name.Equals(field.Name, StringComparison.OrdinalIgnoreCase)) > 1)
+                    {
+                        throw new DuplicateFieldException(field, definition);
+                    }
                     switch (definition.Kind)
                     {
-                        case AggregateKind.Enum when field.ConstantValue < 0:
-                        {
-                            throw new InvalidFieldException(field, "Enum values must start at 0");
-                        }
                         case AggregateKind.Enum when definition.Fields.Count(f => f.ConstantValue == field.ConstantValue) > 1:
                         {
                             throw new InvalidFieldException(field, "Enum value must be unique");

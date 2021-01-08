@@ -9,6 +9,7 @@ using Core.Lexer.Tokenization;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta;
 using Core.Meta.Attributes;
+using Core.Meta.Extensions;
 using Core.Meta.Interfaces;
 using Core.Parser.Extensions;
 
@@ -245,7 +246,7 @@ namespace Core.Parser
             while (!Eat(TokenKind.CloseBrace))
             {
                
-                var value = 0;
+                var value = 0u;
 
                 var fieldDocumentation = ConsumeBlockComments();
                 // if we've reached the end of the definition after parsing documentation we need to exit.
@@ -258,10 +259,13 @@ namespace Core.Parser
 
                 if (kind == AggregateKind.Message)
                 {
-                    var indexHint = "Fields in a message must be explicitly indexed: message A { 1 -> string s; 2 -> bool b; }";
+                    const string? indexHint = "Fields in a message must be explicitly indexed: message A { 1 -> string s; 2 -> bool b; }";
                     var indexLexeme = CurrentToken.Lexeme;
                     Expect(TokenKind.Number, hint: indexHint);
-                    value = int.Parse(indexLexeme);
+                    if (!indexLexeme.TryParseUInt(out value))
+                    {
+                        throw new UnexpectedTokenException(TokenKind.Number, CurrentToken, "Field index must be an unsigned integer.");
+                    }
                     // Parse an arrow ("->").
                     Expect(TokenKind.Hyphen, hint: indexHint);
                     Expect(TokenKind.CloseCaret, hint: indexHint);
@@ -285,8 +289,11 @@ namespace Core.Parser
                 {
                     Expect(TokenKind.Eq, hint: "Every constant in an enum must have an explicit literal value.");
                     var valueLexeme = CurrentToken.Lexeme;
-                    Expect(TokenKind.Number, hint: "An enum constant must have a literal integer value.");
-                    value = int.Parse(valueLexeme);
+                    Expect(TokenKind.Number, hint: "An enum constant must have a literal unsigned integer value.");
+                    if (!valueLexeme.TryParseUInt(out value))
+                    {
+                        throw new UnexpectedTokenException(TokenKind.Number, CurrentToken, "Enum constant must be an unsigned integer.");
+                    }
                 }
                 
 
