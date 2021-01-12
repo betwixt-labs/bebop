@@ -38,6 +38,7 @@ namespace Core.Exceptions
         public UnrecognizedTokenException(char tokenStart, Span span)
             : base($"Unrecognized token start '{tokenStart}'", span, 100) { }
     }
+   
     [Serializable]
     class MultipleDefinitionsException : SpanException
     {
@@ -109,5 +110,12 @@ namespace Core.Exceptions
     {
         public InvalidMapKeyTypeException(TypeBase type)
             : base($"Type '{type.AsString}' is an invalid key type for a map. Only booleans, numbers, strings, and GUIDs can be used as keys.", type.Span, 111) { }
+    }
+
+    [Serializable]
+    class DuplicateFieldException : SpanException
+    {
+        public DuplicateFieldException(IField field, IDefinition definition)
+            : base($"The type '{definition.Name}' already contains a definition for '{field.Name}'", field.Span, 112) { }
     }
 }

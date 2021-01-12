@@ -37,7 +37,7 @@ namespace Core.Meta.Interfaces
         ///     <see cref="AggregateKind.Message"/> a unique index.
         ///     It will be zero for <see cref="AggregateKind.Struct"/>.
         /// </remarks>
-        public int ConstantValue { get; }
+        public uint ConstantValue { get; }
 
         /// <summary>
         /// The inner text of a block comment that preceded the field.
