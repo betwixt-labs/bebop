@@ -73,23 +73,35 @@ namespace Bebop.Runtime
             => (_opcodeRecords.TryGetValue(opcode, out var type) ? type : null) ??
                 throw new BebopRuntimeException(opcode);
 
+        /// <summary>
+        ///     Finds a <see cref="BebopRecord{T}"/> using it's defined type
+        /// </summary>
+        /// <typeparam name="T">The defined record type</typeparam>
+        /// <exception cref="BebopRuntimeException">Thrown when <typeparamref name="T"/> does not correspond to any Bebop defined type.</exception>
+        /// <returns>An instance of <see cref="BebopRecord{T}"/></returns>
+        public static BebopRecord<T> FindRecordFromType<T>() where T : class, new()
+        {
+            if (FindRecordFromType(typeof(T)) is BebopRecord<T> record)
+            {
+                return record;
+            }
+            throw new BebopRuntimeException($"A record with the type of '{nameof(T)}' does not exist.");
+        }
+
 
         /// <summary>
         ///     Finds a <see cref="BebopRecord{T}"/> using it's defined type
         /// </summary>
-        /// <typeparam name="T">The define record type</typeparam>
-        /// <exception cref="BebopRuntimeException">Thrown when <typeparamref name="T"/> does not correspond to any defined type.</exception>
+        /// <param name="type">The defined record type</param>
+        /// <exception cref="BebopRuntimeException">Thrown when the specified <paramref name="type"/> does not correspond to any Bebop defined type.</exception>
         /// <returns>An instance of <see cref="BebopRecord{T}"/></returns>
-        public static BebopRecord<T> FindRecordFromType<T>() where T : class, new()
+        public static BebopRecord FindRecordFromType(Type type)
         {
-            if (_concreteRecords.TryGetValue(typeof(T), out var type))
+            if (_concreteRecords.TryGetValue(type, out var recordType))
             {
-                if (type is BebopRecord<T> record)
-                {
-                    return record;
-                }
+                return recordType;
             }
-            throw new BebopRuntimeException($"A record with the type of '{nameof(T)}' does not exist.");
+            throw new BebopRuntimeException($"A record with the type of '{type.Name}' does not exist.");
         }
 
         /// <summary>
