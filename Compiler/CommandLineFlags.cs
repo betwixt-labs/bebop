@@ -165,6 +165,10 @@ namespace Compiler
             "--dart ./cowboy/bebop/HelloWorld.dart", true)]
         public string? DartOutput { get; private set; }
 
+        [CommandLineFlag("cpp", "Generate C++ source code to the specified file",
+            "--cpp ./cowboy/bebop/HelloWorld.cpp", true)]
+        public string? CPlusPlusOutput { get; private set; }
+
         [CommandLineFlag("namespace", "When this option is specified generated code will use namespaces",
             "--lang cs --namespace [package]")]
         public string? Namespace { get; private set; }

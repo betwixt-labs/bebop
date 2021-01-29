@@ -11,10 +11,11 @@ int main() {
     w.writeGuid(myGuid);
     w.writeInt64(12345);
     w.writeByte(255);
-    w.writeDate(bebop::BebopTickDuration(123456789));
+    w.writeDate(bebop::TickDuration(123456789));
+
+    auto buffer = *w.buffer();
     
-    auto& r = bebop::BebopReader::instance();
-    r.load(w.getBuffer().data());
+    auto& r = bebop::BebopReader::instance(buffer.data());
     std::cout << "guid roundtrip: " << (r.readGuid() == myGuid ? "ok" : "fail") << std::endl;
     std::cout << "int roundtrip: " << (r.readInt64() == 12345 ? "ok" : "fail") << std::endl;
     std::cout << "byte roundtrip: " << (r.readByte() == 255 ? "ok" : "fail") << std::endl;
@@ -24,7 +25,7 @@ int main() {
     w.fillMessageLength(p, 0x1234);
 
     std::cout << "packet dump:";
-    for (const auto x : w.getBuffer()) {
+    for (const auto x : buffer) {
         printf(" %02x", x);
     }
     std::cout << std::endl;

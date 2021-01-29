@@ -3,6 +3,8 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -11,13 +13,81 @@
 namespace bebop {
 
 /// A "tick" is a ten-millionth of a second, or 100ns.
-using BebopTick = std::ratio<1, 10000000>;
-using BebopTickDuration = std::chrono::duration<int64_t, BebopTick>;
+using Tick = std::ratio<1, 10000000>;
+using TickDuration = std::chrono::duration<int64_t, Tick>;
 
 namespace {
     /// The number of ticks between 1/1/0001 and 1/1/1970.
     const int64_t ticksBetweenEpochs = 621355968000000000;
 }
+
+enum class GuidStyle {
+    Dashes,
+    NoDashes,
+};
+
+struct Guid {
+    /// The GUID bytes, in .NET "ToByteArray" order.
+    /// https://docs.microsoft.com/en-us/dotnet/api/system.guid.tobytearray?view=net-5.0
+    uint8_t m_bytes[16];
+
+    Guid() = default;
+    Guid(const uint8_t *bytes) { std::memcpy(m_bytes, bytes, 16); }
+    Guid(Guid const &other) : Guid(other.m_bytes) {}
+
+    static Guid fromString(const std::string &string) {
+        Guid g;
+        static const uint8_t asciiToHex[256] = {
+            0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+            0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+            0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+            0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  0,  0,  0,  0,  0,  0,
+            0, 10, 11, 12, 13, 14, 15,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+            0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+            0, 10, 11, 12, 13, 14, 15,  // and the rest is zeroes
+        };
+        const char* s = string.c_str(); uint8_t a;
+
+#define Nibble() (asciiToHex[static_cast<unsigned char>(*s++)])
+#define B(i) a = Nibble(); a = (a << 4) | Nibble(); g.m_bytes[i] = a;
+#define Dash if (*s == '-') s++;
+        B(3)B(2)B(1)B(0) Dash B(5)B(4) Dash B(7)B(6) Dash B(8)B(9) Dash B(10)B(11)B(12)B(13)B(14)B(15)
+#undef Dash
+#undef B
+#undef Nibble
+
+        return g;
+    }
+
+    std::string toString(GuidStyle style = GuidStyle::Dashes) {
+        static const char nibbleToHex[16] = {'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'};
+        std::string result;
+        bool dashes = style == GuidStyle::Dashes;
+        result.reserve(36);
+        uint8_t a;
+#define B(i) a = m_bytes[i]; result += nibbleToHex[a >> 4]; result += nibbleToHex[a & 0xf];
+#define Dash if (dashes) result += '-';
+        B(3)B(2)B(1)B(0) Dash B(5)B(4) Dash B(7)B(6) Dash B(8)B(9) Dash B(10)B(11)B(12)B(13)B(14)B(15)
+#undef Dash
+#undef B
+        return result;
+    }
+
+    bool operator<(const Guid &other) const {
+        for (size_t i = 0; i < 16; i++) {
+            if (m_bytes[i] < other.m_bytes[i]) return true;
+            if (m_bytes[i] > other.m_bytes[i]) return false;
+        }
+        return false;
+    }
+
+    bool operator==(const Guid &other) const {
+        for (size_t i = 0; i < 16; i++) {
+            if (m_bytes[i] != other.m_bytes[i]) return false;
+        }
+        return true;
+    }
+};
 
 class BebopReader {
     const uint8_t *m_pointer;
@@ -25,12 +95,15 @@ class BebopReader {
 public:
     BebopReader(BebopReader const&) = delete;
     void operator=(BebopReader const&) = delete;
-    static BebopReader& instance() {
+    static BebopReader& instance(const uint8_t *buffer) {
         static BebopReader instance;
+        instance.m_pointer = buffer;
         return instance;
     }
 
-    void load(const uint8_t *m_buffer) { m_pointer = m_buffer; }
+    const uint8_t *pointer() const { return m_pointer; }
+    void seek(const uint8_t *pointer) { m_pointer = pointer; }
+
     void skip(size_t amount) { m_pointer += amount; }
 
     uint8_t readByte() { return *m_pointer++; }
@@ -111,63 +184,59 @@ public:
         return v;
     }
 
-    std::string readGuid() {
-        static const char nibbleToHex[16] = {'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'};
-        std::string guid;
-        guid.reserve(36);
-        uint8_t a;
-#define B(i) a = m_pointer[i]; guid += nibbleToHex[a >> 4]; guid += nibbleToHex[a & 0xf];
-#define Dash guid += '-';
-        B(3)B(2)B(1)B(0) Dash B(5)B(4) Dash B(7)B(6) Dash B(8)B(9) Dash B(10)B(11)B(12)B(13)B(14)B(15)
-#undef Dash
-#undef B
+    Guid readGuid() {
+        Guid guid { m_pointer };
         m_pointer += 16;
         return guid;
     }
 
     // Read a date (as ticks since the Unix Epoch).
-    BebopTickDuration readDate() {
+    TickDuration readDate() {
         const uint64_t ticks = readUint64() & 0x3fffffffffffffff;
-        return BebopTickDuration(ticks - ticksBetweenEpochs);
+        return TickDuration(ticks - ticksBetweenEpochs);
     }
 
     uint32_t readMessageLength() { return readUint32(); }
 };
 
 class BebopWriter {
-    std::vector<uint8_t> m_buffer;
+    std::unique_ptr<std::vector<uint8_t>> m_buffer;
     BebopWriter() {}
 public:
     BebopWriter(BebopWriter const&) = delete;
     void operator=(BebopWriter const&) = delete;
     static BebopWriter& instance() {
         static BebopWriter instance;
-        instance.m_buffer.resize(0);
+        instance.m_buffer = std::make_unique<std::vector<uint8_t>>();
         return instance;
     }
 
-    const std::vector<uint8_t> &getBuffer() const { return m_buffer; }
+    std::unique_ptr<std::vector<uint8_t>> buffer() {
+        return std::move(m_buffer);
+    }
 
-    void writeByte(uint8_t value) { m_buffer.push_back(value); }
+    size_t length() { return m_buffer->size(); }
+
+    void writeByte(uint8_t value) { m_buffer->push_back(value); }
     void writeUint16(uint16_t value) {
-        m_buffer.push_back(value);
-        m_buffer.push_back(value >> 8);
+        m_buffer->push_back(value);
+        m_buffer->push_back(value >> 8);
     }
     void writeUint32(uint32_t value) {
-        m_buffer.push_back(value);
-        m_buffer.push_back(value >> 8);
-        m_buffer.push_back(value >> 16);
-        m_buffer.push_back(value >> 24);
+        m_buffer->push_back(value);
+        m_buffer->push_back(value >> 8);
+        m_buffer->push_back(value >> 16);
+        m_buffer->push_back(value >> 24);
     }
     void writeUint64(uint64_t value) {
-        m_buffer.push_back(value);
-        m_buffer.push_back(value >> 0x08);
-        m_buffer.push_back(value >> 0x10);
-        m_buffer.push_back(value >> 0x18);
-        m_buffer.push_back(value >> 0x20);
-        m_buffer.push_back(value >> 0x28);
-        m_buffer.push_back(value >> 0x30);
-        m_buffer.push_back(value >> 0x38);
+        m_buffer->push_back(value);
+        m_buffer->push_back(value >> 0x08);
+        m_buffer->push_back(value >> 0x10);
+        m_buffer->push_back(value >> 0x18);
+        m_buffer->push_back(value >> 0x20);
+        m_buffer->push_back(value >> 0x28);
+        m_buffer->push_back(value >> 0x30);
+        m_buffer->push_back(value >> 0x38);
     }
 
     void writeInt16(int16_t value) { writeUint16(static_cast<uint16_t>(value)); }
@@ -180,75 +249,37 @@ public:
     void writeBytes(std::vector<uint8_t> value) {
         const auto byteCount = value.size();
         writeUint32(byteCount);
-        m_buffer.insert(m_buffer.end(), value.begin(), value.end());
+        m_buffer->insert(m_buffer->end(), value.begin(), value.end());
     }
 
     void writeString(std::string value) {
         const auto byteCount = value.size();
         writeUint32(byteCount);
-        m_buffer.insert(m_buffer.end(), value.begin(), value.end());
+        m_buffer->insert(m_buffer->end(), value.begin(), value.end());
     }
 
-    void writeGuid(std::string value) {
-        static const uint8_t asciiToHex[256] = {
-            0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-            0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-            0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-            0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  0,  0,  0,  0,  0,  0,
-            0, 10, 11, 12, 13, 14, 15,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-            0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-            0, 10, 11, 12, 13, 14, 15,  // and the rest is zeroes
-        };
-        const char* s = value.c_str();
-        m_buffer.reserve(m_buffer.size() + 16);
-#define Nibble() (asciiToHex[static_cast<unsigned char>(*s++)])
-        uint8_t a = Nibble(); a = (a << 4) | Nibble();
-        uint8_t b = Nibble(); b = (b << 4) | Nibble();
-        uint8_t c = Nibble(); c = (c << 4) | Nibble();
-        uint8_t d = Nibble(); d = (d << 4) | Nibble();
-        m_buffer.push_back(d);
-        m_buffer.push_back(c);
-        m_buffer.push_back(b);
-        m_buffer.push_back(a);
-        if (*s == '-') s++;
-        a = Nibble(); a = (a << 4) | Nibble();
-        b = Nibble(); b = (b << 4) | Nibble();
-        m_buffer.push_back(b);
-        m_buffer.push_back(a);
-        if (*s == '-') s++;
-        a = Nibble(); a = (a << 4) | Nibble();
-        b = Nibble(); b = (b << 4) | Nibble();
-        m_buffer.push_back(b);
-        m_buffer.push_back(a);
-        if (*s == '-') s++;
-        a = Nibble(); a = (a << 4) | Nibble();
-        m_buffer.push_back(a);
-        a = Nibble(); a = (a << 4) | Nibble();
-        m_buffer.push_back(a);
-        if (*s == '-') s++;
-        for (int i = 0; i < 6; i++) {
-            a = Nibble(); a = (a << 4) | Nibble();
-            m_buffer.push_back(a);
+    void writeGuid(Guid value) {
+        for (const auto byte : value.m_bytes) {
+            m_buffer->push_back(byte);
         }
-#undef Nibble
     }
 
-    void writeDate(BebopTickDuration duration) {
+    void writeDate(TickDuration duration) {
         writeUint64(duration.count() + ticksBetweenEpochs);
     }
 
     /// Reserve some space to write a message's length prefix, and return its index.
     /// The length is stored as a little-endian fixed-width unsigned 32-bit integer, so 4 bytes are reserved.
     size_t reserveMessageLength() {
-        const auto n = m_buffer.size();
-        m_buffer.resize(n + 4);
+        const auto n = m_buffer->size();
+        m_buffer->resize(n + 4);
         return n;
     }
 
     /// Fill in a message's length prefix.
     void fillMessageLength(size_t position, uint32_t messageLength) {
 #if BEBOP_ASSUME_LITTLE_ENDIAN
-        *reinterpret_cast<uint32_t*>(m_buffer.data() + position) = messageLength;
+        *reinterpret_cast<uint32_t*>(m_buffer->data() + position) = messageLength;
 #else
         m_buffer[position++] = messageLength;
         m_buffer[position++] = messageLength >> 8;
