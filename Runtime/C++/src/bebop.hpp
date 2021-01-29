@@ -37,39 +37,36 @@ struct Guid {
 
     static Guid fromString(const std::string &string) {
         Guid g;
-        static const uint8_t asciiToHex[256] = {
-            0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-            0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-            0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-            0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  0,  0,  0,  0,  0,  0,
-            0, 10, 11, 12, 13, 14, 15,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-            0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-            0, 10, 11, 12, 13, 14, 15,  // and the rest is zeroes
-        };
-        const char* s = string.c_str(); uint8_t a;
-
-#define Nibble() (asciiToHex[static_cast<unsigned char>(*s++)])
-#define B(i) a = Nibble(); a = (a << 4) | Nibble(); g.m_bytes[i] = a;
-#define Dash if (*s == '-') s++;
-        B(3)B(2)B(1)B(0) Dash B(5)B(4) Dash B(7)B(6) Dash B(8)B(9) Dash B(10)B(11)B(12)B(13)B(14)B(15)
-#undef Dash
-#undef B
-#undef Nibble
+        const char* s = string.c_str();
+        for (const auto i : layout) {
+            if (i == dash) {
+                // Skip over a possible dash in the string.
+                if (*s == '-') s++;
+            } else {
+                // Read two hex digits from the string.
+                uint8_t high = *s++;
+                uint8_t low = *s++;
+                g.m_bytes[i] = (asciiToHex[high] << 4) | asciiToHex[low];
+            }
+        }
 
         return g;
     }
 
     std::string toString(GuidStyle style = GuidStyle::Dashes) {
-        static const char nibbleToHex[16] = {'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'};
         std::string result;
-        bool dashes = style == GuidStyle::Dashes;
         result.reserve(36);
-        uint8_t a;
-#define B(i) a = m_bytes[i]; result += nibbleToHex[a >> 4]; result += nibbleToHex[a & 0xf];
-#define Dash if (dashes) result += '-';
-        B(3)B(2)B(1)B(0) Dash B(5)B(4) Dash B(7)B(6) Dash B(8)B(9) Dash B(10)B(11)B(12)B(13)B(14)B(15)
-#undef Dash
-#undef B
+
+        for (const auto i : layout) {
+            if (i == dash) {
+                if (style == GuidStyle::Dashes) result += '-';
+            } else {
+                uint8_t a = m_bytes[i];
+                result += nibbleToHex[a >> 4];
+                result += nibbleToHex[a & 0xf];
+            }
+        }
+
         return result;
     }
 
@@ -87,6 +84,20 @@ struct Guid {
         }
         return true;
     }
+
+private:
+    static constexpr int dash = -1;
+    static constexpr int layout[] = {3, 2, 1, 0, dash, 5, 4, dash, 7, 6, dash, 8, 9, dash, 10, 11, 12, 13, 14, 15};
+    static constexpr char nibbleToHex[16] = {'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'};
+    static constexpr uint8_t asciiToHex[256] = {
+        0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+        0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  0,  0,  0,  0,  0,  0,
+        0, 10, 11, 12, 13, 14, 15,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+        0, 10, 11, 12, 13, 14, 15,  // and the rest is zeroes
+    };
 };
 
 class BebopReader {
