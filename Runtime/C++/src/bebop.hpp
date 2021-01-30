@@ -26,18 +26,66 @@ enum class GuidStyle {
     NoDashes,
 };
 
+#pragma pack(push, 1)
 struct Guid {
-    /// The GUID bytes, in .NET "ToByteArray" order.
-    /// https://docs.microsoft.com/en-us/dotnet/api/system.guid.tobytearray?view=net-5.0
-    uint8_t m_bytes[16];
+    /// The GUID data is stored the way it is to match the memory layout
+    /// of a _GUID in Windows: the idea is to "trick" P/Invoke into recognizing
+    /// our type as corresponding to a .NET "Guid".
+    uint32_t m_a;
+    uint16_t m_b;
+    uint16_t m_c;
+    uint8_t m_d;
+    uint8_t m_e;
+    uint8_t m_f;
+    uint8_t m_g;
+    uint8_t m_h;
+    uint8_t m_i;
+    uint8_t m_j;
+    uint8_t m_k;
 
     Guid() = default;
-    Guid(const uint8_t *bytes) { std::memcpy(m_bytes, bytes, 16); }
-    Guid(Guid const &other) : Guid(other.m_bytes) {}
+    Guid(const uint8_t* bytes) {
+#if BEBOP_ASSUME_LITTLE_ENDIAN
+        m_a = *reinterpret_cast<const uint32_t*>(bytes + 0);
+        m_b = *reinterpret_cast<const uint16_t*>(bytes + 4);
+        m_c = *reinterpret_cast<const uint16_t*>(bytes + 6);
+#else
+        m_a = bytes[0]
+            | (static_cast<uint32_t>(bytes[1]) << 8)
+            | (static_cast<uint32_t>(bytes[2]) << 16)
+            | (static_cast<uint32_t>(bytes[3]) << 24);
+        m_b = bytes[4]
+            | (static_cast<uint16_t>(bytes[5]) << 8);
+        m_c = bytes[6]
+            | (static_cast<uint16_t>(bytes[7]) << 8);
+#endif
+        m_d = bytes[8];
+        m_e = bytes[9];
+        m_f = bytes[10];
+        m_g = bytes[11];
+        m_h = bytes[12];
+        m_i = bytes[13];
+        m_j = bytes[14];
+        m_k = bytes[15];
+    }
+    Guid(Guid const& other) {
+        m_a = other.m_a;
+        m_b = other.m_b;
+        m_c = other.m_c;
+        m_d = other.m_d;
+        m_e = other.m_e;
+        m_f = other.m_f;
+        m_g = other.m_g;
+        m_h = other.m_h;
+        m_i = other.m_i;
+        m_j = other.m_j;
+        m_k = other.m_k;
+    }
 
-    static Guid fromString(const std::string &string) {
-        Guid g;
+    static Guid fromString(const std::string& string) {
+        uint8_t bytes[16];
         const char* s = string.c_str();
+        
         for (const auto i : layout) {
             if (i == dash) {
                 // Skip over a possible dash in the string.
@@ -46,42 +94,60 @@ struct Guid {
                 // Read two hex digits from the string.
                 uint8_t high = *s++;
                 uint8_t low = *s++;
-                g.m_bytes[i] = (asciiToHex[high] << 4) | asciiToHex[low];
+                bytes[i] = (asciiToHex[high] << 4) | asciiToHex[low];
             }
         }
 
-        return g;
+        return Guid(bytes);
     }
 
     std::string toString(GuidStyle style = GuidStyle::Dashes) {
-        std::string result;
-        result.reserve(36);
-
-        for (const auto i : layout) {
-            if (i == dash) {
-                if (style == GuidStyle::Dashes) result += '-';
-            } else {
-                uint8_t a = m_bytes[i];
-                result += nibbleToHex[a >> 4];
-                result += nibbleToHex[a & 0xf];
-            }
-        }
-
-        return result;
+        int size = style == GuidStyle::Dashes ? 36 : 32;
+        const char* dash = style == GuidStyle::Dashes ? "-" : "";
+        std::unique_ptr<char[]> buffer(new char[size+1]);
+        snprintf(buffer.get(), size+1, "%08x%s%04x%s%04x%s%02x%02x%s%02x%02x%02x%02x%02x%02x",
+            m_a, dash, m_b, dash, m_c, dash, m_d, m_e, dash, m_f, m_g, m_h, m_i, m_j, m_k);
+        return std::string(buffer.get(), buffer.get() + size);
     }
 
-    bool operator<(const Guid &other) const {
-        for (size_t i = 0; i < 16; i++) {
-            if (m_bytes[i] < other.m_bytes[i]) return true;
-            if (m_bytes[i] > other.m_bytes[i]) return false;
-        }
+    bool operator<(const Guid& other) const {
+        if (m_a < other.m_a) return true;
+        if (m_a > other.m_a) return false;
+        if (m_b < other.m_b) return true;
+        if (m_b > other.m_b) return false;
+        if (m_c < other.m_c) return true;
+        if (m_c > other.m_c) return false;
+        if (m_d < other.m_d) return true;
+        if (m_d > other.m_d) return false;
+        if (m_e < other.m_e) return true;
+        if (m_e > other.m_e) return false;
+        if (m_f < other.m_f) return true;
+        if (m_f > other.m_f) return false;
+        if (m_g < other.m_g) return true;
+        if (m_g > other.m_g) return false;
+        if (m_h < other.m_h) return true;
+        if (m_h > other.m_h) return false;
+        if (m_i < other.m_i) return true;
+        if (m_i > other.m_i) return false;
+        if (m_j < other.m_j) return true;
+        if (m_j > other.m_j) return false;
+        if (m_k < other.m_k) return true;
+        if (m_k > other.m_k) return false;
         return false;
     }
 
-    bool operator==(const Guid &other) const {
-        for (size_t i = 0; i < 16; i++) {
-            if (m_bytes[i] != other.m_bytes[i]) return false;
-        }
+    bool operator==(const Guid& other) const {
+        if (m_a != other.m_a) return false;
+        if (m_b != other.m_b) return false;
+        if (m_c != other.m_c) return false;
+        if (m_d != other.m_d) return false;
+        if (m_e != other.m_e) return false;
+        if (m_f != other.m_f) return false;
+        if (m_g != other.m_g) return false;
+        if (m_h != other.m_h) return false;
+        if (m_i != other.m_i) return false;
+        if (m_j != other.m_j) return false;
+        if (m_k != other.m_k) return false;
         return true;
     }
 
@@ -99,21 +165,17 @@ private:
         0, 10, 11, 12, 13, 14, 15,  // and the rest is zeroes
     };
 };
+#pragma pack(pop)
 
 class BebopReader {
-    const uint8_t *m_pointer;
-    BebopReader() {}
+    const uint8_t* m_pointer;
 public:
+    BebopReader(const uint8_t* buffer) : m_pointer(buffer) {}
     BebopReader(BebopReader const&) = delete;
     void operator=(BebopReader const&) = delete;
-    static BebopReader& instance(const uint8_t *buffer) {
-        static BebopReader instance;
-        instance.m_pointer = buffer;
-        return instance;
-    }
 
-    const uint8_t *pointer() const { return m_pointer; }
-    void seek(const uint8_t *pointer) { m_pointer = pointer; }
+    const uint8_t* pointer() const { return m_pointer; }
+    void seek(const uint8_t* pointer) { m_pointer = pointer; }
 
     void skip(size_t amount) { m_pointer += amount; }
 
@@ -212,15 +274,10 @@ public:
 
 class BebopWriter {
     std::unique_ptr<std::vector<uint8_t>> m_buffer;
-    BebopWriter() {}
 public:
+    BebopWriter() : m_buffer(std::make_unique<std::vector<uint8_t>>()) {}
     BebopWriter(BebopWriter const&) = delete;
     void operator=(BebopWriter const&) = delete;
-    static BebopWriter& instance() {
-        static BebopWriter instance;
-        instance.m_buffer = std::make_unique<std::vector<uint8_t>>();
-        return instance;
-    }
 
     std::unique_ptr<std::vector<uint8_t>> buffer() {
         return std::move(m_buffer);
@@ -270,9 +327,17 @@ public:
     }
 
     void writeGuid(Guid value) {
-        for (const auto byte : value.m_bytes) {
-            m_buffer->push_back(byte);
-        }
+        writeUint32(value.m_a);
+        writeUint16(value.m_b);
+        writeUint16(value.m_c);
+        writeByte(value.m_d);
+        writeByte(value.m_e);
+        writeByte(value.m_f);
+        writeByte(value.m_g);
+        writeByte(value.m_h);
+        writeByte(value.m_i);
+        writeByte(value.m_j);
+        writeByte(value.m_k);
     }
 
     void writeDate(TickDuration duration) {

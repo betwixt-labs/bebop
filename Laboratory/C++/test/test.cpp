@@ -5,6 +5,7 @@
 
 int main() {
     bebop::Guid g = bebop::Guid::fromString("81c6987b-48b7-495f-ad01-ec20cc5f5be1");
+    printf("%s\n", g.toString().c_str());
     
     Song s;
     s.title = "Donna Lee";
