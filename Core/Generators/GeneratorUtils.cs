@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Core.Generators.CPlusPlus;
 using Core.Generators.CSharp;
 using Core.Generators.Dart;
 using Core.Generators.TypeScript;
@@ -20,12 +21,14 @@ namespace Core.Generators
             { "ts", s => new TypeScriptGenerator(s) },
             { "cs", s => new CSharpGenerator(s) },
             { "dart", s => new DartGenerator(s) },
+            { "cpp", s => new CPlusPlusGenerator(s) },
         };
 
         public static Dictionary<string, string> ImplementedGeneratorNames  = new Dictionary<string, string> {
             { "ts", "TypeScript" },
             { "cs", "C#" },
             { "dart", "Dart" },
+            { "cpp", "C++" },
         };
 
         /// <summary>
