@@ -103,8 +103,16 @@ namespace Core.Meta
 
     public readonly struct UnionBranch
     {
-        public readonly byte discriminator;
-        public readonly TopLevelDefinition definition;
+        public readonly byte Discriminator;
+        public readonly TopLevelDefinition Definition;
+        public readonly string Documentation;
+
+        public UnionBranch(byte discriminator, TopLevelDefinition definition, string documentation)
+        {
+            Discriminator = discriminator;
+            Definition = definition;
+            Documentation = documentation;
+        }
     }
 
     public class UnionDefinition : TopLevelDefinition

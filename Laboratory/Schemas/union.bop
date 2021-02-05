@@ -1,0 +1,13 @@
+/**
+ * This union is so documented!
+ */
+[opcode("yeah")]
+union U {
+    1 -> message A { 1 -> uint32 a; }
+    /**
+     * This branch is, too!
+     */
+    2 -> struct B { bool b; }
+    3 -> struct C { }
+    4 -> readonly struct D { }
+}

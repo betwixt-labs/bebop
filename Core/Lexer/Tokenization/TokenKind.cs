@@ -57,10 +57,16 @@ namespace Core.Lexer.Tokenization
         [Keyword("array")]
         Array,
 
+        /// <summary>
+        ///     The 'union' keyword which is reserved by the compiler
+        /// </summary>
+        [Keyword("union")]
+        Union,
+
     #endregion
 
 
-    #region Literals
+        #region Literals
         Identifier,
 
         /// <summary>

@@ -159,20 +159,7 @@ namespace Core.Parser
 
             while (_index < _tokens.Length && !Eat(TokenKind.EndOfFile))
             {
-
-                var definitionDocumentation = ConsumeBlockComments();
-
-                var opcodeAttribute = EatAttribute(TokenKind.Opcode);
-
-                var isReadOnly = Eat(TokenKind.ReadOnly);
-                var kind = CurrentToken switch
-                {
-                    _ when Eat(TokenKind.Enum) => AggregateKind.Enum,
-                    _ when Eat(TokenKind.Struct) => AggregateKind.Struct,
-                    _ when Eat(TokenKind.Message) => AggregateKind.Message,
-                    _ => throw new UnexpectedTokenException(TokenKind.Message, CurrentToken)
-                };
-                DeclareAggregateType(CurrentToken, kind, isReadOnly, definitionDocumentation, opcodeAttribute);
+                ParseDefinition();
             }
             foreach (var (typeToken, definitionToken) in _typeReferences)
             {
@@ -182,6 +169,31 @@ namespace Core.Parser
                 }
             }
             return new BebopSchema(_nameSpace, _definitions);
+        }
+
+        private Definition ParseDefinition()
+        {
+            var definitionDocumentation = ConsumeBlockComments();
+
+            var opcodeAttribute = EatAttribute(TokenKind.Opcode);
+
+            var isReadOnly = Eat(TokenKind.ReadOnly);
+
+            if (Eat(TokenKind.Union))
+            {
+                return ParseUnionDefinition(CurrentToken, definitionDocumentation, opcodeAttribute);
+            }
+            else
+            {
+                var kind = CurrentToken switch
+                {
+                    _ when Eat(TokenKind.Enum) => AggregateKind.Enum,
+                    _ when Eat(TokenKind.Struct) => AggregateKind.Struct,
+                    _ when Eat(TokenKind.Message) => AggregateKind.Message,
+                    _ => throw new UnexpectedTokenException(TokenKind.Message, CurrentToken)
+                };
+                return ParseNonUnionDefinition(CurrentToken, kind, isReadOnly, definitionDocumentation, opcodeAttribute);
+            }
         }
 
         /// <summary>
@@ -223,14 +235,15 @@ namespace Core.Parser
 
 
         /// <summary>
-        ///     Declares an aggregate data structure and adds it to the <see cref="_definitions"/> collection
+        ///     Parses a non-union data structure and adds it to the <see cref="_definitions"/> collection
         /// </summary>
         /// <param name="definitionToken">The token that names the type to define.</param>
         /// <param name="kind">The <see cref="AggregateKind"/> the type will represents.</param>
         /// <param name="isReadOnly"></param>
         /// <param name="definitionDocumentation"></param>
         /// <param name="opcodeAttribute"></param>
-        private void DeclareAggregateType(Token definitionToken,
+        /// <returns>The parsed definition.</returns>
+        private Definition ParseNonUnionDefinition(Token definitionToken,
             AggregateKind kind,
             bool isReadOnly,
             string definitionDocumentation,
@@ -328,6 +341,60 @@ namespace Core.Parser
                 throw new MultipleDefinitionsException(definition);
             }
             _definitions.Add(name, definition);
+            return definition;
+        }
+
+        /// <summary>
+        ///     Parses a union definition and adds it to the <see cref="_definitions"/> collection.
+        /// </summary>
+        /// <param name="definitionToken">The token that names the union to define.</param>
+        /// <param name="definitionDocumentation">The documentation above the union definition.</param>
+        /// <param name="opcodeAttribute">The opcode attribute above the union definition, if any.</param>
+        /// <returns>The parsed union definition.</returns>
+        private UnionDefinition ParseUnionDefinition(Token definitionToken,
+            string definitionDocumentation,
+            BaseAttribute? opcodeAttribute)
+        {
+            var name = definitionToken.Lexeme;
+            var branches = new List<UnionBranch>();
+
+            Expect(TokenKind.Identifier, hint: $"Did you forget to specify a name for this union?");
+            Expect(TokenKind.OpenBrace);
+            var definitionEnd = CurrentToken.Span;
+            while (!Eat(TokenKind.CloseBrace))
+            {
+                var documentation = ConsumeBlockComments();
+                // if we've reached the end of the definition after parsing documentation we need to exit.
+                if (Eat(TokenKind.CloseBrace))
+                {
+                    break;
+                }
+
+                const string? indexHint = "Branches in a union must be explicitly indexed: union U { 1 -> struct A{}  2 -> message B{} }";
+                var indexLexeme = CurrentToken.Lexeme;
+                Expect(TokenKind.Number, hint: indexHint);
+                if (!indexLexeme.TryParseUInt(out uint discriminator))
+                {
+                    throw new UnexpectedTokenException(TokenKind.Number, CurrentToken, "A union branch discriminator must be an unsigned integer.");
+                }
+                if (discriminator > 255)
+                {
+                    throw new UnexpectedTokenException(TokenKind.Number, CurrentToken, "A union branch discriminator must be between 0 and 255.");
+                }
+                // Parse an arrow ("->").
+                Expect(TokenKind.Hyphen, hint: indexHint);
+                Expect(TokenKind.CloseCaret, hint: indexHint);
+                var definition = ParseDefinition();
+                if (definition is not TopLevelDefinition)
+                {
+                    throw new InvalidUnionBranchException(definition);
+                }
+                Eat(TokenKind.Semicolon);
+                definitionEnd = CurrentToken.Span;
+                branches.Add(new UnionBranch((byte)discriminator, (TopLevelDefinition)definition, documentation));
+            }
+            var definitionSpan = definitionToken.Span.Combine(definitionEnd);
+            return new UnionDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, branches);
         }
 
         /// <summary>
