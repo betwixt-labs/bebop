@@ -27,21 +27,21 @@ namespace Core.Generators.CPlusPlus
         }
 
         /// <summary>
-        /// Generate the body of the <c>encode</c> function for the given <see cref="IDefinition"/>.
+        /// Generate the body of the <c>encode</c> function for the given <see cref="FieldsDefinition"/>.
         /// </summary>
         /// <param name="definition">The definition to generate code for.</param>
         /// <returns>The generated CPlusPlus <c>encode</c> function body.</returns>
-        public string CompileEncode(IDefinition definition)
+        public string CompileEncode(FieldsDefinition definition)
         {
-            return definition.Kind switch
+            return definition switch
             {
-                AggregateKind.Message => CompileEncodeMessage(definition),
-                AggregateKind.Struct => CompileEncodeStruct(definition),
-                _ => throw new InvalidOperationException($"invalid CompileEncode kind: {definition.Kind} in {definition}"),
+                MessageDefinition d => CompileEncodeMessage(d),
+                StructDefinition d => CompileEncodeStruct(d),
+                _ => throw new InvalidOperationException($"invalid CompileEncode kind: {definition}"),
             };
         }
 
-        private string CompileEncodeMessage(IDefinition definition)
+        private string CompileEncodeMessage(FieldsDefinition definition)
         {
             var builder = new IndentedStringBuilder(4);
             builder.AppendLine($"const auto pos = writer.reserveMessageLength();");
@@ -63,7 +63,7 @@ namespace Core.Generators.CPlusPlus
             return builder.ToString();
         }
 
-        private string CompileEncodeStruct(IDefinition definition)
+        private string CompileEncodeStruct(StructDefinition definition)
         {
             var builder = new IndentedStringBuilder(4);
             foreach (var field in definition.Fields)
@@ -112,7 +112,7 @@ namespace Core.Generators.CPlusPlus
                     BaseType.Date => $"writer.writeDate({target});",
                     _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                 },
-                DefinedType dt when Schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
+                DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition =>
                     $"writer.writeUint32(static_cast<uint32_t>({target}));",
                 DefinedType dt => $"{dt.Name}::encodeInto({target}, writer);",
                 _ => throw new InvalidOperationException($"CompileEncodeField: {type}")
@@ -120,27 +120,27 @@ namespace Core.Generators.CPlusPlus
         }
 
         /// <summary>
-        /// Generate the body of the <c>decode</c> function for the given <see cref="IDefinition"/>.
+        /// Generate the body of the <c>decode</c> function for the given <see cref="FieldsDefinition"/>.
         /// </summary>
         /// <param name="definition">The definition to generate code for.</param>
         /// <returns>The generated CPlusPlus <c>decode</c> function body.</returns>
-        public string CompileDecode(IDefinition definition)
+        public string CompileDecode(FieldsDefinition definition)
         {
-            return definition.Kind switch
+            return definition switch
             {
-                AggregateKind.Message => CompileDecodeMessage(definition),
-                AggregateKind.Struct => CompileDecodeStruct(definition),
-                _ => throw new InvalidOperationException($"invalid CompileDecode kind: {definition.Kind} in {definition}"),
+                MessageDefinition d => CompileDecodeMessage(d),
+                StructDefinition d => CompileDecodeStruct(d),
+                _ => throw new InvalidOperationException($"invalid CompileDecode kind: {definition}"),
             };
         }
 
         /// <summary>
-        /// Generate the body of the <c>decode</c> function for the given <see cref="IDefinition"/>,
+        /// Generate the body of the <c>decode</c> function for the given <see cref="FieldsDefinition"/>,
         /// given that its "kind" is Message.
         /// </summary>
         /// <param name="definition">The message definition to generate code for.</param>
         /// <returns>The generated CPlusPlus <c>decode</c> function body.</returns>
-        private string CompileDecodeMessage(IDefinition definition)
+        private string CompileDecodeMessage(MessageDefinition definition)
         {
             var builder = new IndentedStringBuilder(4);
             builder.AppendLine("const auto length = reader.readMessageLength();");
@@ -165,7 +165,7 @@ namespace Core.Generators.CPlusPlus
             return builder.ToString();
         }
 
-        private string CompileDecodeStruct(IDefinition definition)
+        private string CompileDecodeStruct(StructDefinition definition)
         {
             var builder = new IndentedStringBuilder(4);
             int i = 0;
@@ -227,7 +227,7 @@ namespace Core.Generators.CPlusPlus
                     BaseType.Date => $"{target} = reader.readDate();",
                     _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                 },
-                DefinedType dt when Schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
+                DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition =>
                     $"{target} = static_cast<{dt.Name}>(reader.readUint32());",
                 DefinedType dt => $"{dt.Name}::decodeInto({target}, reader);",
                 _ => throw new InvalidOperationException($"CompileDecodeField: {type}")
@@ -268,7 +268,7 @@ namespace Core.Generators.CPlusPlus
                 case MapType mt:
                     return $"std::map<{TypeName(mt.KeyType)}, {TypeName(mt.ValueType)}>";
                 case DefinedType dt:
-                    var isEnum = Schema.Definitions[dt.Name].Kind == AggregateKind.Enum;
+                    var isEnum = Schema.Definitions[dt.Name] is EnumDefinition;
                     return dt.Name;
             }
             throw new InvalidOperationException($"GetTypeName: {type}");
@@ -307,13 +307,13 @@ namespace Core.Generators.CPlusPlus
                 {
                     builder.Append(FormatDocumentation(definition.Documentation, 0));
                 }
-                switch (definition.Kind)
+                switch (definition)
                 {
-                    case AggregateKind.Enum:
+                    case EnumDefinition ed:
                         builder.AppendLine($"enum class {definition.Name} {{");
-                        for (var i = 0; i < definition.Fields.Count; i++)
+                        for (var i = 0; i < ed.Members.Count; i++)
                         {
-                            var field = definition.Fields.ElementAt(i);
+                            var field = ed.Members.ElementAt(i);
                             if (!string.IsNullOrWhiteSpace(field.Documentation))
                             {
                                 builder.Append(FormatDocumentation(field.Documentation, 2));
@@ -327,12 +327,12 @@ namespace Core.Generators.CPlusPlus
                         builder.AppendLine("};");
                         builder.AppendLine("");
                         break;
-                    default:
-                        var isMessage = definition.Kind == AggregateKind.Message;
-                        builder.AppendLine($"struct {definition.Name} {{");
-                        for (var i = 0; i < definition.Fields.Count; i++)
+                    case FieldsDefinition fd:
+                        var isMessage = fd is MessageDefinition;
+                        builder.AppendLine($"struct {fd.Name} {{");
+                        for (var i = 0; i < fd.Fields.Count; i++)
                         {
-                            var field = definition.Fields.ElementAt(i);
+                            var field = fd.Fields.ElementAt(i);
                             var type = TypeName(field.Type);
                             if (!string.IsNullOrWhiteSpace(field.Documentation))
                             {
@@ -358,30 +358,30 @@ namespace Core.Generators.CPlusPlus
                             // builder.AppendLine("  });");
                         }
                         builder.AppendLine("");
-                        if (definition.OpcodeAttribute != null)
+                        if (fd.OpcodeAttribute != null)
                         {
-                            builder.AppendLine($"  static const uint32_t opcode = {definition.OpcodeAttribute.Value};");
+                            builder.AppendLine($"  static const uint32_t opcode = {fd.OpcodeAttribute.Value};");
                             builder.AppendLine("");
                         }
-                        builder.AppendLine($"  static std::unique_ptr<std::vector<uint8_t>> encode(const {definition.Name}& message) {{");
+                        builder.AppendLine($"  static std::unique_ptr<std::vector<uint8_t>> encode(const {fd.Name}& message) {{");
                         builder.AppendLine("    bebop::BebopWriter writer{};");
-                        builder.AppendLine($"    {definition.Name}::encodeInto(message, writer);");
+                        builder.AppendLine($"    {fd.Name}::encodeInto(message, writer);");
                         builder.AppendLine("    return writer.buffer();");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  static void encodeInto(const {definition.Name}& message, bebop::BebopWriter& writer) {{");
-                        builder.Append(CompileEncode(definition));
+                        builder.AppendLine($"  static void encodeInto(const {fd.Name}& message, bebop::BebopWriter& writer) {{");
+                        builder.Append(CompileEncode(fd));
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  static {definition.Name} decode(const uint8_t *buffer) {{");
-                        builder.AppendLine($"    {definition.Name} result;");
+                        builder.AppendLine($"  static {fd.Name} decode(const uint8_t *buffer) {{");
+                        builder.AppendLine($"    {fd.Name} result;");
                         builder.AppendLine("    bebop::BebopReader reader{buffer};");
-                        builder.AppendLine($"    {definition.Name}::decodeInto(result, reader);");
+                        builder.AppendLine($"    {fd.Name}::decodeInto(result, reader);");
                         builder.AppendLine($"    return result;");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  static void decodeInto({definition.Name}& target, bebop::BebopReader& reader) {{");
-                        builder.Append(CompileDecode(definition));
+                        builder.AppendLine($"  static void decodeInto({fd.Name}& target, bebop::BebopReader& reader) {{");
+                        builder.Append(CompileDecode(fd));
                         builder.AppendLine("  }");
                         builder.AppendLine("};");
                         builder.AppendLine("");

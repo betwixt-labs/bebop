@@ -1,6 +1,7 @@
 ﻿using System;
 using Core.Lexer.Tokenization;
 using Core.Lexer.Tokenization.Models;
+using Core.Meta;
 using Core.Meta.Interfaces;
 
 namespace Core.Exceptions
@@ -42,7 +43,7 @@ namespace Core.Exceptions
     [Serializable]
     class MultipleDefinitionsException : SpanException
     {
-        public MultipleDefinitionsException(IDefinition definition)
+        public MultipleDefinitionsException(Definition definition)
             : base($"Multiple definitions for '{definition.Name}'", definition.Span, 101) { }
     }
     [Serializable]
@@ -73,7 +74,7 @@ namespace Core.Exceptions
     [Serializable]
     class InvalidReadOnlyException : SpanException
     {
-        public InvalidReadOnlyException(IDefinition definition)
+        public InvalidReadOnlyException(Definition definition)
             : base($"The 'readonly' modifer cannot be applied to '{definition.Name}' as it is not a struct", definition.Span, 106) { }
     }
     [Serializable]
@@ -85,14 +86,14 @@ namespace Core.Exceptions
     [Serializable]
     class InvalidOpcodeAttributeUsageException : SpanException
     {
-        public InvalidOpcodeAttributeUsageException(IDefinition definition)
+        public InvalidOpcodeAttributeUsageException(Definition definition)
             : base($"The definition '{definition.Name}' cannot be marked with an opcode attribute as it is not a message or struct", definition.Span, 108)
         { }
     }
     [Serializable]
     class InvalidOpcodeAttributeValueException : SpanException
     {
-        public InvalidOpcodeAttributeValueException(IDefinition definition, string reason)
+        public InvalidOpcodeAttributeValueException(Definition definition, string reason)
             : base($"The definition '{definition.Name}' was marked with an" +
                 $" opcode " +
                 $"attribute containing an invalid value: {reason}", definition.Span, 109)
@@ -101,7 +102,7 @@ namespace Core.Exceptions
     [Serializable]
     class DuplicateOpcodeException : SpanException
     {
-        public DuplicateOpcodeException(IDefinition definition)
+        public DuplicateOpcodeException(TopLevelDefinition definition)
             : base($"Multiple definitions for opcode '{definition.OpcodeAttribute?.Value}'", definition.Span, 110) { }
     }
 
@@ -115,7 +116,7 @@ namespace Core.Exceptions
     [Serializable]
     class DuplicateFieldException : SpanException
     {
-        public DuplicateFieldException(IField field, IDefinition definition)
+        public DuplicateFieldException(IField field, Definition definition)
             : base($"The type '{definition.Name}' already contains a definition for '{field.Name}'", field.Span, 112) { }
     }
 }

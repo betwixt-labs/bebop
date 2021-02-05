@@ -9,7 +9,7 @@ namespace Core.Meta
     /// <inheritdoc/>
     public readonly struct BebopSchema : ISchema
     {
-        public BebopSchema(string nameSpace, Dictionary<string, IDefinition> definitions)
+        public BebopSchema(string nameSpace, Dictionary<string, Definition> definitions)
         {
             Namespace = nameSpace;
             Definitions = definitions;
@@ -17,7 +17,7 @@ namespace Core.Meta
         /// <inheritdoc/>
         public string Namespace { get; }
         /// <inheritdoc/>
-        public Dictionary<string, IDefinition> Definitions { get; }
+        public Dictionary<string, Definition> Definitions { get; }
 
 
         /// <inheritdoc/>
@@ -34,63 +34,63 @@ namespace Core.Meta
                 {
                     throw new ReservedIdentifierException(definition.Name, definition.Span);
                 }
-                if (definition.IsReadOnly && !definition.IsStruct())
+                if (definition is TopLevelDefinition td && td.OpcodeAttribute != null)
                 {
-                    throw new InvalidReadOnlyException(definition);
-                }
-                if (definition.OpcodeAttribute != null)
-                {
-                    if (definition.IsEnum())
+                    if (!td.OpcodeAttribute.TryValidate(out var opcodeReason))
                     {
-                        throw new InvalidOpcodeAttributeUsageException(definition);
+                        throw new InvalidOpcodeAttributeValueException(td, opcodeReason);
                     }
-                    if (!definition.OpcodeAttribute.TryValidate(out var opcodeReason))
+                    if (Definitions.Values.Count(d => d is TopLevelDefinition td2 && td2.OpcodeAttribute != null && td2.OpcodeAttribute.Value.Equals(td.OpcodeAttribute.Value)) > 1)
                     {
-                        throw new InvalidOpcodeAttributeValueException(definition, opcodeReason);
-                    }
-                    if (Definitions.Values.Count(d => d.OpcodeAttribute != null && d.OpcodeAttribute.Value.Equals(definition.OpcodeAttribute.Value)) > 1)
-                    {
-                        throw new DuplicateOpcodeException(definition);
+                        throw new DuplicateOpcodeException(td);
                     }
                 }
-                foreach (var field in definition.Fields)
+                if (definition is FieldsDefinition fd) foreach (var field in fd.Fields)
                 {
                     if (ReservedWords.Identifiers.Contains(field.Name))
                     {
                         throw new ReservedIdentifierException(field.Name, field.Span);
                     }
-                    if (field.DeprecatedAttribute != null && definition.IsStruct())
+                    if (field.DeprecatedAttribute != null && fd is StructDefinition)
                     {
                         throw new InvalidDeprecatedAttributeUsageException(field);
                     }
-                    if (definition.Fields.Count(f => f.Name.Equals(field.Name, StringComparison.OrdinalIgnoreCase)) > 1)
+                    if (fd.Fields.Count(f => f.Name.Equals(field.Name, StringComparison.OrdinalIgnoreCase)) > 1)
                     {
-                        throw new DuplicateFieldException(field, definition);
+                        throw new DuplicateFieldException(field, fd);
                     }
-                    switch (definition.Kind)
+                    switch (fd)
                     {
-                        case AggregateKind.Enum when definition.Fields.Count(f => f.ConstantValue == field.ConstantValue) > 1:
-                        {
-                            throw new InvalidFieldException(field, "Enum value must be unique");
-                        }
-                        case AggregateKind.Struct when field.Type is DefinedType dt && definition.Name.Equals(dt.Name):
+                        case StructDefinition when field.Type is DefinedType dt && fd.Name.Equals(dt.Name):
                         {
                             throw new InvalidFieldException(field, "Struct contains itself");
                         }
-                        case AggregateKind.Message when definition.Fields.Count(f => f.ConstantValue == field.ConstantValue) > 1:
+                        case MessageDefinition when fd.Fields.Count(f => f.ConstantValue == field.ConstantValue) > 1:
                         {
                             throw new InvalidFieldException(field, "Message index must be unique");
                         }
-                        case AggregateKind.Message when field.ConstantValue <= 0:
+                        case MessageDefinition when field.ConstantValue <= 0:
                         {
                             throw new InvalidFieldException(field, "Message member index must start at 1");
                         }
-                        case AggregateKind.Message when field.ConstantValue > definition.Fields.Count:
+                        case MessageDefinition when field.ConstantValue > fd.Fields.Count:
                         {
                             throw new InvalidFieldException(field, "Message index is greater than field count");
                         }
                         default:
                             break;
+                    }
+                }
+                if (definition is EnumDefinition ed)
+                {
+                    HashSet<uint> seen = new HashSet<uint>();
+                    foreach (var field in ed.Members)
+                    {
+                        if (seen.Contains(field.ConstantValue))
+                        {
+                            throw new InvalidFieldException(field, "Enum value must be unique");
+                        }
+                        seen.Add(field.ConstantValue);
                     }
                 }
             }

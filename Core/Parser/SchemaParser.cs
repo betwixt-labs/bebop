@@ -18,7 +18,7 @@ namespace Core.Parser
     public class SchemaParser
     {
         private readonly SchemaLexer _lexer;
-        private readonly Dictionary<string, IDefinition> _definitions = new Dictionary<string, IDefinition>();
+        private readonly Dictionary<string, Definition> _definitions = new Dictionary<string, Definition>();
         /// <summary>
         /// A set of references to named types found in message/struct definitions:
         /// the left token is the type name, and the right token is the definition it's used in (used to report a helpful error).
@@ -305,7 +305,24 @@ namespace Core.Parser
 
             var name = definitionToken.Lexeme;
             var definitionSpan = definitionToken.Span.Combine(definitionEnd);
-            var definition = new Definition(name, isReadOnly, definitionSpan, kind, fields, definitionDocumentation, opcodeAttribute);
+
+            Definition definition = kind switch
+            {
+                AggregateKind.Enum => new EnumDefinition(name, definitionSpan, definitionDocumentation, fields),
+                AggregateKind.Struct => new StructDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, fields, isReadOnly),
+                AggregateKind.Message => new MessageDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, fields),
+                _ => throw new InvalidOperationException("invalid kind when making definition"),
+            };
+
+            if (isReadOnly && definition is not StructDefinition)
+            {
+                throw new InvalidReadOnlyException(definition);
+            }
+            if (opcodeAttribute != null && definition is not TopLevelDefinition)
+            {
+                throw new InvalidOpcodeAttributeUsageException(definition);
+            }
+
             if (_definitions.ContainsKey(name))
             {
                 throw new MultipleDefinitionsException(definition);

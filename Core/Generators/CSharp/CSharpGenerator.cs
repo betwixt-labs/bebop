@@ -66,13 +66,13 @@ namespace Core.Generators.CSharp
                 }
                 builder.AppendLine(GeneratedAttribute);
                 builder.AppendLine(RecordAttribute);
-                if (definition.IsEnum())
+                if (definition is EnumDefinition ed)
                 {
                     builder.AppendLine($"public enum {definition.Name} : uint {{");
                     builder.Indent(indentStep);
-                    for (var i = 0; i < definition.Fields.Count; i++)
+                    for (var i = 0; i < ed.Members.Count; i++)
                     {
-                        var field = definition.Fields.ElementAt(i);
+                        var field = ed.Members.ElementAt(i);
                         if (!string.IsNullOrWhiteSpace(field.Documentation))
                         {
                             builder.AppendLine(FormatDocumentation(field.Documentation, 6));
@@ -82,28 +82,28 @@ namespace Core.Generators.CSharp
                         {
                             builder.AppendLine($"[System.Obsolete(\"{field.DeprecatedAttribute.Value}\")]");
                         }
-                        builder.AppendLine($"{field.Name} = {field.ConstantValue}{(i + 1 < definition.Fields.Count ? "," : "")}");
+                        builder.AppendLine($"{field.Name} = {field.ConstantValue}{(i + 1 < ed.Members.Count ? "," : "")}");
                     }
                     builder.Dedent(indentStep);
                     builder.AppendLine("}");
                     builder.AppendLine();
                 }
-                else if (definition.IsMessage() || definition.IsStruct())
+                else if (definition is FieldsDefinition fd)
                 {
                     var baseName = "Base" + definitionName;
                     builder.AppendLine($"public abstract class {baseName} : System.IEquatable<{baseName}> {{");
                     builder.Indent(indentStep);
-                    if (definition.OpcodeAttribute is not null)
+                    if (fd.OpcodeAttribute is not null)
                     {
-                        builder.AppendLine($"public const uint OpCode = {definition.OpcodeAttribute.Value};");
+                        builder.AppendLine($"public const uint OpCode = {fd.OpcodeAttribute.Value};");
                     }
-                    if (definition.IsMessage())
+                    if (fd is MessageDefinition)
                     {
                         builder.AppendLine("#nullable enable");
                     }
-                    for (var i = 0; i < definition.Fields.Count; i++)
+                    for (var i = 0; i < fd.Fields.Count; i++)
                     {
-                        var field = definition.Fields.ElementAt(i);
+                        var field = fd.Fields.ElementAt(i);
 
                         if (!string.IsNullOrWhiteSpace(field.Documentation))
                         {
@@ -114,25 +114,25 @@ namespace Core.Generators.CSharp
                         {
                             builder.AppendLine($"[System.Obsolete(\"{field.DeprecatedAttribute.Value}\")]");
                         }
-                        if (definition.IsStruct())
+                        if (fd is StructDefinition)
                         {
                             builder.AppendLine("[System.Diagnostics.CodeAnalysis.NotNull, System.Diagnostics.CodeAnalysis.DisallowNull]");
-                        } else if (definition.IsMessage())
+                        } else if (fd is MessageDefinition)
                         {
                             builder.AppendLine(
                                 "[System.Diagnostics.CodeAnalysis.MaybeNull, System.Diagnostics.CodeAnalysis.AllowNull]");
                         }
                         var type = TypeName(field.Type, string.Empty);
-                        var opt = definition.Kind == AggregateKind.Message && IsNullableType(field.Type) ? "?" : "";
-                        var setOrInit = definition.IsReadOnly ? "init" : "set";
+                        var opt = fd is MessageDefinition && IsNullableType(field.Type) ? "?" : "";
+                        var setOrInit = fd is StructDefinition { IsReadOnly: true } ? "init" : "set";
                         builder.AppendLine($"public {type}{opt} {field.Name.ToPascalCase()} {{ get; {setOrInit}; }}");
                     }
-                    if (definition.IsMessage())
+                    if (fd is MessageDefinition)
                     {
                         builder.AppendLine("#nullable disable");
                     }
                     builder.AppendLine();
-                    builder.AppendLine(GenerateEqualityMembers(definition));
+                    builder.AppendLine(GenerateEqualityMembers(fd));
                     builder.AppendLine();
 
                     builder.Dedent(indentStep);
@@ -150,7 +150,7 @@ namespace Core.Generators.CSharp
                     builder.AppendLine(HotPath);
                     builder.AppendLine($"internal static void EncodeInto({baseName} record, ref BebopWriter writer) {{");
                     builder.Indent(indentStep);
-                    builder.AppendLine(CompileEncode(definition));
+                    builder.AppendLine(CompileEncode(fd));
                     builder.Dedent(indentStep);
                     builder.AppendLine("}");
                     builder.AppendLine();
@@ -172,7 +172,7 @@ namespace Core.Generators.CSharp
                     // when you do new T() the compile uses System.Activator::CreateInstance
                     // this non-generic variant avoids that penalty hit.
                     // https://devblogs.microsoft.com/premier-developer/dissecting-the-new-constraint-in-c-a-perfect-example-of-a-leaky-abstraction/
-                    builder.AppendLine(CompileDecode(definition, false));
+                    builder.AppendLine(CompileDecode(fd, false));
                     builder.Dedent(indentStep);
                     builder.AppendLine("}");
                     builder.AppendLine();
@@ -182,7 +182,7 @@ namespace Core.Generators.CSharp
                     // a generic decode method that allows for run-time polymorphism 
                     // this will initiate objects via a slower .ctor reflection
                     // the last 16 objects are cached.
-                    builder.AppendLine(CompileDecode(definition, true));
+                    builder.AppendLine(CompileDecode(fd, true));
                     builder.Dedent(indentStep);
                     builder.AppendLine("}");
 
@@ -203,7 +203,7 @@ namespace Core.Generators.CSharp
         /// </summary>
         /// <param name="definition"></param>
         /// <returns></returns>
-        private string GenerateEqualityMembers(IDefinition definition)
+        private string GenerateEqualityMembers(FieldsDefinition definition)
         {
             var baseName = $"Base{definition.Name.ToPascalCase()}";
             var builder = new IndentedStringBuilder();
@@ -279,11 +279,11 @@ namespace Core.Generators.CSharp
             {
                 var field = definition.Fields.ElementAt(i);
                 var fieldName = field.Name.ToPascalCase();
-                if (definition.IsMessage())
+                if (definition is MessageDefinition)
                 {
                     var isNullableType = IsNullableType(field.Type);
                     var nullCheck = isNullableType ? "is not null" : "!= null";
-                    var value = isNullableType && NeedsValueAppend(field.Type) && definition.IsMessage()
+                    var value = isNullableType && NeedsValueAppend(field.Type) && definition is MessageDefinition
                         ? $"{fieldName}.Value.GetHashCode();"
                         : $"{fieldName}.GetHashCode();";
                     builder.AppendLine($"if ({fieldName} {nullCheck}) hash ^= {value}");
@@ -348,23 +348,23 @@ namespace Core.Generators.CSharp
         }
 
         /// <summary>
-        ///     Generate the body of the <c>DecodeFrom</c> function for the given <see cref="IDefinition"/>.
+        ///     Generate the body of the <c>DecodeFrom</c> function for the given <see cref="FieldsDefinition"/>.
         /// </summary>
         /// <param name="definition">The definition to generate code for.</param>
         /// <param name="useGenerics"></param>
         /// <returns>The generated C# <c>DecodeFrom</c> function body.</returns>
-        public string CompileDecode(IDefinition definition, bool useGenerics)
+        public string CompileDecode(FieldsDefinition definition, bool useGenerics)
         {
-            return definition.Kind switch
+            return definition switch
             {
-                AggregateKind.Message => CompileDecodeMessage(definition, useGenerics),
-                AggregateKind.Struct => CompileDecodeStruct(definition, useGenerics),
+                MessageDefinition d => CompileDecodeMessage(d, useGenerics),
+                StructDefinition d => CompileDecodeStruct(d, useGenerics),
                 _ => throw new InvalidOperationException(
-                    $"invalid CompileDecode kind: {definition.Kind} in {definition}")
+                    $"invalid CompileDecode kind: {definition}")
             };
         }
 
-        private string CompileDecodeStruct(IDefinition definition, bool useGenerics)
+        private string CompileDecodeStruct(StructDefinition definition, bool useGenerics)
         {
             var builder = new IndentedStringBuilder();
             int i = 0;
@@ -388,13 +388,13 @@ namespace Core.Generators.CSharp
         }
 
         /// <summary>
-        ///     Generate the body of the <c>DecodeFrom</c> function for the given <see cref="IDefinition"/>,
+        ///     Generate the body of the <c>DecodeFrom</c> function for the given <see cref="MessageDefinition"/>,
         ///     given that its "kind" is Message.
         /// </summary>
         /// <param name="definition">The message definition to generate code for.</param>
         /// <param name="useGenerics"></param>
         /// <returns>The generated C# <c>DecodeFrom</c> function body.</returns>
-        private string CompileDecodeMessage(IDefinition definition, bool useGenerics)
+        private string CompileDecodeMessage(MessageDefinition definition, bool useGenerics)
         {
             var builder = new IndentedStringBuilder();
             builder.AppendLine($"var record = new {(useGenerics ? "T" : definition.Name.ToPascalCase())}();");
@@ -486,7 +486,7 @@ namespace Core.Generators.CSharp
                     BaseType.Date => $"{target} = reader.ReadDate();",
                     _ => throw new ArgumentOutOfRangeException()
                 },
-                DefinedType dt when Schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
+                DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition =>
                     $"{target} = reader.ReadEnum<{dt.Name}>();",
                 DefinedType dt => 
                     $"{target} = {(string.IsNullOrWhiteSpace(Schema.Namespace) ? string.Empty : $"{Schema.Namespace.ToPascalCase()}.")}{dt.Name.ToPascalCase()}.DecodeFrom(ref reader);",
@@ -495,13 +495,13 @@ namespace Core.Generators.CSharp
         }
 
         /// <summary>
-        ///     Generates the body of various helper methods to encode the given <see cref="IDefinition"/>
+        ///     Generates the body of various helper methods to encode the given <see cref="Definition"/>
         /// </summary>
         /// <param name="definition"></param>
         /// <param name="bufferType"></param>
         /// <param name="methodName"></param>
         /// <returns></returns>
-        public string CompileEncodeHelper(IDefinition definition, string bufferType, string methodName)
+        public string CompileEncodeHelper(Definition definition, string bufferType, string methodName)
         {
             var returnMethod = bufferType.Equals("ImmutableArray<byte>") ? "ToImmutableArray" : "ToArray";
             var builder = new IndentedStringBuilder();
@@ -526,12 +526,12 @@ namespace Core.Generators.CSharp
         }
 
         /// <summary>
-        ///     Generates the body of various helper methods to decode the given <see cref="IDefinition"/>
+        ///     Generates the body of various helper methods to decode the given <see cref="Definition"/>
         /// </summary>
         /// <param name="definition"></param>
         /// <param name="bufferType"></param>
         /// <returns></returns>
-        public string CompileDecodeHelper(IDefinition definition, string bufferType)
+        public string CompileDecodeHelper(Definition definition, string bufferType)
         {
             var builder = new IndentedStringBuilder();
             builder.AppendLine(HotPath);
@@ -555,22 +555,22 @@ namespace Core.Generators.CSharp
         }
 
         /// <summary>
-        ///     Generate the body of the <c>EncodeTo</c> function for the given <see cref="IDefinition"/>.
+        ///     Generate the body of the <c>EncodeTo</c> function for the given <see cref="FieldsDefinition"/>.
         /// </summary>
         /// <param name="definition">The definition to generate code for.</param>
         /// <returns>The generated C# <c>EncodeTo</c> function body.</returns>
-        public string CompileEncode(IDefinition definition)
+        public string CompileEncode(FieldsDefinition definition)
         {
-            return definition.Kind switch
+            return definition switch
             {
-                AggregateKind.Message => CompileEncodeMessage(definition),
-                AggregateKind.Struct => CompileEncodeStruct(definition),
+                MessageDefinition d => CompileEncodeMessage(d),
+                StructDefinition d => CompileEncodeStruct(d),
                 _ => throw new InvalidOperationException(
-                    $"invalid CompileEncode kind: {definition.Kind} in {definition}")
+                    $"invalid CompileEncode kind: {definition}")
             };
         }
 
-        private string CompileEncodeMessage(IDefinition definition)
+        private string CompileEncodeMessage(MessageDefinition definition)
         {
             var builder = new IndentedStringBuilder();
             builder.AppendLine($"var pos = writer.ReserveRecordLength();");
@@ -600,7 +600,7 @@ namespace Core.Generators.CSharp
             return builder.ToString();
         }
 
-        private string CompileEncodeStruct(IDefinition definition)
+        private string CompileEncodeStruct(StructDefinition definition)
         {
             var builder = new IndentedStringBuilder();
             foreach (var field in definition.Fields)
@@ -637,7 +637,7 @@ namespace Core.Generators.CSharp
 
         private bool IsEnum(DefinedType dt)
         {
-            return Schema.Definitions[dt.Name].Kind == AggregateKind.Enum;
+            return Schema.Definitions[dt.Name] is EnumDefinition;
         }
 
         private string CompileEncodeField(TypeBase type, string target, int depth = 0, int indentDepth = 0)
@@ -681,7 +681,7 @@ namespace Core.Generators.CSharp
                     BaseType.Date => $"writer.WriteDate({target});",
                     _ => throw new ArgumentOutOfRangeException()
                 },
-                DefinedType dt when Schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
+                DefinedType dt when IsEnum(dt) =>
                     $"writer.WriteEnum<{dt.Name}>({target});",
                 DefinedType dt =>
                     $"{(string.IsNullOrWhiteSpace(Schema.Namespace) ? string.Empty : $"{Schema.Namespace.ToPascalCase()}.")}{dt.Name.ToPascalCase()}.EncodeInto({target}, ref writer);",

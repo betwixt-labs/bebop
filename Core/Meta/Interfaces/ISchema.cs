@@ -14,7 +14,7 @@ namespace Core.Meta.Interfaces
         /// <summary>
         /// A collection of data structures defined in the schema
         /// </summary>
-        public Dictionary<string, IDefinition> Definitions { get; }
+        public Dictionary<string, Definition> Definitions { get; }
         /// <summary>
         /// Validates that the schema is made up of well-formed values.
         /// </summary>
