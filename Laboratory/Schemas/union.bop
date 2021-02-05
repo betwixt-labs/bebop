@@ -11,6 +11,11 @@ union U {
     3 -> struct C { }
     4 -> union W {
         1 -> struct D { string s; }
-        2 -> union X { }
+        2 -> struct X { bool x; }
     }
+}
+
+union List {
+    1 -> struct Cons { uint32 head; List tail; }
+    2 -> struct Nil {}
 }
