@@ -100,4 +100,20 @@ namespace Core.Meta
         }
         public ICollection<IField> Members { get; }
     }
+
+    public readonly struct UnionBranch
+    {
+        public readonly byte discriminator;
+        public readonly TopLevelDefinition definition;
+    }
+
+    public class UnionDefinition : TopLevelDefinition
+    {
+        public UnionDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<UnionBranch> branches) : base(name, span, documentation, opcodeAttribute)
+        {
+            Branches = branches;
+        }
+
+        public ICollection<UnionBranch> Branches { get; }
+    }
 }
