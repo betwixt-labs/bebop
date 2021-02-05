@@ -394,7 +394,9 @@ namespace Core.Parser
                 branches.Add(new UnionBranch((byte)discriminator, (TopLevelDefinition)definition, documentation));
             }
             var definitionSpan = definitionToken.Span.Combine(definitionEnd);
-            return new UnionDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, branches);
+            var unionDefinition = new UnionDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, branches);
+            _definitions.Add(name, unionDefinition);
+            return unionDefinition;
         }
 
         /// <summary>
