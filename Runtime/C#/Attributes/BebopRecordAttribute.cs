@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Diagnostics.CodeAnalysis;
+using Bebop.Runtime;
 
 namespace Bebop.Attributes
 {
@@ -9,5 +9,25 @@ namespace Bebop.Attributes
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Enum, Inherited = false)]
     public class BebopRecordAttribute : Attribute
     {
+        /// <summary>
+        /// Creates a new <see cref="BebopRecord"/> attribute.
+        /// </summary>
+        /// <param name="kind">The kind of the decorated type.</param>
+        /// <param name="isReadOnly">Whether or not the type record is read-only.</param>
+        public BebopRecordAttribute(BebopKind kind, bool isReadOnly = false)
+        {
+            Kind = kind;
+            IsReadOnly = isReadOnly;
+        }
+
+        /// <summary>
+        /// Indicates if the decorated type is read-only.
+        /// </summary>
+        public bool IsReadOnly { get; set; }
+
+        /// <summary>
+        /// Indicates the kind of the decorated type.
+        /// </summary>
+        public BebopKind Kind { get; set; }
     }
 }
