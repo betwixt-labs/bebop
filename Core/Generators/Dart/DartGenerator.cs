@@ -27,21 +27,21 @@ namespace Core.Generators.Dart
         }
 
         /// <summary>
-        /// Generate the body of the <c>encode</c> function for the given <see cref="IDefinition"/>.
+        /// Generate the body of the <c>encode</c> function for the given <see cref="FieldsDefinition"/>.
         /// </summary>
         /// <param name="definition">The definition to generate code for.</param>
         /// <returns>The generated Dart <c>encode</c> function body.</returns>
-        public string CompileEncode(IDefinition definition)
+        public string CompileEncode(FieldsDefinition definition)
         {
-            return definition.Kind switch
+            return definition switch
             {
-                AggregateKind.Message => CompileEncodeMessage(definition),
-                AggregateKind.Struct => CompileEncodeStruct(definition),
-                _ => throw new InvalidOperationException($"invalid CompileEncode kind: {definition.Kind} in {definition}"),
+                MessageDefinition d => CompileEncodeMessage(d),
+                StructDefinition d => CompileEncodeStruct(d),
+                _ => throw new InvalidOperationException($"invalid CompileEncode value: {definition}"),
             };
         }
 
-        private string CompileEncodeMessage(IDefinition definition)
+        private string CompileEncodeMessage(MessageDefinition definition)
         {
             var builder = new IndentedStringBuilder(4);
             builder.AppendLine($"final pos = view.reserveMessageLength();");
@@ -63,7 +63,7 @@ namespace Core.Generators.Dart
             return builder.ToString();
         }
 
-        private string CompileEncodeStruct(IDefinition definition)
+        private string CompileEncodeStruct(StructDefinition definition)
         {
             var builder = new IndentedStringBuilder(4);
             foreach (var field in definition.Fields)
@@ -112,7 +112,7 @@ namespace Core.Generators.Dart
                     BaseType.Date => $"view.writeDate({target});",
                     _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                 },
-                DefinedType dt when Schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
+                DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition =>
                     $"view.writeEnum({target});",
                 DefinedType dt => $"{dt.Name}.encodeInto({target}, view);",
                 _ => throw new InvalidOperationException($"CompileEncodeField: {type}")
@@ -120,27 +120,26 @@ namespace Core.Generators.Dart
         }
 
         /// <summary>
-        /// Generate the body of the <c>decode</c> function for the given <see cref="IDefinition"/>.
+        /// Generate the body of the <c>decode</c> function for the given <see cref="FieldsDefinition"/>.
         /// </summary>
         /// <param name="definition">The definition to generate code for.</param>
         /// <returns>The generated Dart <c>decode</c> function body.</returns>
-        public string CompileDecode(IDefinition definition)
+        public string CompileDecode(FieldsDefinition definition)
         {
-            return definition.Kind switch
+            return definition switch
             {
-                AggregateKind.Message => CompileDecodeMessage(definition),
-                AggregateKind.Struct => CompileDecodeStruct(definition),
-                _ => throw new InvalidOperationException($"invalid CompileDecode kind: {definition.Kind} in {definition}"),
+                MessageDefinition d => CompileDecodeMessage(d),
+                StructDefinition d => CompileDecodeStruct(d),
+                _ => throw new InvalidOperationException($"invalid CompileDecodevalue: {definition}"),
             };
         }
 
         /// <summary>
-        /// Generate the body of the <c>decode</c> function for the given <see cref="IDefinition"/>,
-        /// given that its "kind" is Message.
+        /// Generate the body of the <c>decode</c> function for the given <see cref="MessageDefinition"/>.
         /// </summary>
         /// <param name="definition">The message definition to generate code for.</param>
         /// <returns>The generated Dart <c>decode</c> function body.</returns>
-        private string CompileDecodeMessage(IDefinition definition)
+        private string CompileDecodeMessage(MessageDefinition definition)
         {
             var builder = new IndentedStringBuilder(4);
             builder.AppendLine($"var message = {definition.Name}();");
@@ -166,7 +165,7 @@ namespace Core.Generators.Dart
             return builder.ToString();
         }
 
-        private string CompileDecodeStruct(IDefinition definition)
+        private string CompileDecodeStruct(StructDefinition definition)
         {
             var builder = new IndentedStringBuilder(4);
             int i = 0;
@@ -228,7 +227,7 @@ namespace Core.Generators.Dart
                     BaseType.Date => $"{target} = view.readDate();",
                     _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                 },
-                DefinedType dt when Schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
+                DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition =>
                     $"{target} = {dt.Name}.fromRawValue(view.readUint32());",
                 DefinedType dt => $"{target} = {dt.Name}.readFrom(view);",
                 _ => throw new InvalidOperationException($"CompileDecodeField: {type}")
@@ -261,7 +260,7 @@ namespace Core.Generators.Dart
                 case MapType mt:
                     return $"Map<{TypeName(mt.KeyType)}, {TypeName(mt.ValueType)}>";
                 case DefinedType dt:
-                    var isEnum = Schema.Definitions[dt.Name].Kind == AggregateKind.Enum;
+                    var isEnum = Schema.Definitions[dt.Name] is EnumDefinition;
                     return dt.Name;
             }
             throw new InvalidOperationException($"GetTypeName: {type}");
@@ -285,16 +284,16 @@ namespace Core.Generators.Dart
                 {
                     builder.Append(FormatDocumentation(definition.Documentation, 2));
                 }
-                switch (definition.Kind)
+                switch (definition)
                 {
-                    case AggregateKind.Enum:
-                        builder.AppendLine($"class {definition.Name} {{");
+                    case EnumDefinition ed:
+                        builder.AppendLine($"class {ed.Name} {{");
                         builder.AppendLine($"  final int value;");
-                        builder.AppendLine($"  const {definition.Name}.fromRawValue(this.value);");
-                        builder.AppendLine($"  @override bool operator ==(o) => o is {definition.Name} && o.value == value;");
-                        for (var i = 0; i < definition.Fields.Count; i++)
+                        builder.AppendLine($"  const {ed.Name}.fromRawValue(this.value);");
+                        builder.AppendLine($"  @override bool operator ==(o) => o is {ed.Name} && o.value == value;");
+                        for (var i = 0; i < ed.Members.Count; i++)
                         {
-                            var field = definition.Fields.ElementAt(i);
+                            var field = ed.Members.ElementAt(i);
                             if (!string.IsNullOrWhiteSpace(field.Documentation))
                             {
                                 builder.Append(FormatDocumentation(field.Documentation, 2));
@@ -303,15 +302,15 @@ namespace Core.Generators.Dart
                             {
                                 builder.AppendLine($"  /// @deprecated {field.DeprecatedAttribute.Value}");
                             }
-                            builder.AppendLine($"  static const {field.Name} = {definition.Name}.fromRawValue({field.ConstantValue});");
+                            builder.AppendLine($"  static const {field.Name} = {ed.Name}.fromRawValue({field.ConstantValue});");
                         }
                         builder.AppendLine($"}}");
                         break;
-                    default:
-                        builder.AppendLine($"class {definition.Name} {{");
-                        for (var i = 0; i < definition.Fields.Count; i++)
+                    case FieldsDefinition fd:
+                        builder.AppendLine($"class {fd.Name} {{");
+                        for (var i = 0; i < fd.Fields.Count; i++)
                         {
-                            var field = definition.Fields.ElementAt(i);
+                            var field = fd.Fields.ElementAt(i);
                             var type = TypeName(field.Type);
                             if (!string.IsNullOrWhiteSpace(field.Documentation))
                             {
@@ -321,42 +320,42 @@ namespace Core.Generators.Dart
                             {
                                 builder.AppendLine($"  /// @deprecated {field.DeprecatedAttribute.Value}");
                             }
-                            var final = definition.IsReadOnly ? "final " : "";
+                            var final = fd is StructDefinition { IsReadOnly: true } ? "final " : "";
                             builder.AppendLine($"  {final}{type} {field.Name};");
                         }
-                        if (definition.Kind == AggregateKind.Message)
+                        if (fd is MessageDefinition)
                         {
-                            builder.AppendLine($"  {definition.Name}();");
+                            builder.AppendLine($"  {fd.Name}();");
                         }
                         else
                         {
-                            builder.AppendLine($"  {(definition.IsReadOnly ? "const " : "")}{definition.Name}({{");
-                            foreach (var field in definition.Fields)
+                            builder.AppendLine($"  {(fd is StructDefinition { IsReadOnly: true } ? "const " : "")}{fd.Name}({{");
+                            foreach (var field in fd.Fields)
                             {
                                 builder.AppendLine($"    @required this.{field.Name},");
                             }
                             builder.AppendLine("  });");
                         }
                         builder.AppendLine("");
-                        if (definition.OpcodeAttribute != null)
+                        if (fd.OpcodeAttribute != null)
                         {
-                            builder.AppendLine($"  static const int opcode = {definition.OpcodeAttribute.Value};");
+                            builder.AppendLine($"  static const int opcode = {fd.OpcodeAttribute.Value};");
                             builder.AppendLine("");
                         }
-                        builder.AppendLine($"  static Uint8List encode({definition.Name} message) {{");
+                        builder.AppendLine($"  static Uint8List encode({fd.Name} message) {{");
                         builder.AppendLine("    final writer = BebopWriter();");
-                        builder.AppendLine($"    {definition.Name}.encodeInto(message, writer);");
+                        builder.AppendLine($"    {fd.Name}.encodeInto(message, writer);");
                         builder.AppendLine("    return writer.toList();");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  static void encodeInto({definition.Name} message, BebopWriter view) {{");
-                        builder.Append(CompileEncode(definition));
+                        builder.AppendLine($"  static void encodeInto({fd.Name} message, BebopWriter view) {{");
+                        builder.Append(CompileEncode(fd));
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  static {definition.Name} decode(Uint8List buffer) => {definition.Name}.readFrom(BebopReader(buffer));");
+                        builder.AppendLine($"  static {fd.Name} decode(Uint8List buffer) => {fd.Name}.readFrom(BebopReader(buffer));");
                         builder.AppendLine("");
-                        builder.AppendLine($"  static {definition.Name} readFrom(BebopReader view) {{");
-                        builder.Append(CompileDecode(definition));
+                        builder.AppendLine($"  static {fd.Name} readFrom(BebopReader view) {{");
+                        builder.Append(CompileDecode(fd));
                         builder.AppendLine("  }");
                         builder.AppendLine("}");
                         builder.AppendLine("");

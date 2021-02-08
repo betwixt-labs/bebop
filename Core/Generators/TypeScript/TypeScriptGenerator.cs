@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using Core.Meta;
@@ -45,21 +46,22 @@ namespace Core.Generators.TypeScript
         }
 
         /// <summary>
-        /// Generate the body of the <c>encode</c> function for the given <see cref="IDefinition"/>.
+        /// Generate the body of the <c>encode</c> function for the given <see cref="Definition"/>.
         /// </summary>
         /// <param name="definition">The definition to generate code for.</param>
         /// <returns>The generated TypeScript <c>encode</c> function body.</returns>
-        public string CompileEncode(IDefinition definition)
+        public string CompileEncode(Definition definition)
         {
-            return definition.Kind switch
+            return definition switch
             {
-                AggregateKind.Message => CompileEncodeMessage(definition),
-                AggregateKind.Struct => CompileEncodeStruct(definition),
-                _ => throw new InvalidOperationException($"invalid CompileEncode kind: {definition.Kind} in {definition}"),
+                MessageDefinition d => CompileEncodeMessage(d),
+                StructDefinition d => CompileEncodeStruct(d),
+                UnionDefinition d => CompileEncodeUnion(d),
+                _ => throw new InvalidOperationException($"invalid CompileEncode value: {definition}"),
             };
         }
 
-        private string CompileEncodeMessage(IDefinition definition)
+        private string CompileEncodeMessage(MessageDefinition definition)
         { 
             var builder = new IndentedStringBuilder(6);
             builder.AppendLine($"const pos = view.reserveMessageLength();");
@@ -81,13 +83,30 @@ namespace Core.Generators.TypeScript
             return builder.ToString();
         }
 
-        private string CompileEncodeStruct(IDefinition definition)
+        private string CompileEncodeStruct(StructDefinition definition)
         {
             var builder = new IndentedStringBuilder(6);
             foreach (var field in definition.Fields)
             {
                 builder.AppendLine(CompileEncodeField(field.Type, $"message.{field.Name.ToCamelCase()}"));
             }
+            return builder.ToString();
+        }
+
+        private string CompileEncodeUnion(UnionDefinition definition)
+        {
+            var builder = new IndentedStringBuilder(6);
+            builder.AppendLine($"const pos = view.reserveMessageLength();");
+            builder.AppendLine($"view.writeByte(message.discriminator);");
+            builder.AppendLine($"const start = view.length;");
+            builder.AppendLine($"switch (message.discriminator) {{");
+            foreach (var branch in definition.Branches)
+            {
+                builder.AppendLine($"  case {branch.Discriminator}: {branch.Definition.Name}.encodeInto(message.value, view); break;");
+            }
+            builder.AppendLine("}");
+            builder.AppendLine("const end = view.length;");
+            builder.AppendLine("view.fillMessageLength(pos, end - start);");
             return builder.ToString();
         }
 
@@ -130,7 +149,7 @@ namespace Core.Generators.TypeScript
                     BaseType.Date => $"view.writeDate({target});",
                     _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                 },
-                DefinedType dt when Schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
+                DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition =>
                     $"view.writeEnum({target});",
                 DefinedType dt => $"{dt.Name}.encodeInto({target}, view)",
                 _ => throw new InvalidOperationException($"CompileEncodeField: {type}")
@@ -138,29 +157,29 @@ namespace Core.Generators.TypeScript
         }
 
         /// <summary>
-        /// Generate the body of the <c>decode</c> function for the given <see cref="IDefinition"/>.
+        /// Generate the body of the <c>decode</c> function for the given <see cref="FieldsDefinition"/>.
         /// </summary>
         /// <param name="definition">The definition to generate code for.</param>
         /// <returns>The generated TypeScript <c>decode</c> function body.</returns>
-        public string CompileDecode(IDefinition definition)
+        public string CompileDecode(Definition definition)
         {
-            return definition.Kind switch
+            return definition switch
             {
-                AggregateKind.Message => CompileDecodeMessage(definition),
-                AggregateKind.Struct => CompileDecodeStruct(definition),
-                _ => throw new InvalidOperationException($"invalid CompileDecode kind: {definition.Kind} in {definition}"),
+                MessageDefinition d => CompileDecodeMessage(d),
+                StructDefinition d => CompileDecodeStruct(d),
+                UnionDefinition d => CompileDecodeUnion(d),
+                _ => throw new InvalidOperationException($"invalid CompileDecode value: {definition}"),
             };
         }
 
         /// <summary>
-        /// Generate the body of the <c>decode</c> function for the given <see cref="IDefinition"/>,
-        /// given that its "kind" is Message.
+        /// Generate the body of the <c>decode</c> function for the given <see cref=MessageDefinition"/>,
         /// </summary>
         /// <param name="definition">The message definition to generate code for.</param>
         /// <returns>The generated TypeScript <c>decode</c> function body.</returns>
-        private string CompileDecodeMessage(IDefinition definition)
+        private string CompileDecodeMessage(MessageDefinition definition)
         {
-            var builder = new IndentedStringBuilder(6);
+            var builder = new IndentedStringBuilder(4);
             builder.AppendLine($"let message: I{definition.Name} = {{}};");
             builder.AppendLine("const length = view.readMessageLength();");
             builder.AppendLine("const end = view.index + length;");
@@ -186,9 +205,9 @@ namespace Core.Generators.TypeScript
             return builder.ToString();
         }
         
-        private string CompileDecodeStruct(IDefinition definition)
+        private string CompileDecodeStruct(StructDefinition definition)
         {
-            var builder = new IndentedStringBuilder(6);
+            var builder = new IndentedStringBuilder(4);
             int i = 0;
             foreach (var field in definition.Fields)
             {
@@ -205,6 +224,24 @@ namespace Core.Generators.TypeScript
             }
             builder.AppendLine("};");
             builder.AppendLine("return message;");
+            return builder.ToString();
+        }
+
+        private string CompileDecodeUnion(UnionDefinition definition)
+        {
+            var builder = new IndentedStringBuilder(4);
+            builder.AppendLine("const length = view.readMessageLength();");
+            builder.AppendLine("const end = view.index + length;");
+            builder.AppendLine("switch (view.readByte()) {");
+            foreach (var branch in definition.Branches)
+            {
+                builder.AppendLine($"  case {branch.Discriminator}:");
+                builder.AppendLine($"    return {{ discriminator: {branch.Discriminator}, value: {branch.Definition.Name}.readFrom(view) }};");
+            }
+            builder.AppendLine("  default:");
+            builder.AppendLine("    view.index = end;");
+            builder.AppendLine("    return undefined;");
+            builder.AppendLine("}");
             return builder.ToString();
         }
 
@@ -255,7 +292,7 @@ namespace Core.Generators.TypeScript
                     BaseType.Date => $"{target} = view.readDate();",
                     _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                 },
-                DefinedType dt when Schema.Definitions[dt.Name].Kind == AggregateKind.Enum =>
+                DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition =>
                     $"{target} = view.readUint32() as {dt.Name};",
                 DefinedType dt => $"{target} = {dt.Name}.readFrom(view);",
                 _ => throw new InvalidOperationException($"CompileDecodeField: {type}")
@@ -289,7 +326,7 @@ namespace Core.Generators.TypeScript
                 case MapType mt:
                     return $"Map<{TypeName(mt.KeyType)}, {TypeName(mt.ValueType)}>";
                 case DefinedType dt:
-                    var isEnum = Schema.Definitions[dt.Name].Kind == AggregateKind.Enum;
+                    var isEnum = Schema.Definitions[dt.Name] is EnumDefinition;
                     return (isEnum ? "" : "I") + dt.Name;
             }
             throw new InvalidOperationException($"GetTypeName: {type}");
@@ -316,12 +353,12 @@ namespace Core.Generators.TypeScript
                 {
                     builder.AppendLine(FormatDocumentation(definition.Documentation, string.Empty, 0));
                 }
-                if (definition.Kind == AggregateKind.Enum)
+                if (definition is EnumDefinition ed)
                 {
-                    builder.AppendLine($"export enum {definition.Name} {{");
-                    for (var i = 0; i < definition.Fields.Count; i++)
+                    builder.AppendLine($"export enum {ed.Name} {{");
+                    for (var i = 0; i < ed.Members.Count; i++)
                     {
-                        var field = definition.Fields.ElementAt(i);
+                        var field = ed.Members.ElementAt(i);
                         var deprecationReason = field.DeprecatedAttribute?.Value ?? string.Empty;
                         if (!string.IsNullOrWhiteSpace(field.Documentation))
                         {
@@ -335,52 +372,61 @@ namespace Core.Generators.TypeScript
                     builder.AppendLine("}");
                     builder.AppendLine("");
                 }
-
-                if (definition.Kind == AggregateKind.Message || definition.Kind == AggregateKind.Struct)
+                else if (definition is TopLevelDefinition td)
                 {
-                    builder.AppendLine($"export interface I{definition.Name} {{");
-                    for (var i = 0; i < definition.Fields.Count; i++)
+                    if (definition is FieldsDefinition fd)
                     {
-                        var field = definition.Fields.ElementAt(i);
-                        var type = TypeName(field.Type);
-                        var deprecationReason = field.DeprecatedAttribute?.Value ?? string.Empty;
-                        if (!string.IsNullOrWhiteSpace(field.Documentation))
+                        builder.AppendLine($"export interface I{fd.Name} {{");
+                        for (var i = 0; i < fd.Fields.Count; i++)
                         {
-                            builder.AppendLine(FormatDocumentation(field.Documentation, deprecationReason, 2));
+                            var field = fd.Fields.ElementAt(i);
+                            var type = TypeName(field.Type);
+                            var deprecationReason = field.DeprecatedAttribute?.Value ?? string.Empty;
+                            if (!string.IsNullOrWhiteSpace(field.Documentation))
+                            {
+                                builder.AppendLine(FormatDocumentation(field.Documentation, deprecationReason, 2));
+                            }
+                            else if (string.IsNullOrWhiteSpace(field.Documentation) && !string.IsNullOrWhiteSpace(deprecationReason))
+                            {
+                                builder.AppendLine(FormatDeprecationDoc(deprecationReason, 2));
+                            }
+                            builder.AppendLine($"  {(fd is StructDefinition { IsReadOnly: true } ? "readonly " : "")}{field.Name.ToCamelCase()}{(fd is MessageDefinition ? "?" : "")}: {type};");
                         }
-                        else if (string.IsNullOrWhiteSpace(field.Documentation) && !string.IsNullOrWhiteSpace(deprecationReason))
-                        {
-                            builder.AppendLine(FormatDeprecationDoc(deprecationReason, 2));
-                        }
-                        builder.AppendLine($"  {(definition.IsReadOnly ? "readonly " : "")}{field.Name.ToCamelCase()}{(definition.Kind == AggregateKind.Message ? "?" : "")}: {type};");
+                        builder.AppendLine("}");
+                        builder.AppendLine("");
                     }
-                    builder.AppendLine("}");
-                    builder.AppendLine("");
+                    else if (definition is UnionDefinition ud)
+                    {
+                        var expression = string.Join("\n  | ", ud.Branches.Select(b => $"{{ discriminator: {b.Discriminator}, value: I{b.Definition.Name} }}"));
+                        if (string.IsNullOrWhiteSpace(expression)) expression = "never";
+                        builder.AppendLine($"type I{ud.Name}\n  = {expression};");
+                        builder.AppendLine("");
+                    }
 
-                    builder.AppendLine($"export const {definition.Name} = {{");
-                    if (definition.OpcodeAttribute != null)
+                    builder.AppendLine($"export const {td.Name} = {{");
+                    if (td.OpcodeAttribute != null)
                     {
-                        builder.AppendLine($"  opcode: {definition.OpcodeAttribute.Value},");
+                        builder.AppendLine($"  opcode: {td.OpcodeAttribute.Value},");
                     }
-                    builder.AppendLine($"  encode(message: I{definition.Name}): Uint8Array {{");
+                    builder.AppendLine($"  encode(message: I{td.Name}): Uint8Array {{");
                     builder.AppendLine("    const view = BebopView.getInstance();");
                     builder.AppendLine("    view.startWriting();");
                     builder.AppendLine("    this.encodeInto(message, view);");
                     builder.AppendLine("    return view.toArray();");
                     builder.AppendLine("  },");
                     builder.AppendLine("");
-                    builder.AppendLine($"  encodeInto(message: I{definition.Name}, view: BebopView): void {{");
-                    builder.AppendLine(CompileEncode(definition));
+                    builder.AppendLine($"  encodeInto(message: I{td.Name}, view: BebopView): void {{");
+                    builder.AppendLine(CompileEncode(td));
                     builder.AppendLine("  },");
                     builder.AppendLine("");
-                    builder.AppendLine($"  decode(buffer: Uint8Array): I{definition.Name} {{");
+                    builder.AppendLine($"  decode(buffer: Uint8Array): I{td.Name} {{");
                     builder.AppendLine($"    const view = BebopView.getInstance();");
                     builder.AppendLine($"    view.startReading(buffer);");
                     builder.AppendLine($"    return this.readFrom(view);");
                     builder.AppendLine($"  }},");
                     builder.AppendLine($"");
-                    builder.AppendLine($"  readFrom(view: BebopView): I{definition.Name} {{");
-                    builder.AppendLine(CompileDecode(definition));
+                    builder.AppendLine($"  readFrom(view: BebopView): I{td.Name} {{");
+                    builder.AppendLine(CompileDecode(td));
                     builder.AppendLine("  },");
                     builder.AppendLine("};");
                     builder.AppendLine("");

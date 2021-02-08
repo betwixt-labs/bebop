@@ -235,7 +235,7 @@ namespace Bebop.Runtime
 
             foreach (var assembly in domainAssemblies)
             {
-                foreach (var type in assembly.GetMarkedTypes<BebopRecordAttribute>())
+                foreach (var type in assembly.GetBebopRecordTypes())
                 {
                     if (type is not {IsClass: true, IsSealed: true, IsPublic: true, IsVisible: true, BaseType: not null})
                     {
