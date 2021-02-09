@@ -11,7 +11,7 @@
     <license type="expression">Apache-2.0</license>
     <licenseUrl>https://licenses.nuget.org/Apache-2.0</licenseUrl>
     <projectUrl>https://github.com/RainwayApp/bebop</projectUrl>
-    <description>The Bebop compiler for managed C# projects.
+    <description>The Bebop compiler for managed C# projects and native C++ projects.
 
 Add this package to a project that contains .bop files to be compiled to code.
 It contains the compilers, include files and project system integration for Bebop schemas to build them on Windows,

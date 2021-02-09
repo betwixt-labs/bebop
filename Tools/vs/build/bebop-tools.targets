@@ -8,6 +8,8 @@
     <ItemDefinitionGroup>
         <Bebop>
             <OutputDir Condition="'%(Bebop.OutputDir)' == '' " >$(MSBuildProjectDirectory)\</OutputDir>
+            <Language Condition="'%(Bebop.Language)' == '' " >cs</OutputDir>
+            <LogFormat Condition="'%(Bebop.LogFormat)' == '' " >MSBuild</OutputDir>
             <OutputFile Condition="'%(Bebop.OutputFile)' == '' " />
             <Namespace Condition="'%(Bebop.Namespace)' == '' " />
         </Bebop>
@@ -20,7 +22,7 @@
     </PropertyGroup>
     <Target Name="CompileBops" BeforeTargets="CoreCompile" DependsOnTargets="PrepareForBuild" Condition="'$(_BebopSchemas)' != '' " >
         <Exec
-            Command="$(_Bebopc) --log-format MSBuild --cs &quot;$([System.IO.Path]::GetFullPath('%(Bebop.OutputDir)'))%(Bebop.OutputFile)&quot; --namespace %(Bebop.Namespace) --files $(_BebopSchemas)"
+            Command="$(_Bebopc) --log-format %(Bebop.LogFormat) --%(Bebop.Language) &quot;$([System.IO.Path]::GetFullPath('%(Bebop.OutputDir)'))%(Bebop.OutputFile)&quot; --namespace %(Bebop.Namespace) --files $(_BebopSchemas)"
             EchoOff='true'
             StandardErrorImportance='high'
             StandardOutputImportance='low'

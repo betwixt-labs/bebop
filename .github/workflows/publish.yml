@@ -210,13 +210,13 @@ jobs:
 
       - name: Build NuGet Package
         run: bash build.sh ${{ steps.dotenv.outputs.version }}
-        working-directory: ${{env.TOOLS_ROOT}}/C#
+        working-directory: ${{env.TOOLS_ROOT}}/vs
 
       - name: Upload Nuget Artifact
         uses: actions/upload-artifact@v2
         with:
           name: bebop-tools-nuget-${{ steps.dotenv.outputs.version }}
-          path: ${{env.TOOLS_ROOT}}/C#/packages/bebop-tools.${{ steps.dotenv.outputs.version }}.nupkg
+          path: ${{env.TOOLS_ROOT}}/vs/packages/bebop-tools.${{ steps.dotenv.outputs.version }}.nupkg
 
       - name: Copy Compiler Builds for NPM package
         run: |
