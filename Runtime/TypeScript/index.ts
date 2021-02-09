@@ -13,6 +13,12 @@ const asciiToHex = [
 
 const emptyByteArray = new Uint8Array(0);
 const emptyString = "";
+const byteToHex: string[] = []; // A lookup table: ['00', '01', ..., 'ff']
+for (const x of hexDigits) {
+    for (const y of hexDigits) {
+        byteToHex.push(x + y);
+    }
+}
 
 if (typeof require !== 'undefined') {
     if (typeof TextDecoder === 'undefined') (global as any).TextDecoder = require('util').TextDecoder;
@@ -33,7 +39,6 @@ export class BebopView {
     minimumTextDecoderLength: number = 300;
     private buffer: Uint8Array;
     private view: DataView;
-    private byteToHex: string[] = []; // A lookup table: ['00', '01', ..., 'ff']
     index: number; // read pointer
     length: number; // write pointer
 
@@ -42,11 +47,6 @@ export class BebopView {
         this.view = BebopView.writeBufferView;
         this.index = 0;
         this.length = 0;
-        for (const x of hexDigits) {
-            for (const y of hexDigits) {
-                this.byteToHex.push(x + y);
-            }
-        }
     }
 
     startReading(buffer: Uint8Array): void {
@@ -242,7 +242,7 @@ export class BebopView {
 
     readGuid(): string {
         // Order: 3 2 1 0 - 5 4 - 7 6 - 8 9 - a b c d e f
-        const b = this.byteToHex, a = this.buffer, i = this.index, d = '-';
+        const b = byteToHex, a = this.buffer, i = this.index, d = '-';
         var s = b[a[i + 3]];
         s += b[a[i + 2]];
         s += b[a[i + 1]];
