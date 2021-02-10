@@ -374,10 +374,10 @@ public:
 #if BEBOP_ASSUME_LITTLE_ENDIAN
         memcpy(m_buffer->data() + position, &messageLength, sizeof(uint32_t));
 #else
-        m_buffer[position++] = messageLength;
-        m_buffer[position++] = messageLength >> 8;
-        m_buffer[position++] = messageLength >> 16;
-        m_buffer[position++] = messageLength >> 24;
+        (*m_buffer)[position++] = messageLength;
+        (*m_buffer)[position++] = messageLength >> 8;
+        (*m_buffer)[position++] = messageLength >> 16;
+        (*m_buffer)[position++] = messageLength >> 24;
 #endif
     }
 };
