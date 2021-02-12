@@ -8,7 +8,9 @@
 #include <string>
 #include <vector>
 
+#ifndef BEBOP_ASSUME_LITTLE_ENDIAN
 #define BEBOP_ASSUME_LITTLE_ENDIAN 1
+#endif
 
 namespace bebop {
 
@@ -46,9 +48,9 @@ struct Guid {
     Guid() = default;
     Guid(const uint8_t* bytes) {
 #if BEBOP_ASSUME_LITTLE_ENDIAN
-        m_a = *reinterpret_cast<const uint32_t*>(bytes + 0);
-        m_b = *reinterpret_cast<const uint16_t*>(bytes + 4);
-        m_c = *reinterpret_cast<const uint16_t*>(bytes + 6);
+        memcpy(&m_a, bytes + 0, sizeof(uint32_t));
+        memcpy(&m_b, bytes + 4, sizeof(uint16_t));
+        memcpy(&m_c, bytes + 6, sizeof(uint16_t));
 #else
         m_a = bytes[0]
             | (static_cast<uint32_t>(bytes[1]) << 8)
@@ -183,7 +185,8 @@ public:
 
     uint16_t readUint16() {
 #if BEBOP_ASSUME_LITTLE_ENDIAN
-        const auto v = *reinterpret_cast<const uint16_t*>(m_pointer);
+        uint16_t v;
+        memcpy(&v, m_pointer, sizeof(uint16_t));
         m_pointer += 2;
         return v;
 #else
@@ -195,7 +198,8 @@ public:
 
     uint32_t readUint32() {
 #if BEBOP_ASSUME_LITTLE_ENDIAN
-        const auto v = *reinterpret_cast<const uint32_t*>(m_pointer);
+        uint32_t v;
+        memcpy(&v, m_pointer, sizeof(uint32_t));
         m_pointer += 4;
         return v;
 #else
@@ -209,7 +213,8 @@ public:
 
     uint64_t readUint64() {
 #if BEBOP_ASSUME_LITTLE_ENDIAN
-        const auto v = *reinterpret_cast<const uint64_t*>(m_pointer);
+        uint64_t v;
+        memcpy(&v, m_pointer, sizeof(uint64_t));
         m_pointer += 8;
         return v;
 #else
@@ -230,13 +235,17 @@ public:
     int64_t readInt64() { return static_cast<uint64_t>(readUint64()); }
 
     float readFloat32() {
-        const auto v = readUint32();
-        return reinterpret_cast<const float&>(v);
+        float f;
+        const uint32_t v = readUint32();
+        memcpy(&f, &v, sizeof(float));
+        return f;
     }
 
     double readFloat64() {
-        const auto v = readUint64();
-        return reinterpret_cast<const double&>(v);
+        double f;
+        const uint64_t v = readUint64();
+        memcpy(&f, &v, sizeof(double));
+        return f;
     }
 
     bool readBool() {
@@ -310,8 +319,16 @@ public:
     void writeInt16(int16_t value) { writeUint16(static_cast<uint16_t>(value)); }
     void writeInt32(int32_t value) { writeUint32(static_cast<uint32_t>(value)); }
     void writeInt64(int64_t value) { writeUint64(static_cast<uint64_t>(value)); }
-    void writeFloat32(float value) { writeUint32(*reinterpret_cast<uint32_t*>(&value)); }
-    void writeFloat64(double value) { writeUint64(*reinterpret_cast<uint64_t*>(&value)); }
+    void writeFloat32(float value) {
+        uint32_t temp;
+        memcpy(&temp, &value, sizeof(float));
+        writeUint32(temp);
+    }
+    void writeFloat64(double value) {
+        uint64_t temp;
+        memcpy(&temp, &value, sizeof(double));
+        writeUint32(temp);
+    }
     void writeBool(bool value) { writeByte(value); }
 
     void writeBytes(std::vector<uint8_t> value) {
@@ -355,12 +372,12 @@ public:
     /// Fill in a message's length prefix.
     void fillMessageLength(size_t position, uint32_t messageLength) {
 #if BEBOP_ASSUME_LITTLE_ENDIAN
-        *reinterpret_cast<uint32_t*>(m_buffer->data() + position) = messageLength;
+        memcpy(m_buffer->data() + position, &messageLength, sizeof(uint32_t));
 #else
-        m_buffer[position++] = messageLength;
-        m_buffer[position++] = messageLength >> 8;
-        m_buffer[position++] = messageLength >> 16;
-        m_buffer[position++] = messageLength >> 24;
+        (*m_buffer)[position++] = messageLength;
+        (*m_buffer)[position++] = messageLength >> 8;
+        (*m_buffer)[position++] = messageLength >> 16;
+        (*m_buffer)[position++] = messageLength >> 24;
 #endif
     }
 };
