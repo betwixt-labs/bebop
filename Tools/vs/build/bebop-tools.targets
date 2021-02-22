@@ -8,8 +8,8 @@
     <ItemDefinitionGroup>
         <Bebop>
             <OutputDir Condition="'%(Bebop.OutputDir)' == '' " >$(MSBuildProjectDirectory)\</OutputDir>
-            <Language Condition="'%(Bebop.Language)' == '' " >cs</OutputDir>
-            <LogFormat Condition="'%(Bebop.LogFormat)' == '' " >MSBuild</OutputDir>
+            <Language Condition="'%(Bebop.Language)' == '' " >cs</Language>
+            <LogFormat Condition="'%(Bebop.LogFormat)' == '' " >MSBuild</LogFormat>
             <OutputFile Condition="'%(Bebop.OutputFile)' == '' " />
             <Namespace Condition="'%(Bebop.Namespace)' == '' " />
         </Bebop>
