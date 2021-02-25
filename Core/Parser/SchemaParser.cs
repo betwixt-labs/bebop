@@ -357,6 +357,7 @@ namespace Core.Parser
         {
             var name = definitionToken.Lexeme;
             var branches = new List<UnionBranch>();
+            var usedDiscriminators = new HashSet<uint>();
 
             Expect(TokenKind.Identifier, hint: $"Did you forget to specify a name for this union?");
             Expect(TokenKind.OpenBrace);
@@ -371,16 +372,22 @@ namespace Core.Parser
                 }
 
                 const string? indexHint = "Branches in a union must be explicitly indexed: union U { 1 -> struct A{}  2 -> message B{} }";
-                var indexLexeme = CurrentToken.Lexeme;
+                var indexToken = CurrentToken;
+                var indexLexeme = indexToken.Lexeme;
                 Expect(TokenKind.Number, hint: indexHint);
                 if (!indexLexeme.TryParseUInt(out uint discriminator))
                 {
-                    throw new UnexpectedTokenException(TokenKind.Number, CurrentToken, "A union branch discriminator must be an unsigned integer.");
+                    throw new UnexpectedTokenException(TokenKind.Number, indexToken, "A union branch discriminator must be an unsigned integer.");
                 }
-                if (discriminator > 255)
+                if (discriminator < 1 || discriminator > 255)
                 {
-                    throw new UnexpectedTokenException(TokenKind.Number, CurrentToken, "A union branch discriminator must be between 0 and 255.");
+                    throw new UnexpectedTokenException(TokenKind.Number, indexToken, "A union branch discriminator must be between 1 and 255.");
                 }
+                if (usedDiscriminators.Contains(discriminator))
+                {
+                    throw new DuplicateUnionDiscriminatorException(indexToken, name);
+                }
+                usedDiscriminators.Add(discriminator);
                 // Parse an arrow ("->").
                 Expect(TokenKind.Hyphen, hint: indexHint);
                 Expect(TokenKind.CloseCaret, hint: indexHint);

@@ -124,7 +124,15 @@ namespace Core.Exceptions
     class InvalidUnionBranchException : SpanException
     {
         public InvalidUnionBranchException(Definition definition)
-            : base($"The definition '{definition.Name}' cannot be used as a union branch. Valid union branches are messages, structs, or unions.", definition.Span, 108)
+            : base($"The definition '{definition.Name}' cannot be used as a union branch. Valid union branches are messages, structs, or unions.", definition.Span, 113)
+        { }
+    }
+
+    [Serializable]
+    class DuplicateUnionDiscriminatorException : SpanException
+    {
+        public DuplicateUnionDiscriminatorException(Token discriminator, string unionName)
+            : base($"The discriminator index {discriminator.Lexeme} was used more than once in union '{unionName}'.", discriminator.Span, 114)
         { }
     }
 
