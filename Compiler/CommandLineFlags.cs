@@ -400,6 +400,12 @@ namespace Compiler
                 }
             }
 
+            var validFlagNames = props.Select(p => p.Attribute.Name).ToHashSet();
+            if (parsedFlags.Find(x => !validFlagNames.Contains(x.Name)) is CommandLineFlag unrecognizedFlag)
+            {
+                errorMessage = $"Unrecognized flag: --{unrecognizedFlag.Name}";
+                return false;
+            }
 
             // parse all present command-line flags
             // any flag on the command-line that was also present in bebop.json will be overwritten.
