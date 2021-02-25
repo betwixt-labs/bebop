@@ -299,8 +299,8 @@ namespace Core.Generators.CPlusPlus
                         BaseType.Float32 => "float",
                         BaseType.Float64 => "double",
                         BaseType.String => "std::string",
-                        BaseType.Guid => "bebop::Guid",
-                        BaseType.Date => "bebop::TickDuration",
+                        BaseType.Guid => "::bebop::Guid",
+                        BaseType.Date => "::bebop::TickDuration",
                         _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                     };
                 // case ArrayType at when at.IsBytes():
@@ -408,23 +408,23 @@ namespace Core.Generators.CPlusPlus
                         }
 
                         builder.AppendLine($"  static std::unique_ptr<std::vector<uint8_t>> encode(const {td.Name}& message) {{");
-                        builder.AppendLine("    bebop::BebopWriter writer{};");
+                        builder.AppendLine("    ::bebop::BebopWriter writer{};");
                         builder.AppendLine($"    {td.Name}::encodeInto(message, writer);");
                         builder.AppendLine("    return writer.buffer();");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  static void encodeInto(const {td.Name}& message, bebop::BebopWriter& writer) {{");
+                        builder.AppendLine($"  static void encodeInto(const {td.Name}& message, ::bebop::BebopWriter& writer) {{");
                         builder.Append(CompileEncode(td));
                         builder.AppendLine("  }");
                         builder.AppendLine("");
                         builder.AppendLine($"  static {td.Name} decode(const uint8_t *buffer) {{");
                         builder.AppendLine($"    {td.Name} result;");
-                        builder.AppendLine("    bebop::BebopReader reader{buffer};");
+                        builder.AppendLine("    ::bebop::BebopReader reader{buffer};");
                         builder.AppendLine($"    {td.Name}::decodeInto(result, reader);");
                         builder.AppendLine($"    return result;");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  static void decodeInto({td.Name}& target, bebop::BebopReader& reader) {{");
+                        builder.AppendLine($"  static void decodeInto({td.Name}& target, ::bebop::BebopReader& reader) {{");
                         builder.Append(CompileDecode(td));
                         builder.AppendLine("  }");
                         builder.AppendLine("};");
