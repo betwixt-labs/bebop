@@ -444,7 +444,15 @@ namespace Core.Generators.CPlusPlus
 
         public override void WriteAuxiliaryFiles(string outputPath)
         {
-            // There is nothing to do here.
+            var assembly = Assembly.GetEntryAssembly()!;
+            Console.WriteLine(assembly.GetName());
+            Console.WriteLine(assembly.GetManifestResourceNames()[0]);
+            var runtime = assembly.GetManifestResourceNames()!.FirstOrDefault(n => n.Contains("bebop.hpp"))!;
+
+            using Stream stream = assembly.GetManifestResourceStream(runtime)!;
+            using StreamReader reader = new StreamReader(stream);
+            string result = reader.ReadToEnd();
+            File.WriteAllText(Path.Join(outputPath, "bebop.hpp"), result);
         }
     }
 }
