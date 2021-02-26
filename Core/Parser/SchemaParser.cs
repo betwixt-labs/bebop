@@ -398,7 +398,11 @@ namespace Core.Parser
                 }
                 Eat(TokenKind.Semicolon);
                 definitionEnd = CurrentToken.Span;
-                branches.Add(new UnionBranch((byte)discriminator, (TopLevelDefinition)definition, documentation));
+                if (string.IsNullOrWhiteSpace(definition.Documentation))
+                {
+                    definition.Documentation = documentation;
+                }
+                branches.Add(new UnionBranch((byte)discriminator, (TopLevelDefinition)definition));
             }
             var definitionSpan = definitionToken.Span.Combine(definitionEnd);
             var unionDefinition = new UnionDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, branches);
