@@ -84,7 +84,7 @@ namespace Core.Meta
                 if (definition is EnumDefinition ed)
                 {
                     HashSet<uint> values = new HashSet<uint>();
-                    HashSet<string> names = new HashSet<string>();
+                    HashSet<string> names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                     foreach (var field in ed.Members)
                     {
                         if (values.Contains(field.ConstantValue))
