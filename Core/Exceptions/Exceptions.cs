@@ -117,7 +117,7 @@ namespace Core.Exceptions
     class DuplicateFieldException : SpanException
     {
         public DuplicateFieldException(IField field, Definition definition)
-            : base($"The type '{definition.Name}' already contains a definition for '{field.Name}'", field.Span, 112) { }
+            : base($"The type '{definition.Name}' already contains a definition for '{field.Name}'.", field.Span, 112) { }
     }
 
     [Serializable]

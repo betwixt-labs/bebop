@@ -83,14 +83,20 @@ namespace Core.Meta
                 }
                 if (definition is EnumDefinition ed)
                 {
-                    HashSet<uint> seen = new HashSet<uint>();
+                    HashSet<uint> values = new HashSet<uint>();
+                    HashSet<string> names = new HashSet<string>();
                     foreach (var field in ed.Members)
                     {
-                        if (seen.Contains(field.ConstantValue))
+                        if (values.Contains(field.ConstantValue))
                         {
                             throw new InvalidFieldException(field, "Enum value must be unique");
                         }
-                        seen.Add(field.ConstantValue);
+                        if (names.Contains(field.Name))
+                        {
+                            throw new DuplicateFieldException(field, ed);
+                        }
+                        values.Add(field.ConstantValue);
+                        names.Add(field.Name);
                     }
                 }
             }
