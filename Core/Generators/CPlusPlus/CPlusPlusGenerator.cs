@@ -408,23 +408,23 @@ namespace Core.Generators.CPlusPlus
                         }
 
                         builder.AppendLine($"  static std::unique_ptr<std::vector<uint8_t>> encode(const {td.Name}& message) {{");
-                        builder.AppendLine("    ::bebop::BebopWriter writer{};");
+                        builder.AppendLine("    ::bebop::Writer writer{};");
                         builder.AppendLine($"    {td.Name}::encodeInto(message, writer);");
                         builder.AppendLine("    return writer.buffer();");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  static void encodeInto(const {td.Name}& message, ::bebop::BebopWriter& writer) {{");
+                        builder.AppendLine($"  static void encodeInto(const {td.Name}& message, ::bebop::Writer& writer) {{");
                         builder.Append(CompileEncode(td));
                         builder.AppendLine("  }");
                         builder.AppendLine("");
                         builder.AppendLine($"  static {td.Name} decode(const uint8_t *buffer) {{");
                         builder.AppendLine($"    {td.Name} result;");
-                        builder.AppendLine("    ::bebop::BebopReader reader{buffer};");
+                        builder.AppendLine("    ::bebop::Reader reader{buffer};");
                         builder.AppendLine($"    {td.Name}::decodeInto(result, reader);");
                         builder.AppendLine($"    return result;");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  static void decodeInto({td.Name}& target, ::bebop::BebopReader& reader) {{");
+                        builder.AppendLine($"  static void decodeInto({td.Name}& target, ::bebop::Reader& reader) {{");
                         builder.Append(CompileDecode(td));
                         builder.AppendLine("  }");
                         builder.AppendLine("};");
