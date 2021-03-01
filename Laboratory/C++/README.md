@@ -1,6 +1,5 @@
 Try this:
 
-    dotnet run --project ../../Compiler --cpp "gen/models.hpp" --files "../Schemas/jazz.bop" "../Schemas/union_perf.bop"
-    g++ -std=c++17 test/test.cpp && ./a.out
-    g++ -std=c++17 test/union_perf.cpp && ./a.out
-
+    ./run_test.sh jazz
+    ./run_test.sh union_perf_a
+    ./run_test.sh union_perf_b
