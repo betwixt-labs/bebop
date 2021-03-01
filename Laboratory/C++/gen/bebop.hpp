@@ -345,7 +345,7 @@ public:
     void writeFloat64(double value) {
         uint64_t temp;
         memcpy(&temp, &value, sizeof(double));
-        writeUint32(temp);
+        writeUint64(temp);
     }
     void writeBool(bool value) { writeByte(value); }
 

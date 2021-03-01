@@ -1,5 +1,6 @@
 Try this:
 
-    cd test
-    dotnet run --project ../../../Compiler --cpp "../gen/jazz.hpp" --files "../../Schemas/jazz.bop"
-    g++ -std=c++17 test.cpp && ./a.out
+    dotnet run --project ../../Compiler --cpp "gen/models.hpp" --files "../Schemas/jazz.bop" "../Schemas/union_perf.bop"
+    g++ -std=c++17 test/test.cpp && ./a.out
+    g++ -std=c++17 test/union_perf.cpp && ./a.out
+

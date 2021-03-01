@@ -211,7 +211,7 @@ namespace Core.Generators.CPlusPlus
                 var i = branch.Discriminator - 1;
                 builder.AppendLine($"  case {branch.Discriminator}:");
                 builder.AppendLine($"    target.variant.emplace<{i}>();");
-                builder.AppendLine($"    {branch.Definition.Name}::decodeInto(std::get<{i}>(target.variant), reader);");
+                builder.AppendLine($"    {branch.Definition.Name}::decodeInto(reader, std::get<{i}>(target.variant));");
                 builder.AppendLine("    break;");
             }
             builder.AppendLine("  default:");
@@ -271,7 +271,7 @@ namespace Core.Generators.CPlusPlus
                 },
                 DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition =>
                     $"{target} = static_cast<{dt.Name}>(reader.readUint32());",
-                DefinedType dt => $"{dt.Name}::decodeInto({target}, reader);",
+                DefinedType dt => $"{dt.Name}::decodeInto(reader, {target});",
                 _ => throw new InvalidOperationException($"CompileDecodeField: {type}")
             };
         }
@@ -418,16 +418,16 @@ namespace Core.Generators.CPlusPlus
                         builder.AppendLine("");
                         builder.AppendLine($"  static {td.Name} decode(const uint8_t *sourceBuffer) {{");
                         builder.AppendLine($"    {td.Name} result;");
-                        builder.AppendLine($"    {td.Name}::decodeInto(result, sourceBuffer);");
+                        builder.AppendLine($"    {td.Name}::decodeInto(sourceBuffer, result);");
                         builder.AppendLine($"    return result;");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  static void decodeInto({td.Name}& target, const uint8_t *sourceBuffer) {{");
+                        builder.AppendLine($"  static void decodeInto(const uint8_t *sourceBuffer, {td.Name}& target) {{");
                         builder.AppendLine("    ::bebop::Reader reader{sourceBuffer};");
-                        builder.AppendLine($"    {td.Name}::decodeInto(target, reader);");
+                        builder.AppendLine($"    {td.Name}::decodeInto(reader, target);");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  static void decodeInto({td.Name}& target, ::bebop::Reader& reader) {{");
+                        builder.AppendLine($"  static void decodeInto(::bebop::Reader& reader, {td.Name}& target) {{");
                         builder.Append(CompileDecode(td));
                         builder.AppendLine("  }");
                         builder.AppendLine("};");

@@ -166,41 +166,6 @@ struct Library {
   }
 };
 
-/// Option A: put the whole thing in a union.
-struct A {
-  uint32_t containerOpcode;
-  uint32_t protocolVersion;
-  U u;
-
-  static void encodeInto(const A& message, std::vector<uint8_t> &targetBuffer) {
-    ::bebop::Writer writer{targetBuffer};
-    A::encodeInto(message, writer);
-  }
-
-  static void encodeInto(const A& message, ::bebop::Writer& writer) {
-    writer.writeUint32(message.containerOpcode);
-    writer.writeUint32(message.protocolVersion);
-    U::encodeInto(message.u, writer);
-  }
-
-  static A decode(const uint8_t *sourceBuffer) {
-    A result;
-    A::decodeInto(sourceBuffer, result);
-    return result;
-  }
-
-  static void decodeInto(const uint8_t *sourceBuffer, A& target) {
-    ::bebop::Reader reader{sourceBuffer};
-    A::decodeInto(reader, target);
-  }
-
-  static void decodeInto(::bebop::Reader& reader, A& target) {
-    target.containerOpcode = reader.readUint32();
-    target.protocolVersion = reader.readUint32();
-    U::decodeInto(reader, target.u);
-  }
-};
-
 struct A1 {
   int32_t i1;
   uint64_t u;
@@ -2351,6 +2316,7 @@ struct A50 {
   }
 };
 
+/// Option A: put the whole thing in a union.
 struct U {
   std::variant<A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, A22, A23, A24, A25, A26, A27, A28, A29, A30, A31, A32, A33, A34, A35, A36, A37, A38, A39, A40, A41, A42, A43, A44, A45, A46, A47, A48, A49, A50> variant;
   static void encodeInto(const U& message, std::vector<uint8_t> &targetBuffer) {
@@ -2738,6 +2704,40 @@ struct U {
         reader.seek(end); // do nothing?
         return;
     }
+  }
+};
+
+struct A {
+  uint32_t containerOpcode;
+  uint32_t protocolVersion;
+  U u;
+
+  static void encodeInto(const A& message, std::vector<uint8_t> &targetBuffer) {
+    ::bebop::Writer writer{targetBuffer};
+    A::encodeInto(message, writer);
+  }
+
+  static void encodeInto(const A& message, ::bebop::Writer& writer) {
+    writer.writeUint32(message.containerOpcode);
+    writer.writeUint32(message.protocolVersion);
+    U::encodeInto(message.u, writer);
+  }
+
+  static A decode(const uint8_t *sourceBuffer) {
+    A result;
+    A::decodeInto(sourceBuffer, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t *sourceBuffer, A& target) {
+    ::bebop::Reader reader{sourceBuffer};
+    A::decodeInto(reader, target);
+  }
+
+  static void decodeInto(::bebop::Reader& reader, A& target) {
+    target.containerOpcode = reader.readUint32();
+    target.protocolVersion = reader.readUint32();
+    U::decodeInto(reader, target.u);
   }
 };
 

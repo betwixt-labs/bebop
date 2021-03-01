@@ -1,4 +1,4 @@
-#include "../gen/jazz.hpp"
+#include "../gen/models.hpp"
 #include <cstdio>
 #include <map>
 #include <vector>
@@ -14,13 +14,13 @@ int main() {
     std::map<bebop::Guid, Song> songs {{g, s}};
     Library l {songs};
     
-    std::vector<uint8_t> lb;
-    Library::encodeInto(l, lb);
-    for (auto x : lb) printf(" %02x", x);
+    std::vector<uint8_t> buf;
+    Library::encodeInto(l, buf);
+    for (auto x : buf) printf(" %02x", x);
     printf("\n");
 
     Library l2;
-    Library::decodeInto(l2, lb.data());
+    Library::decodeInto(buf.data(), l2);
     printf("%s\n", l2.songs.at(g).title.value().c_str());
     printf("%d\n", l2.songs.at(g).year.value());
     printf("%s\n", l2.songs.at(g).performers.value()[0].name.c_str());
