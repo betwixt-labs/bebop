@@ -19,6 +19,7 @@ namespace Core.Generators.CSharp
         private const string BrowsableAttribute = "[global::System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]";
         private const string BebopWriter = "global::Bebop.Runtime.BebopWriter";
         private const string BebopReader = "global::Bebop.Runtime.BebopReader";
+        private const string BebopException = "global::Bebop.Exceptions.BebopRuntimeException";
         private const string ImmutableArrayType = "global::System.Collections.Immutable.ImmutableArray";
         private const string ImmutableByteArrayType = "global::System.Collections.Immutable.ImmutableArray<byte>";
         private static readonly string WarningBlock = $@"//------------------------------------------------------------------------------
@@ -301,7 +302,7 @@ namespace Core.Generators.CSharp
         /// </summary>
         private void CompileUnionFamily(IndentedStringBuilder builder, UnionDefinition ud)
         {
-            var recordAttribute = "[BebopRecord(BebopKind.Union)]";
+            var recordAttribute = "[global::Bebop.Attributes.BebopRecord(global::Bebop.Runtime.BebopKind.Union)]";
             var genericPositionalArguments = string.Join(", ", ud.Branches.Select(b => $"T{b.GenericIndex()}")).Trim();
             var genericTypeArguments = string.Join(", ", ud.Branches.Select(b => $"{b.BaseClassName()}")).Trim();
             var genericConstraints = string.Join(' ', ud.Branches.Select(b => $"where T{b.GenericIndex()}: Base{b.Definition.Name.ToPascalCase()}")).Trim();
@@ -316,7 +317,7 @@ namespace Core.Generators.CSharp
                 {
                     builder.AppendLine($"{branch.Discriminator} => _value{branch.GenericIndex()},");
                 }
-                builder.AppendLine("_ => throw new BebopRuntimeException()").Dedent(4).AppendLine("};").AppendLine();
+                builder.AppendLine($"_ => throw new {BebopException}()").Dedent(4).AppendLine("};").AppendLine();
                 builder.AppendLine("public byte Discriminator => _discriminator;").AppendLine();
             }
 
@@ -326,13 +327,13 @@ namespace Core.Generators.CSharp
                 {
                     builder.AppendLine($"public bool Is{branch.BaseClassName()} => _discriminator is {branch.Discriminator};");
                     builder.AppendLine(
-                        $"public T{branch.GenericIndex()} As{branch.BaseClassName()} => _discriminator is {branch.Discriminator} ? _value{branch.GenericIndex()} : throw new NotImplementedException($\"Cannot return as {branch.BaseClassName()} as result is T{branch.GenericIndex()}\");").AppendLine();
+                        $"public T{branch.GenericIndex()} As{branch.BaseClassName()} => _discriminator is {branch.Discriminator} ? _value{branch.GenericIndex()} : throw new global::System.NotImplementedException($\"Cannot return as {branch.BaseClassName()} as result is T{branch.GenericIndex()}\");").AppendLine();
                 }
             }
 
             void CompileSwitch()
             {
-                var switchParams = string.Join(", ", ud.Branches.Select(b => $"Action<T{b.GenericIndex()}> f{b.GenericIndex()}")).Trim();
+                var switchParams = string.Join(", ", ud.Branches.Select(b => $"global::System.Action<T{b.GenericIndex()}> f{b.GenericIndex()}")).Trim();
                 builder.AppendLine($"public void Switch({switchParams}) {{");
                 foreach (var branch in ud.Branches)
                 {
@@ -340,18 +341,18 @@ namespace Core.Generators.CSharp
                     builder.Indent(2).AppendLine($"f{branch.GenericIndex()}(_value{branch.GenericIndex()});").AppendLine("return;");
                     builder.Dedent(2).AppendLine("}").Dedent(4);
                 }
-                builder.Indent(4).AppendLine("throw new BebopRuntimeException();").Dedent(4).AppendLine("}").AppendLine();
+                builder.Indent(4).AppendLine($"throw new {BebopException}();").Dedent(4).AppendLine("}").AppendLine();
             }
 
             void CompileMatch()
             {
-                var matchParams = string.Join(", ", ud.Branches.Select(b => $"Func<T{b.GenericIndex()}, TResult> f{b.GenericIndex()}")).Trim();
+                var matchParams = string.Join(", ", ud.Branches.Select(b => $"global::System.Func<T{b.GenericIndex()}, TResult> f{b.GenericIndex()}")).Trim();
                 builder.AppendLine($"public TResult Match<TResult>({matchParams}) => _discriminator switch {{").Indent(4);
                 foreach (var branch in ud.Branches)
                 {
                     builder.AppendLine($"{branch.Discriminator} when f{branch.GenericIndex()} is not null => f{branch.GenericIndex()}(_value{branch.GenericIndex()}),");
                 }
-                builder.AppendLine("_ => throw new BebopRuntimeException()").Dedent(4).AppendLine("};").AppendLine();
+                builder.AppendLine($"_ => throw new {BebopException}()").Dedent(4).AppendLine("};").AppendLine();
             }
 
             void CompileHashCode()
@@ -445,7 +446,7 @@ namespace Core.Generators.CSharp
                 {
                     builder.AppendLine($"case {branch.Discriminator}: _value{branch.GenericIndex()} = input.As{branch.BaseClassName()}; break;");
                 }
-                builder.AppendLine("default: throw new BebopRuntimeException();").Dedent(indentStep).AppendLine("}");
+                builder.AppendLine($"default: throw new {BebopException}();").Dedent(indentStep).AppendLine("}");
                 builder.Dedent(4).AppendLine("}").AppendLine();
                 CompileValueProperty();
                 CompileIsAs();
