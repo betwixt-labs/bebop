@@ -262,6 +262,7 @@ namespace Core.Generators.CSharp
                         builder.AppendLine(CompileDecode(fd, false));
                         builder.Dedent(indentStep);
                         builder.AppendLine("}").AppendLine();
+                        builder.AppendLine(Warning);
                         builder.AppendLine(HotPath);
                         builder.AppendLine($"internal static T __DecodeFrom<T>(ref BebopReader reader) where T: {baseName}, new() {{");
                         builder.Indent(indentStep);
