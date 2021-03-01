@@ -168,10 +168,7 @@ namespace Core.Generators.CSharp
                             var setOrInit = fd is StructDefinition {IsReadOnly: true} ? "init" : "set";
                             builder.AppendLine($"public {type}{opt} {field.Name.ToPascalCase()} {{ get; {setOrInit}; }}");
                         }
-                        if (fd is MessageDefinition)
-                        {
-                            builder.AppendLine("#nullable disable");
-                        }
+                       
 
 
 
@@ -180,7 +177,7 @@ namespace Core.Generators.CSharp
                         builder.AppendLine(FormatDocumentation(fd.Documentation, 0));
                         builder.AppendLine($"protected {baseName}() {{ }}");
                         builder.AppendLine(FormatConstructorDocumentation(fd));
-                        var constructorArguments = string.Join(", ", fd.Fields.Select(f => $"{(fd is StructDefinition ? DisallowNullAttribute : AllowNullAttribute)} {TypeName(f.Type)} {f.Name.ToCamelCase()}")).Trim();
+                        var constructorArguments = string.Join(", ", fd.Fields.Select(f => $"{(fd is StructDefinition ? DisallowNullAttribute : AllowNullAttribute)} {TypeName(f.Type)}{(fd is MessageDefinition && IsNullableType(f.Type) ? "?" : "")} {f.Name.ToCamelCase()}")).Trim();
                         var constructorArgumentNames = string.Join(", ", fd.Fields.Select(f => f.Name.ToCamelCase())).Trim();
                         if (fd is StructDefinition {IsReadOnly: true})
                         {
@@ -202,6 +199,11 @@ namespace Core.Generators.CSharp
                             builder.AppendLine("}");
                         }
 
+                        if (fd is MessageDefinition)
+                        {
+                            builder.AppendLine("#nullable disable");
+                        }
+
                         if (fd is not StructDefinition {IsReadOnly: true})
                         {
                             builder.AppendLine(GenerateEqualityMembers(fd));
@@ -220,11 +222,18 @@ namespace Core.Generators.CSharp
 
                         // generate more constructors
                         builder.AppendLine("/// <inheritdoc />");
+                        if (fd is MessageDefinition)
+                        {
+                            builder.AppendLine("#nullable enable");
+                        }
                         builder.AppendLine($"public {definitionName}() : base() {{ }}");
                         builder.AppendLine("/// <inheritdoc />");
                         builder.AppendLine($"public {definitionName}({constructorArguments}) : base({constructorArgumentNames}) {{ }}");
 
-
+                        if (fd is MessageDefinition)
+                        {
+                            builder.AppendLine("#nullable disable");
+                        }
                         builder.AppendLine(CompileEncodeHelper(definition, "byte[]", "Encode"));
                         builder.AppendLine();
                         builder.AppendLine(CompileEncodeHelper(definition, "ImmutableArray<byte>", "EncodeAsImmutable"));
