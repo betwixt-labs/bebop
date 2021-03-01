@@ -407,7 +407,7 @@ namespace Core.Generators.CPlusPlus
                             throw new InvalidOperationException($"unsupported definition {td}");
                         }
 
-                        builder.AppendLine($"  static void encodeInto(const {td.Name}& message, std::vector<uint8_t> &targetBuffer) {{");
+                        builder.AppendLine($"  static void encodeInto(const {td.Name}& message, std::vector<uint8_t>& targetBuffer) {{");
                         builder.AppendLine("    ::bebop::Writer writer{targetBuffer};");
                         builder.AppendLine($"    {td.Name}::encodeInto(message, writer);");
                         builder.AppendLine("  }");
@@ -416,13 +416,13 @@ namespace Core.Generators.CPlusPlus
                         builder.Append(CompileEncode(td));
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  static {td.Name} decode(const uint8_t *sourceBuffer) {{");
+                        builder.AppendLine($"  static {td.Name} decode(const uint8_t* sourceBuffer) {{");
                         builder.AppendLine($"    {td.Name} result;");
                         builder.AppendLine($"    {td.Name}::decodeInto(sourceBuffer, result);");
                         builder.AppendLine($"    return result;");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  static void decodeInto(const uint8_t *sourceBuffer, {td.Name}& target) {{");
+                        builder.AppendLine($"  static void decodeInto(const uint8_t* sourceBuffer, {td.Name}& target) {{");
                         builder.AppendLine("    ::bebop::Reader reader{sourceBuffer};");
                         builder.AppendLine($"    {td.Name}::decodeInto(reader, target);");
                         builder.AppendLine("  }");
