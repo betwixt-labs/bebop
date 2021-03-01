@@ -128,7 +128,7 @@ namespace Core.Generators.CSharp
                         builder.AppendLine(recordAttribute);
                         if (fd is StructDefinition {IsReadOnly: true})
                         {
-                            builder.AppendLine($"public record {baseName} {{");
+                            builder.AppendLine($"public abstract record {baseName} {{");
                         } else
                         {
                             builder.AppendLine($"public abstract class {baseName} : System.IEquatable<{baseName}> {{");
@@ -220,7 +220,7 @@ namespace Core.Generators.CSharp
 
                         // generate more constructors
                         builder.AppendLine("/// <inheritdoc />");
-                        builder.AppendLine($"public {definitionName}() {{ }}");
+                        builder.AppendLine($"public {definitionName}() : base() {{ }}");
                         builder.AppendLine("/// <inheritdoc />");
                         builder.AppendLine($"public {definitionName}({constructorArguments}) : base({constructorArgumentNames}) {{ }}");
 
