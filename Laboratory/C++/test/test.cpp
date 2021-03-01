@@ -14,11 +14,13 @@ int main() {
     std::map<bebop::Guid, Song> songs {{g, s}};
     Library l {songs};
     
-    std::vector<uint8_t> lb = *Library::encode(l);
+    std::vector<uint8_t> lb;
+    Library::encodeInto(l, lb);
     for (auto x : lb) printf(" %02x", x);
     printf("\n");
 
-    const auto l2 = Library::decode(lb.data());
+    Library l2;
+    Library::decodeInto(l2, lb.data());
     printf("%s\n", l2.songs.at(g).title.value().c_str());
     printf("%d\n", l2.songs.at(g).year.value());
     printf("%s\n", l2.songs.at(g).performers.value()[0].name.c_str());
