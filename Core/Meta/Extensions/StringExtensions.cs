@@ -77,18 +77,6 @@ namespace Core.Meta.Extensions
                 {
                     charArray[i + 1] = char.ToUpperInvariant(nextChar);
                 }
-                else if (char.IsUpper(currentChar) && char.IsLower(nextChar) && char.IsUpper(charArray.Peek(i + 2)))
-                {
-                    charArray[i] = char.ToLowerInvariant(currentChar);
-                    for (var c = i; c-- > 0;)
-                    {
-                        if (char.IsUpper(charArray[c]))
-                        {
-                            break;
-                        }
-                        charArray[c] = char.ToLowerInvariant(currentChar);
-                    }
-                }
                 else if (currentChar is SnakeSeparator)
                 {
                     if (char.IsLower(nextChar))
