@@ -4,8 +4,12 @@ enum Instrument {
     Clarinet = 2;
 }
 
+/* test */
+[opcode("JAZZ")]
 readonly struct Musician {
+    /* a name */
     string name;
+	/* an instrument */
     Instrument plays;
 }
 

@@ -13,6 +13,7 @@ Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "GeneratedTestCode", "Genera
 EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		GeneratedTestCode\GeneratedTestCode.projitems*{32498399-92f5-47c8-b792-235a7e311f95}*SharedItemsImports = 5
 		GeneratedTestCode\GeneratedTestCode.projitems*{a54205bb-1ecc-4901-9cda-2f2186ad0584}*SharedItemsImports = 5
 		GeneratedTestCode\GeneratedTestCode.projitems*{cadef40f-bdcc-40ee-8995-c5d33194431b}*SharedItemsImports = 13
 	EndGlobalSection

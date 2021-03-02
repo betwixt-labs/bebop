@@ -1,13 +1,7 @@
 ﻿using System;
-using BenchmarkDotNet.Running;
+using Bebop.Codegen;
 
-namespace Benchmarks
-{
-    class Program
-    {
-        static void Main(string[] args)
-        {
-            BenchmarkRunner.Run<Decoding>();
-        }
-    }
-}
+
+var a = new Musician("Travis Scott", Instrument.Clarinet);
+var b = new Musician { Name = "Travis Scott", Plays = Instrument.Clarinet};
+Console.WriteLine(a == b);

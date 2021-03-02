@@ -19,7 +19,7 @@ namespace Core.Generators.Dart
         {
             var builder = new IndentedStringBuilder();
             builder.Indent(spaces);
-            foreach (var line in documentation.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None))
+            foreach (var line in documentation.GetLines())
             {
                 builder.AppendLine($"/// {line}");
             }

@@ -7,6 +7,7 @@ using Core.IO.Interfaces;
 using Core.Lexer.Extensions;
 using Core.Lexer.Tokenization.Interfaces;
 using Core.Lexer.Tokenization.Models;
+using Core.Meta.Extensions;
 
 namespace Core.Lexer.Tokenization
 {
@@ -166,7 +167,7 @@ namespace Core.Lexer.Tokenization
 
             var cleanedDocumentation = new StringBuilder();
 
-            foreach (var line in builder.ToString().Split(new[] {"\r\n", "\r", "\n"}, StringSplitOptions.None))
+            foreach (var line in builder.ToString().GetLines())
             {
                 var trimmedLine = line.Trim(' ', '*');
                 cleanedDocumentation.AppendLine(trimmedLine);
