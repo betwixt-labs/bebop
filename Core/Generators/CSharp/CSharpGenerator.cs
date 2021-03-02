@@ -217,7 +217,7 @@ namespace Core.Generators.CSharp
                         builder.AppendLine(GeneratedAttribute);
                         builder.AppendLine($"{recordAttribute}");
                         var keyword = fd is not StructDefinition {IsReadOnly: true} ? "class" : "record";
-                        builder.AppendLine($"public sealed {keyword} {definitionName} : {baseName} {{").AppendLine();
+                        builder.AppendLine($"public sealed partial {keyword} {definitionName} : {baseName} {{").AppendLine();
                         builder.Indent(indentStep);
 
                         // generate more constructors
