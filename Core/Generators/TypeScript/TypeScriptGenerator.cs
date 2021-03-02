@@ -240,7 +240,7 @@ namespace Core.Generators.TypeScript
             }
             builder.AppendLine("  default:");
             builder.AppendLine("    view.index = end;");
-            builder.AppendLine("    return undefined;");
+            builder.AppendLine($"    throw new BebopRuntimeError(\"Unrecognized discriminator while decoding {definition.Name}\");");
             builder.AppendLine("}");
             return builder.ToString();
         }
@@ -339,7 +339,7 @@ namespace Core.Generators.TypeScript
         public override string Compile()
         {
             var builder = new IndentedStringBuilder();
-            builder.AppendLine("import { BebopView } from \"bebop\";");
+            builder.AppendLine("import { BebopView, BebopRuntimeError } from \"bebop\";");
             builder.AppendLine("");
             if (!string.IsNullOrWhiteSpace(Schema.Namespace))
             {

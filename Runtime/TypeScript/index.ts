@@ -24,6 +24,13 @@ if (typeof require !== 'undefined') {
     if (typeof TextDecoder === 'undefined') (global as any).TextDecoder = require('util').TextDecoder;
 }
 
+export class BebopRuntimeError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = "BebopRuntimeError";
+    }
+}
+
 export class BebopView {
     private static textDecoder = new TextDecoder;
     private static writeBuffer: Uint8Array = new Uint8Array(256);
