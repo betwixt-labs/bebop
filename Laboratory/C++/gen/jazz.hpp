@@ -4,6 +4,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <variant>
 #include <vector>
 #include "bebop.hpp"
 
@@ -17,25 +18,28 @@ struct Musician {
   std::string name;
   Instrument plays;
 
-  static std::unique_ptr<std::vector<uint8_t>> encode(const Musician& message) {
-    bebop::BebopWriter writer{};
+  static void encodeInto(const Musician& message, std::vector<uint8_t> &targetBuffer) {
+    ::bebop::Writer writer{targetBuffer};
     Musician::encodeInto(message, writer);
-    return writer.buffer();
   }
 
-  static void encodeInto(const Musician& message, bebop::BebopWriter& writer) {
+  static void encodeInto(const Musician& message, ::bebop::Writer& writer) {
     writer.writeString(message.name);
     writer.writeUint32(static_cast<uint32_t>(message.plays));
   }
 
-  static Musician decode(const uint8_t *buffer) {
+  static Musician decode(const uint8_t *sourceBuffer) {
     Musician result;
-    bebop::BebopReader reader{buffer};
-    Musician::decodeInto(result, reader);
+    Musician::decodeInto(sourceBuffer, result);
     return result;
   }
 
-  static void decodeInto(Musician& target, bebop::BebopReader& reader) {
+  static void decodeInto(const uint8_t *sourceBuffer, Musician& target) {
+    ::bebop::Reader reader{sourceBuffer};
+    Musician::decodeInto(reader, target);
+  }
+
+  static void decodeInto(::bebop::Reader& reader, Musician& target) {
     target.name = reader.readString();
     target.plays = static_cast<Instrument>(reader.readUint32());
   }
@@ -46,13 +50,12 @@ struct Song {
   std::optional<uint16_t> year;
   std::optional<std::vector<Musician>> performers;
 
-  static std::unique_ptr<std::vector<uint8_t>> encode(const Song& message) {
-    bebop::BebopWriter writer{};
+  static void encodeInto(const Song& message, std::vector<uint8_t> &targetBuffer) {
+    ::bebop::Writer writer{targetBuffer};
     Song::encodeInto(message, writer);
-    return writer.buffer();
   }
 
-  static void encodeInto(const Song& message, bebop::BebopWriter& writer) {
+  static void encodeInto(const Song& message, ::bebop::Writer& writer) {
     const auto pos = writer.reserveMessageLength();
     const auto start = writer.length();
     if (message.title.has_value()) {
@@ -78,14 +81,18 @@ struct Song {
     writer.fillMessageLength(pos, end - start);
   }
 
-  static Song decode(const uint8_t *buffer) {
+  static Song decode(const uint8_t *sourceBuffer) {
     Song result;
-    bebop::BebopReader reader{buffer};
-    Song::decodeInto(result, reader);
+    Song::decodeInto(sourceBuffer, result);
     return result;
   }
 
-  static void decodeInto(Song& target, bebop::BebopReader& reader) {
+  static void decodeInto(const uint8_t *sourceBuffer, Song& target) {
+    ::bebop::Reader reader{sourceBuffer};
+    Song::decodeInto(reader, target);
+  }
+
+  static void decodeInto(::bebop::Reader& reader, Song& target) {
     const auto length = reader.readMessageLength();
     const auto end = reader.pointer() + length;
     while (true) {
@@ -105,7 +112,7 @@ struct Song {
             target.performers->reserve(length0);
             for (size_t i0 = 0; i0 < length0; i0++) {
               Musician x0;
-              Musician::decodeInto(x0, reader);
+              Musician::decodeInto(reader, x0);
               target.performers->push_back(x0);
             }
           }
@@ -119,15 +126,14 @@ struct Song {
 };
 
 struct Library {
-  std::map<bebop::Guid, Song> songs;
+  std::map<::bebop::Guid, Song> songs;
 
-  static std::unique_ptr<std::vector<uint8_t>> encode(const Library& message) {
-    bebop::BebopWriter writer{};
+  static void encodeInto(const Library& message, std::vector<uint8_t> &targetBuffer) {
+    ::bebop::Writer writer{targetBuffer};
     Library::encodeInto(message, writer);
-    return writer.buffer();
   }
 
-  static void encodeInto(const Library& message, bebop::BebopWriter& writer) {
+  static void encodeInto(const Library& message, ::bebop::Writer& writer) {
     writer.writeUint32(message.songs.size());
     for (const auto& e0 : message.songs) {
       writer.writeGuid(e0.first);
@@ -135,22 +141,26 @@ struct Library {
     }
   }
 
-  static Library decode(const uint8_t *buffer) {
+  static Library decode(const uint8_t *sourceBuffer) {
     Library result;
-    bebop::BebopReader reader{buffer};
-    Library::decodeInto(result, reader);
+    Library::decodeInto(sourceBuffer, result);
     return result;
   }
 
-  static void decodeInto(Library& target, bebop::BebopReader& reader) {
+  static void decodeInto(const uint8_t *sourceBuffer, Library& target) {
+    ::bebop::Reader reader{sourceBuffer};
+    Library::decodeInto(reader, target);
+  }
+
+  static void decodeInto(::bebop::Reader& reader, Library& target) {
     {
       const auto length0 = reader.readUint32();
-      target.songs = std::map<bebop::Guid, Song>();
+      target.songs = std::map<::bebop::Guid, Song>();
       for (size_t i0 = 0; i0 < length0; i0++) {
-        bebop::Guid k0;
+        ::bebop::Guid k0;
         k0 = reader.readGuid();
         Song& v0 = target.songs.operator[](k0);
-        Song::decodeInto(v0, reader);
+        Song::decodeInto(reader, v0);
       }
     }
   }

@@ -169,12 +169,12 @@ private:
 };
 #pragma pack(pop)
 
-class BebopReader {
+class Reader {
     const uint8_t* m_pointer;
 public:
-    BebopReader(const uint8_t* buffer) : m_pointer(buffer) {}
-    BebopReader(BebopReader const&) = delete;
-    void operator=(BebopReader const&) = delete;
+    Reader(const uint8_t* buffer) : m_pointer(buffer) {}
+    Reader(Reader const&) = delete;
+    void operator=(Reader const&) = delete;
 
     const uint8_t* pointer() const { return m_pointer; }
     void seek(const uint8_t* pointer) { m_pointer = pointer; }
@@ -281,39 +281,57 @@ public:
     uint32_t readMessageLength() { return readUint32(); }
 };
 
-class BebopWriter {
-    std::unique_ptr<std::vector<uint8_t>> m_buffer;
+class Writer {
+    std::vector<uint8_t>& m_buffer;
 public:
-    BebopWriter() : m_buffer(std::make_unique<std::vector<uint8_t>>()) {}
-    BebopWriter(BebopWriter const&) = delete;
-    void operator=(BebopWriter const&) = delete;
+    Writer(std::vector<uint8_t>& buffer) : m_buffer(buffer) {}
+    Writer(Writer const&) = delete;
+    void operator=(Writer const&) = delete;
 
-    std::unique_ptr<std::vector<uint8_t>> buffer() {
-        return std::move(m_buffer);
+    std::vector<uint8_t>& buffer() {
+        return m_buffer;
     }
 
-    size_t length() { return m_buffer->size(); }
+    size_t length() { return m_buffer.size(); }
 
-    void writeByte(uint8_t value) { m_buffer->push_back(value); }
+    void writeByte(uint8_t value) { m_buffer.push_back(value); }
     void writeUint16(uint16_t value) {
-        m_buffer->push_back(value);
-        m_buffer->push_back(value >> 8);
+#if BEBOP_ASSUME_LITTLE_ENDIAN
+        const auto position = m_buffer.size();
+        m_buffer.resize(position + sizeof(value));
+        memcpy(m_buffer.data() + position, &value, sizeof(value));
+#else
+        m_buffer.push_back(value);
+        m_buffer.push_back(value >> 8);
+#endif
     }
     void writeUint32(uint32_t value) {
-        m_buffer->push_back(value);
-        m_buffer->push_back(value >> 8);
-        m_buffer->push_back(value >> 16);
-        m_buffer->push_back(value >> 24);
+#if BEBOP_ASSUME_LITTLE_ENDIAN
+        const auto position = m_buffer.size();
+        m_buffer.resize(position + sizeof(value));
+        memcpy(m_buffer.data() + position, &value, sizeof(value));
+#else
+        m_buffer.push_back(value);
+        m_buffer.push_back(value >> 8);
+        m_buffer.push_back(value >> 16);
+        m_buffer.push_back(value >> 24);
+#endif
     }
     void writeUint64(uint64_t value) {
-        m_buffer->push_back(value);
-        m_buffer->push_back(value >> 0x08);
-        m_buffer->push_back(value >> 0x10);
-        m_buffer->push_back(value >> 0x18);
-        m_buffer->push_back(value >> 0x20);
-        m_buffer->push_back(value >> 0x28);
-        m_buffer->push_back(value >> 0x30);
-        m_buffer->push_back(value >> 0x38);
+#if BEBOP_ASSUME_LITTLE_ENDIAN
+        const auto position = m_buffer.size();
+        m_buffer.resize(position + sizeof(value));
+        memcpy(m_buffer.data() + position, &value, sizeof(value));
+#else
+        m_buffer.push_back(value);
+        m_buffer.push_back(value >> 0x08);
+        m_buffer.push_back(value >> 0x10);
+        m_buffer.push_back(value >> 0x18);
+        m_buffer.push_back(value >> 0x20);
+        m_buffer.push_back(value >> 0x28);
+        m_buffer.push_back(value >> 0x30);
+        m_buffer.push_back(value >> 0x38);
+#endif
     }
 
     void writeInt16(int16_t value) { writeUint16(static_cast<uint16_t>(value)); }
@@ -327,20 +345,20 @@ public:
     void writeFloat64(double value) {
         uint64_t temp;
         memcpy(&temp, &value, sizeof(double));
-        writeUint32(temp);
+        writeUint64(temp);
     }
     void writeBool(bool value) { writeByte(value); }
 
     void writeBytes(std::vector<uint8_t> value) {
         const auto byteCount = value.size();
         writeUint32(byteCount);
-        m_buffer->insert(m_buffer->end(), value.begin(), value.end());
+        m_buffer.insert(m_buffer.end(), value.begin(), value.end());
     }
 
     void writeString(std::string value) {
         const auto byteCount = value.size();
         writeUint32(byteCount);
-        m_buffer->insert(m_buffer->end(), value.begin(), value.end());
+        m_buffer.insert(m_buffer.end(), value.begin(), value.end());
     }
 
     void writeGuid(Guid value) {
@@ -364,20 +382,20 @@ public:
     /// Reserve some space to write a message's length prefix, and return its index.
     /// The length is stored as a little-endian fixed-width unsigned 32-bit integer, so 4 bytes are reserved.
     size_t reserveMessageLength() {
-        const auto n = m_buffer->size();
-        m_buffer->resize(n + 4);
+        const auto n = m_buffer.size();
+        m_buffer.resize(n + 4);
         return n;
     }
 
     /// Fill in a message's length prefix.
     void fillMessageLength(size_t position, uint32_t messageLength) {
 #if BEBOP_ASSUME_LITTLE_ENDIAN
-        memcpy(m_buffer->data() + position, &messageLength, sizeof(uint32_t));
+        memcpy(m_buffer.data() + position, &messageLength, sizeof(uint32_t));
 #else
-        (*m_buffer)[position++] = messageLength;
-        (*m_buffer)[position++] = messageLength >> 8;
-        (*m_buffer)[position++] = messageLength >> 16;
-        (*m_buffer)[position++] = messageLength >> 24;
+        m_buffer[position++] = messageLength;
+        m_buffer[position++] = messageLength >> 8;
+        m_buffer[position++] = messageLength >> 16;
+        m_buffer[position++] = messageLength >> 24;
 #endif
     }
 };

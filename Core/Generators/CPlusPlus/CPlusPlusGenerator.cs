@@ -19,7 +19,7 @@ namespace Core.Generators.CPlusPlus
         {
             var builder = new IndentedStringBuilder();
             builder.Indent(spaces);
-            foreach (var line in documentation.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None))
+            foreach (var line in documentation.GetLines())
             {
                 builder.AppendLine($"/// {line}");
             }
@@ -211,7 +211,7 @@ namespace Core.Generators.CPlusPlus
                 var i = branch.Discriminator - 1;
                 builder.AppendLine($"  case {branch.Discriminator}:");
                 builder.AppendLine($"    target.variant.emplace<{i}>();");
-                builder.AppendLine($"    {branch.Definition.Name}::decodeInto(std::get<{i}>(target.variant), reader);");
+                builder.AppendLine($"    {branch.Definition.Name}::decodeInto(reader, std::get<{i}>(target.variant));");
                 builder.AppendLine("    break;");
             }
             builder.AppendLine("  default:");
@@ -271,7 +271,7 @@ namespace Core.Generators.CPlusPlus
                 },
                 DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition =>
                     $"{target} = static_cast<{dt.Name}>(reader.readUint32());",
-                DefinedType dt => $"{dt.Name}::decodeInto({target}, reader);",
+                DefinedType dt => $"{dt.Name}::decodeInto(reader, {target});",
                 _ => throw new InvalidOperationException($"CompileDecodeField: {type}")
             };
         }
@@ -299,8 +299,8 @@ namespace Core.Generators.CPlusPlus
                         BaseType.Float32 => "float",
                         BaseType.Float64 => "double",
                         BaseType.String => "std::string",
-                        BaseType.Guid => "bebop::Guid",
-                        BaseType.Date => "bebop::TickDuration",
+                        BaseType.Guid => "::bebop::Guid",
+                        BaseType.Date => "::bebop::TickDuration",
                         _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                     };
                 // case ArrayType at when at.IsBytes():
@@ -407,24 +407,27 @@ namespace Core.Generators.CPlusPlus
                             throw new InvalidOperationException($"unsupported definition {td}");
                         }
 
-                        builder.AppendLine($"  static std::unique_ptr<std::vector<uint8_t>> encode(const {td.Name}& message) {{");
-                        builder.AppendLine("    bebop::BebopWriter writer{};");
+                        builder.AppendLine($"  static void encodeInto(const {td.Name}& message, std::vector<uint8_t>& targetBuffer) {{");
+                        builder.AppendLine("    ::bebop::Writer writer{targetBuffer};");
                         builder.AppendLine($"    {td.Name}::encodeInto(message, writer);");
-                        builder.AppendLine("    return writer.buffer();");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  static void encodeInto(const {td.Name}& message, bebop::BebopWriter& writer) {{");
+                        builder.AppendLine($"  static void encodeInto(const {td.Name}& message, ::bebop::Writer& writer) {{");
                         builder.Append(CompileEncode(td));
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  static {td.Name} decode(const uint8_t *buffer) {{");
+                        builder.AppendLine($"  static {td.Name} decode(const uint8_t* sourceBuffer) {{");
                         builder.AppendLine($"    {td.Name} result;");
-                        builder.AppendLine("    bebop::BebopReader reader{buffer};");
-                        builder.AppendLine($"    {td.Name}::decodeInto(result, reader);");
+                        builder.AppendLine($"    {td.Name}::decodeInto(sourceBuffer, result);");
                         builder.AppendLine($"    return result;");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  static void decodeInto({td.Name}& target, bebop::BebopReader& reader) {{");
+                        builder.AppendLine($"  static void decodeInto(const uint8_t* sourceBuffer, {td.Name}& target) {{");
+                        builder.AppendLine("    ::bebop::Reader reader{sourceBuffer};");
+                        builder.AppendLine($"    {td.Name}::decodeInto(reader, target);");
+                        builder.AppendLine("  }");
+                        builder.AppendLine("");
+                        builder.AppendLine($"  static void decodeInto(::bebop::Reader& reader, {td.Name}& target) {{");
                         builder.Append(CompileDecode(td));
                         builder.AppendLine("  }");
                         builder.AppendLine("};");
@@ -444,7 +447,13 @@ namespace Core.Generators.CPlusPlus
 
         public override void WriteAuxiliaryFiles(string outputPath)
         {
-            // There is nothing to do here.
+            var assembly = Assembly.GetEntryAssembly()!;
+            var runtime = assembly.GetManifestResourceNames()!.FirstOrDefault(n => n.Contains("bebop.hpp"))!;
+
+            using Stream stream = assembly.GetManifestResourceStream(runtime)!;
+            using StreamReader reader = new StreamReader(stream);
+            string result = reader.ReadToEnd();
+            File.WriteAllText(Path.Join(outputPath, "bebop.hpp"), result);
         }
     }
 }
