@@ -1,0 +1,61 @@
+/**
+ * Option A: put the whole thing in a union.
+ */
+union U {
+    1 -> struct A1 { int32 i1; uint64 u; float64 f; string s; guid g; bool b; }
+    2 -> struct A2 { int32 i2; uint64 u; float64 f; string s; guid g; bool b; }
+    3 -> struct A3 { int32 i3; uint64 u; float64 f; string s; guid g; bool b; }
+    4 -> struct A4 { int32 i4; uint64 u; float64 f; string s; guid g; bool b; }
+    5 -> struct A5 { int32 i5; uint64 u; float64 f; string s; guid g; bool b; }
+    6 -> struct A6 { int32 i6; uint64 u; float64 f; string s; guid g; bool b; }
+    7 -> struct A7 { int32 i7; uint64 u; float64 f; string s; guid g; bool b; }
+    8 -> struct A8 { int32 i8; uint64 u; float64 f; string s; guid g; bool b; }
+    9 -> struct A9 { int32 i9; uint64 u; float64 f; string s; guid g; bool b; }
+    10 -> struct A10 { int32 i10; uint64 u; float64 f; string s; guid g; bool b; }
+    11 -> struct A11 { int32 i11; uint64 u; float64 f; string s; guid g; bool b; }
+    12 -> struct A12 { int32 i12; uint64 u; float64 f; string s; guid g; bool b; }
+    13 -> struct A13 { int32 i13; uint64 u; float64 f; string s; guid g; bool b; }
+    14 -> struct A14 { int32 i14; uint64 u; float64 f; string s; guid g; bool b; }
+    15 -> struct A15 { int32 i15; uint64 u; float64 f; string s; guid g; bool b; }
+    16 -> struct A16 { int32 i16; uint64 u; float64 f; string s; guid g; bool b; }
+    17 -> struct A17 { int32 i17; uint64 u; float64 f; string s; guid g; bool b; }
+    18 -> struct A18 { int32 i18; uint64 u; float64 f; string s; guid g; bool b; }
+    19 -> struct A19 { int32 i19; uint64 u; float64 f; string s; guid g; bool b; }
+    20 -> struct A20 { int32 i20; uint64 u; float64 f; string s; guid g; bool b; }
+    21 -> struct A21 { int32 i21; uint64 u; float64 f; string s; guid g; bool b; }
+    22 -> struct A22 { int32 i22; uint64 u; float64 f; string s; guid g; bool b; }
+    23 -> struct A23 { int32 i23; uint64 u; float64 f; string s; guid g; bool b; }
+    24 -> struct A24 { int32 i24; uint64 u; float64 f; string s; guid g; bool b; }
+    25 -> struct A25 { int32 i25; uint64 u; float64 f; string s; guid g; bool b; }
+    26 -> struct A26 { int32 i26; uint64 u; float64 f; string s; guid g; bool b; }
+    27 -> struct A27 { int32 i27; uint64 u; float64 f; string s; guid g; bool b; }
+    28 -> struct A28 { int32 i28; uint64 u; float64 f; string s; guid g; bool b; }
+    29 -> struct A29 { int32 i29; uint64 u; float64 f; string s; guid g; bool b; }
+    30 -> struct A30 { int32 i30; uint64 u; float64 f; string s; guid g; bool b; }
+    31 -> struct A31 { int32 i31; uint64 u; float64 f; string s; guid g; bool b; }
+    32 -> struct A32 { int32 i32; uint64 u; float64 f; string s; guid g; bool b; }
+    33 -> struct A33 { int32 i33; uint64 u; float64 f; string s; guid g; bool b; }
+    34 -> struct A34 { int32 i34; uint64 u; float64 f; string s; guid g; bool b; }
+    35 -> struct A35 { int32 i35; uint64 u; float64 f; string s; guid g; bool b; }
+    36 -> struct A36 { int32 i36; uint64 u; float64 f; string s; guid g; bool b; }
+    37 -> struct A37 { int32 i37; uint64 u; float64 f; string s; guid g; bool b; }
+    38 -> struct A38 { int32 i38; uint64 u; float64 f; string s; guid g; bool b; }
+    39 -> struct A39 { int32 i39; uint64 u; float64 f; string s; guid g; bool b; }
+    40 -> struct A40 { int32 i40; uint64 u; float64 f; string s; guid g; bool b; }
+    41 -> struct A41 { int32 i41; uint64 u; float64 f; string s; guid g; bool b; }
+    42 -> struct A42 { int32 i42; uint64 u; float64 f; string s; guid g; bool b; }
+    43 -> struct A43 { int32 i43; uint64 u; float64 f; string s; guid g; bool b; }
+    44 -> struct A44 { int32 i44; uint64 u; float64 f; string s; guid g; bool b; }
+    45 -> struct A45 { int32 i45; uint64 u; float64 f; string s; guid g; bool b; }
+    46 -> struct A46 { int32 i46; uint64 u; float64 f; string s; guid g; bool b; }
+    47 -> struct A47 { int32 i47; uint64 u; float64 f; string s; guid g; bool b; }
+    48 -> struct A48 { int32 i48; uint64 u; float64 f; string s; guid g; bool b; }
+    49 -> struct A49 { int32 i49; uint64 u; float64 f; string s; guid g; bool b; }
+    50 -> struct A50 { int32 i50; uint64 u; float64 f; string s; guid g; bool b; }
+}
+
+struct A {
+    uint32 containerOpcode;
+    uint32 protocolVersion;
+    U u;
+}

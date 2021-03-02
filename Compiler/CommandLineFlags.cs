@@ -100,7 +100,7 @@ namespace Compiler
 
     }
     /// <summary>
-    /// Represents a parsed command-line flag and it's values.
+    /// Represents a parsed command-line flag and its values.
     /// </summary>
     public class CommandLineFlag
     {
@@ -153,20 +153,20 @@ namespace Compiler
             "--config bebop.json")]
         public string? ConfigFile { get; private set; }
 
-        [CommandLineFlag("cs", "Generate C# source code to the specified file", "--cs ./cowboy/bebop/HelloWorld.cs",
+        [CommandLineFlag("cs", "Generate C# source code to the specified file", "--cs ./my/output/HelloWorld.cs",
             true)]
         public string? CSharpOutput { get; private set; }
 
         [CommandLineFlag("ts", "Generate TypeScript source code to the specified file",
-            "--ts ./cowboy/bebop/HelloWorld.ts", true)]
+            "--ts ./my/output/HelloWorld.ts", true)]
         public string? TypeScriptOutput { get; private set; }
 
         [CommandLineFlag("dart", "Generate Dart source code to the specified file",
-            "--dart ./cowboy/bebop/HelloWorld.dart", true)]
+            "--dart ./my/output/HelloWorld.dart", true)]
         public string? DartOutput { get; private set; }
 
         [CommandLineFlag("cpp", "Generate C++ source code to the specified file",
-            "--cpp ./cowboy/bebop/HelloWorld.cpp", true)]
+            "--cpp ./my/output/HelloWorld.hpp", true)]
         public string? CPlusPlusOutput { get; private set; }
 
         [CommandLineFlag("namespace", "When this option is specified generated code will use namespaces",
@@ -294,7 +294,7 @@ namespace Compiler
         }
 
         /// <summary>
-        ///     Attempts to find the <see cref="LogFormatter"/> flag and parse it's value.
+        ///     Attempts to find the <see cref="LogFormatter"/> flag and parse its value.
         /// </summary>
         /// <param name="args">The command-line arguments to sort through</param>
         /// <returns>
@@ -383,15 +383,29 @@ namespace Compiler
                 ? parsedFlags.GetFlag("config").GetValue()
                 : FindBebopConfig();
             // if bebop.json exist load it. the values in the JSON file are written to the store.
-            if (!string.IsNullOrWhiteSpace(bebopConfig) && new FileInfo(bebopConfig).Exists)
+            if (!string.IsNullOrWhiteSpace(bebopConfig))
             {
-                if (!TryParseConfig(flagStore, bebopConfig))
+                if (new FileInfo(bebopConfig).Exists)
                 {
-                    errorMessage = $"Failed to parse bebop configuration file at '{bebopConfig}'";
+                    if (!TryParseConfig(flagStore, bebopConfig))
+                    {
+                        errorMessage = $"Failed to parse bebop configuration file at '{bebopConfig}'";
+                        return false;
+                    }
+                }
+                else
+                {
+                    errorMessage = $"Bebop configuration file not found at '{bebopConfig}'";
                     return false;
                 }
             }
 
+            var validFlagNames = props.Select(p => p.Attribute.Name).ToHashSet();
+            if (parsedFlags.Find(x => !validFlagNames.Contains(x.Name)) is CommandLineFlag unrecognizedFlag)
+            {
+                errorMessage = $"Unrecognized flag: --{unrecognizedFlag.Name}";
+                return false;
+            }
 
             // parse all present command-line flags
             // any flag on the command-line that was also present in bebop.json will be overwritten.

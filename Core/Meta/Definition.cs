@@ -29,7 +29,7 @@ namespace Core.Meta
         /// <summary>
         /// The inner text of a block comment that preceded the definition.
         /// </summary>
-        public string Documentation { get; }
+        public string Documentation { get; set; }
     }
 
     /// <summary>
@@ -105,13 +105,11 @@ namespace Core.Meta
     {
         public readonly byte Discriminator;
         public readonly TopLevelDefinition Definition;
-        public readonly string Documentation;
 
-        public UnionBranch(byte discriminator, TopLevelDefinition definition, string documentation)
+        public UnionBranch(byte discriminator, TopLevelDefinition definition)
         {
             Discriminator = discriminator;
             Definition = definition;
-            Documentation = documentation;
         }
     }
 

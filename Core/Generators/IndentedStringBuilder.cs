@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Text;
+using Core.Meta.Extensions;
 
 namespace Core.Generators
 {
@@ -8,7 +9,7 @@ namespace Core.Generators
     {
         private int Spaces { get; set; }
         private StringBuilder Builder { get; }
-        static readonly string[] _newlines = new[] { "\r\n", "\r", "\n" };
+       
 
         public IndentedStringBuilder(int spaces = 0)
         {
@@ -24,7 +25,7 @@ namespace Core.Generators
         public IndentedStringBuilder AppendLine(string text)
         {
             var indent = new string(' ', Spaces);
-            var lines = text.Split(_newlines, StringSplitOptions.None);
+            var lines = text.GetLines();
             var indentedLines = lines.Select(x => (indent + x).TrimEnd()).ToArray();
             var indentedText = string.Join(Environment.NewLine, indentedLines).TrimEnd();
             Builder.AppendLine(indentedText);

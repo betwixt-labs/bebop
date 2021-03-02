@@ -117,14 +117,22 @@ namespace Core.Exceptions
     class DuplicateFieldException : SpanException
     {
         public DuplicateFieldException(IField field, Definition definition)
-            : base($"The type '{definition.Name}' already contains a definition for '{field.Name}'", field.Span, 112) { }
+            : base($"The type '{definition.Name}' already contains a definition for '{field.Name}'.", field.Span, 112) { }
     }
 
     [Serializable]
     class InvalidUnionBranchException : SpanException
     {
         public InvalidUnionBranchException(Definition definition)
-            : base($"The definition '{definition.Name}' cannot be used as a union branch. Valid union branches are messages, structs, or unions.", definition.Span, 108)
+            : base($"The definition '{definition.Name}' cannot be used as a union branch. Valid union branches are messages, structs, or unions.", definition.Span, 113)
+        { }
+    }
+
+    [Serializable]
+    class DuplicateUnionDiscriminatorException : SpanException
+    {
+        public DuplicateUnionDiscriminatorException(Token discriminator, string unionName)
+            : base($"The discriminator index {discriminator.Lexeme} was used more than once in union '{unionName}'.", discriminator.Span, 114)
         { }
     }
 
