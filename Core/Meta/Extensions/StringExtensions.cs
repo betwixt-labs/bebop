@@ -1,20 +1,35 @@
-﻿using System;
+using System;
 using System.Linq;
+using Core.Lexer.Extensions;
 
 namespace Core.Meta.Extensions
 {
     public static class StringExtensions
     {
+        private const char SnakeSeparator = '_';
 
-        private static readonly string[] _newLines = new[] {"\r\n", "\r", "\n"};
+        private static readonly string[] NewLines = { "\r\n", "\r", "\n" };
+
         /// <summary>
-        /// Splits the specified <paramref name="value"/> based on line ending.
+        ///     Splits the specified <paramref name="value"/> based on line ending.
         /// </summary>
         /// <param name="value">The input string to split.</param>
         /// <returns>An array of each line in the string.</returns>
-        public static string[] GetLines(this string value)
+        public static string[] GetLines(this string value) => string.IsNullOrWhiteSpace(value) ? Array.Empty<string>() : value.Split(NewLines, StringSplitOptions.None);
+
+        /// <summary>
+        ///     Determines if the specified char array contains only uppercase characters.
+        /// </summary>
+        private static bool IsUpper(this Span<char> array)
         {
-            return string.IsNullOrWhiteSpace(value) ? Array.Empty<string>() : value.Split(_newLines, StringSplitOptions.None);
+            foreach (var currentChar in array)
+            {
+                if (!char.IsUpper(currentChar) && currentChar is not SnakeSeparator)
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
         /// <summary>
@@ -24,37 +39,99 @@ namespace Core.Meta.Extensions
         /// <returns>The mutated string.</returns>
         public static string ToPascalCase(this string input)
         {
-            // If there are 0 or 1 characters, just return the string.
-            if (input.Length < 2)
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                return string.Empty;
+            }
+            if (input.Length == 1)
             {
                 return input.ToUpper();
             }
+            // Remove invalid characters.
+            var charArray = new Span<char>(input.ToCharArray());
+            // Set first letter to uppercase
+            if (char.IsLower(charArray[0]))
+            {
+                charArray[0] = char.ToUpperInvariant(charArray[0]);
+            }
 
-            // splits the input string by underscore so snake casing is converted. 
-            var words = input.Split('_', StringSplitOptions.RemoveEmptyEntries);
+            if (charArray.IsUpper())
+            {
+                // Replace all characters following the first to lowercase when the entire string is uppercase (ABC -> Abc)
+                for (var i = 1; i < charArray.Length; i++)
+                {
+                    charArray[i] = char.ToLowerInvariant(charArray[i]);
+                }
+            }
 
-            // combine the words into PascalCase
-            return words.Aggregate(string.Empty, (current, word) => current + word[..1].ToUpper() + word[1..]);
+            for (var i = 1; i < charArray.Length; i++)
+            {
+                var currentChar = charArray[i];
+                var lastChar = charArray.Peek(i is 1 ? 1 : i - 1);
+                var nextChar = charArray.Peek(i + 1);
+
+                if (currentChar.IsDecimalDigit() && char.IsLower(nextChar))
+                {
+                    charArray[i + 1] = char.ToUpperInvariant(nextChar);
+                }
+                else if (char.IsUpper(currentChar) && char.IsLower(nextChar) && char.IsUpper(charArray.Peek(i + 2)))
+                {
+                    charArray[i] = char.ToLowerInvariant(currentChar);
+                    for (var c = i; c-- > 0;)
+                    {
+                        if (char.IsUpper(charArray[c]))
+                        {
+                            break;
+                        }
+                        charArray[c] = char.ToLowerInvariant(currentChar);
+                    }
+                }
+                else if (currentChar is SnakeSeparator)
+                {
+                    if (char.IsLower(nextChar))
+                    {
+                        charArray[i + 1] = char.ToUpperInvariant(nextChar);
+                    }
+                    if (char.IsUpper(lastChar))
+                    {
+                        charArray[i - 1] = char.ToLowerInvariant(lastChar);
+                    }
+                }
+            }
+            return new string(charArray.ToArray().Where(c => c is not SnakeSeparator).ToArray());
         }
 
         /// <summary>
-        ///     Converts a string to a camelcase representation
+        ///     Peeks a char at the specified <paramref name="index"/> from the provided <paramref name="array"/>
         /// </summary>
-        /// <param name="str"></param>
-        /// <returns></returns>
-        public static string ToCamelCase(this string str)
+        private static char Peek(this Span<char> array, int index)
         {
-            if (str.Length == 1)
-            {
-                return str;
-            }
+            return index < array.Length ? array[index] : default;
+        }
 
-            var f = str[..1];
-            var r = str[1..];
+        /// <summary>
+        ///     Converts the specified <paramref name="input"/> string into camelCase.
+        /// </summary>
+        /// <param name="input">The input string that will be converted.</param>
+        /// <returns>The mutated string.</returns>
+        public static string ToCamelCase(this string input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                return string.Empty;
+            }
+            if (input.Length == 1)
+            {
+                return input;
+            }
+            // Pascal is a subset of camelCase. The first letter of Pascal is capital and first letter of the camel is small
+            var converted = input.ToPascalCase();
+            var f = converted[..1];
+            var r = converted[1..];
 
             if (char.IsUpper(f[0]) && char.IsUpper(r[0]))
             {
-                return str;
+                return input;
             }
 
             return f.ToLowerInvariant() + r;
