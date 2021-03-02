@@ -177,14 +177,15 @@ namespace Core.Generators.CSharp
                         builder.AppendLine(FormatDocumentation(fd.Documentation, 0));
                         builder.AppendLine($"protected {baseName}() {{ }}");
                         builder.AppendLine(FormatConstructorDocumentation(fd));
-                        var constructorArguments = string.Join(", ", fd.Fields.Select(f => $"{(fd is StructDefinition ? DisallowNullAttribute : AllowNullAttribute)} {TypeName(f.Type)}{(fd is MessageDefinition && IsNullableType(f.Type) ? "?" : "")} {f.Name.ToCamelCase()}")).Trim();
+                        var nulllabilityAttribute = fd is StructDefinition ? DisallowNullAttribute : AllowNullAttribute;
+                        var constructorArguments = string.Join(", ", fd.Fields.Select(f => $"{nulllabilityAttribute} {TypeName(f.Type)}{(fd is MessageDefinition && IsNullableType(f.Type) ? "?" : "")} {f.Name.ToCamelCase()}")).Trim();
                         var constructorArgumentNames = string.Join(", ", fd.Fields.Select(f => f.Name.ToCamelCase())).Trim();
                         if (fd is StructDefinition {IsReadOnly: true})
                         {
                             var propertyTuple = $"({string.Join(", ", fd.Fields.Select(f => f.Name.ToPascalCase())).Trim()})";
                             var argumentsTuple = $"({constructorArgumentNames})";
                             builder.AppendLine($"protected {baseName}({constructorArguments}) => {propertyTuple} = {argumentsTuple};");
-                            var destructorArguments = string.Join(", ", fd.Fields.Select(f => $"{(fd is StructDefinition ? DisallowNullAttribute : AllowNullAttribute)} out {TypeName(f.Type)} {f.Name.ToCamelCase()}")).Trim();
+                            var destructorArguments = string.Join(", ", fd.Fields.Select(f => $"{nulllabilityAttribute} out {TypeName(f.Type)} {f.Name.ToCamelCase()}")).Trim();
                             builder.AppendLine($"public void Deconstruct({destructorArguments}) => {argumentsTuple} = {propertyTuple};");
                         }
                         else
@@ -216,7 +217,7 @@ namespace Core.Generators.CSharp
                         builder.AppendLine("/// <inheritdoc />");
                         builder.AppendLine(GeneratedAttribute);
                         builder.AppendLine($"{recordAttribute}");
-                        var keyword = fd is not StructDefinition {IsReadOnly: true} ? "class" : "record";
+                        var keyword = fd is StructDefinition {IsReadOnly: true} ? "record" : "class";
                         builder.AppendLine($"public sealed partial {keyword} {definitionName} : {baseName} {{").AppendLine();
                         builder.Indent(indentStep);
 
@@ -467,7 +468,7 @@ namespace Core.Generators.CSharp
                 builder.AppendLine("/// <inheritdoc />");
                 builder.AppendLine(GeneratedAttribute);
                 builder.AppendLine(recordAttribute);
-                builder.AppendLine($"public sealed class {definitionName} : {baseClassName} {{").Indent(indentStep).AppendLine();
+                builder.AppendLine($"public sealed partial class {definitionName} : {baseClassName} {{").Indent(indentStep).AppendLine();
                 builder.AppendLine($"private {definitionName}({structName}<{genericTypeArguments}> _) : base(_) {{ }}").AppendLine();
                 foreach (var branch in ud.Branches)
                 {

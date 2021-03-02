@@ -18,10 +18,10 @@ namespace Core.Meta.Extensions
         }
 
         /// <summary>
-        ///     Converts a string into Pascal case
+        ///     Converts the specified <paramref name="input"/> string into PascalCase.
         /// </summary>
-        /// <param name="input">the input string we need to convert</param>
-        /// <returns>a pascal converted string</returns>
+        /// <param name="input">The input string that will be converted.</param>
+        /// <returns>The mutated string.</returns>
         public static string ToPascalCase(this string input)
         {
             // If there are 0 or 1 characters, just return the string.
@@ -30,12 +30,11 @@ namespace Core.Meta.Extensions
                 return input.ToUpper();
             }
 
-            // Split the string into words.
-            var words = input.Split(new char[] { },
-                StringSplitOptions.RemoveEmptyEntries);
+            // splits the input string by underscore so snake casing is converted. 
+            var words = input.Split('_', StringSplitOptions.RemoveEmptyEntries);
 
-            // Combine the words.
-            return words.Aggregate("", (current, word) => current + word.Substring(0, 1).ToUpper() + word.Substring(1));
+            // combine the words into PascalCase
+            return words.Aggregate(string.Empty, (current, word) => current + word[..1].ToUpper() + word[1..]);
         }
 
         /// <summary>
@@ -50,8 +49,8 @@ namespace Core.Meta.Extensions
                 return str;
             }
 
-            var f = str.Substring(0, 1);
-            var r = str.Substring(1);
+            var f = str[..1];
+            var r = str[1..];
 
             if (char.IsUpper(f[0]) && char.IsUpper(r[0]))
             {
