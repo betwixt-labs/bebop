@@ -39,18 +39,30 @@ namespace Core.Generators.CSharp
         public CSharpGenerator(ISchema schema) : base(schema)
         {
         }
+
+        private string PrefixNamespace(string definitionName)
+        {
+            var nameSpace = string.IsNullOrWhiteSpace(Schema.Namespace) ? string.Empty : $"global::{Schema.Namespace.ToPascalCase()}.";
+            return $"{nameSpace}{definitionName}";
+        }
+
         private string FormatConstructorDocumentation(FieldsDefinition fieldsDefinition)
         { 
             var builder = new IndentedStringBuilder();
             builder.AppendLine("/// <summary>");
             foreach (var line in fieldsDefinition.Documentation.GetLines())
             {
-                builder.AppendLine($"/// {line}");
+                builder.AppendLine($"/// <para>{line}</para>");
             }
             builder.AppendLine("/// </summary>");
             foreach (var field in fieldsDefinition.Fields)
             {
-                builder.AppendLine($"/// <param name=\"{field.Name.ToCamelCase()}\">{field.Documentation}</param>");
+                builder.AppendLine($"/// <param name=\"{field.Name.ToCamelCase()}\">");
+                foreach (var line in field.Documentation.GetLines())
+                {
+                    builder.AppendLine($"/// <para>{line}</para>");
+                }
+                builder.AppendLine($"/// </param>");
             }
             return builder.ToString();
         }
@@ -61,7 +73,7 @@ namespace Core.Generators.CSharp
             builder.AppendLine("/// <summary>");
             foreach (var line in documentation.GetLines())
             {
-                builder.AppendLine($"/// {line}");
+                builder.AppendLine($"/// <para>{line}</para>");
             }
             builder.AppendLine("/// </summary>");
             return builder.ToString();
@@ -83,7 +95,6 @@ namespace Core.Generators.CSharp
 
             foreach (var definition in Schema.Definitions.Values)
             {
-                var definitionName = definition.Name.ToPascalCase();
                 if (!string.IsNullOrWhiteSpace(definition.Documentation))
                 {
                     builder.AppendLine(FormatDocumentation(definition.Documentation, 0));
@@ -93,7 +104,7 @@ namespace Core.Generators.CSharp
                 if (definition is EnumDefinition ed)
                 {
                     builder.AppendLine("[global::Bebop.Attributes.BebopRecord(global::Bebop.Runtime.BebopKind.Enum)]");
-                    builder.AppendLine($"public enum {definition.Name} : uint {{");
+                    builder.AppendLine($"public enum {definition.ClassName()} : uint {{");
                     builder.Indent(indentStep);
                     for (var i = 0; i < ed.Members.Count; i++)
                     {
@@ -107,7 +118,7 @@ namespace Core.Generators.CSharp
                         {
                             builder.AppendLine($"[System.Obsolete(\"{field.DeprecatedAttribute.Value}\")]");
                         }
-                        builder.AppendLine($"{field.Name} = {field.ConstantValue}{(i + 1 < ed.Members.Count ? "," : "")}");
+                        builder.AppendLine($"{field.Name.ToPascalCase()} = {field.ConstantValue}{(i + 1 < ed.Members.Count ? "," : "")}");
                     }
                     builder.Dedent(indentStep);
                     builder.AppendLine("}");
@@ -124,14 +135,13 @@ namespace Core.Generators.CSharp
                             StructDefinition => "[global::Bebop.Attributes.BebopRecord(global::Bebop.Runtime.BebopKind.Struct)]",
                             _ => string.Empty
                         };
-                        var baseName = "Base" + definitionName;
                         builder.AppendLine(recordAttribute);
                         if (fd is StructDefinition {IsReadOnly: true})
                         {
-                            builder.AppendLine($"public abstract record {baseName} {{");
+                            builder.AppendLine($"public abstract record {definition.BaseClassName()} {{");
                         } else
                         {
-                            builder.AppendLine($"public abstract class {baseName} : System.IEquatable<{baseName}> {{");
+                            builder.AppendLine($"public abstract class {definition.BaseClassName()} : global::System.IEquatable<{definition.BaseClassName()}> {{");
                         }
                         builder.Indent(indentStep);
                         if (fd.OpcodeAttribute is not null)
@@ -175,31 +185,34 @@ namespace Core.Generators.CSharp
                         builder.AppendLine();
                         // generate constructors
                         builder.AppendLine(FormatDocumentation(fd.Documentation, 0));
-                        builder.AppendLine($"protected {baseName}() {{ }}");
-                        builder.AppendLine(FormatConstructorDocumentation(fd));
+                        builder.AppendLine($"protected {definition.BaseClassName()}() {{ }}");
                         var nulllabilityAttribute = fd is StructDefinition ? DisallowNullAttribute : AllowNullAttribute;
-                        var constructorArguments = string.Join(", ", fd.Fields.Select(f => $"{nulllabilityAttribute} {TypeName(f.Type)}{(fd is MessageDefinition && IsNullableType(f.Type) ? "?" : "")} {f.Name.ToCamelCase()}")).Trim();
-                        var constructorArgumentNames = string.Join(", ", fd.Fields.Select(f => f.Name.ToCamelCase())).Trim();
-                        if (fd is StructDefinition {IsReadOnly: true})
+                        var constructorArguments = string.Empty;
+                        var constructorArgumentNames = string.Empty;
+                        if (fd.Fields.Count > 0)
                         {
-                            var propertyTuple = $"({string.Join(", ", fd.Fields.Select(f => f.Name.ToPascalCase())).Trim()})";
-                            var argumentsTuple = $"({constructorArgumentNames})";
-                            builder.AppendLine($"protected {baseName}({constructorArguments}) => {propertyTuple} = {argumentsTuple};");
-                            var destructorArguments = string.Join(", ", fd.Fields.Select(f => $"{nulllabilityAttribute} out {TypeName(f.Type)} {f.Name.ToCamelCase()}")).Trim();
-                            builder.AppendLine($"public void Deconstruct({destructorArguments}) => {argumentsTuple} = {propertyTuple};");
-                        }
-                        else
-                        {
-                            builder.AppendLine($"protected {baseName}({constructorArguments}) {{");
-                            builder.Indent(indentStep);
-                            foreach (var field in fd.Fields)
+                            builder.AppendLine(FormatConstructorDocumentation(fd));
+                            constructorArguments = string.Join(", ", fd.Fields.Select(f => $"{nulllabilityAttribute} {TypeName(f.Type)}{(fd is MessageDefinition && IsNullableType(f.Type) ? "?" : "")} {f.Name.ToCamelCase()}")).Trim();
+                            constructorArgumentNames = string.Join(", ", fd.Fields.Select(f => f.Name.ToCamelCase())).Trim();
+                            if (fd is StructDefinition { IsReadOnly: true })
                             {
-                                builder.AppendLine($"{field.Name.ToPascalCase()} = {field.Name.ToCamelCase()};");
+                                var propertyTuple = $"({string.Join(", ", fd.Fields.Select(f => f.Name.ToPascalCase())).Trim()})";
+                                var argumentsTuple = $"({constructorArgumentNames})";
+                                builder.AppendLine($"protected {definition.BaseClassName()}({constructorArguments}) => {propertyTuple} = {argumentsTuple};");
                             }
-                            builder.Dedent(indentStep);
-                            builder.AppendLine("}");
+                            else
+                            {
+                                builder.AppendLine($"protected {definition.BaseClassName()}({constructorArguments}) {{");
+                                builder.Indent(indentStep);
+                                foreach (var field in fd.Fields)
+                                {
+                                    builder.AppendLine($"{field.Name.ToPascalCase()} = {field.Name.ToCamelCase()};");
+                                }
+                                builder.Dedent(indentStep);
+                                builder.AppendLine("}");
+                            }
                         }
-
+                        
                         if (fd is MessageDefinition)
                         {
                             builder.AppendLine("#nullable disable");
@@ -218,19 +231,22 @@ namespace Core.Generators.CSharp
                         builder.AppendLine(GeneratedAttribute);
                         builder.AppendLine($"{recordAttribute}");
                         var keyword = fd is StructDefinition {IsReadOnly: true} ? "record" : "class";
-                        builder.AppendLine($"public sealed partial {keyword} {definitionName} : {baseName} {{").AppendLine();
+                        builder.AppendLine($"public sealed partial {keyword} {definition.ClassName()} : {PrefixNamespace(definition.BaseClassName())} {{").AppendLine();
                         builder.Indent(indentStep);
 
                         // generate more constructors
-                        builder.AppendLine("/// <inheritdoc />");
+                    
                         if (fd is MessageDefinition)
                         {
                             builder.AppendLine("#nullable enable");
                         }
-                        builder.AppendLine($"public {definitionName}() : base() {{ }}");
                         builder.AppendLine("/// <inheritdoc />");
-                        builder.AppendLine($"public {definitionName}({constructorArguments}) : base({constructorArgumentNames}) {{ }}");
-
+                        builder.AppendLine($"public {definition.ClassName()}() : base() {{ }}");
+                        if (fd.Fields.Count > 0) {
+                            builder.AppendLine("/// <inheritdoc />");
+                            builder.AppendLine($"public {definition.ClassName()}({constructorArguments}) : base({constructorArgumentNames}) {{ }}");
+                        }
+                       
                         if (fd is MessageDefinition)
                         {
                             builder.AppendLine("#nullable disable");
@@ -243,7 +259,7 @@ namespace Core.Generators.CSharp
                         builder.AppendLine(HotPath);
                         builder.AppendLine(NonUserCodeAttribute);
                         builder.AppendLine(BrowsableAttribute);
-                        builder.AppendLine($"internal static void __EncodeInto({baseName} record, ref {BebopWriter} writer) {{");
+                        builder.AppendLine($"internal static void __EncodeInto({PrefixNamespace(definition.BaseClassName())} record, ref {BebopWriter} writer) {{");
                         builder.Indent(indentStep);
                         builder.AppendLine(CompileEncode(fd));
                         builder.Dedent(indentStep);
@@ -259,7 +275,7 @@ namespace Core.Generators.CSharp
                         builder.AppendLine(HotPath);
                         builder.AppendLine(NonUserCodeAttribute);
                         builder.AppendLine(BrowsableAttribute);
-                        builder.AppendLine($"internal static {definitionName} __DecodeFrom(ref {BebopReader} reader) {{");
+                        builder.AppendLine($"internal static {PrefixNamespace(definition.ClassName())} __DecodeFrom(ref {BebopReader} reader) {{");
                         builder.Indent(indentStep).AppendLine();
                         // when you do new T() the compile uses System.Activator::CreateInstance
                         // this non-generic variant avoids that penalty hit.
@@ -271,7 +287,7 @@ namespace Core.Generators.CSharp
                         builder.AppendLine(HotPath);
                         builder.AppendLine(NonUserCodeAttribute);
                         builder.AppendLine(BrowsableAttribute);
-                        builder.AppendLine($"internal static T __DecodeFrom<T>(ref {BebopReader} reader) where T: {baseName}, new() {{");
+                        builder.AppendLine($"internal static T __DecodeFrom<T>(ref {BebopReader} reader) where T: {PrefixNamespace(definition.BaseClassName())}, new() {{");
                         builder.Indent(indentStep);
                         // a generic decode method that allows for run-time polymorphism 
                         // this will initiate objects via a slower .ctor reflection
@@ -305,11 +321,11 @@ namespace Core.Generators.CSharp
         {
             var recordAttribute = "[global::Bebop.Attributes.BebopRecord(global::Bebop.Runtime.BebopKind.Union)]";
             var genericPositionalArguments = string.Join(", ", ud.Branches.Select(b => $"T{b.GenericIndex()}")).Trim();
-            var genericTypeArguments = string.Join(", ", ud.Branches.Select(b => $"{b.BaseClassName()}")).Trim();
-            var genericConstraints = string.Join(' ', ud.Branches.Select(b => $"where T{b.GenericIndex()}: Base{b.Definition.Name.ToPascalCase()}")).Trim();
-            var definitionName = $"{ud.Name.ToPascalCase()}";
-            var structName = $"{definitionName}Union";
-            var baseClassName = $"Base{definitionName}";
+            var genericTypeArguments = string.Join(", ", ud.Branches.Select(b => $"{PrefixNamespace(b.BaseClassName())}")).Trim();
+            var genericConstraints = string.Join(' ', ud.Branches.Select(b => $"where T{b.GenericIndex()}: {PrefixNamespace(b.BaseClassName())}")).Trim();
+        
+            var structName = $"{ud.ClassName()}Union";
+           
 
             void CompileValueProperty()
             {
@@ -369,7 +385,7 @@ namespace Core.Generators.CSharp
 
             void CompileEquals(bool isClass)
             {
-                builder.AppendLine($"private bool Equals({baseClassName}<{genericPositionalArguments}> other) => _discriminator == other.Discriminator && _discriminator switch {{").Indent(4);
+                builder.AppendLine($"private bool Equals({PrefixNamespace(ud.BaseClassName())}<{genericPositionalArguments}> other) => _discriminator == other.Discriminator && _discriminator switch {{").Indent(4);
                 foreach (var branch in ud.Branches)
                 {
                     builder.AppendLine($"{branch.Discriminator} => Equals(_value{branch.GenericIndex()}, other._value{branch.GenericIndex()}),");
@@ -383,12 +399,12 @@ namespace Core.Generators.CSharp
                 {
                     builder.AppendLine("if (ReferenceEquals(this, other)) {").Indent(indentStep).AppendLine("return true;").Dedent(indentStep).AppendLine("}");
                 }
-                builder.AppendLine($"return other is {baseClassName}<{genericPositionalArguments}> o && Equals(o);").Dedent(4).AppendLine("}");
+                builder.AppendLine($"return other is {PrefixNamespace(ud.BaseClassName())}<{genericPositionalArguments}> o && Equals(o);").Dedent(4).AppendLine("}");
                 builder.AppendLine();
                 if (isClass)
                 {
-                    builder.AppendLine($"public static bool operator ==({baseClassName}<{genericPositionalArguments}> left, {baseClassName}<{genericPositionalArguments}> right) => Equals(left, right);");
-                    builder.AppendLine($"public static bool operator !=({baseClassName}<{genericPositionalArguments}> left, {baseClassName}<{genericPositionalArguments}> right) => !Equals(left, right);");
+                    builder.AppendLine($"public static bool operator ==({PrefixNamespace(ud.BaseClassName())}<{genericPositionalArguments}> left, {PrefixNamespace(ud.BaseClassName())}<{genericPositionalArguments}> right) => Equals(left, right);");
+                    builder.AppendLine($"public static bool operator !=({PrefixNamespace(ud.BaseClassName())}<{genericPositionalArguments}> left, {PrefixNamespace(ud.BaseClassName())}<{genericPositionalArguments}> right) => !Equals(left, right);");
                 }
                 CompileHashCode();
             }
@@ -417,8 +433,8 @@ namespace Core.Generators.CSharp
                 foreach (var branch in ud.Branches)
                 {
                     builder.AppendLine(
-                        $"public static implicit operator {structName}<{genericPositionalArguments}>(T{branch.GenericIndex()} t) => new  {structName}<{genericPositionalArguments}>({branch.Discriminator}, value{branch.GenericIndex()}: t);");
-                    builder.AppendLine($"public static {structName}<{genericPositionalArguments}> From{branch.BaseClassName()}(T{branch.GenericIndex()} input) => input;").AppendLine();
+                        $"public static implicit operator {PrefixNamespace(structName)}<{genericPositionalArguments}>(T{branch.GenericIndex()} t) => new  {PrefixNamespace(structName)}<{genericPositionalArguments}>({branch.Discriminator}, value{branch.GenericIndex()}: t);");
+                    builder.AppendLine($"public static {PrefixNamespace(structName)}<{genericPositionalArguments}> From{branch.BaseClassName()}(T{branch.GenericIndex()} input) => input;").AppendLine();
                 }
                 builder.AppendLine();
                 CompileSwitch();
@@ -430,7 +446,7 @@ namespace Core.Generators.CSharp
             void CompileUnionBaseClasses()
             {
                
-                builder.AppendLine($"public abstract class {baseClassName}<{genericPositionalArguments}> {genericConstraints} {{").Indent(indentStep);
+                builder.AppendLine($"public abstract class {ud.BaseClassName()}<{genericPositionalArguments}> {genericConstraints} {{").Indent(indentStep);
                 if (ud.OpcodeAttribute is not null)
                 {
                     builder.AppendLine($"public const uint OpCode = {ud.OpcodeAttribute.Value};");
@@ -440,7 +456,7 @@ namespace Core.Generators.CSharp
                     builder.AppendLine($"internal readonly T{branch.GenericIndex()} _value{branch.GenericIndex()};");
                 }
                 builder.AppendLine("private readonly byte _discriminator;").AppendLine();
-                builder.AppendLine($"protected {baseClassName}({structName}<{genericPositionalArguments}> input) {{");
+                builder.AppendLine($"protected {ud.BaseClassName()}({PrefixNamespace(structName)}<{genericPositionalArguments}> input) {{");
                 builder.Indent(4).AppendLine("_discriminator = input.Discriminator;");
                 builder.AppendLine("switch (_discriminator) {").Indent(indentStep);
                 foreach (var branch in ud.Branches)
@@ -458,8 +474,8 @@ namespace Core.Generators.CSharp
                 builder.AppendLine("/// <inheritdoc />");
                 builder.AppendLine(GeneratedAttribute);
                 builder.AppendLine(recordAttribute);
-                builder.AppendLine($"public abstract class {baseClassName} : {baseClassName}<{genericTypeArguments}> {{").Indent(indentStep);
-                builder.AppendLine($"protected {baseClassName}({structName}<{genericTypeArguments}> _) : base(_) {{ }}");
+                builder.AppendLine($"public abstract class {ud.BaseClassName()} : {PrefixNamespace(ud.BaseClassName())}<{genericTypeArguments}> {{").Indent(indentStep);
+                builder.AppendLine($"protected {ud.BaseClassName()}({PrefixNamespace(structName)}<{genericTypeArguments}> _) : base(_) {{ }}");
                 builder.Dedent(indentStep).AppendLine("}").AppendLine();
             }
             // Compiles the class that is responsible for decoding / encoding and should be used.
@@ -468,23 +484,23 @@ namespace Core.Generators.CSharp
                 builder.AppendLine("/// <inheritdoc />");
                 builder.AppendLine(GeneratedAttribute);
                 builder.AppendLine(recordAttribute);
-                builder.AppendLine($"public sealed partial class {definitionName} : {baseClassName} {{").Indent(indentStep).AppendLine();
-                builder.AppendLine($"private {definitionName}({structName}<{genericTypeArguments}> _) : base(_) {{ }}").AppendLine();
+                builder.AppendLine($"public sealed partial class {ud.ClassName()} : {PrefixNamespace(ud.BaseClassName())} {{").Indent(indentStep).AppendLine();
+                builder.AppendLine($"private {ud.ClassName()}({PrefixNamespace(structName)}<{genericTypeArguments}> _) : base(_) {{ }}").AppendLine();
                 foreach (var branch in ud.Branches)
                 {
-                    builder.AppendLine($"public static implicit operator {definitionName}({branch.BaseClassName()} _) => new (_);");
-                    builder.AppendLine($"public static {definitionName} From{branch.BaseClassName()}({branch.BaseClassName()} input) => new (input);").AppendLine();
+                    builder.AppendLine($"public static implicit operator {PrefixNamespace(ud.ClassName())}({PrefixNamespace(branch.BaseClassName())} _) => new (_);");
+                    builder.AppendLine($"public static {PrefixNamespace(ud.ClassName())} From{branch.BaseClassName()}({PrefixNamespace(branch.BaseClassName())} input) => new (input);").AppendLine();
                 }
 
                 builder.AppendLine(HotPath);
-                builder.AppendLine($"internal static void __EncodeInto({baseClassName} record, ref {BebopWriter} writer) {{");
+                builder.AppendLine($"internal static void __EncodeInto({PrefixNamespace(ud.BaseClassName())} record, ref {BebopWriter} writer) {{");
                 builder.Indent(indentStep);
                 builder.AppendLine(CompileEncode(ud));
                 builder.Dedent(indentStep);
                 builder.AppendLine("}").AppendLine();
 
                 builder.AppendLine(HotPath);
-                builder.AppendLine($"internal static {definitionName} __DecodeFrom(ref {BebopReader} reader) {{").Indent(indentStep).AppendLine();
+                builder.AppendLine($"internal static {PrefixNamespace(ud.ClassName())} __DecodeFrom(ref {BebopReader} reader) {{").Indent(indentStep).AppendLine();
                 builder.AppendLine(CompileDecode(ud, false));
                 builder.Dedent(indentStep);
                 builder.AppendLine("}").AppendLine();
@@ -517,9 +533,8 @@ namespace Core.Generators.CSharp
         /// <returns></returns>
         private string GenerateEqualityMembers(FieldsDefinition definition)
         {
-            var baseName = $"Base{definition.Name.ToPascalCase()}";
             var builder = new IndentedStringBuilder();
-            builder.AppendLine($"public bool Equals({baseName} other) {{");
+            builder.AppendLine($"public bool Equals({PrefixNamespace(definition.BaseClassName())} other) {{");
             builder.Indent(indentStep);
             builder.AppendLine("if (ReferenceEquals(null, other)) {");
             builder.Indent(indentStep);
@@ -574,7 +589,7 @@ namespace Core.Generators.CSharp
             builder.AppendLine("return true;");
             builder.Dedent(indentStep);
             builder.AppendLine("}");
-            builder.AppendLine($"if (obj is not {baseName} baseType) {{");
+            builder.AppendLine($"if (obj is not {PrefixNamespace(definition.BaseClassName())} baseType) {{");
             builder.Indent(indentStep);
             builder.AppendLine("return false;");
             builder.Dedent(indentStep);
@@ -609,8 +624,8 @@ namespace Core.Generators.CSharp
             builder.Dedent(indentStep);
             builder.AppendLine("}");
             builder.AppendLine();
-            builder.AppendLine($"public static bool operator ==({baseName} left, {baseName} right) => Equals(left, right);");
-            builder.AppendLine($"public static bool operator !=({baseName} left, {baseName}  right) => !Equals(left, right);");
+            builder.AppendLine($"public static bool operator ==({PrefixNamespace(definition.BaseClassName())} left, {PrefixNamespace(definition.BaseClassName())} right) => Equals(left, right);");
+            builder.AppendLine($"public static bool operator !=({PrefixNamespace(definition.BaseClassName())} left, {PrefixNamespace(definition.BaseClassName())}  right) => !Equals(left, right);");
             return builder.ToString();
         }
 
@@ -637,12 +652,12 @@ namespace Core.Generators.CSharp
                     BaseType.Float32 => "float",
                     BaseType.Float64 => "double",
                     BaseType.String => "string",
-                    BaseType.Guid => "System.Guid",
+                    BaseType.Guid => "global::System.Guid",
                     BaseType.UInt16 => "ushort",
                     BaseType.Int16 => "short",
                     BaseType.UInt64 => "ulong",
                     BaseType.Int64 => "long",
-                    BaseType.Date => "System.DateTime",
+                    BaseType.Date => "global::System.DateTime",
                     _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                 },
                 ArrayType {MemberType: ScalarType {BaseType: BaseType.Byte}} at =>
@@ -650,8 +665,8 @@ namespace Core.Generators.CSharp
                 ArrayType at =>
                     $"{(at.MemberType is ArrayType ? $"{TypeName(at.MemberType, arraySizeVar)}[]" : $"{TypeName(at.MemberType)}[{arraySizeVar}]")}",
                 MapType mt =>
-                    $"System.Collections.Generic.Dictionary<{TypeName(mt.KeyType)}, {TypeName(mt.ValueType)}>",
-                DefinedType dt => $"{(IsEnum(dt) ? string.Empty : "Base")}{dt.Name}",
+                    $"global::System.Collections.Generic.Dictionary<{TypeName(mt.KeyType)}, {TypeName(mt.ValueType)}>",
+                DefinedType dt => PrefixNamespace($"{(IsEnum(dt) ? string.Empty : "Base")}{dt.Name.ToPascalCase()}"),
                 _ => throw new InvalidOperationException($"GetTypeName: {type}")
             };
         }
@@ -682,8 +697,7 @@ namespace Core.Generators.CSharp
             foreach (var branch in definition.Branches)
             {
                 builder.AppendLine($"case {branch.Discriminator}:").Indent(4);
-                var nameSpace = string.IsNullOrWhiteSpace(Schema.Namespace) ? string.Empty : $"{Schema.Namespace.ToPascalCase()}.";
-                builder.AppendLine($"return {nameSpace}{branch.Definition.Name.ToPascalCase()}.__DecodeFrom(ref reader);").Dedent(4);
+                builder.AppendLine($"return {PrefixNamespace(branch.Definition.Name.ToPascalCase())}.__DecodeFrom(ref reader);").Dedent(4);
             }
             builder.AppendLine("default:").Indent(4);
             builder.AppendLine("reader.Position = end;");
@@ -704,7 +718,7 @@ namespace Core.Generators.CSharp
                 i++;
             }
 
-            builder.AppendLine($"return new {(useGenerics ? "T" : definition.Name.ToPascalCase())} {{");
+            builder.AppendLine($"return new {(useGenerics ? "T" : PrefixNamespace($"{definition.Name.ToPascalCase()}"))} {{");
             builder.Indent(indentStep);
             i = 0;
             foreach (var field in definition.Fields)
@@ -726,7 +740,7 @@ namespace Core.Generators.CSharp
         private string CompileDecodeMessage(MessageDefinition definition, bool useGenerics)
         {
             var builder = new IndentedStringBuilder();
-            builder.AppendLine($"var record = new {(useGenerics ? "T" : definition.Name.ToPascalCase())}();");
+            builder.AppendLine($"var record = new {(useGenerics ? "T" : $"{PrefixNamespace(definition.Name.ToPascalCase())}")}();");
             builder.AppendLine("var length = reader.ReadRecordLength();");
             builder.AppendLine("var end = unchecked((int) (reader.Position + length));");
             builder.AppendLine("while (true) {");
@@ -816,9 +830,9 @@ namespace Core.Generators.CSharp
                     _ => throw new ArgumentOutOfRangeException()
                 },
                 DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition =>
-                    $"{target} = reader.ReadEnum<{dt.Name}>();",
+                    $"{target} = reader.ReadEnum<{PrefixNamespace(dt.Name.ToPascalCase())}>();",
                 DefinedType dt =>
-                    $"{target} = {(string.IsNullOrWhiteSpace(Schema.Namespace) ? string.Empty : $"{Schema.Namespace.ToPascalCase()}.")}{dt.Name.ToPascalCase()}.__DecodeFrom(ref reader);",
+                    $"{target} = {PrefixNamespace(dt.Name.ToPascalCase())}.__DecodeFrom(ref reader);",
                 _ => throw new InvalidOperationException($"CompileDecodeField: {type}")
             };
         }
@@ -836,7 +850,7 @@ namespace Core.Generators.CSharp
             var builder = new IndentedStringBuilder();
 
             builder.AppendLine(HotPath);
-            builder.AppendLine($"public static {bufferType} {methodName}(Base{definition.Name.ToPascalCase()} record) {{");
+            builder.AppendLine($"public static {bufferType} {methodName}({PrefixNamespace(definition.BaseClassName())} record) {{");
             builder.Indent(indentStep);
             builder.AppendLine($"var writer = {BebopWriter}.Create();");
             builder.AppendLine("__EncodeInto(record, ref writer);");
@@ -867,7 +881,7 @@ namespace Core.Generators.CSharp
             if (compileGenericHelpers)
             {
                 builder.AppendLine(HotPath);
-                builder.AppendLine($"public static T DecodeAs<T>({bufferType} record) where T : Base{definition.Name.ToPascalCase()}, new() {{");
+                builder.AppendLine($"public static T DecodeAs<T>({bufferType} record) where T : {PrefixNamespace(definition.BaseClassName())}, new() {{");
                 builder.Indent(indentStep);
                 builder.AppendLine($"var reader = {BebopReader}.From(record);");
                 builder.AppendLine("return __DecodeFrom<T>(ref reader);");
@@ -876,7 +890,7 @@ namespace Core.Generators.CSharp
                 builder.AppendLine();
             }
             builder.AppendLine(HotPath);
-            builder.AppendLine($"public static {definition.Name.ToPascalCase()} Decode({bufferType} record) {{");
+            builder.AppendLine($"public static {PrefixNamespace(definition.Name.ToPascalCase())} Decode({bufferType} record) {{");
             builder.Indent(indentStep);
             builder.AppendLine($"var reader = {BebopReader}.From(record);");
             builder.AppendLine("return __DecodeFrom(ref reader);");
@@ -912,8 +926,8 @@ namespace Core.Generators.CSharp
             builder.AppendLine("switch (record.Discriminator) {").Indent(indentStep);
             foreach (var branch in definition.Branches)
             {
-                var nameSpace = string.IsNullOrWhiteSpace(Schema.Namespace) ? string.Empty : $"{Schema.Namespace.ToPascalCase()}.";
-                builder.AppendLine($"case {branch.Discriminator}: {nameSpace}{branch.Definition.Name.ToPascalCase()}.__EncodeInto(record.As{branch.BaseClassName()}, ref writer); break;");
+            
+                builder.AppendLine($"case {branch.Discriminator}: {PrefixNamespace(branch.Definition.Name.ToPascalCase())}.__EncodeInto(record.As{branch.BaseClassName()}, ref writer); break;");
             }
             builder.Dedent(indentStep).AppendLine("}");
             builder.AppendLine("var end = writer.Length;");
@@ -1030,9 +1044,9 @@ namespace Core.Generators.CSharp
                     _ => throw new ArgumentOutOfRangeException()
                 },
                 DefinedType dt when IsEnum(dt) =>
-                    $"writer.WriteEnum<{dt.Name}>({target});",
+                    $"writer.WriteEnum<{PrefixNamespace(dt.Name.ToPascalCase())}>({target});",
                 DefinedType dt =>
-                    $"{(string.IsNullOrWhiteSpace(Schema.Namespace) ? string.Empty : $"{Schema.Namespace.ToPascalCase()}.")}{dt.Name.ToPascalCase()}.__EncodeInto({target}, ref writer);",
+                    $"{PrefixNamespace(dt.Name.ToPascalCase())}.__EncodeInto({target}, ref writer);",
                 _ => throw new InvalidOperationException($"CompileEncodeField: {type}")
             };
         }

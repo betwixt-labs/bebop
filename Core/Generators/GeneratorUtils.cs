@@ -20,7 +20,23 @@ namespace Core.Generators
         ///  Used by the <see cref="CSharpGenerator"/> and other languages where "Base" indicates a class that can be inherited.
         /// </remarks>
         public static string BaseClassName(this UnionBranch branch) => $"Base{branch.Definition.Name.ToPascalCase()}";
-        
+        /// <summary>
+        /// Gets the formatted class name for a <see cref="Definition"/>.
+        /// </summary>
+        /// <returns>The class name.</returns>
+        /// <remarks>
+        ///  Used by the <see cref="CSharpGenerator"/> and other languages where classes are pascal case.
+        /// </remarks>
+        public static string ClassName(this Definition definition) => definition.Name.ToPascalCase();
+        /// <summary>
+        /// Gets the formatted base class name for a <see cref="Definition"/>.
+        /// </summary>
+        /// <returns>The base class name.</returns>
+        /// <remarks>
+        ///  Used by the <see cref="CSharpGenerator"/> and other languages where "Base" indicates a class that can be inherited.
+        /// </remarks>
+        public static string BaseClassName(this Definition definition) => $"Base{definition.Name.ToPascalCase()}";
+
         /// <summary>
         /// Gets the generic argument index for a branch of a union. 
         /// </summary>

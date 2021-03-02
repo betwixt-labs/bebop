@@ -43,7 +43,8 @@ namespace Core.Meta.Extensions
             {
                 return string.Empty;
             }
-            if (input.Length == 1)
+            // DO capitalize both characters on two-character acronyms.
+            if (input.Length <= 2)
             {
                 return input.ToUpper();
             }
@@ -55,6 +56,8 @@ namespace Core.Meta.Extensions
                 charArray[0] = char.ToUpperInvariant(charArray[0]);
             }
 
+            // DO capitalize only the first character of acronyms with three or more characters, except the first word.
+            // DO NOT capitalize any of the characters of any acronyms, whatever their length.
             if (charArray.IsUpper())
             {
                 // Replace all characters following the first to lowercase when the entire string is uppercase (ABC -> Abc)
