@@ -410,6 +410,11 @@ namespace Core.Generators.TypeScript
                     {
                         builder.AppendLine($"  opcode: {td.OpcodeAttribute.Value},");
                     }
+                    if (td.DiscriminatorInParent != null)
+                    {
+                        // We codegen "1 as 1", "2 as 2"... because TypeScript otherwise infers the type "number" for this field, whereas a literal type is necessary to discriminate unions.
+                        builder.AppendLine($"  discriminator: {td.DiscriminatorInParent} as {td.DiscriminatorInParent},");
+                    }
                     builder.AppendLine($"  encode(message: I{td.Name}): Uint8Array {{");
                     builder.AppendLine("    const view = BebopView.getInstance();");
                     builder.AppendLine("    view.startWriting();");

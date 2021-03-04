@@ -44,6 +44,12 @@ namespace Core.Meta
         }
 
         public BaseAttribute? OpcodeAttribute { get; }
+
+        /// <summary>
+        /// If this definition is part of a union branch, then this is its discriminator in the parent union.
+        /// Otherwise, this property is null. (This feels a bit hacky, but oh well.)
+        /// </summary>
+        public byte? DiscriminatorInParent { get; set; }
     }
 
     /// <summary>
