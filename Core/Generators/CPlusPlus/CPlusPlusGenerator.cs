@@ -78,9 +78,9 @@ namespace Core.Generators.CPlusPlus
         {
             var builder = new IndentedStringBuilder(4);
             builder.AppendLine($"const auto pos = writer.reserveMessageLength();");
-            builder.AppendLine($"const auto start = writer.length();");
             builder.AppendLine($"const uint8_t discriminator = message.variant.index() + 1;");
             builder.AppendLine($"writer.writeByte(discriminator);");
+            builder.AppendLine($"const auto start = writer.length();");
             builder.AppendLine($"switch (discriminator) {{");
             foreach (var branch in definition.Branches)
             {
@@ -204,7 +204,7 @@ namespace Core.Generators.CPlusPlus
         {
             var builder = new IndentedStringBuilder(4);
             builder.AppendLine("const auto length = reader.readMessageLength();");
-            builder.AppendLine("const auto end = reader.pointer() + length;");
+            builder.AppendLine("const auto end = reader.pointer() + length + 1;");
             builder.AppendLine("switch (reader.readByte()) {");
             foreach (var branch in definition.Branches)
             {
