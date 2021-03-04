@@ -97,12 +97,14 @@ namespace Core.Generators.TypeScript
         {
             var builder = new IndentedStringBuilder(6);
             builder.AppendLine($"const pos = view.reserveMessageLength();");
-            builder.AppendLine($"view.writeByte(message.discriminator);");
-            builder.AppendLine($"const start = view.length;");
+            builder.AppendLine($"const start = view.length + 1;");
             builder.AppendLine($"switch (message.discriminator) {{");
             foreach (var branch in definition.Branches)
             {
-                builder.AppendLine($"  case {branch.Discriminator}: {branch.Definition.Name}.encodeInto(message.value, view); break;");
+                builder.AppendLine($"  case '{branch.Definition.Name}':");
+                builder.AppendLine($"    view.writeByte({branch.Discriminator});");
+                builder.AppendLine($"    {branch.Definition.Name}.encodeInto(message.value, view);");
+                builder.AppendLine($"    break;");
             }
             builder.AppendLine("}");
             builder.AppendLine("const end = view.length;");
@@ -231,12 +233,12 @@ namespace Core.Generators.TypeScript
         {
             var builder = new IndentedStringBuilder(4);
             builder.AppendLine("const length = view.readMessageLength();");
-            builder.AppendLine("const end = view.index + length;");
+            builder.AppendLine("const end = view.index + 1 + length;");
             builder.AppendLine("switch (view.readByte()) {");
             foreach (var branch in definition.Branches)
             {
                 builder.AppendLine($"  case {branch.Discriminator}:");
-                builder.AppendLine($"    return {{ discriminator: {branch.Discriminator}, value: {branch.Definition.Name}.readFrom(view) }};");
+                builder.AppendLine($"    return {{ discriminator: '{branch.Definition.Name}', value: {branch.Definition.Name}.readFrom(view) }};");
             }
             builder.AppendLine("  default:");
             builder.AppendLine("    view.index = end;");
@@ -397,9 +399,9 @@ namespace Core.Generators.TypeScript
                     }
                     else if (definition is UnionDefinition ud)
                     {
-                        var expression = string.Join("\n  | ", ud.Branches.Select(b => $"{{ discriminator: {b.Discriminator}, value: I{b.Definition.Name} }}"));
+                        var expression = string.Join("\n  | ", ud.Branches.Select(b => $"{{ discriminator: '{b.Definition.Name}', value: I{b.Definition.Name} }}"));
                         if (string.IsNullOrWhiteSpace(expression)) expression = "never";
-                        builder.AppendLine($"type I{ud.Name}\n  = {expression};");
+                        builder.AppendLine($"export type I{ud.Name}\n  = {expression};");
                         builder.AppendLine("");
                     }
 
