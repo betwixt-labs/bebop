@@ -4,7 +4,7 @@ import * as assert from "assert";
 
 it("Union roundtrip", () => {
     const obj: IU = {
-        discriminator: 'A',
+        discriminator: 1,
         value: { a: 12345 },
     };
     const bytes = U.encode(obj);
