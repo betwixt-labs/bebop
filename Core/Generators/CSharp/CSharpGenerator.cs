@@ -692,7 +692,7 @@ namespace Core.Generators.CSharp
         {
             var builder = new IndentedStringBuilder();
             builder.AppendLine("var length = reader.ReadRecordLength();");
-            builder.AppendLine("var end = unchecked((int) (reader.Position + length));");
+            builder.AppendLine("var end = unchecked((int) (reader.Position + length + 1));");
             builder.AppendLine("switch (reader.ReadByte()) {").Indent(indentStep);
             foreach (var branch in definition.Branches)
             {
