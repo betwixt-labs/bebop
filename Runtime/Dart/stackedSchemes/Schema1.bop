@@ -1,0 +1,3 @@
+struct Schema1 {
+    string prop1;
+}
