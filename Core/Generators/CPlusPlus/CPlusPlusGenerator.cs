@@ -271,6 +271,7 @@ namespace Core.Generators.CPlusPlus
                 },
                 DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition =>
                     $"{target} = static_cast<{dt.Name}>(reader.readUint32());",
+                DefinedType dt when isOptional => $"{target}.emplace({dt.Name}::decode(reader));",
                 DefinedType dt => $"{dt.Name}::decodeInto(reader, {target});",
                 _ => throw new InvalidOperationException($"CompileDecodeField: {type}")
             };
@@ -327,6 +328,7 @@ namespace Core.Generators.CPlusPlus
         public override string Compile()
         {
             var builder = new StringBuilder();
+            builder.AppendLine("#pragma once");
             builder.AppendLine("#include <cstddef>");
             builder.AppendLine("#include <cstdint>");
             builder.AppendLine("#include <map>");
@@ -419,6 +421,12 @@ namespace Core.Generators.CPlusPlus
                         builder.AppendLine($"  static {td.Name} decode(const uint8_t* sourceBuffer) {{");
                         builder.AppendLine($"    {td.Name} result;");
                         builder.AppendLine($"    {td.Name}::decodeInto(sourceBuffer, result);");
+                        builder.AppendLine($"    return result;");
+                        builder.AppendLine("  }");
+                        builder.AppendLine("");
+                        builder.AppendLine($"  static {td.Name} decode(::bebop::Reader& reader) {{");
+                        builder.AppendLine($"    {td.Name} result;");
+                        builder.AppendLine($"    {td.Name}::decodeInto(reader, result);");
                         builder.AppendLine($"    return result;");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
