@@ -170,9 +170,7 @@ class BebopWriter {
 
   void _guaranteeBufferLength(int length) {
     if (length > _bytes.lengthInBytes) {
-      // ensure data is big enough if we deal with huge buffers
-      final data =
-          Uint8List(min(max(2 * _bytes.lengthInBytes, length), length));
+      final data = Uint8List(max(2 * _bytes.lengthInBytes, length));
       data.setAll(0, _bytes);
       _bytes = data;
       _buffer = data.buffer;
