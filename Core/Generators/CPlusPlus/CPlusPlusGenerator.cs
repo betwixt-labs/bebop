@@ -327,6 +327,7 @@ namespace Core.Generators.CPlusPlus
         public override string Compile()
         {
             var builder = new StringBuilder();
+            builder.AppendLine("#pragma once");
             builder.AppendLine("#include <cstddef>");
             builder.AppendLine("#include <cstdint>");
             builder.AppendLine("#include <map>");
