@@ -1,7 +1,12 @@
-message NestedInner {
-    1 -> int32 x;
+message InnerM { 1 -> int32 x; }
+struct InnerS { bool y; }
+
+message OuterM {
+    1 -> InnerM innerM;
+    2 -> InnerS innerS;
 }
 
-message NestedOuter {
-    1 -> NestedInner inner;
+struct OuterS {
+    InnerM innerM;
+    InnerS innerS;
 }
