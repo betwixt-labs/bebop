@@ -1,0 +1,7 @@
+message NestedInner {
+    1 -> int32 x;
+}
+
+message NestedOuter {
+    1 -> NestedInner inner;
+}
