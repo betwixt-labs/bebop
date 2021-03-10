@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.Serialization;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta.Attributes;
@@ -50,6 +51,13 @@ namespace Core.Meta
         /// Otherwise, this property is null. (This feels a bit hacky, but oh well.)
         /// </summary>
         public byte? DiscriminatorInParent { get; set; }
+
+        /// <summary>
+        /// Compute a lower bound for the size of the wire-format encoding of a packet conforming to this definition.
+        /// </summary>
+        /// <param name="schema">The schema this definition belongs to, used to resolve references to other definitions.</param>
+        /// <returns>The lower bound, in bytes.</returns>
+        public abstract int MinimalEncodedSize(ISchema schema);
     }
 
     /// <summary>
@@ -81,6 +89,12 @@ namespace Core.Meta
         /// Is this struct "read-only"? (This will mean something like: not generating setters in the codegen.)
         /// </summary>
         public bool IsReadOnly { get; }
+
+        override public int MinimalEncodedSize(ISchema schema)
+        {
+            // The encoding of a struct consists of a straightforward concatenation of the encodings of its fields.
+            return Fields.Sum(f => f.MinimalEncodedSize(schema));
+        }
     }
 
     /// <summary>
@@ -92,6 +106,12 @@ namespace Core.Meta
     {
         public MessageDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<IField> fields) : base(name, span, documentation, opcodeAttribute, fields)
         {
+        }
+
+        override public int MinimalEncodedSize(ISchema schema)
+        {
+            // If all fields are absent.
+            return 4;
         }
     }
 
@@ -127,5 +147,11 @@ namespace Core.Meta
         }
 
         public ICollection<UnionBranch> Branches { get; }
+
+        override public int MinimalEncodedSize(ISchema schema)
+        {
+            // Length + discriminator + shortest branch.
+            return 4 + 1 + (Branches.Count == 0 ? 0 : Branches.Min(b => b.Definition.MinimalEncodedSize(schema)));
+        }
     }
 }

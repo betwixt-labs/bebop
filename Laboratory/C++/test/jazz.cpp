@@ -20,9 +20,16 @@ int main() {
     printf("\n");
 
     Library l2;
-    Library::decodeInto(buf.data(), l2);
+    Library::decodeInto(buf, l2);
     printf("%s\n", l2.songs.at(g).title.value().c_str());
     printf("%d\n", l2.songs.at(g).year.value());
     printf("%s\n", l2.songs.at(g).performers.value()[0].name.c_str());
+
+    buf = std::vector<uint8_t> { 123, 123, 123, 123, 123 };
+    try {
+        Library::decodeInto(buf, l2);
+    } catch (bebop::MalformedPacketException& e) {
+        printf("Decoding a malformed packet correctly threw an exception\n");
+    }
 }
 

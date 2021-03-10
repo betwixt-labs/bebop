@@ -1,3 +1,4 @@
+#pragma once
 #include <cstddef>
 #include <cstdint>
 #include <map>
@@ -9,6 +10,7 @@
 #include "bebop.hpp"
 
 struct A1 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i1;
   uint64_t u;
   double f;
@@ -16,7 +18,7 @@ struct A1 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A1& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A1& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A1::encodeInto(message, writer);
   }
@@ -30,15 +32,29 @@ struct A1 {
     writer.writeBool(message.b);
   }
 
-  static A1 decode(const uint8_t *sourceBuffer) {
+  static A1 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A1 result;
-    A1::decodeInto(sourceBuffer, result);
+    A1::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A1& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A1 decode(std::vector<uint8_t> sourceBuffer) {
+    return A1::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A1 decode(::bebop::Reader& reader) {
+    A1 result;
+    A1::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A1& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A1::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A1& target) {
+    A1::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A1& target) {
@@ -52,6 +68,7 @@ struct A1 {
 };
 
 struct A2 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i2;
   uint64_t u;
   double f;
@@ -59,7 +76,7 @@ struct A2 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A2& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A2& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A2::encodeInto(message, writer);
   }
@@ -73,15 +90,29 @@ struct A2 {
     writer.writeBool(message.b);
   }
 
-  static A2 decode(const uint8_t *sourceBuffer) {
+  static A2 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A2 result;
-    A2::decodeInto(sourceBuffer, result);
+    A2::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A2& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A2 decode(std::vector<uint8_t> sourceBuffer) {
+    return A2::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A2 decode(::bebop::Reader& reader) {
+    A2 result;
+    A2::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A2& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A2::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A2& target) {
+    A2::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A2& target) {
@@ -95,6 +126,7 @@ struct A2 {
 };
 
 struct A3 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i3;
   uint64_t u;
   double f;
@@ -102,7 +134,7 @@ struct A3 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A3& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A3& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A3::encodeInto(message, writer);
   }
@@ -116,15 +148,29 @@ struct A3 {
     writer.writeBool(message.b);
   }
 
-  static A3 decode(const uint8_t *sourceBuffer) {
+  static A3 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A3 result;
-    A3::decodeInto(sourceBuffer, result);
+    A3::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A3& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A3 decode(std::vector<uint8_t> sourceBuffer) {
+    return A3::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A3 decode(::bebop::Reader& reader) {
+    A3 result;
+    A3::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A3& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A3::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A3& target) {
+    A3::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A3& target) {
@@ -138,6 +184,7 @@ struct A3 {
 };
 
 struct A4 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i4;
   uint64_t u;
   double f;
@@ -145,7 +192,7 @@ struct A4 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A4& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A4& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A4::encodeInto(message, writer);
   }
@@ -159,15 +206,29 @@ struct A4 {
     writer.writeBool(message.b);
   }
 
-  static A4 decode(const uint8_t *sourceBuffer) {
+  static A4 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A4 result;
-    A4::decodeInto(sourceBuffer, result);
+    A4::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A4& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A4 decode(std::vector<uint8_t> sourceBuffer) {
+    return A4::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A4 decode(::bebop::Reader& reader) {
+    A4 result;
+    A4::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A4& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A4::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A4& target) {
+    A4::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A4& target) {
@@ -181,6 +242,7 @@ struct A4 {
 };
 
 struct A5 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i5;
   uint64_t u;
   double f;
@@ -188,7 +250,7 @@ struct A5 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A5& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A5& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A5::encodeInto(message, writer);
   }
@@ -202,15 +264,29 @@ struct A5 {
     writer.writeBool(message.b);
   }
 
-  static A5 decode(const uint8_t *sourceBuffer) {
+  static A5 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A5 result;
-    A5::decodeInto(sourceBuffer, result);
+    A5::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A5& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A5 decode(std::vector<uint8_t> sourceBuffer) {
+    return A5::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A5 decode(::bebop::Reader& reader) {
+    A5 result;
+    A5::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A5& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A5::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A5& target) {
+    A5::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A5& target) {
@@ -224,6 +300,7 @@ struct A5 {
 };
 
 struct A6 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i6;
   uint64_t u;
   double f;
@@ -231,7 +308,7 @@ struct A6 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A6& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A6& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A6::encodeInto(message, writer);
   }
@@ -245,15 +322,29 @@ struct A6 {
     writer.writeBool(message.b);
   }
 
-  static A6 decode(const uint8_t *sourceBuffer) {
+  static A6 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A6 result;
-    A6::decodeInto(sourceBuffer, result);
+    A6::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A6& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A6 decode(std::vector<uint8_t> sourceBuffer) {
+    return A6::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A6 decode(::bebop::Reader& reader) {
+    A6 result;
+    A6::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A6& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A6::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A6& target) {
+    A6::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A6& target) {
@@ -267,6 +358,7 @@ struct A6 {
 };
 
 struct A7 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i7;
   uint64_t u;
   double f;
@@ -274,7 +366,7 @@ struct A7 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A7& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A7& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A7::encodeInto(message, writer);
   }
@@ -288,15 +380,29 @@ struct A7 {
     writer.writeBool(message.b);
   }
 
-  static A7 decode(const uint8_t *sourceBuffer) {
+  static A7 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A7 result;
-    A7::decodeInto(sourceBuffer, result);
+    A7::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A7& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A7 decode(std::vector<uint8_t> sourceBuffer) {
+    return A7::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A7 decode(::bebop::Reader& reader) {
+    A7 result;
+    A7::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A7& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A7::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A7& target) {
+    A7::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A7& target) {
@@ -310,6 +416,7 @@ struct A7 {
 };
 
 struct A8 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i8;
   uint64_t u;
   double f;
@@ -317,7 +424,7 @@ struct A8 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A8& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A8& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A8::encodeInto(message, writer);
   }
@@ -331,15 +438,29 @@ struct A8 {
     writer.writeBool(message.b);
   }
 
-  static A8 decode(const uint8_t *sourceBuffer) {
+  static A8 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A8 result;
-    A8::decodeInto(sourceBuffer, result);
+    A8::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A8& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A8 decode(std::vector<uint8_t> sourceBuffer) {
+    return A8::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A8 decode(::bebop::Reader& reader) {
+    A8 result;
+    A8::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A8& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A8::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A8& target) {
+    A8::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A8& target) {
@@ -353,6 +474,7 @@ struct A8 {
 };
 
 struct A9 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i9;
   uint64_t u;
   double f;
@@ -360,7 +482,7 @@ struct A9 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A9& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A9& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A9::encodeInto(message, writer);
   }
@@ -374,15 +496,29 @@ struct A9 {
     writer.writeBool(message.b);
   }
 
-  static A9 decode(const uint8_t *sourceBuffer) {
+  static A9 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A9 result;
-    A9::decodeInto(sourceBuffer, result);
+    A9::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A9& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A9 decode(std::vector<uint8_t> sourceBuffer) {
+    return A9::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A9 decode(::bebop::Reader& reader) {
+    A9 result;
+    A9::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A9& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A9::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A9& target) {
+    A9::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A9& target) {
@@ -396,6 +532,7 @@ struct A9 {
 };
 
 struct A10 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i10;
   uint64_t u;
   double f;
@@ -403,7 +540,7 @@ struct A10 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A10& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A10& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A10::encodeInto(message, writer);
   }
@@ -417,15 +554,29 @@ struct A10 {
     writer.writeBool(message.b);
   }
 
-  static A10 decode(const uint8_t *sourceBuffer) {
+  static A10 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A10 result;
-    A10::decodeInto(sourceBuffer, result);
+    A10::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A10& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A10 decode(std::vector<uint8_t> sourceBuffer) {
+    return A10::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A10 decode(::bebop::Reader& reader) {
+    A10 result;
+    A10::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A10& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A10::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A10& target) {
+    A10::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A10& target) {
@@ -439,6 +590,7 @@ struct A10 {
 };
 
 struct A11 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i11;
   uint64_t u;
   double f;
@@ -446,7 +598,7 @@ struct A11 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A11& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A11& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A11::encodeInto(message, writer);
   }
@@ -460,15 +612,29 @@ struct A11 {
     writer.writeBool(message.b);
   }
 
-  static A11 decode(const uint8_t *sourceBuffer) {
+  static A11 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A11 result;
-    A11::decodeInto(sourceBuffer, result);
+    A11::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A11& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A11 decode(std::vector<uint8_t> sourceBuffer) {
+    return A11::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A11 decode(::bebop::Reader& reader) {
+    A11 result;
+    A11::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A11& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A11::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A11& target) {
+    A11::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A11& target) {
@@ -482,6 +648,7 @@ struct A11 {
 };
 
 struct A12 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i12;
   uint64_t u;
   double f;
@@ -489,7 +656,7 @@ struct A12 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A12& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A12& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A12::encodeInto(message, writer);
   }
@@ -503,15 +670,29 @@ struct A12 {
     writer.writeBool(message.b);
   }
 
-  static A12 decode(const uint8_t *sourceBuffer) {
+  static A12 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A12 result;
-    A12::decodeInto(sourceBuffer, result);
+    A12::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A12& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A12 decode(std::vector<uint8_t> sourceBuffer) {
+    return A12::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A12 decode(::bebop::Reader& reader) {
+    A12 result;
+    A12::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A12& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A12::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A12& target) {
+    A12::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A12& target) {
@@ -525,6 +706,7 @@ struct A12 {
 };
 
 struct A13 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i13;
   uint64_t u;
   double f;
@@ -532,7 +714,7 @@ struct A13 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A13& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A13& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A13::encodeInto(message, writer);
   }
@@ -546,15 +728,29 @@ struct A13 {
     writer.writeBool(message.b);
   }
 
-  static A13 decode(const uint8_t *sourceBuffer) {
+  static A13 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A13 result;
-    A13::decodeInto(sourceBuffer, result);
+    A13::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A13& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A13 decode(std::vector<uint8_t> sourceBuffer) {
+    return A13::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A13 decode(::bebop::Reader& reader) {
+    A13 result;
+    A13::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A13& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A13::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A13& target) {
+    A13::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A13& target) {
@@ -568,6 +764,7 @@ struct A13 {
 };
 
 struct A14 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i14;
   uint64_t u;
   double f;
@@ -575,7 +772,7 @@ struct A14 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A14& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A14& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A14::encodeInto(message, writer);
   }
@@ -589,15 +786,29 @@ struct A14 {
     writer.writeBool(message.b);
   }
 
-  static A14 decode(const uint8_t *sourceBuffer) {
+  static A14 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A14 result;
-    A14::decodeInto(sourceBuffer, result);
+    A14::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A14& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A14 decode(std::vector<uint8_t> sourceBuffer) {
+    return A14::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A14 decode(::bebop::Reader& reader) {
+    A14 result;
+    A14::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A14& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A14::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A14& target) {
+    A14::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A14& target) {
@@ -611,6 +822,7 @@ struct A14 {
 };
 
 struct A15 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i15;
   uint64_t u;
   double f;
@@ -618,7 +830,7 @@ struct A15 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A15& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A15& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A15::encodeInto(message, writer);
   }
@@ -632,15 +844,29 @@ struct A15 {
     writer.writeBool(message.b);
   }
 
-  static A15 decode(const uint8_t *sourceBuffer) {
+  static A15 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A15 result;
-    A15::decodeInto(sourceBuffer, result);
+    A15::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A15& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A15 decode(std::vector<uint8_t> sourceBuffer) {
+    return A15::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A15 decode(::bebop::Reader& reader) {
+    A15 result;
+    A15::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A15& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A15::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A15& target) {
+    A15::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A15& target) {
@@ -654,6 +880,7 @@ struct A15 {
 };
 
 struct A16 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i16;
   uint64_t u;
   double f;
@@ -661,7 +888,7 @@ struct A16 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A16& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A16& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A16::encodeInto(message, writer);
   }
@@ -675,15 +902,29 @@ struct A16 {
     writer.writeBool(message.b);
   }
 
-  static A16 decode(const uint8_t *sourceBuffer) {
+  static A16 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A16 result;
-    A16::decodeInto(sourceBuffer, result);
+    A16::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A16& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A16 decode(std::vector<uint8_t> sourceBuffer) {
+    return A16::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A16 decode(::bebop::Reader& reader) {
+    A16 result;
+    A16::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A16& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A16::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A16& target) {
+    A16::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A16& target) {
@@ -697,6 +938,7 @@ struct A16 {
 };
 
 struct A17 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i17;
   uint64_t u;
   double f;
@@ -704,7 +946,7 @@ struct A17 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A17& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A17& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A17::encodeInto(message, writer);
   }
@@ -718,15 +960,29 @@ struct A17 {
     writer.writeBool(message.b);
   }
 
-  static A17 decode(const uint8_t *sourceBuffer) {
+  static A17 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A17 result;
-    A17::decodeInto(sourceBuffer, result);
+    A17::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A17& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A17 decode(std::vector<uint8_t> sourceBuffer) {
+    return A17::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A17 decode(::bebop::Reader& reader) {
+    A17 result;
+    A17::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A17& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A17::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A17& target) {
+    A17::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A17& target) {
@@ -740,6 +996,7 @@ struct A17 {
 };
 
 struct A18 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i18;
   uint64_t u;
   double f;
@@ -747,7 +1004,7 @@ struct A18 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A18& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A18& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A18::encodeInto(message, writer);
   }
@@ -761,15 +1018,29 @@ struct A18 {
     writer.writeBool(message.b);
   }
 
-  static A18 decode(const uint8_t *sourceBuffer) {
+  static A18 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A18 result;
-    A18::decodeInto(sourceBuffer, result);
+    A18::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A18& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A18 decode(std::vector<uint8_t> sourceBuffer) {
+    return A18::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A18 decode(::bebop::Reader& reader) {
+    A18 result;
+    A18::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A18& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A18::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A18& target) {
+    A18::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A18& target) {
@@ -783,6 +1054,7 @@ struct A18 {
 };
 
 struct A19 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i19;
   uint64_t u;
   double f;
@@ -790,7 +1062,7 @@ struct A19 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A19& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A19& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A19::encodeInto(message, writer);
   }
@@ -804,15 +1076,29 @@ struct A19 {
     writer.writeBool(message.b);
   }
 
-  static A19 decode(const uint8_t *sourceBuffer) {
+  static A19 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A19 result;
-    A19::decodeInto(sourceBuffer, result);
+    A19::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A19& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A19 decode(std::vector<uint8_t> sourceBuffer) {
+    return A19::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A19 decode(::bebop::Reader& reader) {
+    A19 result;
+    A19::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A19& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A19::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A19& target) {
+    A19::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A19& target) {
@@ -826,6 +1112,7 @@ struct A19 {
 };
 
 struct A20 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i20;
   uint64_t u;
   double f;
@@ -833,7 +1120,7 @@ struct A20 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A20& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A20& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A20::encodeInto(message, writer);
   }
@@ -847,15 +1134,29 @@ struct A20 {
     writer.writeBool(message.b);
   }
 
-  static A20 decode(const uint8_t *sourceBuffer) {
+  static A20 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A20 result;
-    A20::decodeInto(sourceBuffer, result);
+    A20::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A20& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A20 decode(std::vector<uint8_t> sourceBuffer) {
+    return A20::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A20 decode(::bebop::Reader& reader) {
+    A20 result;
+    A20::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A20& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A20::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A20& target) {
+    A20::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A20& target) {
@@ -869,6 +1170,7 @@ struct A20 {
 };
 
 struct A21 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i21;
   uint64_t u;
   double f;
@@ -876,7 +1178,7 @@ struct A21 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A21& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A21& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A21::encodeInto(message, writer);
   }
@@ -890,15 +1192,29 @@ struct A21 {
     writer.writeBool(message.b);
   }
 
-  static A21 decode(const uint8_t *sourceBuffer) {
+  static A21 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A21 result;
-    A21::decodeInto(sourceBuffer, result);
+    A21::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A21& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A21 decode(std::vector<uint8_t> sourceBuffer) {
+    return A21::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A21 decode(::bebop::Reader& reader) {
+    A21 result;
+    A21::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A21& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A21::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A21& target) {
+    A21::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A21& target) {
@@ -912,6 +1228,7 @@ struct A21 {
 };
 
 struct A22 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i22;
   uint64_t u;
   double f;
@@ -919,7 +1236,7 @@ struct A22 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A22& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A22& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A22::encodeInto(message, writer);
   }
@@ -933,15 +1250,29 @@ struct A22 {
     writer.writeBool(message.b);
   }
 
-  static A22 decode(const uint8_t *sourceBuffer) {
+  static A22 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A22 result;
-    A22::decodeInto(sourceBuffer, result);
+    A22::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A22& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A22 decode(std::vector<uint8_t> sourceBuffer) {
+    return A22::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A22 decode(::bebop::Reader& reader) {
+    A22 result;
+    A22::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A22& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A22::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A22& target) {
+    A22::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A22& target) {
@@ -955,6 +1286,7 @@ struct A22 {
 };
 
 struct A23 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i23;
   uint64_t u;
   double f;
@@ -962,7 +1294,7 @@ struct A23 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A23& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A23& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A23::encodeInto(message, writer);
   }
@@ -976,15 +1308,29 @@ struct A23 {
     writer.writeBool(message.b);
   }
 
-  static A23 decode(const uint8_t *sourceBuffer) {
+  static A23 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A23 result;
-    A23::decodeInto(sourceBuffer, result);
+    A23::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A23& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A23 decode(std::vector<uint8_t> sourceBuffer) {
+    return A23::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A23 decode(::bebop::Reader& reader) {
+    A23 result;
+    A23::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A23& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A23::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A23& target) {
+    A23::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A23& target) {
@@ -998,6 +1344,7 @@ struct A23 {
 };
 
 struct A24 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i24;
   uint64_t u;
   double f;
@@ -1005,7 +1352,7 @@ struct A24 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A24& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A24& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A24::encodeInto(message, writer);
   }
@@ -1019,15 +1366,29 @@ struct A24 {
     writer.writeBool(message.b);
   }
 
-  static A24 decode(const uint8_t *sourceBuffer) {
+  static A24 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A24 result;
-    A24::decodeInto(sourceBuffer, result);
+    A24::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A24& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A24 decode(std::vector<uint8_t> sourceBuffer) {
+    return A24::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A24 decode(::bebop::Reader& reader) {
+    A24 result;
+    A24::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A24& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A24::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A24& target) {
+    A24::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A24& target) {
@@ -1041,6 +1402,7 @@ struct A24 {
 };
 
 struct A25 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i25;
   uint64_t u;
   double f;
@@ -1048,7 +1410,7 @@ struct A25 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A25& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A25& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A25::encodeInto(message, writer);
   }
@@ -1062,15 +1424,29 @@ struct A25 {
     writer.writeBool(message.b);
   }
 
-  static A25 decode(const uint8_t *sourceBuffer) {
+  static A25 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A25 result;
-    A25::decodeInto(sourceBuffer, result);
+    A25::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A25& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A25 decode(std::vector<uint8_t> sourceBuffer) {
+    return A25::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A25 decode(::bebop::Reader& reader) {
+    A25 result;
+    A25::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A25& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A25::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A25& target) {
+    A25::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A25& target) {
@@ -1084,6 +1460,7 @@ struct A25 {
 };
 
 struct A26 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i26;
   uint64_t u;
   double f;
@@ -1091,7 +1468,7 @@ struct A26 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A26& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A26& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A26::encodeInto(message, writer);
   }
@@ -1105,15 +1482,29 @@ struct A26 {
     writer.writeBool(message.b);
   }
 
-  static A26 decode(const uint8_t *sourceBuffer) {
+  static A26 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A26 result;
-    A26::decodeInto(sourceBuffer, result);
+    A26::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A26& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A26 decode(std::vector<uint8_t> sourceBuffer) {
+    return A26::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A26 decode(::bebop::Reader& reader) {
+    A26 result;
+    A26::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A26& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A26::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A26& target) {
+    A26::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A26& target) {
@@ -1127,6 +1518,7 @@ struct A26 {
 };
 
 struct A27 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i27;
   uint64_t u;
   double f;
@@ -1134,7 +1526,7 @@ struct A27 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A27& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A27& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A27::encodeInto(message, writer);
   }
@@ -1148,15 +1540,29 @@ struct A27 {
     writer.writeBool(message.b);
   }
 
-  static A27 decode(const uint8_t *sourceBuffer) {
+  static A27 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A27 result;
-    A27::decodeInto(sourceBuffer, result);
+    A27::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A27& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A27 decode(std::vector<uint8_t> sourceBuffer) {
+    return A27::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A27 decode(::bebop::Reader& reader) {
+    A27 result;
+    A27::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A27& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A27::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A27& target) {
+    A27::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A27& target) {
@@ -1170,6 +1576,7 @@ struct A27 {
 };
 
 struct A28 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i28;
   uint64_t u;
   double f;
@@ -1177,7 +1584,7 @@ struct A28 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A28& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A28& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A28::encodeInto(message, writer);
   }
@@ -1191,15 +1598,29 @@ struct A28 {
     writer.writeBool(message.b);
   }
 
-  static A28 decode(const uint8_t *sourceBuffer) {
+  static A28 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A28 result;
-    A28::decodeInto(sourceBuffer, result);
+    A28::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A28& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A28 decode(std::vector<uint8_t> sourceBuffer) {
+    return A28::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A28 decode(::bebop::Reader& reader) {
+    A28 result;
+    A28::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A28& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A28::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A28& target) {
+    A28::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A28& target) {
@@ -1213,6 +1634,7 @@ struct A28 {
 };
 
 struct A29 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i29;
   uint64_t u;
   double f;
@@ -1220,7 +1642,7 @@ struct A29 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A29& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A29& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A29::encodeInto(message, writer);
   }
@@ -1234,15 +1656,29 @@ struct A29 {
     writer.writeBool(message.b);
   }
 
-  static A29 decode(const uint8_t *sourceBuffer) {
+  static A29 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A29 result;
-    A29::decodeInto(sourceBuffer, result);
+    A29::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A29& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A29 decode(std::vector<uint8_t> sourceBuffer) {
+    return A29::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A29 decode(::bebop::Reader& reader) {
+    A29 result;
+    A29::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A29& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A29::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A29& target) {
+    A29::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A29& target) {
@@ -1256,6 +1692,7 @@ struct A29 {
 };
 
 struct A30 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i30;
   uint64_t u;
   double f;
@@ -1263,7 +1700,7 @@ struct A30 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A30& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A30& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A30::encodeInto(message, writer);
   }
@@ -1277,15 +1714,29 @@ struct A30 {
     writer.writeBool(message.b);
   }
 
-  static A30 decode(const uint8_t *sourceBuffer) {
+  static A30 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A30 result;
-    A30::decodeInto(sourceBuffer, result);
+    A30::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A30& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A30 decode(std::vector<uint8_t> sourceBuffer) {
+    return A30::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A30 decode(::bebop::Reader& reader) {
+    A30 result;
+    A30::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A30& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A30::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A30& target) {
+    A30::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A30& target) {
@@ -1299,6 +1750,7 @@ struct A30 {
 };
 
 struct A31 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i31;
   uint64_t u;
   double f;
@@ -1306,7 +1758,7 @@ struct A31 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A31& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A31& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A31::encodeInto(message, writer);
   }
@@ -1320,15 +1772,29 @@ struct A31 {
     writer.writeBool(message.b);
   }
 
-  static A31 decode(const uint8_t *sourceBuffer) {
+  static A31 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A31 result;
-    A31::decodeInto(sourceBuffer, result);
+    A31::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A31& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A31 decode(std::vector<uint8_t> sourceBuffer) {
+    return A31::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A31 decode(::bebop::Reader& reader) {
+    A31 result;
+    A31::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A31& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A31::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A31& target) {
+    A31::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A31& target) {
@@ -1342,6 +1808,7 @@ struct A31 {
 };
 
 struct A32 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i32;
   uint64_t u;
   double f;
@@ -1349,7 +1816,7 @@ struct A32 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A32& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A32& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A32::encodeInto(message, writer);
   }
@@ -1363,15 +1830,29 @@ struct A32 {
     writer.writeBool(message.b);
   }
 
-  static A32 decode(const uint8_t *sourceBuffer) {
+  static A32 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A32 result;
-    A32::decodeInto(sourceBuffer, result);
+    A32::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A32& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A32 decode(std::vector<uint8_t> sourceBuffer) {
+    return A32::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A32 decode(::bebop::Reader& reader) {
+    A32 result;
+    A32::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A32& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A32::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A32& target) {
+    A32::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A32& target) {
@@ -1385,6 +1866,7 @@ struct A32 {
 };
 
 struct A33 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i33;
   uint64_t u;
   double f;
@@ -1392,7 +1874,7 @@ struct A33 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A33& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A33& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A33::encodeInto(message, writer);
   }
@@ -1406,15 +1888,29 @@ struct A33 {
     writer.writeBool(message.b);
   }
 
-  static A33 decode(const uint8_t *sourceBuffer) {
+  static A33 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A33 result;
-    A33::decodeInto(sourceBuffer, result);
+    A33::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A33& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A33 decode(std::vector<uint8_t> sourceBuffer) {
+    return A33::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A33 decode(::bebop::Reader& reader) {
+    A33 result;
+    A33::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A33& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A33::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A33& target) {
+    A33::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A33& target) {
@@ -1428,6 +1924,7 @@ struct A33 {
 };
 
 struct A34 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i34;
   uint64_t u;
   double f;
@@ -1435,7 +1932,7 @@ struct A34 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A34& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A34& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A34::encodeInto(message, writer);
   }
@@ -1449,15 +1946,29 @@ struct A34 {
     writer.writeBool(message.b);
   }
 
-  static A34 decode(const uint8_t *sourceBuffer) {
+  static A34 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A34 result;
-    A34::decodeInto(sourceBuffer, result);
+    A34::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A34& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A34 decode(std::vector<uint8_t> sourceBuffer) {
+    return A34::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A34 decode(::bebop::Reader& reader) {
+    A34 result;
+    A34::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A34& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A34::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A34& target) {
+    A34::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A34& target) {
@@ -1471,6 +1982,7 @@ struct A34 {
 };
 
 struct A35 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i35;
   uint64_t u;
   double f;
@@ -1478,7 +1990,7 @@ struct A35 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A35& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A35& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A35::encodeInto(message, writer);
   }
@@ -1492,15 +2004,29 @@ struct A35 {
     writer.writeBool(message.b);
   }
 
-  static A35 decode(const uint8_t *sourceBuffer) {
+  static A35 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A35 result;
-    A35::decodeInto(sourceBuffer, result);
+    A35::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A35& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A35 decode(std::vector<uint8_t> sourceBuffer) {
+    return A35::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A35 decode(::bebop::Reader& reader) {
+    A35 result;
+    A35::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A35& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A35::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A35& target) {
+    A35::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A35& target) {
@@ -1514,6 +2040,7 @@ struct A35 {
 };
 
 struct A36 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i36;
   uint64_t u;
   double f;
@@ -1521,7 +2048,7 @@ struct A36 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A36& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A36& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A36::encodeInto(message, writer);
   }
@@ -1535,15 +2062,29 @@ struct A36 {
     writer.writeBool(message.b);
   }
 
-  static A36 decode(const uint8_t *sourceBuffer) {
+  static A36 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A36 result;
-    A36::decodeInto(sourceBuffer, result);
+    A36::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A36& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A36 decode(std::vector<uint8_t> sourceBuffer) {
+    return A36::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A36 decode(::bebop::Reader& reader) {
+    A36 result;
+    A36::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A36& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A36::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A36& target) {
+    A36::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A36& target) {
@@ -1557,6 +2098,7 @@ struct A36 {
 };
 
 struct A37 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i37;
   uint64_t u;
   double f;
@@ -1564,7 +2106,7 @@ struct A37 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A37& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A37& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A37::encodeInto(message, writer);
   }
@@ -1578,15 +2120,29 @@ struct A37 {
     writer.writeBool(message.b);
   }
 
-  static A37 decode(const uint8_t *sourceBuffer) {
+  static A37 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A37 result;
-    A37::decodeInto(sourceBuffer, result);
+    A37::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A37& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A37 decode(std::vector<uint8_t> sourceBuffer) {
+    return A37::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A37 decode(::bebop::Reader& reader) {
+    A37 result;
+    A37::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A37& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A37::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A37& target) {
+    A37::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A37& target) {
@@ -1600,6 +2156,7 @@ struct A37 {
 };
 
 struct A38 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i38;
   uint64_t u;
   double f;
@@ -1607,7 +2164,7 @@ struct A38 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A38& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A38& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A38::encodeInto(message, writer);
   }
@@ -1621,15 +2178,29 @@ struct A38 {
     writer.writeBool(message.b);
   }
 
-  static A38 decode(const uint8_t *sourceBuffer) {
+  static A38 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A38 result;
-    A38::decodeInto(sourceBuffer, result);
+    A38::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A38& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A38 decode(std::vector<uint8_t> sourceBuffer) {
+    return A38::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A38 decode(::bebop::Reader& reader) {
+    A38 result;
+    A38::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A38& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A38::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A38& target) {
+    A38::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A38& target) {
@@ -1643,6 +2214,7 @@ struct A38 {
 };
 
 struct A39 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i39;
   uint64_t u;
   double f;
@@ -1650,7 +2222,7 @@ struct A39 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A39& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A39& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A39::encodeInto(message, writer);
   }
@@ -1664,15 +2236,29 @@ struct A39 {
     writer.writeBool(message.b);
   }
 
-  static A39 decode(const uint8_t *sourceBuffer) {
+  static A39 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A39 result;
-    A39::decodeInto(sourceBuffer, result);
+    A39::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A39& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A39 decode(std::vector<uint8_t> sourceBuffer) {
+    return A39::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A39 decode(::bebop::Reader& reader) {
+    A39 result;
+    A39::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A39& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A39::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A39& target) {
+    A39::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A39& target) {
@@ -1686,6 +2272,7 @@ struct A39 {
 };
 
 struct A40 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i40;
   uint64_t u;
   double f;
@@ -1693,7 +2280,7 @@ struct A40 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A40& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A40& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A40::encodeInto(message, writer);
   }
@@ -1707,15 +2294,29 @@ struct A40 {
     writer.writeBool(message.b);
   }
 
-  static A40 decode(const uint8_t *sourceBuffer) {
+  static A40 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A40 result;
-    A40::decodeInto(sourceBuffer, result);
+    A40::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A40& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A40 decode(std::vector<uint8_t> sourceBuffer) {
+    return A40::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A40 decode(::bebop::Reader& reader) {
+    A40 result;
+    A40::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A40& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A40::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A40& target) {
+    A40::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A40& target) {
@@ -1729,6 +2330,7 @@ struct A40 {
 };
 
 struct A41 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i41;
   uint64_t u;
   double f;
@@ -1736,7 +2338,7 @@ struct A41 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A41& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A41& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A41::encodeInto(message, writer);
   }
@@ -1750,15 +2352,29 @@ struct A41 {
     writer.writeBool(message.b);
   }
 
-  static A41 decode(const uint8_t *sourceBuffer) {
+  static A41 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A41 result;
-    A41::decodeInto(sourceBuffer, result);
+    A41::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A41& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A41 decode(std::vector<uint8_t> sourceBuffer) {
+    return A41::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A41 decode(::bebop::Reader& reader) {
+    A41 result;
+    A41::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A41& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A41::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A41& target) {
+    A41::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A41& target) {
@@ -1772,6 +2388,7 @@ struct A41 {
 };
 
 struct A42 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i42;
   uint64_t u;
   double f;
@@ -1779,7 +2396,7 @@ struct A42 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A42& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A42& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A42::encodeInto(message, writer);
   }
@@ -1793,15 +2410,29 @@ struct A42 {
     writer.writeBool(message.b);
   }
 
-  static A42 decode(const uint8_t *sourceBuffer) {
+  static A42 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A42 result;
-    A42::decodeInto(sourceBuffer, result);
+    A42::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A42& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A42 decode(std::vector<uint8_t> sourceBuffer) {
+    return A42::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A42 decode(::bebop::Reader& reader) {
+    A42 result;
+    A42::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A42& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A42::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A42& target) {
+    A42::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A42& target) {
@@ -1815,6 +2446,7 @@ struct A42 {
 };
 
 struct A43 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i43;
   uint64_t u;
   double f;
@@ -1822,7 +2454,7 @@ struct A43 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A43& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A43& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A43::encodeInto(message, writer);
   }
@@ -1836,15 +2468,29 @@ struct A43 {
     writer.writeBool(message.b);
   }
 
-  static A43 decode(const uint8_t *sourceBuffer) {
+  static A43 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A43 result;
-    A43::decodeInto(sourceBuffer, result);
+    A43::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A43& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A43 decode(std::vector<uint8_t> sourceBuffer) {
+    return A43::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A43 decode(::bebop::Reader& reader) {
+    A43 result;
+    A43::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A43& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A43::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A43& target) {
+    A43::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A43& target) {
@@ -1858,6 +2504,7 @@ struct A43 {
 };
 
 struct A44 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i44;
   uint64_t u;
   double f;
@@ -1865,7 +2512,7 @@ struct A44 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A44& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A44& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A44::encodeInto(message, writer);
   }
@@ -1879,15 +2526,29 @@ struct A44 {
     writer.writeBool(message.b);
   }
 
-  static A44 decode(const uint8_t *sourceBuffer) {
+  static A44 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A44 result;
-    A44::decodeInto(sourceBuffer, result);
+    A44::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A44& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A44 decode(std::vector<uint8_t> sourceBuffer) {
+    return A44::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A44 decode(::bebop::Reader& reader) {
+    A44 result;
+    A44::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A44& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A44::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A44& target) {
+    A44::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A44& target) {
@@ -1901,6 +2562,7 @@ struct A44 {
 };
 
 struct A45 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i45;
   uint64_t u;
   double f;
@@ -1908,7 +2570,7 @@ struct A45 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A45& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A45& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A45::encodeInto(message, writer);
   }
@@ -1922,15 +2584,29 @@ struct A45 {
     writer.writeBool(message.b);
   }
 
-  static A45 decode(const uint8_t *sourceBuffer) {
+  static A45 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A45 result;
-    A45::decodeInto(sourceBuffer, result);
+    A45::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A45& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A45 decode(std::vector<uint8_t> sourceBuffer) {
+    return A45::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A45 decode(::bebop::Reader& reader) {
+    A45 result;
+    A45::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A45& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A45::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A45& target) {
+    A45::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A45& target) {
@@ -1944,6 +2620,7 @@ struct A45 {
 };
 
 struct A46 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i46;
   uint64_t u;
   double f;
@@ -1951,7 +2628,7 @@ struct A46 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A46& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A46& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A46::encodeInto(message, writer);
   }
@@ -1965,15 +2642,29 @@ struct A46 {
     writer.writeBool(message.b);
   }
 
-  static A46 decode(const uint8_t *sourceBuffer) {
+  static A46 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A46 result;
-    A46::decodeInto(sourceBuffer, result);
+    A46::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A46& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A46 decode(std::vector<uint8_t> sourceBuffer) {
+    return A46::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A46 decode(::bebop::Reader& reader) {
+    A46 result;
+    A46::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A46& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A46::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A46& target) {
+    A46::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A46& target) {
@@ -1987,6 +2678,7 @@ struct A46 {
 };
 
 struct A47 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i47;
   uint64_t u;
   double f;
@@ -1994,7 +2686,7 @@ struct A47 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A47& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A47& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A47::encodeInto(message, writer);
   }
@@ -2008,15 +2700,29 @@ struct A47 {
     writer.writeBool(message.b);
   }
 
-  static A47 decode(const uint8_t *sourceBuffer) {
+  static A47 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A47 result;
-    A47::decodeInto(sourceBuffer, result);
+    A47::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A47& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A47 decode(std::vector<uint8_t> sourceBuffer) {
+    return A47::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A47 decode(::bebop::Reader& reader) {
+    A47 result;
+    A47::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A47& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A47::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A47& target) {
+    A47::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A47& target) {
@@ -2030,6 +2736,7 @@ struct A47 {
 };
 
 struct A48 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i48;
   uint64_t u;
   double f;
@@ -2037,7 +2744,7 @@ struct A48 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A48& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A48& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A48::encodeInto(message, writer);
   }
@@ -2051,15 +2758,29 @@ struct A48 {
     writer.writeBool(message.b);
   }
 
-  static A48 decode(const uint8_t *sourceBuffer) {
+  static A48 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A48 result;
-    A48::decodeInto(sourceBuffer, result);
+    A48::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A48& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A48 decode(std::vector<uint8_t> sourceBuffer) {
+    return A48::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A48 decode(::bebop::Reader& reader) {
+    A48 result;
+    A48::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A48& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A48::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A48& target) {
+    A48::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A48& target) {
@@ -2073,6 +2794,7 @@ struct A48 {
 };
 
 struct A49 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i49;
   uint64_t u;
   double f;
@@ -2080,7 +2802,7 @@ struct A49 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A49& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A49& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A49::encodeInto(message, writer);
   }
@@ -2094,15 +2816,29 @@ struct A49 {
     writer.writeBool(message.b);
   }
 
-  static A49 decode(const uint8_t *sourceBuffer) {
+  static A49 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A49 result;
-    A49::decodeInto(sourceBuffer, result);
+    A49::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A49& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A49 decode(std::vector<uint8_t> sourceBuffer) {
+    return A49::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A49 decode(::bebop::Reader& reader) {
+    A49 result;
+    A49::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A49& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A49::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A49& target) {
+    A49::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A49& target) {
@@ -2116,6 +2852,7 @@ struct A49 {
 };
 
 struct A50 {
+  static const size_t minimalEncodedSize = 41;
   int32_t i50;
   uint64_t u;
   double f;
@@ -2123,7 +2860,7 @@ struct A50 {
   ::bebop::Guid g;
   bool b;
 
-  static void encodeInto(const A50& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A50& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A50::encodeInto(message, writer);
   }
@@ -2137,15 +2874,29 @@ struct A50 {
     writer.writeBool(message.b);
   }
 
-  static A50 decode(const uint8_t *sourceBuffer) {
+  static A50 decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A50 result;
-    A50::decodeInto(sourceBuffer, result);
+    A50::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A50& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A50 decode(std::vector<uint8_t> sourceBuffer) {
+    return A50::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A50 decode(::bebop::Reader& reader) {
+    A50 result;
+    A50::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A50& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A50::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A50& target) {
+    A50::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A50& target) {
@@ -2160,17 +2911,18 @@ struct A50 {
 
 /// Option A: put the whole thing in a union.
 struct U {
+  static const size_t minimalEncodedSize = 46;
   std::variant<A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, A22, A23, A24, A25, A26, A27, A28, A29, A30, A31, A32, A33, A34, A35, A36, A37, A38, A39, A40, A41, A42, A43, A44, A45, A46, A47, A48, A49, A50> variant;
-  static void encodeInto(const U& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const U& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     U::encodeInto(message, writer);
   }
 
   static void encodeInto(const U& message, ::bebop::Writer& writer) {
     const auto pos = writer.reserveMessageLength();
-    const auto start = writer.length();
     const uint8_t discriminator = message.variant.index() + 1;
     writer.writeByte(discriminator);
+    const auto start = writer.length();
     switch (discriminator) {
      case 1:
       A1::encodeInto(std::get<0>(message.variant), writer);
@@ -2327,20 +3079,34 @@ struct U {
     writer.fillMessageLength(pos, end - start);
   }
 
-  static U decode(const uint8_t *sourceBuffer) {
+  static U decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     U result;
-    U::decodeInto(sourceBuffer, result);
+    U::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, U& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static U decode(std::vector<uint8_t> sourceBuffer) {
+    return U::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static U decode(::bebop::Reader& reader) {
+    U result;
+    U::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, U& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     U::decodeInto(reader, target);
   }
 
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, U& target) {
+    U::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
+  }
+
   static void decodeInto(::bebop::Reader& reader, U& target) {
-    const auto length = reader.readMessageLength();
-    const auto end = reader.pointer() + length;
+    const auto length = reader.readLengthPrefix();
+    const auto end = reader.pointer() + length + 1;
     switch (reader.readByte()) {
       case 1:
         target.variant.emplace<0>();
@@ -2550,11 +3316,12 @@ struct U {
 };
 
 struct A {
+  static const size_t minimalEncodedSize = 54;
   uint32_t containerOpcode;
   uint32_t protocolVersion;
   U u;
 
-  static void encodeInto(const A& message, std::vector<uint8_t> &targetBuffer) {
+  static void encodeInto(const A& message, std::vector<uint8_t>& targetBuffer) {
     ::bebop::Writer writer{targetBuffer};
     A::encodeInto(message, writer);
   }
@@ -2565,15 +3332,29 @@ struct A {
     U::encodeInto(message.u, writer);
   }
 
-  static A decode(const uint8_t *sourceBuffer) {
+  static A decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     A result;
-    A::decodeInto(sourceBuffer, result);
+    A::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
   }
 
-  static void decodeInto(const uint8_t *sourceBuffer, A& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static A decode(std::vector<uint8_t> sourceBuffer) {
+    return A::decode(sourceBuffer.data(), sourceBuffer.size());
+  }
+
+  static A decode(::bebop::Reader& reader) {
+    A result;
+    A::decodeInto(reader, result);
+    return result;
+  }
+
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, A& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     A::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, A& target) {
+    A::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, A& target) {

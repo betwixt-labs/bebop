@@ -7,7 +7,8 @@
 #include <cstdio>
 
 int main() {
-    bebop::BebopWriter w;
+    std::vector<uint8_t> buffer;
+    bebop::Writer w { buffer };
     const std::string myGuid = "04328465-4290-4bf2-896b-5d05a9084e9b";
     w.writeGuid(bebop::Guid::fromString(myGuid));
     w.writeInt64(12345);
@@ -17,9 +18,7 @@ int main() {
     size_t p = w.reserveMessageLength();
     w.fillMessageLength(p, 0x1234);
 
-    auto buffer = *w.buffer();
-    
-    bebop::BebopReader r { buffer.data() };
+    bebop::Reader r { buffer.data(), buffer.size() };
     std::cout << "guid roundtrip: " << (r.readGuid().toString() == myGuid ? "ok" : "fail") << std::endl;
     std::cout << "int roundtrip: " << (r.readInt64() == 12345 ? "ok" : "fail") << std::endl;
     std::cout << "float roundtrip: " << (fabs(r.readFloat32() - 12.345) < 0.000001 ? "ok" : "fail") << std::endl;

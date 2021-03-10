@@ -34,9 +34,9 @@ int main()
             std::vector<uint8_t> buf;
             B::encodeInto(b, buf);
             B b2;
-            B::decodeInto(buf.data(), b2);
+            B::decodeInto(buf, b2);
             B14 inner2;
-            B14::decodeInto(b2.encodedData.data(), inner2);
+            B14::decodeInto(b2.encodedData, inner2);
             sum += inner2.i14;
         }
         auto t2 = high_resolution_clock::now();

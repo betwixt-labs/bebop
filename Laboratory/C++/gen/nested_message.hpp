@@ -10,6 +10,7 @@
 #include "bebop.hpp"
 
 struct InnerM {
+  static const size_t minimalEncodedSize = 4;
   std::optional<int32_t> x;
 
   static void encodeInto(const InnerM& message, std::vector<uint8_t>& targetBuffer) {
@@ -29,10 +30,14 @@ struct InnerM {
     writer.fillMessageLength(pos, end - start);
   }
 
-  static InnerM decode(const uint8_t* sourceBuffer) {
+  static InnerM decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     InnerM result;
-    InnerM::decodeInto(sourceBuffer, result);
+    InnerM::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
+  }
+
+  static InnerM decode(std::vector<uint8_t> sourceBuffer) {
+    return InnerM::decode(sourceBuffer.data(), sourceBuffer.size());
   }
 
   static InnerM decode(::bebop::Reader& reader) {
@@ -41,13 +46,17 @@ struct InnerM {
     return result;
   }
 
-  static void decodeInto(const uint8_t* sourceBuffer, InnerM& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, InnerM& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     InnerM::decodeInto(reader, target);
   }
 
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, InnerM& target) {
+    InnerM::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
+  }
+
   static void decodeInto(::bebop::Reader& reader, InnerM& target) {
-    const auto length = reader.readMessageLength();
+    const auto length = reader.readLengthPrefix();
     const auto end = reader.pointer() + length;
     while (true) {
       switch (reader.readByte()) {
@@ -65,6 +74,7 @@ struct InnerM {
 };
 
 struct InnerS {
+  static const size_t minimalEncodedSize = 1;
   bool y;
 
   static void encodeInto(const InnerS& message, std::vector<uint8_t>& targetBuffer) {
@@ -76,10 +86,14 @@ struct InnerS {
     writer.writeBool(message.y);
   }
 
-  static InnerS decode(const uint8_t* sourceBuffer) {
+  static InnerS decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     InnerS result;
-    InnerS::decodeInto(sourceBuffer, result);
+    InnerS::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
+  }
+
+  static InnerS decode(std::vector<uint8_t> sourceBuffer) {
+    return InnerS::decode(sourceBuffer.data(), sourceBuffer.size());
   }
 
   static InnerS decode(::bebop::Reader& reader) {
@@ -88,9 +102,13 @@ struct InnerS {
     return result;
   }
 
-  static void decodeInto(const uint8_t* sourceBuffer, InnerS& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, InnerS& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     InnerS::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, InnerS& target) {
+    InnerS::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, InnerS& target) {
@@ -99,6 +117,7 @@ struct InnerS {
 };
 
 struct OuterM {
+  static const size_t minimalEncodedSize = 4;
   std::optional<InnerM> innerM;
   std::optional<InnerS> innerS;
 
@@ -123,10 +142,14 @@ struct OuterM {
     writer.fillMessageLength(pos, end - start);
   }
 
-  static OuterM decode(const uint8_t* sourceBuffer) {
+  static OuterM decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     OuterM result;
-    OuterM::decodeInto(sourceBuffer, result);
+    OuterM::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
+  }
+
+  static OuterM decode(std::vector<uint8_t> sourceBuffer) {
+    return OuterM::decode(sourceBuffer.data(), sourceBuffer.size());
   }
 
   static OuterM decode(::bebop::Reader& reader) {
@@ -135,13 +158,17 @@ struct OuterM {
     return result;
   }
 
-  static void decodeInto(const uint8_t* sourceBuffer, OuterM& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, OuterM& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     OuterM::decodeInto(reader, target);
   }
 
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, OuterM& target) {
+    OuterM::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
+  }
+
   static void decodeInto(::bebop::Reader& reader, OuterM& target) {
-    const auto length = reader.readMessageLength();
+    const auto length = reader.readLengthPrefix();
     const auto end = reader.pointer() + length;
     while (true) {
       switch (reader.readByte()) {
@@ -162,6 +189,7 @@ struct OuterM {
 };
 
 struct OuterS {
+  static const size_t minimalEncodedSize = 5;
   InnerM innerM;
   InnerS innerS;
 
@@ -175,10 +203,14 @@ struct OuterS {
     InnerS::encodeInto(message.innerS, writer);
   }
 
-  static OuterS decode(const uint8_t* sourceBuffer) {
+  static OuterS decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {
     OuterS result;
-    OuterS::decodeInto(sourceBuffer, result);
+    OuterS::decodeInto(sourceBuffer, sourceBufferSize, result);
     return result;
+  }
+
+  static OuterS decode(std::vector<uint8_t> sourceBuffer) {
+    return OuterS::decode(sourceBuffer.data(), sourceBuffer.size());
   }
 
   static OuterS decode(::bebop::Reader& reader) {
@@ -187,9 +219,13 @@ struct OuterS {
     return result;
   }
 
-  static void decodeInto(const uint8_t* sourceBuffer, OuterS& target) {
-    ::bebop::Reader reader{sourceBuffer};
+  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, OuterS& target) {
+    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};
     OuterS::decodeInto(reader, target);
+  }
+
+  static void decodeInto(std::vector<uint8_t> sourceBuffer, OuterS& target) {
+    OuterS::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);
   }
 
   static void decodeInto(::bebop::Reader& reader, OuterS& target) {
