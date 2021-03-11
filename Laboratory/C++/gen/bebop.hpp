@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <exception>
 #include <memory>
 #include <string>
 #include <vector>
@@ -26,6 +27,12 @@ namespace {
 enum class GuidStyle {
     Dashes,
     NoDashes,
+};
+
+struct MalformedPacketException : public std::exception {
+    const char* what () const throw () {
+        return "malformed Bebop packet";
+    }
 };
 
 #pragma pack(push, 1)
@@ -171,8 +178,9 @@ private:
 
 class Reader {
     const uint8_t* m_pointer;
+    const uint8_t* m_end;
 public:
-    Reader(const uint8_t* buffer) : m_pointer(buffer) {}
+    Reader(const uint8_t* buffer, size_t bufferLength) : m_pointer(buffer), m_end(buffer + bufferLength) {}
     Reader(Reader const&) = delete;
     void operator=(Reader const&) = delete;
 
@@ -181,13 +189,17 @@ public:
 
     void skip(size_t amount) { m_pointer += amount; }
 
-    uint8_t readByte() { return *m_pointer++; }
+    uint8_t readByte() {
+        if (m_pointer + sizeof(uint8_t) > m_end) throw MalformedPacketException();
+        return *m_pointer++;
+    }
 
     uint16_t readUint16() {
+        if (m_pointer + sizeof(uint16_t) > m_end) throw MalformedPacketException();
 #if BEBOP_ASSUME_LITTLE_ENDIAN
         uint16_t v;
         memcpy(&v, m_pointer, sizeof(uint16_t));
-        m_pointer += 2;
+        m_pointer += sizeof(uint16_t);
         return v;
 #else
         const uint16_t b0 = *m_pointer++;
@@ -197,10 +209,11 @@ public:
     }
 
     uint32_t readUint32() {
+        if (m_pointer + sizeof(uint32_t) > m_end) throw MalformedPacketException();
 #if BEBOP_ASSUME_LITTLE_ENDIAN
         uint32_t v;
         memcpy(&v, m_pointer, sizeof(uint32_t));
-        m_pointer += 4;
+        m_pointer += sizeof(uint32_t);
         return v;
 #else
         const uint32_t b0 = *m_pointer++;
@@ -212,10 +225,11 @@ public:
     }
 
     uint64_t readUint64() {
+        if (m_pointer + sizeof(uint64_t) > m_end) throw MalformedPacketException();
 #if BEBOP_ASSUME_LITTLE_ENDIAN
         uint64_t v;
         memcpy(&v, m_pointer, sizeof(uint64_t));
-        m_pointer += 8;
+        m_pointer += sizeof(uint64_t);
         return v;
 #else
         const uint64_t b0 = *m_pointer++;
@@ -235,6 +249,7 @@ public:
     int64_t readInt64() { return static_cast<uint64_t>(readUint64()); }
 
     float readFloat32() {
+        if (m_pointer + sizeof(float) > m_end) throw MalformedPacketException();
         float f;
         const uint32_t v = readUint32();
         memcpy(&f, &v, sizeof(float));
@@ -242,6 +257,7 @@ public:
     }
 
     double readFloat64() {
+        if (m_pointer + sizeof(double) > m_end) throw MalformedPacketException();
         double f;
         const uint64_t v = readUint64();
         memcpy(&f, &v, sizeof(double));
@@ -252,23 +268,32 @@ public:
         return readByte() != 0;
     }
 
-    std::vector<uint8_t> readBytes() {
+    uint32_t readLengthPrefix() {
         const auto length = readUint32();
+        if (m_pointer + length > m_end) {
+            throw MalformedPacketException();
+        }
+        return length;
+    }
+
+    std::vector<uint8_t> readBytes() {
+        const auto length = readLengthPrefix();
         std::vector<uint8_t> v(m_pointer, m_pointer + length);
         m_pointer += length;
         return v;
     }
 
     std::string readString() {
-        const auto length = readUint32();
+        const auto length = readLengthPrefix();
         std::string v(m_pointer, m_pointer + length);
         m_pointer += length;
         return v;
     }
 
     Guid readGuid() {
+        if (m_pointer + sizeof(Guid) > m_end) throw MalformedPacketException();
         Guid guid { m_pointer };
-        m_pointer += 16;
+        m_pointer += sizeof(Guid);
         return guid;
     }
 
@@ -277,8 +302,6 @@ public:
         const uint64_t ticks = readUint64() & 0x3fffffffffffffff;
         return TickDuration(ticks - ticksBetweenEpochs);
     }
-
-    uint32_t readMessageLength() { return readUint32(); }
 };
 
 class Writer {
@@ -399,5 +422,13 @@ public:
 #endif
     }
 };
+
+static_assert(sizeof(uint8_t) == 1, "sizeof(uint8_t) should be 1");
+static_assert(sizeof(uint16_t) == 2, "sizeof(uint16_t) should be 2");
+static_assert(sizeof(uint32_t) == 4, "sizeof(uint32_t) should be 4");
+static_assert(sizeof(uint64_t) == 8, "sizeof(uint64_t) should be 8");
+static_assert(sizeof(float) == 4, "sizeof(float) should be 4");
+static_assert(sizeof(double) == 8, "sizeof(double) should be 8");
+static_assert(sizeof(Guid) == 16, "sizeof(Guid) should be 16");
 
 } // namespace bebop

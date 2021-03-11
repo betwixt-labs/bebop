@@ -164,7 +164,7 @@ namespace Core.Generators.CPlusPlus
         private string CompileDecodeMessage(MessageDefinition definition)
         {
             var builder = new IndentedStringBuilder(4);
-            builder.AppendLine("const auto length = reader.readMessageLength();");
+            builder.AppendLine("const auto length = reader.readLengthPrefix();");
             builder.AppendLine("const auto end = reader.pointer() + length;");
             builder.AppendLine("while (true) {");
             builder.Indent(2);
@@ -203,7 +203,7 @@ namespace Core.Generators.CPlusPlus
         private string CompileDecodeUnion(UnionDefinition definition)
         {
             var builder = new IndentedStringBuilder(4);
-            builder.AppendLine("const auto length = reader.readMessageLength();");
+            builder.AppendLine("const auto length = reader.readLengthPrefix();");
             builder.AppendLine("const auto end = reader.pointer() + length + 1;");
             builder.AppendLine("switch (reader.readByte()) {");
             foreach (var branch in definition.Branches)
@@ -237,7 +237,7 @@ namespace Core.Generators.CPlusPlus
                     $"{tab}{target}{dot}reserve(length{depth});" + nl +
                     $"{tab}for (size_t {i} = 0; {i} < length{depth}; {i}++) {{" + nl +
                     $"{tab}{tab}{TypeName(at.MemberType)} x{depth};" + nl +
-                    $"{tab}{tab}{CompileDecodeField(at.MemberType, $"x{depth}", depth + 1, indentDepth + 2, isOptional)}" + nl +
+                    $"{tab}{tab}{CompileDecodeField(at.MemberType, $"x{depth}", depth + 1, indentDepth + 2, false)}" + nl +
                     $"{tab}{tab}{target}{dot}push_back(x{depth});" + nl +
                     $"{tab}}}" + nl +
                     $"}}",
@@ -247,9 +247,9 @@ namespace Core.Generators.CPlusPlus
                     $"{tab}{target} = {TypeName(mt)}();" + nl +
                     $"{tab}for (size_t {i} = 0; {i} < length{depth}; {i}++) {{" + nl +
                     $"{tab}{tab}{TypeName(mt.KeyType)} k{depth};" + nl +
-                    $"{tab}{tab}{CompileDecodeField(mt.KeyType, $"k{depth}", depth + 1, indentDepth + 2, isOptional)}" + nl +
+                    $"{tab}{tab}{CompileDecodeField(mt.KeyType, $"k{depth}", depth + 1, indentDepth + 2, false)}" + nl +
                     $"{tab}{tab}{TypeName(mt.ValueType)}& v{depth} = {target}{dot}operator[](k{depth});" + nl +
-                    $"{tab}{tab}{CompileDecodeField(mt.ValueType, $"v{depth}", depth + 1, indentDepth + 2, isOptional)}" + nl +
+                    $"{tab}{tab}{CompileDecodeField(mt.ValueType, $"v{depth}", depth + 1, indentDepth + 2, false)}" + nl +
                     $"{tab}}}" + nl +
                     $"}}",
                 ScalarType st => st.BaseType switch
@@ -374,6 +374,7 @@ namespace Core.Generators.CPlusPlus
                         break;
                     case TopLevelDefinition td:
                         builder.AppendLine($"struct {td.Name} {{");
+                        builder.AppendLine($"  static const size_t minimalEncodedSize = {td.MinimalEncodedSize(Schema)};");
                         if (td.OpcodeAttribute != null)
                         {
                             builder.AppendLine($"  static const uint32_t opcode = {td.OpcodeAttribute.Value};");
@@ -418,10 +419,14 @@ namespace Core.Generators.CPlusPlus
                         builder.Append(CompileEncode(td));
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  static {td.Name} decode(const uint8_t* sourceBuffer) {{");
+                        builder.AppendLine($"  static {td.Name} decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {{");
                         builder.AppendLine($"    {td.Name} result;");
-                        builder.AppendLine($"    {td.Name}::decodeInto(sourceBuffer, result);");
+                        builder.AppendLine($"    {td.Name}::decodeInto(sourceBuffer, sourceBufferSize, result);");
                         builder.AppendLine($"    return result;");
+                        builder.AppendLine("  }");
+                        builder.AppendLine("");
+                        builder.AppendLine($"  static {td.Name} decode(std::vector<uint8_t> sourceBuffer) {{");
+                        builder.AppendLine($"    return {td.Name}::decode(sourceBuffer.data(), sourceBuffer.size());");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
                         builder.AppendLine($"  static {td.Name} decode(::bebop::Reader& reader) {{");
@@ -430,9 +435,13 @@ namespace Core.Generators.CPlusPlus
                         builder.AppendLine($"    return result;");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  static void decodeInto(const uint8_t* sourceBuffer, {td.Name}& target) {{");
-                        builder.AppendLine("    ::bebop::Reader reader{sourceBuffer};");
+                        builder.AppendLine($"  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, {td.Name}& target) {{");
+                        builder.AppendLine("    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};");
                         builder.AppendLine($"    {td.Name}::decodeInto(reader, target);");
+                        builder.AppendLine("  }");
+                        builder.AppendLine("");
+                        builder.AppendLine($"  static void decodeInto(std::vector<uint8_t> sourceBuffer, {td.Name}& target) {{");
+                        builder.AppendLine($"    {td.Name}::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
                         builder.AppendLine($"  static void decodeInto(::bebop::Reader& reader, {td.Name}& target) {{");

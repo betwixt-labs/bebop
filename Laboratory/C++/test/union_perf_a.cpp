@@ -35,7 +35,7 @@ int main()
             std::vector<uint8_t> buf;
             A::encodeInto(a, buf);
             A a2;
-            A::decodeInto(buf.data(), a2);
+            A::decodeInto(buf, a2);
             sum += std::get<A14>(a2.u.variant).i14;
         }
         auto t2 = high_resolution_clock::now();

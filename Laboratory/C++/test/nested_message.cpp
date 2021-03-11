@@ -10,7 +10,7 @@ int main()
         OuterM::encodeInto(o, vec);
 
         OuterM o2;
-        OuterM::decodeInto(vec.data(), o2);
+        OuterM::decodeInto(vec, o2);
 
         std::cout << (o2.innerM.value().x.value()) << std::endl;
         std::cout << (o2.innerS.value().y) << std::endl;
@@ -22,7 +22,7 @@ int main()
         OuterS::encodeInto(o, vec);
 
         OuterS o2;
-        OuterS::decodeInto(vec.data(), o2);
+        OuterS::decodeInto(vec, o2);
 
         std::cout << (o2.innerM.x.value()) << std::endl;
         std::cout << (o2.innerS.y) << std::endl;
