@@ -423,6 +423,33 @@ public:
     }
 };
 
+class ByteCounter {
+    size_t m_bytes;
+public:
+    ByteCounter() : m_bytes(0) {}
+    ByteCounter(ByteCounter const&) = delete;
+    void operator=(ByteCounter const&) = delete;
+
+    size_t length() { return m_bytes; }
+
+    void writeByte(uint8_t value) { m_bytes += sizeof(value); }
+    void writeUint16(uint16_t value) { m_bytes += sizeof(value); }
+    void writeUint32(uint32_t value) { m_bytes += sizeof(value); }
+    void writeUint64(uint64_t value) { m_bytes += sizeof(value); }
+    void writeInt16(int16_t value) { m_bytes += sizeof(value); }
+    void writeInt32(int32_t value) { m_bytes += sizeof(value); }
+    void writeInt64(int64_t value) { m_bytes += sizeof(value); }
+    void writeFloat32(float value) { m_bytes += sizeof(value); }
+    void writeFloat64(double value) { m_bytes += sizeof(value); }
+    void writeBool(bool value) { writeByte(value); }
+    void writeBytes(std::vector<uint8_t> value) { m_bytes += sizeof(uint32_t) + value.size(); }
+    void writeString(std::string value) { m_bytes += sizeof(uint32_t) + value.size(); }
+    void writeGuid(Guid value) { m_bytes += sizeof(value); }
+    void writeDate(TickDuration duration) { m_bytes += sizeof(uint64_t); }
+    size_t reserveMessageLength() { m_bytes += sizeof(uint32_t); return 0; }
+    void fillMessageLength(size_t position, uint32_t messageLength) { }
+};
+
 static_assert(sizeof(uint8_t) == 1, "sizeof(uint8_t) should be 1");
 static_assert(sizeof(uint16_t) == 2, "sizeof(uint16_t) should be 2");
 static_assert(sizeof(uint32_t) == 4, "sizeof(uint32_t) should be 4");

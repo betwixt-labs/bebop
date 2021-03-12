@@ -415,9 +415,12 @@ namespace Core.Generators.CPlusPlus
                         builder.AppendLine($"    {td.Name}::encodeInto(message, writer);");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  static void encodeInto(const {td.Name}& message, ::bebop::Writer& writer) {{");
+                        builder.AppendLine($"  template<typename T = ::bebop::Writer> static void encodeInto(const {td.Name}& message, T& writer) {{");
                         builder.Append(CompileEncode(td));
                         builder.AppendLine("  }");
+                        builder.AppendLine("");
+                        builder.AppendLine($"  void encodeInto(std::vector<uint8_t>& targetBuffer) {{ {td.Name}::encodeInto(*this, targetBuffer); }}");
+                        builder.AppendLine($"  void encodeInto(::bebop::Writer& writer) {{ {td.Name}::encodeInto(*this, writer); }}");
                         builder.AppendLine("");
                         builder.AppendLine($"  static {td.Name} decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {{");
                         builder.AppendLine($"    {td.Name} result;");
@@ -446,6 +449,12 @@ namespace Core.Generators.CPlusPlus
                         builder.AppendLine("");
                         builder.AppendLine($"  static void decodeInto(::bebop::Reader& reader, {td.Name}& target) {{");
                         builder.Append(CompileDecode(td));
+                        builder.AppendLine("  }");
+                        builder.AppendLine("");
+                        builder.AppendLine("  size_t byteCount() {");
+                        builder.AppendLine("    ::bebop::ByteCounter counter{};");
+                        builder.AppendLine($"    {td.Name}::encodeInto<::bebop::ByteCounter>(*this, counter);");
+                        builder.AppendLine("    return counter.length();");
                         builder.AppendLine("  }");
                         builder.AppendLine("};");
                         builder.AppendLine("");

@@ -30,7 +30,7 @@ struct Musician {
     Musician::encodeInto(message, writer);
   }
 
-  static void encodeInto(const Musician& message, ::bebop::Writer& writer) {
+  template<typename T = ::bebop::Writer> static void encodeInto(const Musician& message, T& writer) {
     writer.writeString(message.name);
     writer.writeUint32(static_cast<uint32_t>(message.plays));
   }
@@ -64,6 +64,12 @@ struct Musician {
     target.name = reader.readString();
     target.plays = static_cast<Instrument>(reader.readUint32());
   }
+
+  size_t byteCount() {
+    ::bebop::ByteCounter counter{};
+    Musician::encodeInto<::bebop::ByteCounter>(*this, counter);
+    return counter.length();
+  }
 };
 
 struct Song {
@@ -77,7 +83,7 @@ struct Song {
     Song::encodeInto(message, writer);
   }
 
-  static void encodeInto(const Song& message, ::bebop::Writer& writer) {
+  template<typename T = ::bebop::Writer> static void encodeInto(const Song& message, T& writer) {
     const auto pos = writer.reserveMessageLength();
     const auto start = writer.length();
     if (message.title.has_value()) {
@@ -159,6 +165,12 @@ struct Song {
       }
     }
   }
+
+  size_t byteCount() {
+    ::bebop::ByteCounter counter{};
+    Song::encodeInto<::bebop::ByteCounter>(*this, counter);
+    return counter.length();
+  }
 };
 
 struct Library {
@@ -170,7 +182,7 @@ struct Library {
     Library::encodeInto(message, writer);
   }
 
-  static void encodeInto(const Library& message, ::bebop::Writer& writer) {
+  template<typename T = ::bebop::Writer> static void encodeInto(const Library& message, T& writer) {
     writer.writeUint32(message.songs.size());
     for (const auto& e0 : message.songs) {
       writer.writeGuid(e0.first);
@@ -214,6 +226,12 @@ struct Library {
         Song::decodeInto(reader, v0);
       }
     }
+  }
+
+  size_t byteCount() {
+    ::bebop::ByteCounter counter{};
+    Library::encodeInto<::bebop::ByteCounter>(*this, counter);
+    return counter.length();
   }
 };
 
