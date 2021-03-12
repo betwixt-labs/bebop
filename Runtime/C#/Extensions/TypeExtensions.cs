@@ -72,7 +72,7 @@ namespace Bebop.Extensions
                     $"Cannot locate constructor for BebopType<T> using '{type.FullName}'");
             }
 
-            uint? opcode = type.BaseType.GetField(opcodeFieldName)?.GetRawConstantValue() is uint v ? v : null;
+            uint? opcode = type.GetField(opcodeFieldName)?.GetRawConstantValue() is uint v ? v : null;
 
             return (BebopRecord) constructor.Invoke(new object[] {type, encodeMethod, decodeMethod, opcode!});
         }
@@ -91,7 +91,7 @@ namespace Bebop.Extensions
             var encodeMethod = type.GetMethod("Encode",
                 BindingFlags.Static | BindingFlags.Public,
                 null,
-                new[] {type.BaseType},
+                new[] {type},
                 null);
 
             if (encodeMethod is null)
@@ -256,12 +256,12 @@ namespace Bebop.Extensions
             try
             {
                 return assembly.DefinedTypes.Where(t
-                        => t?.GetCustomAttribute<BebopRecordAttribute>() is { Kind: BebopKind.Struct or BebopKind.Message})
+                        => t?.GetCustomAttribute<BebopRecordAttribute>() is { Kind: BebopKind.Struct or BebopKind.Message or BebopKind.Union })
                     .Select(t => t.AsType());
             }
             catch (ReflectionTypeLoadException e)
             {
-                return e.Types.Where(t => t?.GetCustomAttribute<BebopRecordAttribute>() is { Kind: BebopKind.Struct or BebopKind.Message });
+                return e.Types.Where(t => t?.GetCustomAttribute<BebopRecordAttribute>() is { Kind: BebopKind.Struct or BebopKind.Message or BebopKind.Union });
             }
         }
 

@@ -111,7 +111,7 @@ namespace Core.Meta
         override public int MinimalEncodedSize(ISchema schema)
         {
             // If all fields are absent.
-            return 4;
+            return 5;
         }
     }
 

@@ -136,4 +136,12 @@ namespace Core.Exceptions
         { }
     }
 
+    [Serializable]
+    class EmptyUnionException : SpanException
+    {
+        public EmptyUnionException(Definition definition)
+            : base($"The definition '{definition.Name}' must contain at least one branch. Valid union branches are messages, structs, or unions.", definition.Span, 115)
+        { }
+    }
+
 }

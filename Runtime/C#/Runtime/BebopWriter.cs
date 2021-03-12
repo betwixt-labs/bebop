@@ -107,7 +107,7 @@ namespace Bebop.Runtime
                 throw new BebopViewException("Big-endian systems are not supported by Bebop.");
             }
             _buffer = buffer;
-            Length = _buffer.Length;
+            Length = 0;
         }
 
         /// <summary>
