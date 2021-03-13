@@ -58,8 +58,8 @@
     </Task>
   </UsingTask>
 
-  <Target Name="UpdateVersion" BeforeTargets="CoreBuild">
-     <Message Text="Updating $(ProjectDir)\Meta\VersionInfo.cs to $(Version) -- $(MSBuildToolsPath)" Importance="high" />
+  <Target Name="UpdateVersion" BeforeTargets="CoreCompile" DependsOnTargets="PrepareForBuild">
+     <Message Text="Updating $(ProjectDir)Meta\VersionInfo.cs to $(Version)" Importance="high" />
     <UpdateVersionInfo InputFilename="$(ProjectDir)\Meta\VersionInfo.cs" Version="$(Version)" />
   </Target>
 
