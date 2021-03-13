@@ -27,14 +27,14 @@ int main()
             inner.f = 3.14;
             inner.g = myGuid;
             inner.s = "yeah";
-            B b;
+            UnionPerfB b;
             b.protocolVersion = 456;
             b.incomingOpcode = 789;
             B14::encodeInto(inner, b.encodedData);
             std::vector<uint8_t> buf;
-            B::encodeInto(b, buf);
-            B b2;
-            B::decodeInto(buf, b2);
+            UnionPerfB::encodeInto(b, buf);
+            UnionPerfB b2;
+            UnionPerfB::decodeInto(buf, b2);
             B14 inner2;
             B14::decodeInto(b2.encodedData, inner2);
             sum += inner2.i14;

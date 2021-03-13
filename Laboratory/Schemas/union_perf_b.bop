@@ -1,7 +1,7 @@
 /**
  * Option B: an "encodedData" field, that "decode" is called a second time on.
  */
-struct B {
+struct UnionPerfB {
     uint32 protocolVersion;
     uint32 incomingOpcode;
     byte[] encodedData;
