@@ -19,7 +19,7 @@
   <UsingTask TaskName="UpdateVersionInfo" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
     <ParameterGroup>
       <InputFilename ParameterType="System.String" Required="true" />
-      <EnvFile ParameterType="System.String" Required="true" />
+      <Version ParameterType="System.String" Required="true" />
     </ParameterGroup>
     <Task>
       <Using Namespace="System" />
@@ -27,8 +27,6 @@
       <Using Namespace="System.Text.RegularExpressions" />
       <Code Type="Fragment" Language="cs">
         <![CDATA[
-        
-            var version = File.ReadAllText(EnvFile).Split('=')[1].Trim();
             const string valuePattern = "\\s=\\s)(.*)(?=;)";
             
             var semVerRegex = new Regex(@"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$", RegexOptions.Singleline | RegexOptions.Compiled);
@@ -38,7 +36,7 @@
             var patchRegex = new Regex($"(?<=Patch{valuePattern}", RegexOptions.Singleline | RegexOptions.Compiled);
             var informationalRegex = new Regex($"(?<=Informational{valuePattern}", RegexOptions.Singleline | RegexOptions.Compiled);
             
-            var versionGroups = semVerRegex.Match(version).Groups;
+            var versionGroups = semVerRegex.Match(Version).Groups;
 
             var major = versionGroups[1].Value;
             var minor = versionGroups[2].Value;
@@ -50,7 +48,7 @@
                if (majorRegex.IsMatch(line)) line = majorRegex.Replace(line, major);
                if (minorRegex.IsMatch(line)) line = minorRegex.Replace(line, minor);
                if (patchRegex.IsMatch(line)) line = patchRegex.Replace(line, patch);
-               if (informationalRegex.IsMatch(line)) line = informationalRegex.Replace(line, $"\"{version}\"");
+               if (informationalRegex.IsMatch(line)) line = informationalRegex.Replace(line, $"\"{Version}\"");
                builder.AppendLine(line);
             }
 
@@ -61,7 +59,7 @@
   </UsingTask>
 
   <Target Name="UpdateVersion" BeforeTargets="CoreBuild" >
-    <UpdateVersionInfo InputFilename="$(ProjectDir)\Meta\VersionInfo.cs" EnvFile="$([System.IO.Path]::GetDirectoryName($(MSBuildProjectDirectory)))\.env" />
+    <UpdateVersionInfo InputFilename="$(ProjectDir)\Meta\VersionInfo.cs" Version="$(Version)" />
   </Target>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
