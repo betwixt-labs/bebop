@@ -1,13 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-	  <TypeScriptCompileBlocked>true</TypeScriptCompileBlocked>
-	  <TargetFramework>net5.0</TargetFramework>
-	  <Nullable>enable</Nullable>
-	  <LangVersion>9.0</LangVersion>
-	  <AssemblyName>BebopCore</AssemblyName>
-	  <RootNamespace>Core</RootNamespace>
-	  <PlatformTarget>x64</PlatformTarget>
+    <TypeScriptCompileBlocked>true</TypeScriptCompileBlocked>
+    <TargetFramework>net5.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>9.0</LangVersion>
+    <AssemblyName>BebopCore</AssemblyName>
+    <RootNamespace>Core</RootNamespace>
+    <PlatformTarget>x64</PlatformTarget>
     <Platforms>x64;AnyCPU</Platforms>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <Version Condition="'$(ReleaseVersion)' != ''">$(ReleaseVersion)</Version>
@@ -15,6 +15,47 @@
     <VersionSuffix Condition="'$(ReleaseVersion)' == ''">$([System.DateTime]::UtcNow.ToString(`yyyyMMdd-HHmm`))</VersionSuffix>
     <Configurations>Debug;Release</Configurations>
   </PropertyGroup>
+
+  <UsingTask TaskName="UpdateVersionInfo" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <InputFilename ParameterType="System.String" Required="true" />
+      <Version ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Text.RegularExpressions" />
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[
+            const string valuePattern = "\\s=\\s)(.*)(?=;)";
+            var majorRegex = new Regex($"(?<=Major{valuePattern}", RegexOptions.Singleline | RegexOptions.Compiled);
+            var minorRegex = new Regex($"(?<=Minor{valuePattern}", RegexOptions.Singleline | RegexOptions.Compiled);
+            var patchRegex = new Regex($"(?<=Patch{valuePattern}", RegexOptions.Singleline | RegexOptions.Compiled);
+            var informationalRegex = new Regex($"(?<=Informational{valuePattern}", RegexOptions.Singleline | RegexOptions.Compiled);
+            
+            var major = Version[0].ToString();
+            var minor = Version[2].ToString();
+            var patch = Version[4].ToString();
+
+            var builder = new StringBuilder();
+            foreach (var l in File.ReadAllLines(InputFilename)) {
+               var line = l;
+               if (majorRegex.IsMatch(line)) line = majorRegex.Replace(line, major);
+               if (minorRegex.IsMatch(line)) line = minorRegex.Replace(line, minor);
+               if (patchRegex.IsMatch(line)) line = patchRegex.Replace(line, patch);
+               if (informationalRegex.IsMatch(line)) line = informationalRegex.Replace(line, $"\"{Version}\"");
+               builder.AppendLine(line);
+            }
+
+            File.WriteAllText(InputFilename, builder.ToString());
+          ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="UpdateVersion" BeforeTargets="CoreBuild" >
+    <UpdateVersionInfo InputFilename="$(ProjectDir)\Meta\VersionInfo.cs" Version="$(Version)" />
+  </Target>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Optimize>false</Optimize>
