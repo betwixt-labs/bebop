@@ -6,7 +6,6 @@ namespace Core.Meta
 {
     public static class ReservedWords
     {
-        public static readonly string CompilerVersion = Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion!;
         public const string CompilerName = "bebopc";
         public const string SchemaExt = "bop";
 
