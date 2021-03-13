@@ -28,14 +28,14 @@ int main()
             inner.f = 3.14;
             inner.g = myGuid;
             inner.s = "yeah";
-            A a;
+            UnionPerfA a;
             a.containerOpcode = 123;
             a.protocolVersion = 456;
             a.u.variant.emplace<A14>(inner);
             std::vector<uint8_t> buf;
-            A::encodeInto(a, buf);
-            A a2;
-            A::decodeInto(buf, a2);
+            UnionPerfA::encodeInto(a, buf);
+            UnionPerfA a2;
+            UnionPerfA::decodeInto(buf, a2);
             sum += std::get<A14>(a2.u.variant).i14;
         }
         auto t2 = high_resolution_clock::now();

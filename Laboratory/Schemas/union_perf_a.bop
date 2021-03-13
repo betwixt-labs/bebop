@@ -1,7 +1,7 @@
 /**
  * Option A: put the whole thing in a union.
  */
-union U {
+union UnionPerfU {
     1 -> struct A1 { int32 i1; uint64 u; float64 f; string s; guid g; bool b; }
     2 -> struct A2 { int32 i2; uint64 u; float64 f; string s; guid g; bool b; }
     3 -> struct A3 { int32 i3; uint64 u; float64 f; string s; guid g; bool b; }
@@ -54,8 +54,8 @@ union U {
     50 -> struct A50 { int32 i50; uint64 u; float64 f; string s; guid g; bool b; }
 }
 
-struct A {
+struct UnionPerfA {
     uint32 containerOpcode;
     uint32 protocolVersion;
-    U u;
+    UnionPerfU u;
 }
