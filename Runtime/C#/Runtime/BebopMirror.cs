@@ -20,7 +20,7 @@ namespace Bebop.Runtime
         ///     We use a dictionary for records with opcodes because the lookup speed is O(1) while the lookup
         ///     performance of a List is an O(n) operation.
         /// </remarks>
-        private static IReadOnlyDictionary<uint, BebopRecord> _opcodeRecords = null!;
+        private static Dictionary<uint, BebopRecord> _opcodeRecords = null!;
 
         /// <summary>
         ///     A read-only dictionary of <see cref="BebopRecord{T}"/> types which are keyed via their actual record type.
@@ -29,18 +29,18 @@ namespace Bebop.Runtime
         ///     We use a dictionary for type lookups because the lookup speed is O(1) while the lookup
         ///     performance of a List is an O(n) operation.
         /// </remarks>
-        private static IReadOnlyDictionary<Type, BebopRecord> _concreteRecords = null!;
+        private static Dictionary<Type, BebopRecord> _concreteRecords = null!;
 
         /// <summary>
         ///     A read-only dictionary of class instances that were marked by the <see cref="RecordHandlerAttribute"/>, keyed by a
         ///     <see cref="BebopRecord{T}"/> type.
         /// </summary>
-        private static IReadOnlyDictionary<Type, object> _handlerInstances = null!;
+        private static Dictionary<Type, object> _handlerInstances = null!;
 
         /// <summary>
         ///     A read-only list of all resolved <see cref="BebopRecord{T}"/> types.
         /// </summary>
-        public static IReadOnlyList<BebopRecord> DefinedRecords = null!;
+        public static IReadOnlyCollection<BebopRecord> DefinedRecords = null!;
 
         /// <summary>
         ///     Resolve all records before any members are referenced.
@@ -79,7 +79,7 @@ namespace Bebop.Runtime
         /// <typeparam name="T">The defined record type</typeparam>
         /// <exception cref="BebopRuntimeException">Thrown when <typeparamref name="T"/> does not correspond to any Bebop defined type.</exception>
         /// <returns>An instance of <see cref="BebopRecord{T}"/></returns>
-        public static BebopRecord<T> FindRecordFromType<T>() where T : class, new()
+        public static BebopRecord<T> FindRecordFromType<T>() where T : BaseBebopRecord
         {
             if (FindRecordFromType(typeof(T)) is BebopRecord<T> record)
             {
@@ -110,7 +110,7 @@ namespace Bebop.Runtime
         /// <param name="record">An instance of the defined record marked with the <see cref="BebopRecordAttribute"/></param>
         /// <param name="state">An object that will be passed to the invoked handler.</param>
         /// <exception cref="BebopRuntimeException"/>
-        public static void HandleRecord<T>(T record, object state) where T : class, new() => FindRecordFromType<T>().InvokeHandler(state, record);
+        public static void HandleRecord<T>(T record, object state) where T : BaseBebopRecord => FindRecordFromType<T>().InvokeHandler(state, record);
 
         /// <summary>
         ///     Decodes the specified <paramref name="buffer"/> into the record that corresponds to the given
@@ -206,7 +206,7 @@ namespace Bebop.Runtime
                 throw new BebopRuntimeException("Bebop records may only be resolved once during runtime");
             }
 
-            var definedRecords = new List<BebopRecord>();
+            var definedRecords = new HashSet<BebopRecord>();
             var opcodeTypes = new Dictionary<uint, BebopRecord>();
             var concreteRecords = new Dictionary<Type, BebopRecord>();
 
@@ -237,7 +237,7 @@ namespace Bebop.Runtime
             {
                 foreach (var type in assembly.GetBebopRecordTypes())
                 {
-                    if (type is not {IsClass: true, IsSealed: true, IsPublic: true, IsVisible: true, BaseType: not null})
+                    if (type is not {IsClass: true, IsPublic: true, IsVisible: true, BaseType: not null, IsAbstract: false})
                     {
                         continue;
                     }

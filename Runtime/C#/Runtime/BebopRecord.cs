@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -9,6 +10,48 @@ using Bebop.Extensions;
 
 namespace Bebop.Runtime
 {
+    /// <summary>
+    /// A base class which is implemented by all bebopc generated classes. 
+    /// </summary>
+    public abstract class BaseBebopRecord
+    {
+        /// <summary></summary>
+        protected BaseBebopRecord() { }
+
+        /// <summary>
+        /// Gets the maximum number of bytes that will be produced when the current record is encoded.
+        /// </summary>
+        /// <remarks>
+        /// <para><see cref="MaxByteCount"/> returns an upper bound on the amount of bytes that will be produced when this record is encoded.</para>
+        /// <para>It makes the worst-case assumption that every character in every string maps to 4 bytes of UTF-8.</para>
+        /// <para>That is: to measure each string in the record, it calls <see cref="System.Text.UTF8Encoding.GetMaxByteCount"/> instead of <see cref="System.Text.UTF8Encoding.GetByteCount(string)"/>.</para>
+        /// <para>This executes faster than <see cref="ByteCount"/>, but it can return large values that, when used to allocate a buffer, lead to wasted memory.</para> 
+        /// <para>You may prefer this method if your packet contains just a few small strings; you may want to avoid it if your packet contains any very large strings.</para>
+        /// </remarks>
+        public abstract int MaxByteCount { get; }
+        /// <summary>
+        /// Gets the number of bytes that will be produced when the current record is encoded.
+        /// </summary>
+        /// <remarks>
+        /// <para>To get the exact amount of bytes that will be produced use <see cref="ByteCount"/>.</para>
+        /// <para>To get the upper bound on the amount of bytes that will be produced, you use <see cref="MaxByteCount"/>. 
+        /// The <see cref="ByteCount"/> property generally allocates less memory, while the <see cref="MaxByteCount"/> property generally executes faster.</para>
+        /// <para><see cref="ByteCount"/> calculates the exact number of bytes that will be produced when the current record is encoded.</para>
+        /// </remarks>
+        public abstract int ByteCount { get; }
+        /// <summary>
+        /// Encodes the current record.
+        /// </summary>
+        /// <returns>An array of bytes which contain the encoded record.</returns>
+        public abstract byte[] Encode();
+        /// <summary>
+        /// Encodes the current record to an immutable array.
+        /// </summary>
+        /// <returns>An immutable array of bytes which contain the encoded record.</returns>
+        public abstract ImmutableArray<byte> EncodeImmutably();
+    }
+
+
     /// <summary>
     ///     A virtual wrapper for a Bebop record
     /// </summary>
@@ -32,10 +75,10 @@ namespace Bebop.Runtime
         public virtual byte[] Encode(object record) => throw new NotImplementedException();
 
         ///<inheritdoc cref="BebopRecord{T}.Encode{T}"/>
-        public virtual byte[] Encode<T>(T record) where T : class, new() => throw new NotImplementedException();
+        public virtual byte[] Encode<T>(T record) where T : BaseBebopRecord => throw new NotImplementedException();
 
         ///<inheritdoc cref="BebopRecord{T}.Decode{T}"/>
-        public virtual T Decode<T>(byte[] data) where T : class, new() => throw new NotImplementedException();
+        public virtual T Decode<T>(byte[] data) where T : BaseBebopRecord => throw new NotImplementedException();
 
         ///<inheritdoc cref="BebopRecord{T}.Decode"/>
         public virtual object Decode(byte[] data) => throw new NotImplementedException();
@@ -61,7 +104,7 @@ namespace Bebop.Runtime
     ///     The type of a sealed Bebop implementation that was marked with <see cref="BebopRecordAttribute"/>
     ///     and corresponds to a defined Bebop type
     /// </typeparam>
-    public sealed class BebopRecord<T> : BebopRecord, IEquatable<BebopRecord> where T : class, new()
+    public sealed class BebopRecord<T> : BebopRecord, IEquatable<BebopRecord> where T : BaseBebopRecord
     {
         /// <summary>
         ///     A delegate to the static decode method of <typeparamref name="T"/>
@@ -299,7 +342,7 @@ namespace Bebop.Runtime
         /// <inheritdoc/>
         public override bool Equals(object? obj) => obj switch
         {
-            BebopRecord type => Equals(type),
+            BebopRecord record => Equals(record),
             null => false,
             _ => false
         };

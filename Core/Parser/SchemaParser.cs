@@ -408,6 +408,10 @@ namespace Core.Parser
             var definitionSpan = definitionToken.Span.Combine(definitionEnd);
             var unionDefinition = new UnionDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, branches);
             _definitions.Add(name, unionDefinition);
+            if (unionDefinition.Branches.Count == 0)
+            {
+                throw new EmptyUnionException(unionDefinition);
+            }
             return unionDefinition;
         }
 

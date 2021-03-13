@@ -48,30 +48,11 @@ namespace Core.Meta.Interfaces
 
     public static class FieldExtensions
     {
-        public static bool IsCollection(this IField field) => field.Type is ArrayType || field.Type is MapType;
+        public static bool IsCollection(this IField field) => field.Type is ArrayType or MapType;
 
         public static int MinimalEncodedSize(this IField field, ISchema schema)
         {
-            return field.Type switch {
-                ArrayType at => 4,
-                MapType mt => 4,
-                ScalarType st => st.BaseType switch {
-                    BaseType.Bool => 1,
-                    BaseType.Byte => 1,
-                    BaseType.UInt16 or BaseType.Int16 => 2,
-                    BaseType.UInt32 or BaseType.Int32 => 4,
-                    BaseType.UInt64 or BaseType.Int64 => 8,
-                    BaseType.Float32 => 4,
-                    BaseType.Float64 => 8,
-                    BaseType.String => 4,
-                    BaseType.Guid => 16,
-                    BaseType.Date => 8,
-                    _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString()),
-                },
-                DefinedType dt when schema.Definitions[dt.Name] is EnumDefinition => 4,
-                DefinedType dt when schema.Definitions[dt.Name] is TopLevelDefinition td => td.MinimalEncodedSize(schema),
-                _ => throw new ArgumentOutOfRangeException(field.Type.ToString())
-            };
+            return field.Type.MinimalEncodedSize(schema);
         }
     }
 }
