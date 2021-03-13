@@ -28,14 +28,19 @@
       <Code Type="Fragment" Language="cs">
         <![CDATA[
             const string valuePattern = "\\s=\\s)(.*)(?=;)";
+            
+            var semVerRegex = new Regex(@"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$", RegexOptions.Singleline | RegexOptions.Compiled);
+            
             var majorRegex = new Regex($"(?<=Major{valuePattern}", RegexOptions.Singleline | RegexOptions.Compiled);
             var minorRegex = new Regex($"(?<=Minor{valuePattern}", RegexOptions.Singleline | RegexOptions.Compiled);
             var patchRegex = new Regex($"(?<=Patch{valuePattern}", RegexOptions.Singleline | RegexOptions.Compiled);
             var informationalRegex = new Regex($"(?<=Informational{valuePattern}", RegexOptions.Singleline | RegexOptions.Compiled);
             
-            var major = Version[0].ToString();
-            var minor = Version[2].ToString();
-            var patch = Version[4].ToString();
+            var versionGroups = semVerRegex.Match(Version).Groups;
+
+            var major = versionGroups[1].Value;
+            var minor = versionGroups[2].Value;
+            var patch = versionGroups[3].Value;
 
             var builder = new StringBuilder();
             foreach (var l in File.ReadAllLines(InputFilename)) {
