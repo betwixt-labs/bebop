@@ -10,19 +10,23 @@ using Bebop.Extensions;
 
 namespace Bebop.Runtime
 {
+    /// <summary>
+    /// A base class which is implemented by all bebopc generated classes. 
+    /// </summary>
     public abstract class BaseBebopRecord
     {
+        /// <summary></summary>
         protected BaseBebopRecord() { }
 
         /// <summary>
         /// Gets the maximum number of bytes that will be produced when the current record is encoded.
         /// </summary>
         /// <remarks>
-        /// <para>To get the exact amount of bytes that will be produced use <see cref="ByteCount"/>.</para>
-        /// <para>To get the maximum array size, you use <see cref="MaxByteCount"/>. 
-        /// The <see cref="ByteCount"/> property generally allocates less memory, while the <see cref="MaxByteCount"/> property generally executes faster.</para>
-        /// <para><see cref="MaxByteCount"/> is a worst-case number. In most cases, this property returns reasonable numbers if the current record has a small number of (or no) strings.</para>
-        /// <para>For records with a lot of strings, especially larger ones, this property will return large values.</para>
+        /// <para><see cref="MaxByteCount"/> returns an upper bound on the amount of bytes that will be produced when this record is encoded.</para>
+        /// <para>It makes the worst-case assumption that every character in every string maps to 4 bytes of UTF-8.</para>
+        /// <para>That is: to measure each string in the record, it calls <see cref="System.Text.UTF8Encoding.GetMaxByteCount"/> instead of <see cref="System.Text.UTF8Encoding.GetByteCount(string)"/>.</para>
+        /// <para>This executes faster than <see cref="ByteCount"/>, but it can return large values that, when used to allocate a buffer, lead to wasted memory.</para> 
+        /// <para>You may prefer this method if your packet contains just a few small strings; you may want to avoid it if your packet contains any very large strings.</para>
         /// </remarks>
         public abstract int MaxByteCount { get; }
         /// <summary>
@@ -30,12 +34,20 @@ namespace Bebop.Runtime
         /// </summary>
         /// <remarks>
         /// <para>To get the exact amount of bytes that will be produced use <see cref="ByteCount"/>.</para>
-        /// <para>To get the maximum array size, you use <see cref="MaxByteCount"/>. 
+        /// <para>To get the upper bound on the amount of bytes that will be produced, you use <see cref="MaxByteCount"/>. 
         /// The <see cref="ByteCount"/> property generally allocates less memory, while the <see cref="MaxByteCount"/> property generally executes faster.</para>
         /// <para><see cref="ByteCount"/> calculates the exact number of bytes that will be produced when the current record is encoded.</para>
         /// </remarks>
         public abstract int ByteCount { get; }
+        /// <summary>
+        /// Encodes the current record.
+        /// </summary>
+        /// <returns>An array of bytes which contain the encoded record.</returns>
         public abstract byte[] Encode();
+        /// <summary>
+        /// Encodes the current record to an immutable array.
+        /// </summary>
+        /// <returns>An immutable array of bytes which contain the encoded record.</returns>
         public abstract ImmutableArray<byte> EncodeImmutably();
     }
 
