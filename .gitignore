@@ -270,3 +270,4 @@ __pycache__/
 !*.law.template
 Tools/C#/.nuget
 Laboratory/C#/Benchmarks/BenchmarkDotNet.Artifacts
+Core/Meta/VersionInfo.cs
