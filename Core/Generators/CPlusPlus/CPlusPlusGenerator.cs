@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using Core.Meta;
 using Core.Meta.Extensions;
 using Core.Meta.Interfaces;
@@ -471,6 +472,12 @@ namespace Core.Generators.CPlusPlus
             return builder.ToString();
         }
 
+        private const string _bytePattern = @"(?:"")?(\b(1?[0-9]{1,2}|2[0-4][0-9]|25[0-5])\b)(?:"")?";
+        private static readonly Regex _majorRegex = new Regex($@"(?<=BEBOPC_VER_MAJOR\s){_bytePattern}", RegexOptions.Compiled | RegexOptions.Singleline);
+        private static readonly Regex _minorRegex = new Regex($@"(?<=BEBOPC_VER_MINOR\s){_bytePattern}", RegexOptions.Compiled | RegexOptions.Singleline);
+        private static readonly Regex _patchRegex = new Regex($@"(?<=BEBOPC_VER_PATCH\s){_bytePattern}", RegexOptions.Compiled | RegexOptions.Singleline);
+        private static readonly Regex _informationalRegex = new Regex($@"(?<=BEBOPC_VER_INFO\s){_bytePattern}", RegexOptions.Compiled | RegexOptions.Singleline);
+
         public override void WriteAuxiliaryFiles(string outputPath)
         {
             var assembly = Assembly.GetEntryAssembly()!;
@@ -480,6 +487,22 @@ namespace Core.Generators.CPlusPlus
             using StreamReader reader = new StreamReader(stream);
             string result = reader.ReadToEnd();
             File.WriteAllText(Path.Join(outputPath, "bebop.hpp"), result);
+            using var stream = assembly.GetManifestResourceStream(runtime)!;
+            using var reader = new StreamReader(stream);
+            var builder = new StringBuilder();
+            while (!reader.EndOfStream)
+            {
+                if (reader.ReadLine() is string line)
+                {
+                    if (_majorRegex.IsMatch(line)) line = _majorRegex.Replace(line, VersionInfo.Major.ToString());
+                    if (_minorRegex.IsMatch(line)) line = _minorRegex.Replace(line, VersionInfo.Minor.ToString());
+                    if (_patchRegex.IsMatch(line)) line = _patchRegex.Replace(line, VersionInfo.Patch.ToString());
+                    if (_informationalRegex.IsMatch(line)) line = _informationalRegex.Replace(line, $"\"{VersionInfo.Informational}\"");
+                    builder.AppendLine(line);
+
+                }
+            }
+            File.WriteAllText(Path.Join(outputPath, "bebop.hpp"), builder.ToString());
         }
     }
 }
