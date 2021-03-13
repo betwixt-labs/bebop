@@ -9,6 +9,27 @@
 #include <string>
 #include <vector>
 
+#ifndef BEBOPC_VER_MAJOR
+#define BEBOPC_VER_MAJOR 0
+#endif
+
+#ifndef BEBOPC_VER_MINOR
+#define BEBOPC_VER_MINOR 0
+#endif
+
+#ifndef BEBOPC_VER_PATCH
+#define BEBOPC_VER_PATCH 0
+#endif
+
+#ifndef BEBOPC_VER
+#define BEBOPC_VER \
+	((uint32_t) (((uint8_t) BEBOPC_VER_MAJOR << 24u) | ((uint8_t) BEBOPC_VER_MINOR << 16u) | ((uint8_t) BEBOPC_VER_PATCH << 8u) | (uint8_t)0)
+#endif
+
+#ifndef BEBOPC_VER_INFO
+#define BEBOPC_VER_INFO "0"
+#endif
+
 #ifndef BEBOP_ASSUME_LITTLE_ENDIAN
 #define BEBOP_ASSUME_LITTLE_ENDIAN 1
 #endif

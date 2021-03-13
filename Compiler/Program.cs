@@ -42,7 +42,7 @@ namespace Compiler
 
             if (_flags.Version)
             {
-                await Lager.StandardOut($"{ReservedWords.CompilerName} {ReservedWords.CompilerVersion}");
+                await Lager.StandardOut($"{ReservedWords.CompilerName} {VersionInfo.Informational}");
                 return 0;
             }
 

@@ -22,6 +22,16 @@ namespace Core.Generators
             return AppendLine(Environment.NewLine);
         }
 
+        public IndentedStringBuilder Append(string text)
+        {
+            var indent = new string(' ', Spaces);
+            var lines = text.GetLines();
+            var indentedLines = lines.Select(x => (indent + x).TrimEnd()).ToArray();
+            var indentedText = string.Join(Environment.NewLine, indentedLines).TrimEnd();
+            Builder.Append(indentedText);
+            return this;
+        }
+
         public IndentedStringBuilder AppendLine(string text)
         {
             var indent = new string(' ', Spaces);
