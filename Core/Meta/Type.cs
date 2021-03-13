@@ -80,38 +80,22 @@ namespace Core.Meta
         }
         public static bool IsStruct(this TypeBase type, ISchema schema)
         {
-            return type switch
-            {
-                DefinedType dt when schema.Definitions[dt.Name] is StructDefinition => true,
-                _ => false
-            };
+            return type is DefinedType dt && schema.Definitions[dt.Name] is StructDefinition;
         }
 
         public static bool IsMessage(this TypeBase type, ISchema schema)
         {
-            return type switch
-            {
-                DefinedType dt when schema.Definitions[dt.Name] is MessageDefinition => true,
-                _ => false
-            };
+            return type is DefinedType dt && schema.Definitions[dt.Name] is MessageDefinition;
         }
 
         public static bool IsUnion(this TypeBase type, ISchema schema)
         {
-            return type switch
-            {
-                DefinedType dt when schema.Definitions[dt.Name] is UnionDefinition => true,
-                _ => false
-            };
+            return type is DefinedType dt && schema.Definitions[dt.Name] is UnionDefinition;
         }
 
         public static bool IsEnum(this TypeBase type, ISchema schema)
         {
-            return type switch
-            {
-                DefinedType dt when schema.Definitions[dt.Name] is EnumDefinition => true,
-                _ => false
-            };
+            return type is DefinedType dt && schema.Definitions[dt.Name] is EnumDefinition;
         }
 
         public static int MinimalEncodedSize(this TypeBase type, ISchema schema)

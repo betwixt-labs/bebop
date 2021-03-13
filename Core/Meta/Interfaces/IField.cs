@@ -52,10 +52,7 @@ namespace Core.Meta.Interfaces
 
         public static int MinimalEncodedSize(this IField field, ISchema schema)
         {
-            return field.Type switch {
-                DefinedType or ArrayType or MapType or ScalarType => field.Type.MinimalEncodedSize(schema),
-                _ => throw new ArgumentOutOfRangeException(field.Type.ToString())
-            };
+            return field.Type.MinimalEncodedSize(schema);
         }
     }
 }
