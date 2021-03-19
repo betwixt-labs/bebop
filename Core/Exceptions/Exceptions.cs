@@ -144,4 +144,12 @@ namespace Core.Exceptions
         { }
     }
 
+    [Serializable]
+    class CyclicDefinitionsException : SpanException
+    {
+        public CyclicDefinitionsException(Definition definition)
+            : base($"The schema contains an invalid cycle of definitions, involving '{definition.Name}'.", definition.Span, 115)
+        { }
+    }
+
 }

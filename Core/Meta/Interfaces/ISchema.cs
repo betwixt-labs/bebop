@@ -19,6 +19,10 @@ namespace Core.Meta.Interfaces
         /// Validates that the schema is made up of well-formed values.
         /// </summary>
         public void Validate();
+        /// <summary>
+        /// A topologically sorted list of definitions.
+        /// </summary>
+        public List<Definition> SortedDefinitions();
 
     }
 }

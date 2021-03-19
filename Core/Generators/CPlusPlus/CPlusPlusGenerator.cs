@@ -348,7 +348,7 @@ namespace Core.Generators.CPlusPlus
                 builder.AppendLine("");
             }
 
-            foreach (var definition in Schema.Definitions.Values)
+            foreach (var definition in Schema.SortedDefinitions())
             {
                 if (!string.IsNullOrWhiteSpace(definition.Documentation))
                 {
