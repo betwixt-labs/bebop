@@ -43,7 +43,7 @@ namespace Core.Meta
             }
 
             // Populate graph / in_degree and find starting nodes (for set S in the algorithm).
-            var s = new Queue<string>();
+            var nextQueue = new Queue<string>();
             foreach (var kv in Definitions)
             {
                 var name = kv.Key;
@@ -51,7 +51,7 @@ namespace Core.Meta
                 var deps = definition.Dependencies();
                 if (deps.Count() == 0)
                 {
-                    s.Enqueue(kv.Key);
+                    nextQueue.Enqueue(name);
                 }
                 foreach (var dep in deps)
                 {
@@ -61,17 +61,17 @@ namespace Core.Meta
             }
 
             // Now run the algorithm.
-            var l = new List<Definition>();
-            while (s.Count > 0)
+            var sortedList = new List<Definition>();
+            while (nextQueue.Count > 0)
             {
-                var n = s.Dequeue();
-                l.Add(Definitions[n]);
-                foreach (var m in graph[n])
+                var name = nextQueue.Dequeue();
+                sortedList.Add(Definitions[name]);
+                foreach (var dependent in graph[name])
                 {
-                    in_degree[m] -= 1;
-                    if (in_degree[m] == 0)
+                    in_degree[dependent] -= 1;
+                    if (in_degree[dependent] == 0)
                     {
-                        s.Enqueue(m);
+                        nextQueue.Enqueue(dependent);
                     }
                 }
             }
@@ -82,7 +82,7 @@ namespace Core.Meta
                 throw new CyclicDefinitionsException(Definitions[cycle.Key]);
             }
 
-            _sortedDefinitions = l;
+            _sortedDefinitions = sortedList;
             return _sortedDefinitions;
         }
 
