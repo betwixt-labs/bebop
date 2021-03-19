@@ -31,6 +31,10 @@ namespace Core.Meta
         /// The inner text of a block comment that preceded the definition.
         /// </summary>
         public string Documentation { get; set; }
+        /// <summary>
+        /// The names of types this definition depends on / refers to.
+        /// </summary>
+        public abstract IEnumerable<string> Dependencies();
     }
 
     /// <summary>
@@ -71,6 +75,17 @@ namespace Core.Meta
         }
 
         public ICollection<IField> Fields { get; }
+
+        public override IEnumerable<string> Dependencies()
+        {
+            foreach (var field in Fields)
+            {
+                if (field.Type is DefinedType dt)
+                {
+                    yield return dt.Name;
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -125,6 +140,8 @@ namespace Core.Meta
             Members = members;
         }
         public ICollection<IField> Members { get; }
+
+        public override IEnumerable<string> Dependencies() => Enumerable.Empty<string>();
     }
 
     public readonly struct UnionBranch
@@ -147,6 +164,8 @@ namespace Core.Meta
         }
 
         public ICollection<UnionBranch> Branches { get; }
+
+        public override IEnumerable<string> Dependencies() => Branches.Select(b => b.Definition.Name);
 
         override public int MinimalEncodedSize(ISchema schema)
         {
