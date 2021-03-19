@@ -76,16 +76,7 @@ namespace Core.Meta
 
         public ICollection<IField> Fields { get; }
 
-        public override IEnumerable<string> Dependencies()
-        {
-            foreach (var field in Fields)
-            {
-                if (field.Type is DefinedType dt)
-                {
-                    yield return dt.Name;
-                }
-            }
-        }
+        public override IEnumerable<string> Dependencies() => Fields.SelectMany(field => field.Type.Dependencies()).Distinct();
     }
 
     /// <summary>
