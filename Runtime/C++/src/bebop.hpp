@@ -115,7 +115,7 @@ struct Guid {
     static Guid fromString(const std::string& string) {
         uint8_t bytes[16];
         const char* s = string.c_str();
-        
+
         for (const auto i : layout) {
             if (i == dash) {
                 // Skip over a possible dash in the string.
@@ -131,7 +131,7 @@ struct Guid {
         return Guid(bytes);
     }
 
-    std::string toString(GuidStyle style = GuidStyle::Dashes) {
+    std::string toString(GuidStyle style = GuidStyle::Dashes) const {
         int size = style == GuidStyle::Dashes ? 36 : 32;
         const char* dash = style == GuidStyle::Dashes ? "-" : "";
         std::unique_ptr<char[]> buffer(new char[size+1]);
@@ -198,14 +198,16 @@ private:
 #pragma pack(pop)
 
 class Reader {
+    const uint8_t* m_start;
     const uint8_t* m_pointer;
     const uint8_t* m_end;
 public:
-    Reader(const uint8_t* buffer, size_t bufferLength) : m_pointer(buffer), m_end(buffer + bufferLength) {}
+    Reader(const uint8_t* buffer, size_t bufferLength) : m_start(buffer), m_pointer(buffer), m_end(buffer + bufferLength) {}
     Reader(Reader const&) = delete;
     void operator=(Reader const&) = delete;
 
     const uint8_t* pointer() const { return m_pointer; }
+    size_t bytesRead() const { return m_pointer - m_start; }
     void seek(const uint8_t* pointer) { m_pointer = pointer; }
 
     void skip(size_t amount) { m_pointer += amount; }

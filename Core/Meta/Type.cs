@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta.Interfaces;
 
@@ -15,6 +17,8 @@ namespace Core.Meta
         {
             BaseType = baseType;
         }
+
+        internal override IEnumerable<string> Dependencies() => Enumerable.Empty<string>();
     }
 
     /// <summary>
@@ -42,6 +46,8 @@ namespace Core.Meta
         {
             return MemberType is ScalarType st && st.BaseType == BaseType.Float64;
         }
+
+        internal override IEnumerable<string> Dependencies() => MemberType.Dependencies();
     }
 
     /// <summary>
@@ -57,6 +63,8 @@ namespace Core.Meta
             KeyType = keyType;
             ValueType = valueType;
         }
+
+        internal override IEnumerable<string> Dependencies() => KeyType.Dependencies().Concat(ValueType.Dependencies());
     }
 
     class DefinedType : TypeBase
@@ -70,6 +78,8 @@ namespace Core.Meta
         {
             Name = name;
         }
+
+        internal override IEnumerable<string> Dependencies() => new[] { Name };
     }
 
     public static class TypeExtensions

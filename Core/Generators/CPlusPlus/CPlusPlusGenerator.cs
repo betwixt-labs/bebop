@@ -171,7 +171,7 @@ namespace Core.Generators.CPlusPlus
             builder.Indent(2);
             builder.AppendLine("switch (reader.readByte()) {");
             builder.AppendLine("  case 0:");
-            builder.AppendLine("    return;");
+            builder.AppendLine("    return reader.bytesRead();");
             foreach (var field in definition.Fields)
             {
                 builder.AppendLine($"  case {field.ConstantValue}:");
@@ -180,7 +180,7 @@ namespace Core.Generators.CPlusPlus
             }
             builder.AppendLine("  default:");
             builder.AppendLine("    reader.seek(end);");
-            builder.AppendLine("    return;");
+            builder.AppendLine("    return reader.bytesRead();");
             builder.AppendLine("}");
             builder.Dedent(2);
             builder.AppendLine("}");
@@ -217,7 +217,7 @@ namespace Core.Generators.CPlusPlus
             }
             builder.AppendLine("  default:");
             builder.AppendLine("    reader.seek(end); // do nothing?");
-            builder.AppendLine("    return;");
+            builder.AppendLine("    return reader.bytesRead();");
             builder.AppendLine("}");
             return builder.ToString();
         }
@@ -440,17 +440,18 @@ namespace Core.Generators.CPlusPlus
                         builder.AppendLine($"    return result;");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  static void decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, {td.Name}& target) {{");
+                        builder.AppendLine($"  static size_t decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, {td.Name}& target) {{");
                         builder.AppendLine("    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};");
-                        builder.AppendLine($"    {td.Name}::decodeInto(reader, target);");
+                        builder.AppendLine($"    return {td.Name}::decodeInto(reader, target);");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  static void decodeInto(std::vector<uint8_t> sourceBuffer, {td.Name}& target) {{");
-                        builder.AppendLine($"    {td.Name}::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);");
+                        builder.AppendLine($"  static size_t decodeInto(std::vector<uint8_t> sourceBuffer, {td.Name}& target) {{");
+                        builder.AppendLine($"    return {td.Name}::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  static void decodeInto(::bebop::Reader& reader, {td.Name}& target) {{");
+                        builder.AppendLine($"  static size_t decodeInto(::bebop::Reader& reader, {td.Name}& target) {{");
                         builder.Append(CompileDecode(td));
+                        builder.AppendLine("    return reader.bytesRead();");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
                         builder.AppendLine("  size_t byteCount() {");
