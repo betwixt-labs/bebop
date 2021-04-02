@@ -10,7 +10,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
+        os: [windows-latest, macos-latest, ubuntu-18.04]
         include:
           - os: macos-latest
             CONFIGURATION: macOS-Release
@@ -22,7 +22,7 @@ jobs:
             RUNTIME: win-x64
             ARTIFACT: bebopc.exe
 
-          - os: ubuntu-latest
+          - os: ubuntu-18.04
             CONFIGURATION: Linux-Release
             RUNTIME: linux-x64
             ARTIFACT: bebopc
@@ -37,7 +37,7 @@ jobs:
         uses: falti/dotenv-action@v0.2.5
 
       # ubuntu is the fastest OS to spin up and if one fails they all fail.
-      - if: matrix.os == 'ubuntu-latest'
+      - if: matrix.os == 'ubuntu-18.04'
         name: Check if Versions Synced
         run: |
           if [[ ! refs/tags/v${{ steps.dotenv.outputs.version }} =~ ^(${{ github.ref }})$ ]]; then 
@@ -45,7 +45,7 @@ jobs:
             exit 1
           fi
 
-      - if: matrix.os == 'ubuntu-latest'
+      - if: matrix.os == 'ubuntu-18.04'
         name: Install Dependencies
         run: |
           sudo apt-get update
@@ -91,7 +91,7 @@ jobs:
           rm -f ${{env.BUILD_ARTIFACT}}.zip
           zip -j ${{env.BUILD_ARTIFACT}}.zip ${{env.BUILD_ARTIFACT}}
 
-      - if: matrix.os == 'ubuntu-latest'
+      - if: matrix.os == 'ubuntu-18.04'
         name: ZIP Linux Build
         run: |
           zip -j ${{env.BUILD_ARTIFACT}}.zip ${{env.BUILD_ARTIFACT}}
@@ -114,7 +114,7 @@ jobs:
       NET_RUNTIME_ROOT: ${{github.workspace}}/Runtime/C#
       TS_TEST_ROOT: ${{github.workspace}}/Laboratory/TypeScript
       TS_RUNTIME_ROOT: ${{github.workspace}}/Runtime/TypeScript
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     needs: build-compiler
     steps:
       - uses: actions/checkout@v1
@@ -187,7 +187,7 @@ jobs:
       TOOLS_ROOT: ${{github.workspace}}/Tools
       BEBOPC_PATH: ${{github.workspace}}/Tools/bebopc
     needs: build-compiler
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@v1
       - uses: actions/setup-node@v1
@@ -236,7 +236,7 @@ jobs:
           path: ${{env.TOOLS_ROOT}}/node/bebop-tools-${{ steps.dotenv.outputs.version }}.tgz
 
   publish-packages:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     needs: [build-compiler, build-runtimes, build-tools]
     steps:
       - uses: actions/checkout@v1

@@ -6,7 +6,7 @@ on:
       - test-action-new-cli
 jobs:
   test-typescript:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@v1
       - uses: actions/setup-node@v1
