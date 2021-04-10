@@ -1,0 +1,12 @@
+message InnerM { 1 -> int32 x; }
+struct InnerS { bool y; }
+
+message OuterM {
+    1 -> InnerM innerM;
+    2 -> InnerS innerS;
+}
+
+struct OuterS {
+    InnerM innerM;
+    InnerS innerS;
+}

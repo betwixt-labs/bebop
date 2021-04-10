@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.Serialization;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta.Attributes;
@@ -30,6 +31,10 @@ namespace Core.Meta
         /// The inner text of a block comment that preceded the definition.
         /// </summary>
         public string Documentation { get; set; }
+        /// <summary>
+        /// The names of types this definition depends on / refers to.
+        /// </summary>
+        public abstract IEnumerable<string> Dependencies();
     }
 
     /// <summary>
@@ -44,6 +49,19 @@ namespace Core.Meta
         }
 
         public BaseAttribute? OpcodeAttribute { get; }
+
+        /// <summary>
+        /// If this definition is part of a union branch, then this is its discriminator in the parent union.
+        /// Otherwise, this property is null. (This feels a bit hacky, but oh well.)
+        /// </summary>
+        public byte? DiscriminatorInParent { get; set; }
+
+        /// <summary>
+        /// Compute a lower bound for the size of the wire-format encoding of a packet conforming to this definition.
+        /// </summary>
+        /// <param name="schema">The schema this definition belongs to, used to resolve references to other definitions.</param>
+        /// <returns>The lower bound, in bytes.</returns>
+        public abstract int MinimalEncodedSize(ISchema schema);
     }
 
     /// <summary>
@@ -57,6 +75,8 @@ namespace Core.Meta
         }
 
         public ICollection<IField> Fields { get; }
+
+        public override IEnumerable<string> Dependencies() => Fields.SelectMany(field => field.Type.Dependencies()).Distinct();
     }
 
     /// <summary>
@@ -75,6 +95,12 @@ namespace Core.Meta
         /// Is this struct "read-only"? (This will mean something like: not generating setters in the codegen.)
         /// </summary>
         public bool IsReadOnly { get; }
+
+        override public int MinimalEncodedSize(ISchema schema)
+        {
+            // The encoding of a struct consists of a straightforward concatenation of the encodings of its fields.
+            return Fields.Sum(f => f.MinimalEncodedSize(schema));
+        }
     }
 
     /// <summary>
@@ -86,6 +112,12 @@ namespace Core.Meta
     {
         public MessageDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<IField> fields) : base(name, span, documentation, opcodeAttribute, fields)
         {
+        }
+
+        override public int MinimalEncodedSize(ISchema schema)
+        {
+            // If all fields are absent.
+            return 5;
         }
     }
 
@@ -99,6 +131,8 @@ namespace Core.Meta
             Members = members;
         }
         public ICollection<IField> Members { get; }
+
+        public override IEnumerable<string> Dependencies() => Enumerable.Empty<string>();
     }
 
     public readonly struct UnionBranch
@@ -121,5 +155,13 @@ namespace Core.Meta
         }
 
         public ICollection<UnionBranch> Branches { get; }
+
+        public override IEnumerable<string> Dependencies() => Branches.Select(b => b.Definition.Name);
+
+        override public int MinimalEncodedSize(ISchema schema)
+        {
+            // Length + discriminator + shortest branch.
+            return 4 + 1 + (Branches.Count == 0 ? 0 : Branches.Min(b => b.Definition.MinimalEncodedSize(schema)));
+        }
     }
 }

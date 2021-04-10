@@ -1,4 +1,5 @@
-﻿using Core.Lexer.Tokenization.Models;
+﻿using System;
+using Core.Lexer.Tokenization.Models;
 using Core.Meta.Attributes;
 
 namespace Core.Meta.Interfaces
@@ -47,6 +48,11 @@ namespace Core.Meta.Interfaces
 
     public static class FieldExtensions
     {
-        public static bool IsCollection(this IField field) => field.Type is ArrayType || field.Type is MapType;
+        public static bool IsCollection(this IField field) => field.Type is ArrayType or MapType;
+
+        public static int MinimalEncodedSize(this IField field, ISchema schema)
+        {
+            return field.Type.MinimalEncodedSize(schema);
+        }
     }
 }

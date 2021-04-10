@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using Core.Meta;
 using Core.Meta.Extensions;
 using Core.Meta.Interfaces;
@@ -78,9 +79,9 @@ namespace Core.Generators.CPlusPlus
         {
             var builder = new IndentedStringBuilder(4);
             builder.AppendLine($"const auto pos = writer.reserveMessageLength();");
-            builder.AppendLine($"const auto start = writer.length();");
             builder.AppendLine($"const uint8_t discriminator = message.variant.index() + 1;");
             builder.AppendLine($"writer.writeByte(discriminator);");
+            builder.AppendLine($"const auto start = writer.length();");
             builder.AppendLine($"switch (discriminator) {{");
             foreach (var branch in definition.Branches)
             {
@@ -164,13 +165,13 @@ namespace Core.Generators.CPlusPlus
         private string CompileDecodeMessage(MessageDefinition definition)
         {
             var builder = new IndentedStringBuilder(4);
-            builder.AppendLine("const auto length = reader.readMessageLength();");
+            builder.AppendLine("const auto length = reader.readLengthPrefix();");
             builder.AppendLine("const auto end = reader.pointer() + length;");
             builder.AppendLine("while (true) {");
             builder.Indent(2);
             builder.AppendLine("switch (reader.readByte()) {");
             builder.AppendLine("  case 0:");
-            builder.AppendLine("    return;");
+            builder.AppendLine("    return reader.bytesRead();");
             foreach (var field in definition.Fields)
             {
                 builder.AppendLine($"  case {field.ConstantValue}:");
@@ -179,7 +180,7 @@ namespace Core.Generators.CPlusPlus
             }
             builder.AppendLine("  default:");
             builder.AppendLine("    reader.seek(end);");
-            builder.AppendLine("    return;");
+            builder.AppendLine("    return reader.bytesRead();");
             builder.AppendLine("}");
             builder.Dedent(2);
             builder.AppendLine("}");
@@ -203,8 +204,8 @@ namespace Core.Generators.CPlusPlus
         private string CompileDecodeUnion(UnionDefinition definition)
         {
             var builder = new IndentedStringBuilder(4);
-            builder.AppendLine("const auto length = reader.readMessageLength();");
-            builder.AppendLine("const auto end = reader.pointer() + length;");
+            builder.AppendLine("const auto length = reader.readLengthPrefix();");
+            builder.AppendLine("const auto end = reader.pointer() + length + 1;");
             builder.AppendLine("switch (reader.readByte()) {");
             foreach (var branch in definition.Branches)
             {
@@ -216,7 +217,7 @@ namespace Core.Generators.CPlusPlus
             }
             builder.AppendLine("  default:");
             builder.AppendLine("    reader.seek(end); // do nothing?");
-            builder.AppendLine("    return;");
+            builder.AppendLine("    return reader.bytesRead();");
             builder.AppendLine("}");
             return builder.ToString();
         }
@@ -237,7 +238,7 @@ namespace Core.Generators.CPlusPlus
                     $"{tab}{target}{dot}reserve(length{depth});" + nl +
                     $"{tab}for (size_t {i} = 0; {i} < length{depth}; {i}++) {{" + nl +
                     $"{tab}{tab}{TypeName(at.MemberType)} x{depth};" + nl +
-                    $"{tab}{tab}{CompileDecodeField(at.MemberType, $"x{depth}", depth + 1, indentDepth + 2, isOptional)}" + nl +
+                    $"{tab}{tab}{CompileDecodeField(at.MemberType, $"x{depth}", depth + 1, indentDepth + 2, false)}" + nl +
                     $"{tab}{tab}{target}{dot}push_back(x{depth});" + nl +
                     $"{tab}}}" + nl +
                     $"}}",
@@ -247,9 +248,9 @@ namespace Core.Generators.CPlusPlus
                     $"{tab}{target} = {TypeName(mt)}();" + nl +
                     $"{tab}for (size_t {i} = 0; {i} < length{depth}; {i}++) {{" + nl +
                     $"{tab}{tab}{TypeName(mt.KeyType)} k{depth};" + nl +
-                    $"{tab}{tab}{CompileDecodeField(mt.KeyType, $"k{depth}", depth + 1, indentDepth + 2, isOptional)}" + nl +
+                    $"{tab}{tab}{CompileDecodeField(mt.KeyType, $"k{depth}", depth + 1, indentDepth + 2, false)}" + nl +
                     $"{tab}{tab}{TypeName(mt.ValueType)}& v{depth} = {target}{dot}operator[](k{depth});" + nl +
-                    $"{tab}{tab}{CompileDecodeField(mt.ValueType, $"v{depth}", depth + 1, indentDepth + 2, isOptional)}" + nl +
+                    $"{tab}{tab}{CompileDecodeField(mt.ValueType, $"v{depth}", depth + 1, indentDepth + 2, false)}" + nl +
                     $"{tab}}}" + nl +
                     $"}}",
                 ScalarType st => st.BaseType switch
@@ -271,6 +272,7 @@ namespace Core.Generators.CPlusPlus
                 },
                 DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition =>
                     $"{target} = static_cast<{dt.Name}>(reader.readUint32());",
+                DefinedType dt when isOptional => $"{target}.emplace({dt.Name}::decode(reader));",
                 DefinedType dt => $"{dt.Name}::decodeInto(reader, {target});",
                 _ => throw new InvalidOperationException($"CompileDecodeField: {type}")
             };
@@ -327,6 +329,8 @@ namespace Core.Generators.CPlusPlus
         public override string Compile()
         {
             var builder = new StringBuilder();
+            builder.AppendLine(GeneratorUtils.GetXmlAutoGeneratedNotice());
+            builder.AppendLine("#pragma once");
             builder.AppendLine("#include <cstddef>");
             builder.AppendLine("#include <cstdint>");
             builder.AppendLine("#include <map>");
@@ -344,7 +348,7 @@ namespace Core.Generators.CPlusPlus
                 builder.AppendLine("");
             }
 
-            foreach (var definition in Schema.Definitions.Values)
+            foreach (var definition in Schema.SortedDefinitions())
             {
                 if (!string.IsNullOrWhiteSpace(definition.Documentation))
                 {
@@ -372,6 +376,7 @@ namespace Core.Generators.CPlusPlus
                         break;
                     case TopLevelDefinition td:
                         builder.AppendLine($"struct {td.Name} {{");
+                        builder.AppendLine($"  static const size_t minimalEncodedSize = {td.MinimalEncodedSize(Schema)};");
                         if (td.OpcodeAttribute != null)
                         {
                             builder.AppendLine($"  static const uint32_t opcode = {td.OpcodeAttribute.Value};");
@@ -412,23 +417,47 @@ namespace Core.Generators.CPlusPlus
                         builder.AppendLine($"    {td.Name}::encodeInto(message, writer);");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  static void encodeInto(const {td.Name}& message, ::bebop::Writer& writer) {{");
+                        builder.AppendLine($"  template<typename T = ::bebop::Writer> static void encodeInto(const {td.Name}& message, T& writer) {{");
                         builder.Append(CompileEncode(td));
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  static {td.Name} decode(const uint8_t* sourceBuffer) {{");
+                        builder.AppendLine($"  void encodeInto(std::vector<uint8_t>& targetBuffer) {{ {td.Name}::encodeInto(*this, targetBuffer); }}");
+                        builder.AppendLine($"  void encodeInto(::bebop::Writer& writer) {{ {td.Name}::encodeInto(*this, writer); }}");
+                        builder.AppendLine("");
+                        builder.AppendLine($"  static {td.Name} decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {{");
                         builder.AppendLine($"    {td.Name} result;");
-                        builder.AppendLine($"    {td.Name}::decodeInto(sourceBuffer, result);");
+                        builder.AppendLine($"    {td.Name}::decodeInto(sourceBuffer, sourceBufferSize, result);");
                         builder.AppendLine($"    return result;");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  static void decodeInto(const uint8_t* sourceBuffer, {td.Name}& target) {{");
-                        builder.AppendLine("    ::bebop::Reader reader{sourceBuffer};");
-                        builder.AppendLine($"    {td.Name}::decodeInto(reader, target);");
+                        builder.AppendLine($"  static {td.Name} decode(std::vector<uint8_t> sourceBuffer) {{");
+                        builder.AppendLine($"    return {td.Name}::decode(sourceBuffer.data(), sourceBuffer.size());");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  static void decodeInto(::bebop::Reader& reader, {td.Name}& target) {{");
+                        builder.AppendLine($"  static {td.Name} decode(::bebop::Reader& reader) {{");
+                        builder.AppendLine($"    {td.Name} result;");
+                        builder.AppendLine($"    {td.Name}::decodeInto(reader, result);");
+                        builder.AppendLine($"    return result;");
+                        builder.AppendLine("  }");
+                        builder.AppendLine("");
+                        builder.AppendLine($"  static size_t decodeInto(const uint8_t* sourceBuffer, size_t sourceBufferSize, {td.Name}& target) {{");
+                        builder.AppendLine("    ::bebop::Reader reader{sourceBuffer, sourceBufferSize};");
+                        builder.AppendLine($"    return {td.Name}::decodeInto(reader, target);");
+                        builder.AppendLine("  }");
+                        builder.AppendLine("");
+                        builder.AppendLine($"  static size_t decodeInto(std::vector<uint8_t> sourceBuffer, {td.Name}& target) {{");
+                        builder.AppendLine($"    return {td.Name}::decodeInto(sourceBuffer.data(), sourceBuffer.size(), target);");
+                        builder.AppendLine("  }");
+                        builder.AppendLine("");
+                        builder.AppendLine($"  static size_t decodeInto(::bebop::Reader& reader, {td.Name}& target) {{");
                         builder.Append(CompileDecode(td));
+                        builder.AppendLine("    return reader.bytesRead();");
+                        builder.AppendLine("  }");
+                        builder.AppendLine("");
+                        builder.AppendLine("  size_t byteCount() {");
+                        builder.AppendLine("    ::bebop::ByteCounter counter{};");
+                        builder.AppendLine($"    {td.Name}::encodeInto<::bebop::ByteCounter>(*this, counter);");
+                        builder.AppendLine("    return counter.length();");
                         builder.AppendLine("  }");
                         builder.AppendLine("};");
                         builder.AppendLine("");
@@ -445,15 +474,33 @@ namespace Core.Generators.CPlusPlus
             return builder.ToString();
         }
 
+        private const string _bytePattern = @"(?:"")?(\b(1?[0-9]{1,2}|2[0-4][0-9]|25[0-5])\b)(?:"")?";
+        private static readonly Regex _majorRegex = new Regex($@"(?<=BEBOPC_VER_MAJOR\s){_bytePattern}", RegexOptions.Compiled | RegexOptions.Singleline);
+        private static readonly Regex _minorRegex = new Regex($@"(?<=BEBOPC_VER_MINOR\s){_bytePattern}", RegexOptions.Compiled | RegexOptions.Singleline);
+        private static readonly Regex _patchRegex = new Regex($@"(?<=BEBOPC_VER_PATCH\s){_bytePattern}", RegexOptions.Compiled | RegexOptions.Singleline);
+        private static readonly Regex _informationalRegex = new Regex($@"(?<=BEBOPC_VER_INFO\s){_bytePattern}", RegexOptions.Compiled | RegexOptions.Singleline);
+
         public override void WriteAuxiliaryFiles(string outputPath)
         {
             var assembly = Assembly.GetEntryAssembly()!;
             var runtime = assembly.GetManifestResourceNames()!.FirstOrDefault(n => n.Contains("bebop.hpp"))!;
 
-            using Stream stream = assembly.GetManifestResourceStream(runtime)!;
-            using StreamReader reader = new StreamReader(stream);
-            string result = reader.ReadToEnd();
-            File.WriteAllText(Path.Join(outputPath, "bebop.hpp"), result);
+            using var stream = assembly.GetManifestResourceStream(runtime)!;
+            using var reader = new StreamReader(stream);
+            var builder = new StringBuilder();
+            while (!reader.EndOfStream)
+            {
+                if (reader.ReadLine() is string line)
+                {
+                    if (_majorRegex.IsMatch(line)) line = _majorRegex.Replace(line, VersionInfo.Major.ToString());
+                    if (_minorRegex.IsMatch(line)) line = _minorRegex.Replace(line, VersionInfo.Minor.ToString());
+                    if (_patchRegex.IsMatch(line)) line = _patchRegex.Replace(line, VersionInfo.Patch.ToString());
+                    if (_informationalRegex.IsMatch(line)) line = _informationalRegex.Replace(line, $"\"{VersionInfo.Informational}\"");
+                    builder.AppendLine(line);
+
+                }
+            }
+            File.WriteAllText(Path.Join(outputPath, "bebop.hpp"), builder.ToString());
         }
     }
 }

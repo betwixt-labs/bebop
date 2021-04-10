@@ -392,21 +392,26 @@ namespace Core.Parser
                 Expect(TokenKind.Hyphen, hint: indexHint);
                 Expect(TokenKind.CloseCaret, hint: indexHint);
                 var definition = ParseDefinition();
-                if (definition is not TopLevelDefinition)
+                if (definition is not TopLevelDefinition td)
                 {
                     throw new InvalidUnionBranchException(definition);
                 }
+                td.DiscriminatorInParent = (byte)discriminator;
                 Eat(TokenKind.Semicolon);
                 definitionEnd = CurrentToken.Span;
                 if (string.IsNullOrWhiteSpace(definition.Documentation))
                 {
                     definition.Documentation = documentation;
                 }
-                branches.Add(new UnionBranch((byte)discriminator, (TopLevelDefinition)definition));
+                branches.Add(new UnionBranch((byte)discriminator, td));
             }
             var definitionSpan = definitionToken.Span.Combine(definitionEnd);
             var unionDefinition = new UnionDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, branches);
             _definitions.Add(name, unionDefinition);
+            if (unionDefinition.Branches.Count == 0)
+            {
+                throw new EmptyUnionException(unionDefinition);
+            }
             return unionDefinition;
         }
 

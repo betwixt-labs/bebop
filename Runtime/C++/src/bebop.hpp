@@ -4,9 +4,31 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <exception>
 #include <memory>
 #include <string>
 #include <vector>
+
+#ifndef BEBOPC_VER_MAJOR
+#define BEBOPC_VER_MAJOR 0
+#endif
+
+#ifndef BEBOPC_VER_MINOR
+#define BEBOPC_VER_MINOR 0
+#endif
+
+#ifndef BEBOPC_VER_PATCH
+#define BEBOPC_VER_PATCH 0
+#endif
+
+#ifndef BEBOPC_VER
+#define BEBOPC_VER \
+	((uint32_t) (((uint8_t) BEBOPC_VER_MAJOR << 24u) | ((uint8_t) BEBOPC_VER_MINOR << 16u) | ((uint8_t) BEBOPC_VER_PATCH << 8u) | (uint8_t)0)
+#endif
+
+#ifndef BEBOPC_VER_INFO
+#define BEBOPC_VER_INFO "0"
+#endif
 
 #ifndef BEBOP_ASSUME_LITTLE_ENDIAN
 #define BEBOP_ASSUME_LITTLE_ENDIAN 1
@@ -26,6 +48,12 @@ namespace {
 enum class GuidStyle {
     Dashes,
     NoDashes,
+};
+
+struct MalformedPacketException : public std::exception {
+    const char* what () const throw () {
+        return "malformed Bebop packet";
+    }
 };
 
 #pragma pack(push, 1)
@@ -87,7 +115,7 @@ struct Guid {
     static Guid fromString(const std::string& string) {
         uint8_t bytes[16];
         const char* s = string.c_str();
-        
+
         for (const auto i : layout) {
             if (i == dash) {
                 // Skip over a possible dash in the string.
@@ -103,7 +131,7 @@ struct Guid {
         return Guid(bytes);
     }
 
-    std::string toString(GuidStyle style = GuidStyle::Dashes) {
+    std::string toString(GuidStyle style = GuidStyle::Dashes) const {
         int size = style == GuidStyle::Dashes ? 36 : 32;
         const char* dash = style == GuidStyle::Dashes ? "-" : "";
         std::unique_ptr<char[]> buffer(new char[size+1]);
@@ -170,24 +198,31 @@ private:
 #pragma pack(pop)
 
 class Reader {
+    const uint8_t* m_start;
     const uint8_t* m_pointer;
+    const uint8_t* m_end;
 public:
-    Reader(const uint8_t* buffer) : m_pointer(buffer) {}
+    Reader(const uint8_t* buffer, size_t bufferLength) : m_start(buffer), m_pointer(buffer), m_end(buffer + bufferLength) {}
     Reader(Reader const&) = delete;
     void operator=(Reader const&) = delete;
 
     const uint8_t* pointer() const { return m_pointer; }
+    size_t bytesRead() const { return m_pointer - m_start; }
     void seek(const uint8_t* pointer) { m_pointer = pointer; }
 
     void skip(size_t amount) { m_pointer += amount; }
 
-    uint8_t readByte() { return *m_pointer++; }
+    uint8_t readByte() {
+        if (m_pointer + sizeof(uint8_t) > m_end) throw MalformedPacketException();
+        return *m_pointer++;
+    }
 
     uint16_t readUint16() {
+        if (m_pointer + sizeof(uint16_t) > m_end) throw MalformedPacketException();
 #if BEBOP_ASSUME_LITTLE_ENDIAN
         uint16_t v;
         memcpy(&v, m_pointer, sizeof(uint16_t));
-        m_pointer += 2;
+        m_pointer += sizeof(uint16_t);
         return v;
 #else
         const uint16_t b0 = *m_pointer++;
@@ -197,10 +232,11 @@ public:
     }
 
     uint32_t readUint32() {
+        if (m_pointer + sizeof(uint32_t) > m_end) throw MalformedPacketException();
 #if BEBOP_ASSUME_LITTLE_ENDIAN
         uint32_t v;
         memcpy(&v, m_pointer, sizeof(uint32_t));
-        m_pointer += 4;
+        m_pointer += sizeof(uint32_t);
         return v;
 #else
         const uint32_t b0 = *m_pointer++;
@@ -212,10 +248,11 @@ public:
     }
 
     uint64_t readUint64() {
+        if (m_pointer + sizeof(uint64_t) > m_end) throw MalformedPacketException();
 #if BEBOP_ASSUME_LITTLE_ENDIAN
         uint64_t v;
         memcpy(&v, m_pointer, sizeof(uint64_t));
-        m_pointer += 8;
+        m_pointer += sizeof(uint64_t);
         return v;
 #else
         const uint64_t b0 = *m_pointer++;
@@ -235,6 +272,7 @@ public:
     int64_t readInt64() { return static_cast<uint64_t>(readUint64()); }
 
     float readFloat32() {
+        if (m_pointer + sizeof(float) > m_end) throw MalformedPacketException();
         float f;
         const uint32_t v = readUint32();
         memcpy(&f, &v, sizeof(float));
@@ -242,6 +280,7 @@ public:
     }
 
     double readFloat64() {
+        if (m_pointer + sizeof(double) > m_end) throw MalformedPacketException();
         double f;
         const uint64_t v = readUint64();
         memcpy(&f, &v, sizeof(double));
@@ -252,23 +291,32 @@ public:
         return readByte() != 0;
     }
 
-    std::vector<uint8_t> readBytes() {
+    uint32_t readLengthPrefix() {
         const auto length = readUint32();
+        if (m_pointer + length > m_end) {
+            throw MalformedPacketException();
+        }
+        return length;
+    }
+
+    std::vector<uint8_t> readBytes() {
+        const auto length = readLengthPrefix();
         std::vector<uint8_t> v(m_pointer, m_pointer + length);
         m_pointer += length;
         return v;
     }
 
     std::string readString() {
-        const auto length = readUint32();
+        const auto length = readLengthPrefix();
         std::string v(m_pointer, m_pointer + length);
         m_pointer += length;
         return v;
     }
 
     Guid readGuid() {
+        if (m_pointer + sizeof(Guid) > m_end) throw MalformedPacketException();
         Guid guid { m_pointer };
-        m_pointer += 16;
+        m_pointer += sizeof(Guid);
         return guid;
     }
 
@@ -277,8 +325,6 @@ public:
         const uint64_t ticks = readUint64() & 0x3fffffffffffffff;
         return TickDuration(ticks - ticksBetweenEpochs);
     }
-
-    uint32_t readMessageLength() { return readUint32(); }
 };
 
 class Writer {
@@ -399,5 +445,40 @@ public:
 #endif
     }
 };
+
+class ByteCounter {
+    size_t m_bytes;
+public:
+    ByteCounter() : m_bytes(0) {}
+    ByteCounter(ByteCounter const&) = delete;
+    void operator=(ByteCounter const&) = delete;
+
+    size_t length() { return m_bytes; }
+
+    void writeByte(uint8_t value) { m_bytes += sizeof(value); }
+    void writeUint16(uint16_t value) { m_bytes += sizeof(value); }
+    void writeUint32(uint32_t value) { m_bytes += sizeof(value); }
+    void writeUint64(uint64_t value) { m_bytes += sizeof(value); }
+    void writeInt16(int16_t value) { m_bytes += sizeof(value); }
+    void writeInt32(int32_t value) { m_bytes += sizeof(value); }
+    void writeInt64(int64_t value) { m_bytes += sizeof(value); }
+    void writeFloat32(float value) { m_bytes += sizeof(value); }
+    void writeFloat64(double value) { m_bytes += sizeof(value); }
+    void writeBool(bool value) { writeByte(value); }
+    void writeBytes(std::vector<uint8_t> value) { m_bytes += sizeof(uint32_t) + value.size(); }
+    void writeString(std::string value) { m_bytes += sizeof(uint32_t) + value.size(); }
+    void writeGuid(Guid value) { m_bytes += sizeof(value); }
+    void writeDate(TickDuration duration) { m_bytes += sizeof(uint64_t); }
+    size_t reserveMessageLength() { m_bytes += sizeof(uint32_t); return 0; }
+    void fillMessageLength(size_t position, uint32_t messageLength) { }
+};
+
+static_assert(sizeof(uint8_t) == 1, "sizeof(uint8_t) should be 1");
+static_assert(sizeof(uint16_t) == 2, "sizeof(uint16_t) should be 2");
+static_assert(sizeof(uint32_t) == 4, "sizeof(uint32_t) should be 4");
+static_assert(sizeof(uint64_t) == 8, "sizeof(uint64_t) should be 8");
+static_assert(sizeof(float) == 4, "sizeof(float) should be 4");
+static_assert(sizeof(double) == 8, "sizeof(double) should be 8");
+static_assert(sizeof(Guid) == 16, "sizeof(Guid) should be 16");
 
 } // namespace bebop

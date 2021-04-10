@@ -1,4 +1,5 @@
-﻿using Core.Lexer.Tokenization.Models;
+﻿using System.Collections.Generic;
+using Core.Lexer.Tokenization.Models;
 
 namespace Core.Meta.Interfaces
 {
@@ -21,5 +22,10 @@ namespace Core.Meta.Interfaces
         public string AsString { get; }
 
         public override string? ToString() => AsString;
+
+        /// <summary>
+        /// The names of types this definition depends on / refers to.
+        /// </summary>
+        internal abstract IEnumerable<string> Dependencies();
     }
 }

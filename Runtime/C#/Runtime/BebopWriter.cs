@@ -107,7 +107,7 @@ namespace Bebop.Runtime
                 throw new BebopViewException("Big-endian systems are not supported by Bebop.");
             }
             _buffer = buffer;
-            Length = _buffer.Length;
+            Length = 0;
         }
 
         /// <summary>
@@ -140,7 +140,7 @@ namespace Bebop.Runtime
             const int size = 1;
             var index = Length;
             GrowBy(size);
-            _buffer[index] = !value ? 0 : 1;
+            _buffer[index] = (byte)(value is false ? 0 : 1);
         }
 
         /// <summary>

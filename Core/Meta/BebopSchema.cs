@@ -7,18 +7,84 @@ using Core.Meta.Interfaces;
 namespace Core.Meta
 {
     /// <inheritdoc/>
-    public readonly struct BebopSchema : ISchema
+    public struct BebopSchema : ISchema
     {
         public BebopSchema(string nameSpace, Dictionary<string, Definition> definitions)
         {
             Namespace = nameSpace;
             Definitions = definitions;
+            _sortedDefinitions = null;
         }
         /// <inheritdoc/>
         public string Namespace { get; }
         /// <inheritdoc/>
         public Dictionary<string, Definition> Definitions { get; }
 
+        /// <summary>
+        /// A cached result of SortedDefinitions.
+        /// </summary>
+        private List<Definition>? _sortedDefinitions;
+
+        /// <inheritdoc/>
+        public List<Definition> SortedDefinitions()
+        {
+            // Return the cached result if it exists.
+            if (_sortedDefinitions != null) return _sortedDefinitions;
+
+            // https://en.wikipedia.org/w/index.php?title=Topological_sorting&oldid=1011036708#Kahn%27s_algorithm
+            // We keep track of node in-degrees and an adjacency list.
+            var in_degree = new Dictionary<string, int>();
+            var graph = new Dictionary<string, List<string>>();
+            foreach (var kv in Definitions)
+            {
+                var name = kv.Key;
+                graph[name] = new List<string>();
+                in_degree[name] = 0;
+            }
+
+            // Populate graph / in_degree and find starting nodes (for set S in the algorithm).
+            var nextQueue = new Queue<string>();
+            foreach (var kv in Definitions)
+            {
+                var name = kv.Key;
+                var definition = kv.Value;
+                var deps = definition.Dependencies();
+                if (deps.Count() == 0)
+                {
+                    nextQueue.Enqueue(name);
+                }
+                foreach (var dep in deps)
+                {
+                    graph[dep].Add(name);
+                    in_degree[name] += 1;
+                }
+            }
+
+            // Now run the algorithm.
+            var sortedList = new List<Definition>();
+            while (nextQueue.Count > 0)
+            {
+                var name = nextQueue.Dequeue();
+                sortedList.Add(Definitions[name]);
+                foreach (var dependent in graph[name])
+                {
+                    in_degree[dependent] -= 1;
+                    if (in_degree[dependent] == 0)
+                    {
+                        nextQueue.Enqueue(dependent);
+                    }
+                }
+            }
+
+            var cycle = in_degree.FirstOrDefault(kv => kv.Value > 0);
+            if (cycle.Key != null)
+            {
+                throw new CyclicDefinitionsException(Definitions[cycle.Key]);
+            }
+
+            _sortedDefinitions = sortedList;
+            return _sortedDefinitions;
+        }
 
         /// <inheritdoc/>
         public void Validate()
@@ -83,8 +149,8 @@ namespace Core.Meta
                 }
                 if (definition is EnumDefinition ed)
                 {
-                    HashSet<uint> values = new HashSet<uint>();
-                    HashSet<string> names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    var values = new HashSet<uint>();
+                    var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                     foreach (var field in ed.Members)
                     {
                         if (values.Contains(field.ConstantValue))

@@ -5,8 +5,8 @@ on:
       - master
       - test-action-new-cli
 jobs:
-  test-typescript:
-    runs-on: ubuntu-latest
+  test-dart:
+    runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@v1
       - uses: cedx/setup-dart@v2
