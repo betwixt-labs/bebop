@@ -1,3 +1,4 @@
+from struct import pack
 from uuid import UUID
 from datetime import datetime
 
@@ -7,6 +8,8 @@ A wrapper around a bytearray for reading Bebop base types from it.
 It is used by the code that `bebopc --lang python` generates. 
 You shouldn't need to use it directly.
 """
+
+
 class BebopReader:
 
     _emptyByteList = bytearray()
@@ -100,11 +103,73 @@ A wrapper around a bytearray for writing Bebop base types from it.
 It is used by the code that `bebopc --lang dart` generates. 
 You shouldn't need to use it directly.
 """
+
+
 class BebopWriter:
 
     def __init__(self):
-        self._buffer = bytearray(length=256)
+        self._buffer = bytearray()
         self.length = 0
 
-    def _guarantee_buffer_len(self, length):
-        if length > 
+    def write_byte(self, val: bytes):
+        self._buffer.append(val)
+
+    def write_uint16(self, val: int):
+        self._buffer.append(pack("<I", val))
+
+    def write_int16(self, val: int):
+        self._buffer.append(pack("<i", val))
+
+    def write_uint32(self, val: int):
+        self._buffer.append(pack("<L", val))
+
+    def write_int32(self, val: int):
+        self._buffer.append(pack("<l", val))
+
+    def write_uint64(self, val: int):
+        self._buffer.append(pack("<Q", val))
+
+    def write_int64(self, val: int):
+        self._buffer.append(pack("<q", val))
+
+    def write_float32(self, val: float):
+        self._buffer.append(pack("<f", val))
+
+    def write_float64(self, val: float):
+        self._buffer.append(pack("<D", val))
+
+    def write_bool(self, val: bool):
+        self.write_byte(pack("<?", val))
+
+    def write_bytes(self, val: bytearray):
+        byte_count = len(val)
+        self.write_uint32(byte_count)
+        if byte_count == 0:
+            return
+        self._buffer.extend(val)
+
+    def write_string(self, val: str):
+        if len(val) == 0:
+            self.write_uint32(0)
+            return
+        self.write_bytes(val.encode())
+
+    def write_guid(self, guid: UUID):
+        self.write_bytes(guid.bytes_le)
+
+    def write_date(self, date: datetime):
+        ms = date.microsecond / 1000
+        msSince1AD = ms + 62135596800000
+        low = round(msSince1AD % 429496.7296 * 10000)
+        high = round(msSince1AD / 429496.7296) | 0x40000000
+        self.write_uint32(low)
+        self.write_uint32(high)
+    
+    def write_enum(self, val: int):
+        self.write_uint32(val)
+
+    def fill_message_length(self, position: int, message_length: int):
+        self._buffer[position] = pack("<i", message_length)
+
+    def to_list(self):
+        return list(self._buffer)

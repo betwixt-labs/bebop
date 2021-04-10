@@ -1,7 +1,6 @@
 using System;
-using System.IO;
+using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using Core.Meta;
 using Core.Meta.Extensions;
@@ -15,10 +14,8 @@ namespace Core.Generators.Python
 
         public PythonGenerator(ISchema schema) : base(schema) { }
 
-        private string FormatDocumentation(string documentation, int spaces)
-        {
-            var builder = new IndentedStringBuilder();
-            builder.Indent(spaces);
+        private string FormatDocumentation(string documentation){
+            var builder = new StringBuilder();
             foreach (var line in documentation.GetLines())
             {
                 builder.AppendLine($"# {line}");
@@ -235,10 +232,10 @@ namespace Core.Generators.Python
         }
 
         /// <summary>
-        /// Generate a Dart type name for the given <see cref="TypeBase"/>.
+        /// Generate a Python type name for the given <see cref="TypeBase"/>.
         /// </summary>
         /// <param name="type">The field type to generate code for.</param>
-        /// <returns>The Dart type name.</returns>
+        /// <returns>The Python type name.</returns>
         private string TypeName(in TypeBase type)
         {
             switch (type)
@@ -248,17 +245,18 @@ namespace Core.Generators.Python
                     {
                         BaseType.Bool => "bool",
                         BaseType.Byte or BaseType.UInt16 or BaseType.Int16 or BaseType.UInt32 or BaseType.Int32 or BaseType.UInt64 or BaseType.Int64 => "int",
-                        BaseType.Float32 or BaseType.Float64 => "double",
-                        BaseType.String or BaseType.Guid => "String",
-                        BaseType.Date => "DateTime",
+                        BaseType.Float32 or BaseType.Float64 => "float",
+                        BaseType.String => "str",
+                        BaseType.Guid => "UUID",
+                        BaseType.Date => "datetime",
                         _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                     };
                 case ArrayType at when at.IsBytes():
-                    return "Uint8List";
+                    return "bytearray";
                 case ArrayType at:
-                    return $"List<{TypeName(at.MemberType)}>";
+                    return $"list[{TypeName(at.MemberType)}]";
                 case MapType mt:
-                    return $"Map<{TypeName(mt.KeyType)}, {TypeName(mt.ValueType)}>";
+                    return $"dict[{TypeName(mt.KeyType)}, {TypeName(mt.ValueType)}]";
                 case DefinedType dt:
                     var isEnum = Schema.Definitions[dt.Name] is EnumDefinition;
                     return dt.Name;
@@ -272,93 +270,107 @@ namespace Core.Generators.Python
         /// <returns>The generated code.</returns>
         public override string Compile()
         {
-            var builder = new StringBuilder();
-            builder.AppendLine("import 'dart:typed_data';");
-            builder.AppendLine("import 'package:meta/meta.dart';");
-            builder.AppendLine("import 'package:bebop_dart/bebop_dart.dart';");
+            var builder = new IndentedStringBuilder();
+            builder.AppendLine("from enum import Enum");
+            builder.AppendLine("import python-bebop");
+            builder.AppendLine("from uuid import UUID");
+            builder.AppendLine("from datetime import datetime");
             builder.AppendLine("");
 
             foreach (var definition in Schema.Definitions.Values)
             {
                 if (!string.IsNullOrWhiteSpace(definition.Documentation))
                 {
-                    builder.Append(FormatDocumentation(definition.Documentation, 2));
+                    builder.Append(FormatDocumentation(definition.Documentation));
                 }
                 switch (definition)
                 {
                     case EnumDefinition ed:
-                        builder.AppendLine($"class {ed.Name} {{");
-                        builder.AppendLine($"  final int value;");
-                        builder.AppendLine($"  const {ed.Name}.fromRawValue(this.value);");
-                        builder.AppendLine($"  @override bool operator ==(o) => o is {ed.Name} && o.value == value;");
+                        builder.AppendLine($"class {ed.Name}(Enum):");
+                        builder.Indent(indentStep);
                         for (var i = 0; i < ed.Members.Count; i++)
                         {
                             var field = ed.Members.ElementAt(i);
                             if (!string.IsNullOrWhiteSpace(field.Documentation))
                             {
-                                builder.Append(FormatDocumentation(field.Documentation, 2));
+                                builder.Append(FormatDocumentation(field.Documentation));
                             }
                             if (field.DeprecatedAttribute != null)
                             {
-                                builder.AppendLine($"  /// @deprecated {field.DeprecatedAttribute.Value}");
+                                builder.AppendLine($"# @deprecated {field.DeprecatedAttribute.Value}");
                             }
-                            builder.AppendLine($"  static const {field.Name} = {ed.Name}.fromRawValue({field.ConstantValue});");
+                            builder.AppendLine($"  {field.Name.ToUpper()} = {field.ConstantValue}");
                         }
-                        builder.AppendLine($"}}");
+                        builder.Dedent(indentStep);
                         break;
                     case FieldsDefinition fd:
-                        builder.AppendLine($"class {fd.Name} {{");
-                        for (var i = 0; i < fd.Fields.Count; i++)
-                        {
+                        builder.AppendLine($"class {fd.Name}:");
+                        builder.Indent(indentStep);
+                        for (var i = 0; i < fd.Fields.Count; i++) {
                             var field = fd.Fields.ElementAt(i);
                             var type = TypeName(field.Type);
                             if (!string.IsNullOrWhiteSpace(field.Documentation))
                             {
-                                builder.Append(FormatDocumentation(field.Documentation, 2));
+                                builder.Append(FormatDocumentation(field.Documentation));
                             }
                             if (field.DeprecatedAttribute != null)
                             {
-                                builder.AppendLine($"  /// @deprecated {field.DeprecatedAttribute.Value}");
+                                builder.AppendLine($"# @deprecated {field.DeprecatedAttribute.Value}");
                             }
-                            var final = fd is StructDefinition { IsReadOnly: true } ? "final " : "";
-                            builder.AppendLine($"  {final}{type} {field.Name};");
+                            builder.AppendLine($"{field.Name}: {type}");
                         }
-                        if (fd is MessageDefinition)
-                        {
-                            builder.AppendLine($"  {fd.Name}();");
-                        }
-                        else
-                        {
-                            builder.AppendLine($"  {(fd is StructDefinition { IsReadOnly: true } ? "const " : "")}{fd.Name}({{");
-                            foreach (var field in fd.Fields)
-                            {
-                                builder.AppendLine($"    @required this.{field.Name},");
-                            }
-                            builder.AppendLine("  });");
-                        }
-                        builder.AppendLine("");
-                        if (fd.OpcodeAttribute != null)
-                        {
-                            builder.AppendLine($"  static const int opcode = {fd.OpcodeAttribute.Value};");
+                        if (fd.OpcodeAttribute != null) {
+                            builder.AppendLine($"opcode = {fd.OpcodeAttribute.Value}");
                             builder.AppendLine("");
                         }
-                        builder.AppendLine($"  static Uint8List encode({fd.Name} message) {{");
-                        builder.AppendLine("    final writer = BebopWriter();");
-                        builder.AppendLine($"    {fd.Name}.encodeInto(message, writer);");
-                        builder.AppendLine("    return writer.toList();");
-                        builder.AppendLine("  }");
+                        if (!(fd is MessageDefinition)) {
+                            builder.AppendLine("def __init__(self, ");
+                            List<string> fields = new List<string>();
+                            foreach (var field in fd.Fields)
+                            {
+                                fields.Add($"{field.Name}: {field.Type}");
+                            }
+                            builder.Append(String.Join(",", fields));
+                            builder.AppendLine("):");
+                            builder.Indent(indentStep);
+                            foreach (var field in fd.Fields) {
+                                builder.AppendLine($"self.{field.Name} = {field.Name}");
+                            }
+                            builder.Dedent(indentStep);
+                        }
                         builder.AppendLine("");
-                        builder.AppendLine($"  static void encodeInto({fd.Name} message, BebopWriter view) {{");
+
+                        builder.AppendLine("@staticmethod");
+                        builder.AppendLine($"encode(message: {fd.Name}):");
+                        builder.Indent(indentStep);
+                        builder.AppendLine("writer = BebopWriter()");
+                        builder.AppendLine($"{fd.Name}.encode_into(message, writer)");
+                        builder.AppendLine("return writer.to_list()");
+                        builder.Dedent(indentStep);
+                        builder.AppendLine("");
+
+                        builder.AppendLine("@staticmethod");
+                        builder.AppendLine($"encode_into(message: {fd.Name}, writer: BebopWriter):");
+                        builder.Indent(indentStep);
                         builder.Append(CompileEncode(fd));
-                        builder.AppendLine("  }");
+                        builder.Dedent(indentStep);
                         builder.AppendLine("");
-                        builder.AppendLine($"  static {fd.Name} decode(Uint8List buffer) => {fd.Name}.readFrom(BebopReader(buffer));");
-                        builder.AppendLine("");
-                        builder.AppendLine($"  static {fd.Name} readFrom(BebopReader view) {{");
+
+                        builder.AppendLine("@classmethod");
+                        builder.AppendLine($"_read_from(cls, reader: BebopReader):");
+                        builder.Indent(indentStep);
                         builder.Append(CompileDecode(fd));
-                        builder.AppendLine("  }");
-                        builder.AppendLine("}");
+                        builder.Dedent(indentStep);
                         builder.AppendLine("");
+
+                        builder.AppendLine("@staticmethod");
+                        builder.AppendLine($"decode(buffer) -> {fd.Name}:");
+                        builder.Indent(indentStep);
+                        builder.AppendLine($"return {fd.Name}._read_from(BebopReader(buffer))");
+                        builder.Dedent(indentStep);
+                        builder.AppendLine("");
+
+                        builder.Dedent(indentStep);
                         break;
                 }
             }

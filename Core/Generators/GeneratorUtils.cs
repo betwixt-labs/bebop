@@ -1,9 +1,11 @@
-﻿using System;
+﻿using System.Runtime.Serialization;
+using System;
 using System.Collections.Generic;
 using Core.Generators.CPlusPlus;
 using Core.Generators.CSharp;
 using Core.Generators.Dart;
 using Core.Generators.TypeScript;
+using Core.Generators.Python;
 using Core.Meta;
 using Core.Meta.Extensions;
 using Core.Meta.Interfaces;
@@ -88,6 +90,7 @@ namespace Core.Generators
             { "cs", s => new CSharpGenerator(s) },
             { "dart", s => new DartGenerator(s) },
             { "cpp", s => new CPlusPlusGenerator(s) },
+            { "py", s => new PythonGenerator(s) }
         };
 
         public static Dictionary<string, string> ImplementedGeneratorNames  = new()
@@ -96,6 +99,7 @@ namespace Core.Generators
             { "cs", "C#" },
             { "dart", "Dart" },
             { "cpp", "C++" },
+            { "py", "Python" }
         };
 
         /// <summary>
