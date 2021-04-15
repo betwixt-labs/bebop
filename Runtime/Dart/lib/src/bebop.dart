@@ -8,7 +8,6 @@ import 'tables.dart';
 /// It is used by the code that `bebopc --lang dart` generates. You shouldn't
 /// need to use it directly.
 class BebopReader {
-  ByteBuffer _buffer;
   Uint8List _bytes;
   ByteData _view;
   int index = 0;
@@ -19,13 +18,12 @@ class BebopReader {
 
   BebopReader._();
   static final BebopReader _instance = BebopReader._();
-  factory BebopReader.fromBuffer(ByteBuffer buffer) => _instance..load(buffer);
-  factory BebopReader(Uint8List list) => BebopReader.fromBuffer(list.buffer);
+  factory BebopReader(Uint8List list) => _instance..load(list);
 
-  void load(ByteBuffer buffer) {
-    _buffer = buffer;
-    _bytes = Uint8List.view(buffer);
-    _view = ByteData.view(_buffer);
+  void load(Uint8List list) {
+    // copy to new list cause underlying buffer seems to have some offset; see https://stackoverflow.com/questions/53897530/unreadable-int16-from-uint8list-wrong-data-when-cast-asbytearray
+    _bytes = Uint8List.fromList(list);
+    _view = ByteData.view(_bytes.buffer);
     index = 0;
   }
 
@@ -90,7 +88,7 @@ class BebopReader {
     if (length == 0) {
       return _emptyByteList;
     }
-    final view = _buffer.asUint8List(index, length);
+    final view = _bytes.sublist(index, index + length);
     index += length;
     return view;
   }
@@ -100,7 +98,7 @@ class BebopReader {
     if (length == 0) {
       return _emptyString;
     }
-    final view = _buffer.asUint8List(index, length);
+    final view = _bytes.sublist(index, index + length);
     index += length;
     return _utf8Decoder.convert(view);
   }
@@ -153,7 +151,7 @@ class BebopWriter {
   ByteData _view;
   int length = 0;
 
-static const Utf8Encoder _utf8Encoder = Utf8Encoder();
+  static const Utf8Encoder _utf8Encoder = Utf8Encoder();
 
   BebopWriter._() {
     _buffer = _bytes.buffer;
@@ -161,11 +159,18 @@ static const Utf8Encoder _utf8Encoder = Utf8Encoder();
   }
 
   static final BebopWriter _instance = BebopWriter._();
-  factory BebopWriter() => _instance..length = 0;
+  factory BebopWriter() {
+    // clear buffer -> enables stacked byte schemes
+    _instance._bytes = Uint8List(256);
+    _instance._buffer = _instance._bytes.buffer;
+    _instance._view = ByteData.view(_instance._buffer);
+    _instance.length = 0;
+    return _instance;
+  }
 
   void _guaranteeBufferLength(int length) {
     if (length > _bytes.lengthInBytes) {
-      final data = Uint8List(min(2 * _bytes.lengthInBytes, length));
+      final data = Uint8List(max(2 * _bytes.lengthInBytes, length));
       data.setAll(0, _bytes);
       _bytes = data;
       _buffer = data.buffer;
@@ -246,7 +251,7 @@ static const Utf8Encoder _utf8Encoder = Utf8Encoder();
   }
 
   void writeString(String value) {
-    if (value.length == 0) {
+    if (value.isEmpty) {
       writeUint32(0);
       return;
     }
