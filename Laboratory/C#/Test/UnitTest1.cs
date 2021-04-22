@@ -111,14 +111,14 @@ namespace Test
             {
                 Title = "Donna Lee",
                 Year = 1974,
-                Performers = new BaseMusician[]
+                Performers = new Musician[]
                 {
                     new Musician {Name = "Charlie Parker", Plays = Instrument.Sax},
                     new Musician {Name = "Miles Davis", Plays = Instrument.Trumpet}
                 }
             };
-            var library = new Library {Songs = new Dictionary<Guid, BaseSong> {{testGuid, song}}};
-            var decodedLibrary = Library.Decode(library.EncodeAsImmutable());
+            var library = new Library {Songs = new Dictionary<Guid, Song> {{testGuid, song}}};
+            var decodedLibrary = Library.Decode(library.EncodeImmutably());
             Assert.AreEqual(library, decodedLibrary);
         }
     }
