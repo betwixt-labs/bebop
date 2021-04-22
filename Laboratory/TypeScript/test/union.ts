@@ -1,5 +1,5 @@
 import { BebopView } from 'bebop';
-import { IU, U } from './generated/union';
+import { IU, U } from './generated/gen';
 import * as assert from "assert";
 
 it("Union roundtrip", () => {

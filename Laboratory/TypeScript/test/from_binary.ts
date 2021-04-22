@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import { Library } from './generated/jazz';
+import { Library } from './generated/gen';
 
 it('can parse Library from binary file', () => {
     var buffer = fs.readFileSync('test/jazz-library.bin');

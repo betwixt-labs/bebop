@@ -1,5 +1,5 @@
 import { BebopView } from 'bebop';
-import { BasicTypes } from './generated/basic_types';
+import { BasicTypes } from './generated/gen';
 import * as assert from "assert";
 
 it("Basic types roundtrip", () => {

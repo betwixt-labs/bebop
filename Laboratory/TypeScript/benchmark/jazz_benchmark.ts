@@ -1,4 +1,4 @@
-import { ILibrary, Instrument, Library, ISong, Song, Musician } from '../test/generated/jazz';
+import { ILibrary, Instrument, Library, ISong, Song, Musician } from '../test/generated/gen';
 import benchmark = require('benchmark');
 import msgpack = require("@msgpack/msgpack");
 import Pbf = require('pbf');
