@@ -1,4 +1,5 @@
-﻿using Core.Lexer.Tokenization.Models;
+﻿using System.Threading.Tasks;
+using Core.Lexer.Tokenization.Models;
 
 namespace Core.IO.Interfaces
 {
@@ -32,5 +33,11 @@ namespace Core.IO.Interfaces
         ///     A char literal, or \0 if there are no characters to be read.
         /// </returns>
         public char GetChar();
+
+        /// <summary>
+        ///     Append a file path to be read.
+        /// </summary>
+        /// <returns>True if a new file was actually added and must now be tokenized; false if this path was a duplicate.</returns>
+        public Task<bool> AddFile(string path);
     }
 }

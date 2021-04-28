@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Core.IO.Interfaces;
 using Core.Lexer.Tokenization.Models;
 
@@ -36,14 +37,6 @@ namespace Core.IO
         public static SchemaReader FromSchemaPaths(IEnumerable<string> schemaPaths)
         {
             return new SchemaReader(schemaPaths.Select(path => (path, File.ReadAllText(path) + Environment.NewLine)).ToList());
-        }
-
-        public void AddFile(string path)
-        {
-            if (!_schemas.Any(t => t.Item1 == path))
-            {
-                _schemas.Add((path, File.ReadAllText(path) + Environment.NewLine));
-            }
         }
 
         private string CurrentFile => _schemas[_schemaIndex].Item2;
@@ -91,6 +84,19 @@ namespace Core.IO
                 _currentColumn = 0;
             }
             return ch;
+        }
+
+        /// <inheritdoc/>
+        public async Task<bool> AddFile(string absolutePath)
+        {
+            var fullPath = Path.GetFullPath(absolutePath);
+            if (!_schemas.Any(t => Path.GetFullPath(t.Item1) == fullPath))
+            {
+                var text = await File.ReadAllTextAsync(fullPath);
+                _schemas.Add((fullPath, text + Environment.NewLine));
+                return true;
+            }
+            return false;
         }
     }
 }

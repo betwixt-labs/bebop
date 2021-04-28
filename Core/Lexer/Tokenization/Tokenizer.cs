@@ -5,13 +5,12 @@ using System.Threading.Tasks;
 using Core.Exceptions;
 using Core.IO.Interfaces;
 using Core.Lexer.Extensions;
-using Core.Lexer.Tokenization.Interfaces;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta.Extensions;
 
 namespace Core.Lexer.Tokenization
 {
-    public class Tokenizer : ITokenizer
+    public class Tokenizer
     {
         private ISchemaReader _reader;
 
@@ -31,23 +30,31 @@ namespace Core.Lexer.Tokenization
             return new Token(kind, lexeme, span, TokenCount++);
         }
 
-        /// <summary>
-        /// Assigns a reader for working on a schema
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="reader"></param>
-        public void AssignReader<T>(T reader) where T : ISchemaReader
-        {
-            _reader = reader;
+        private List<Token> _tokens = new List<Token>();
+        bool _newFilesToTokenize = true;
+
+        public List<Token> Tokens {
+            get {
+                if (_newFilesToTokenize) _tokens.AddRange(GetPendingTokens());
+                return _tokens;
+            }
         }
 
+        public async Task AddFile(string absolutePath)
+        {
+            if (await _reader.AddFile(absolutePath))
+            {
+                _newFilesToTokenize = true;
+            }
+        }
+
+
         /// <summary>
-        /// Yields back a a stream of tokens asynchronously 
+        /// Yields all pending tokens from the reader.
         /// </summary>
         /// <returns></returns>
-        public async IAsyncEnumerable<Token> TokenStream()
+        private IEnumerable<Token> GetPendingTokens()
         {
-            TokenCount = 0;
             while (true)
             {
                 var current = GetCharSkippingTrivia();
@@ -58,9 +65,9 @@ namespace Core.Lexer.Tokenization
                     throw new UnrecognizedTokenException(current, TokenStart);
                 }
 
-                yield return await Task.FromResult(scan.Value);
+                yield return scan.Value;
             }
-            yield return MakeToken(TokenKind.EndOfFile, string.Empty);
+            _newFilesToTokenize = false;
         }
 
         /// <summary>

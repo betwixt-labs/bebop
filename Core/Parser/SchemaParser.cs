@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Core.Exceptions;
+using Core.IO;
 using Core.Lexer;
 using Core.Lexer.Extensions;
 using Core.Lexer.Tokenization;
@@ -17,16 +19,16 @@ namespace Core.Parser
 {
     public class SchemaParser
     {
-        private readonly SchemaLexer _lexer;
+        private readonly Tokenizer _tokenizer;
         private readonly Dictionary<string, Definition> _definitions = new Dictionary<string, Definition>();
         /// <summary>
         /// A set of references to named types found in message/struct definitions:
         /// the left token is the type name, and the right token is the definition it's used in (used to report a helpful error).
         /// </summary>
         private readonly HashSet<(Token, Token)> _typeReferences = new HashSet<(Token, Token)>();
-        private uint _index;
+        private int _index;
         private readonly string _nameSpace;
-        private Token[] _tokens = new Token[] { };
+        private List<Token> _tokens => _tokenizer.Tokens;
 
         /// <summary>
         /// Creates a new schema parser instance from some schema files on disk.
@@ -35,7 +37,7 @@ namespace Core.Parser
         /// <param name="nameSpace"></param>
         public SchemaParser(List<string> schemaPaths, string nameSpace)
         {
-            _lexer = SchemaLexer.FromSchemaPaths(schemaPaths);
+            _tokenizer = new Tokenizer(SchemaReader.FromSchemaPaths(schemaPaths));
             _nameSpace = nameSpace;
         }
 
@@ -46,7 +48,7 @@ namespace Core.Parser
         /// <param name="nameSpace"></param>
         public SchemaParser(string textualSchema, string nameSpace)
         {
-            _lexer = SchemaLexer.FromTextualSchema(textualSchema);
+            _tokenizer = new Tokenizer(SchemaReader.FromTextualSchema(textualSchema));
             _nameSpace = nameSpace;
         }
 
@@ -56,32 +58,18 @@ namespace Core.Parser
         private Token CurrentToken => _tokens[_index];
 
         /// <summary>
-        /// Tokenize the input file, storing the result in <see cref="_tokens"/>.
-        /// </summary>
-        /// <returns></returns>
-        private async Task Tokenize()
-        {
-            var collection = new List<Token>();
-            await foreach (var token in _lexer.TokenStream())
-            {
-                collection.Add(token);
-            }
-            _tokens = collection.ToArray();
-        }
-
-        /// <summary>
         ///     Peeks a token at the specified <paramref name="index"/>
         /// </summary>
         /// <param name="index"></param>
         /// <returns></returns>
-        private Token PeekToken(uint index) => _tokens[index];
+        private Token PeekToken(int index) => _tokens[index];
 
         /// <summary>
         ///     Sets the current token stream position to the specified <paramref name="index"/>
         /// </summary>
         /// <param name="index"></param>
         /// <returns></returns>
-        private Token Base(uint index)
+        private Token Base(int index)
         {
             _index = index;
             return _tokens[index];
@@ -174,20 +162,24 @@ namespace Core.Parser
         /// <returns></returns>
         public async Task<ISchema> Parse()
         {
-            await Tokenize();
             _index = 0;
             _definitions.Clear();
             _typeReferences.Clear();
 
 
-            while (_index < _tokens.Length && !Eat(TokenKind.EndOfFile))
+            while (_index < _tokens.Count && !Eat(TokenKind.EndOfFile))
             {
                 if (EatPseudoKeyword("import"))
                 {
-                    var path = ExpectStringLiteral();
-                    Console.WriteLine($"Parsed an import: {path}");
+                    var currentFilePath = CurrentToken.Span.FileName;
+                    var currentFileDirectory = Path.GetDirectoryName(currentFilePath)!;
+                    var relativePathFromCurrent = ExpectStringLiteral();
+                    await _tokenizer.AddFile(Path.Combine(currentFileDirectory, relativePathFromCurrent));
                 }
-                ParseDefinition();
+                else
+                {
+                    ParseDefinition();
+                }
             }
             foreach (var (typeToken, definitionToken) in _typeReferences)
             {
