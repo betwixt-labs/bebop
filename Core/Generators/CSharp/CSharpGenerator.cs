@@ -170,9 +170,12 @@ namespace Core.Generators.CSharp
                         builder.AppendLine(HotPath);
                         builder.AppendLine(NonUserCodeAttribute);
                         builder.AppendLine(BrowsableAttribute);
-                        builder.AppendLine($"internal static void __EncodeInto({PrefixNamespace(definition.ClassName())} record, ref {BebopWriter} writer) {{");
+                        builder.AppendLine($"internal static int __EncodeInto({PrefixNamespace(definition.ClassName())} record, ref {BebopWriter} writer) {{");
                         builder.Indent(indentStep);
+                        builder.AppendLine("var before = writer.Length;");
                         builder.AppendLine(CompileEncode(fd));
+                        builder.AppendLine("var after = writer.Length;");
+                        builder.AppendLine("return after - before;");
                         builder.Dedent(indentStep);
                         builder.AppendLine("}");
                         builder.AppendLine();
