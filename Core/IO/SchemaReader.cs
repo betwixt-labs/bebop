@@ -35,7 +35,15 @@ namespace Core.IO
 
         public static SchemaReader FromSchemaPaths(IEnumerable<string> schemaPaths)
         {
-            return new SchemaReader(schemaPaths.Select(path => (path, $"{File.ReadAllText(path)}{Environment.NewLine}")).ToList());
+            return new SchemaReader(schemaPaths.Select(path => (path, File.ReadAllText(path) + Environment.NewLine)).ToList());
+        }
+
+        public void AddFile(string path)
+        {
+            if (!_schemas.Any(t => t.Item1 == path))
+            {
+                _schemas.Add((path, File.ReadAllText(path) + Environment.NewLine));
+            }
         }
 
         private string CurrentFile => _schemas[_schemaIndex].Item2;

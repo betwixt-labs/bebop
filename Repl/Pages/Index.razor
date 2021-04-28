@@ -131,7 +131,7 @@ struct Library {
         try
         {
             var parser = new SchemaParser(textualSchema, "Bebop.Example");
-            var schema = await parser.Evaluate();
+            var schema = await parser.Parse();
             schema.Validate();
             return new CompilerOutput
             {

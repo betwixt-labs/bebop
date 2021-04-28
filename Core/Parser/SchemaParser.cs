@@ -105,6 +105,20 @@ namespace Core.Parser
         }
 
         /// <summary>
+        /// Like <see cref="Eat"/>, but matches an "identifier" token equal to the given keyword.
+        /// For backwards compatibility, this is a little nicer than introducing a new keyword token that breaks old schemas (like "int32 import;").
+        /// </summary>
+        private bool EatPseudoKeyword(string keyword)
+        {
+            if (CurrentToken.Kind == TokenKind.Identifier && CurrentToken.Lexeme == keyword)
+            {
+                _index++;
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
         ///     If the <see cref="CurrentToken"/> matches the specified <paramref name="kind"/>, advance the token stream
         ///     <see cref="_index"/> forward.
         ///     Otherwise throw a <see cref="UnexpectedTokenException"/>
@@ -113,15 +127,27 @@ namespace Core.Parser
         /// <returns></returns>
         private void Expect(TokenKind kind, string? hint = null)
         {
-
             // don't throw on block comment tokens
-            if (CurrentToken.Kind == TokenKind.BlockComment)
-            {
-                ConsumeBlockComments();
-            }
+            ConsumeBlockComments();
             if (!Eat(kind))
             {
                 throw new UnexpectedTokenException(kind, CurrentToken, hint);
+            }
+        }
+
+        /// <summary>
+        /// Expect any string literal token, and return its contents.
+        /// </summary>
+        private string ExpectStringLiteral()
+        {
+            ConsumeBlockComments();
+            if (CurrentToken.Kind == TokenKind.StringLiteral || CurrentToken.Kind == TokenKind.StringExpandable)
+            {
+                return _tokens[_index++].Lexeme;
+            }
+            else
+            {
+                throw new UnexpectedTokenException(TokenKind.StringLiteral, CurrentToken);
             }
         }
 
@@ -133,23 +159,20 @@ namespace Core.Parser
         {
 
             var definitionDocumentation = string.Empty;
-            if (CurrentToken.Kind == TokenKind.BlockComment)
+            while (CurrentToken.Kind == TokenKind.BlockComment)
             {
-                while (CurrentToken.Kind == TokenKind.BlockComment)
-                {
-                    definitionDocumentation = CurrentToken.Lexeme;
-                    Eat(TokenKind.BlockComment);
-                }
+                definitionDocumentation = CurrentToken.Lexeme;
+                _index++;
             }
             return definitionDocumentation;
         }
 
 
         /// <summary>
-        ///     Evaluates a schema and parses it into a <see cref="ISchema"/> object
+        ///     Parse the current input files into an <see cref="ISchema"/> object.
         /// </summary>
         /// <returns></returns>
-        public async Task<ISchema> Evaluate()
+        public async Task<ISchema> Parse()
         {
             await Tokenize();
             _index = 0;
@@ -159,6 +182,11 @@ namespace Core.Parser
 
             while (_index < _tokens.Length && !Eat(TokenKind.EndOfFile))
             {
+                if (EatPseudoKeyword("import"))
+                {
+                    var path = ExpectStringLiteral();
+                    Console.WriteLine($"Parsed an import: {path}");
+                }
                 ParseDefinition();
             }
             foreach (var (typeToken, definitionToken) in _typeReferences)
@@ -258,7 +286,7 @@ namespace Core.Parser
             var definitionEnd = CurrentToken.Span;
             while (!Eat(TokenKind.CloseBrace))
             {
-               
+
                 var value = 0u;
 
                 var fieldDocumentation = ConsumeBlockComments();
@@ -308,10 +336,12 @@ namespace Core.Parser
                         throw new UnexpectedTokenException(TokenKind.Number, CurrentToken, "Enum constant must be an unsigned integer.");
                     }
                 }
-                
+
 
                 var fieldEnd = CurrentToken.Span;
-                Expect(TokenKind.Semicolon, hint: $"Elements in {aKindName} are delimited using semicolons.");
+                Expect(TokenKind.Semicolon, hint: CurrentToken.Kind == TokenKind.OpenBracket
+                    ? "Try 'Type[] foo' instead of 'Type foo[]'."
+                    : $"Elements in {aKindName} are delimited using semicolons.");
                 fields.Add(new Field(fieldName, type, fieldStart.Combine(fieldEnd), deprecatedAttribute, value, fieldDocumentation));
                 definitionEnd = CurrentToken.Span;
             }

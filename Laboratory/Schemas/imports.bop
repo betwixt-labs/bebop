@@ -1,0 +1,3 @@
+import "jazz.bop"
+
+struct Band { Musician[] members; }

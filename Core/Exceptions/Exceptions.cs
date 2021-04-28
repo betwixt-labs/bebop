@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Core.Lexer.Tokenization;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta;
@@ -64,6 +65,10 @@ namespace Core.Exceptions
         public UnexpectedTokenException(TokenKind expectedKind, Token token, string? hint = null)
             : base($"Expected {expectedKind}, but found '{token.Lexeme}' of kind {token.Kind}."
                 + (string.IsNullOrWhiteSpace(hint) ? "" : $" (Hint: {hint})"), token.Span, 104) { }
+        public UnexpectedTokenException(IEnumerable<TokenKind> expectedKinds, Token token, string? hint = null)
+            : base($"Expected {string.Join(" or ", expectedKinds)}, but found '{token.Lexeme}' of kind {token.Kind}."
+                + (string.IsNullOrWhiteSpace(hint) ? "" : $" (Hint: {hint})"), token.Span, 104)
+        { }
     }
     [Serializable]
     class UnrecognizedTypeException : SpanException
