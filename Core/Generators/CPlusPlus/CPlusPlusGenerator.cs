@@ -412,17 +412,20 @@ namespace Core.Generators.CPlusPlus
                             throw new InvalidOperationException($"unsupported definition {td}");
                         }
 
-                        builder.AppendLine($"  static void encodeInto(const {td.Name}& message, std::vector<uint8_t>& targetBuffer) {{");
+                        builder.AppendLine($"  static size_t encodeInto(const {td.Name}& message, std::vector<uint8_t>& targetBuffer) {{");
                         builder.AppendLine("    ::bebop::Writer writer{targetBuffer};");
-                        builder.AppendLine($"    {td.Name}::encodeInto(message, writer);");
+                        builder.AppendLine($"    return {td.Name}::encodeInto(message, writer);");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  template<typename T = ::bebop::Writer> static void encodeInto(const {td.Name}& message, T& writer) {{");
+                        builder.AppendLine($"  template<typename T = ::bebop::Writer> static size_t encodeInto(const {td.Name}& message, T& writer) {{");
+                        builder.AppendLine("    size_t before = writer.length();");
                         builder.Append(CompileEncode(td));
+                        builder.AppendLine("    size_t after = writer.length();");
+                        builder.AppendLine("    return after - before;");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  void encodeInto(std::vector<uint8_t>& targetBuffer) {{ {td.Name}::encodeInto(*this, targetBuffer); }}");
-                        builder.AppendLine($"  void encodeInto(::bebop::Writer& writer) {{ {td.Name}::encodeInto(*this, writer); }}");
+                        builder.AppendLine($"  size_t encodeInto(std::vector<uint8_t>& targetBuffer) {{ return {td.Name}::encodeInto(*this, targetBuffer); }}");
+                        builder.AppendLine($"  size_t encodeInto(::bebop::Writer& writer) {{ return {td.Name}::encodeInto(*this, writer); }}");
                         builder.AppendLine("");
                         builder.AppendLine($"  static {td.Name} decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {{");
                         builder.AppendLine($"    {td.Name} result;");

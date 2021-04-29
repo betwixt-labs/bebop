@@ -3,5 +3,5 @@
 Test with:
 
     mkdir gen
-    dotnet run --project ../../Compiler --lang dart --files ../Schemas/*.bop --out gen/gen.dart
+    dotnet run --project ../../Compiler --files ../Schemas/{array_of_strings,jazz,request}.bop --dart gen/gen.dart
     pub run test

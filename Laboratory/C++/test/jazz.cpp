@@ -11,13 +11,14 @@ int main() {
     s.title = "Donna Lee";
     s.year = 1974;
     Musician m = {"Charlie Parker", Instrument::Sax};
-    s.performers = {100, m};
+    s.performers = {10, m};
     std::map<bebop::Guid, Song> songs {{g, s}};
     Library l {songs};
 
     std::vector<uint8_t> buf;
     printf("Computed byte count before encoding: %zu\n", l.byteCount());
-    Library::encodeInto(l, buf);
+    size_t bytesWritten = Library::encodeInto(l, buf);
+    printf("Bytes written, reported by encodeInto(): %lu\n", bytesWritten);
     printf("Byte count of encoded buffer: %lu\n", buf.size());
     for (auto x : buf) printf(" %02x", x);
     printf("\n");

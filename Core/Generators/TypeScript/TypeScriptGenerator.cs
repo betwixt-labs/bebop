@@ -423,8 +423,11 @@ namespace Core.Generators.TypeScript
                     builder.AppendLine("    return view.toArray();");
                     builder.AppendLine("  },");
                     builder.AppendLine("");
-                    builder.AppendLine($"  encodeInto(message: I{td.Name}, view: BebopView): void {{");
+                    builder.AppendLine($"  encodeInto(message: I{td.Name}, view: BebopView): number {{");
+                    builder.AppendLine("    const before = view.length;");
                     builder.AppendLine(CompileEncode(td));
+                    builder.AppendLine("    const after = view.length;");
+                    builder.AppendLine("    return after - before;");
                     builder.AppendLine("  },");
                     builder.AppendLine("");
                     builder.AppendLine($"  decode(buffer: Uint8Array): I{td.Name} {{");

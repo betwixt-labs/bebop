@@ -1,4 +1,4 @@
-import { IArrayOfStrings, ArrayOfStrings } from '../test/generated/array_of_strings';
+import { IArrayOfStrings, ArrayOfStrings } from '../test/generated/gen';
 import benchmark = require('benchmark');
 import { BebopView } from 'bebop';
 const suite = new benchmark.Suite();

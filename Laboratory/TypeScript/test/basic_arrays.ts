@@ -1,5 +1,5 @@
 import { BebopView } from 'bebop';
-import { BasicArrays, IBasicArrays, TestInt32Array } from './generated/basic_arrays';
+import { BasicArrays, IBasicArrays, TestInt32Array } from './generated/gen';
 import * as assert from "assert";
 
 it("Basic array types roundtrip", () => {

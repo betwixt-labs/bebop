@@ -348,8 +348,11 @@ namespace Core.Generators.Dart
                         builder.AppendLine("    return writer.toList();");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  static void encodeInto({fd.Name} message, BebopWriter view) {{");
+                        builder.AppendLine($"  static int encodeInto({fd.Name} message, BebopWriter view) {{");
+                        builder.AppendLine("    final before = view.length;");
                         builder.Append(CompileEncode(fd));
+                        builder.AppendLine("    final after = view.length;");
+                        builder.AppendLine("    return after - before;");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
                         builder.AppendLine($"  static {fd.Name} decode(Uint8List buffer) => {fd.Name}.readFrom(BebopReader(buffer));");
