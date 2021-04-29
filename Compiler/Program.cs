@@ -133,7 +133,7 @@ namespace Compiler
             try
             {
                 var parser = new SchemaParser(textualSchema, "CheckNameSpace");
-                var schema = await parser.Evaluate();
+                var schema = await parser.Parse();
                 schema.Validate();
                 return Ok;
             }
@@ -147,7 +147,7 @@ namespace Compiler
         private static async Task<ISchema> ParseAndValidateSchemas(List<string> schemaPaths, string nameSpace)
         {
             var parser = new SchemaParser(schemaPaths, nameSpace);
-            var schema = await parser.Evaluate();
+            var schema = await parser.Parse();
             schema.Validate();
             return schema;
         }

@@ -1,0 +1,7 @@
+import "../Schemas/jazz.bop" // can I comment here?
+import "documentation.bop"
+import "./toposort.bop"
+import "../Schemas/basic_arrays.bop"
+
+struct Band { Musician[] members; }
+struct Something { DocE imported; }

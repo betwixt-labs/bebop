@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Core.IO.Interfaces;
+using Core.Lexer.Extensions;
 using Core.Lexer.Tokenization.Models;
 
 namespace Core.IO
@@ -35,7 +37,7 @@ namespace Core.IO
 
         public static SchemaReader FromSchemaPaths(IEnumerable<string> schemaPaths)
         {
-            return new SchemaReader(schemaPaths.Select(path => (path, $"{File.ReadAllText(path)}{Environment.NewLine}")).ToList());
+            return new SchemaReader(schemaPaths.Select(path => (path, File.ReadAllText(path))).ToList());
         }
 
         private string CurrentFile => _schemas[_schemaIndex].Item2;
@@ -45,19 +47,16 @@ namespace Core.IO
         private bool AtEndOfCurrentFile => !NoFilesLeft && _position >= CurrentFileLength;
 
         private string CurrentFileName => _schemas[_schemaIndex].Item1;
-        public Span CurrentSpan() => NoFilesLeft ? new Span("(eof)", 0, 0) : new Span(CurrentFileName, _currentLine, _currentColumn);
+        public Span CurrentSpan() => NoFilesLeft ? _latestEofSpan : new Span(CurrentFileName, _currentLine, _currentColumn);
 
-        /// <inheritdoc/>
-        public int Peek()
-        {
-            if (NoFilesLeft) return -1;
-            return CurrentChar;
-        }
+        private Span _latestEofSpan = new Span("(unknown file)", 0, 0);
+        public Span LatestEofSpan() => _latestEofSpan;
 
         /// <inheritdoc/>
         public char PeekChar()
         {
             if (NoFilesLeft) return '\0';
+            if (AtEndOfCurrentFile) return CharExtensions.FileSeparator;
             return CurrentChar;
         }
 
@@ -65,6 +64,15 @@ namespace Core.IO
         public char GetChar()
         {
             if (NoFilesLeft) return '\0';
+            if (AtEndOfCurrentFile)
+            {
+                _latestEofSpan = CurrentSpan();
+                _schemaIndex++;
+                _position = 0;
+                _currentLine = 0;
+                _currentColumn = 0;
+                return CharExtensions.FileSeparator;
+            }
             var ch = CurrentChar;
             if (ch == '\n')
             {
@@ -75,14 +83,20 @@ namespace Core.IO
                 _currentColumn++;
             }
             _position++;
-            while (AtEndOfCurrentFile)
-            {
-                _schemaIndex++;
-                _position = 0;
-                _currentLine = 0;
-                _currentColumn = 0;
-            }
             return ch;
+        }
+
+        /// <inheritdoc/>
+        public async Task<bool> AddFile(string absolutePath)
+        {
+            var fullPath = Path.GetFullPath(absolutePath);
+            if (!_schemas.Any(t => Path.GetFullPath(t.Item1) == fullPath))
+            {
+                var text = await File.ReadAllTextAsync(fullPath);
+                _schemas.Add((fullPath, text));
+                return true;
+            }
+            return false;
         }
     }
 }

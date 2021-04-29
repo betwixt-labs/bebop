@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Core.Exceptions;
+using Core.IO;
 using Core.Lexer;
 using Core.Lexer.Extensions;
 using Core.Lexer.Tokenization;
@@ -17,16 +19,16 @@ namespace Core.Parser
 {
     public class SchemaParser
     {
-        private readonly SchemaLexer _lexer;
+        private readonly Tokenizer _tokenizer;
         private readonly Dictionary<string, Definition> _definitions = new Dictionary<string, Definition>();
         /// <summary>
         /// A set of references to named types found in message/struct definitions:
         /// the left token is the type name, and the right token is the definition it's used in (used to report a helpful error).
         /// </summary>
         private readonly HashSet<(Token, Token)> _typeReferences = new HashSet<(Token, Token)>();
-        private uint _index;
+        private int _index;
         private readonly string _nameSpace;
-        private Token[] _tokens = new Token[] { };
+        private List<Token> _tokens => _tokenizer.Tokens;
 
         /// <summary>
         /// Creates a new schema parser instance from some schema files on disk.
@@ -35,7 +37,7 @@ namespace Core.Parser
         /// <param name="nameSpace"></param>
         public SchemaParser(List<string> schemaPaths, string nameSpace)
         {
-            _lexer = SchemaLexer.FromSchemaPaths(schemaPaths);
+            _tokenizer = new Tokenizer(SchemaReader.FromSchemaPaths(schemaPaths));
             _nameSpace = nameSpace;
         }
 
@@ -46,7 +48,7 @@ namespace Core.Parser
         /// <param name="nameSpace"></param>
         public SchemaParser(string textualSchema, string nameSpace)
         {
-            _lexer = SchemaLexer.FromTextualSchema(textualSchema);
+            _tokenizer = new Tokenizer(SchemaReader.FromTextualSchema(textualSchema));
             _nameSpace = nameSpace;
         }
 
@@ -56,32 +58,18 @@ namespace Core.Parser
         private Token CurrentToken => _tokens[_index];
 
         /// <summary>
-        /// Tokenize the input file, storing the result in <see cref="_tokens"/>.
-        /// </summary>
-        /// <returns></returns>
-        private async Task Tokenize()
-        {
-            var collection = new List<Token>();
-            await foreach (var token in _lexer.TokenStream())
-            {
-                collection.Add(token);
-            }
-            _tokens = collection.ToArray();
-        }
-
-        /// <summary>
         ///     Peeks a token at the specified <paramref name="index"/>
         /// </summary>
         /// <param name="index"></param>
         /// <returns></returns>
-        private Token PeekToken(uint index) => _tokens[index];
+        private Token PeekToken(int index) => _tokens[index];
 
         /// <summary>
         ///     Sets the current token stream position to the specified <paramref name="index"/>
         /// </summary>
         /// <param name="index"></param>
         /// <returns></returns>
-        private Token Base(uint index)
+        private Token Base(int index)
         {
             _index = index;
             return _tokens[index];
@@ -105,6 +93,20 @@ namespace Core.Parser
         }
 
         /// <summary>
+        /// Like <see cref="Eat"/>, but matches an "identifier" token equal to the given keyword.
+        /// For backwards compatibility, this is a little nicer than introducing a new keyword token that breaks old schemas (like "int32 import;").
+        /// </summary>
+        private bool EatPseudoKeyword(string keyword)
+        {
+            if (CurrentToken.Kind == TokenKind.Identifier && CurrentToken.Lexeme == keyword)
+            {
+                _index++;
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
         ///     If the <see cref="CurrentToken"/> matches the specified <paramref name="kind"/>, advance the token stream
         ///     <see cref="_index"/> forward.
         ///     Otherwise throw a <see cref="UnexpectedTokenException"/>
@@ -113,15 +115,27 @@ namespace Core.Parser
         /// <returns></returns>
         private void Expect(TokenKind kind, string? hint = null)
         {
-
             // don't throw on block comment tokens
-            if (CurrentToken.Kind == TokenKind.BlockComment)
-            {
-                ConsumeBlockComments();
-            }
+            ConsumeBlockComments();
             if (!Eat(kind))
             {
                 throw new UnexpectedTokenException(kind, CurrentToken, hint);
+            }
+        }
+
+        /// <summary>
+        /// Expect any string literal token, and return its contents.
+        /// </summary>
+        private string ExpectStringLiteral()
+        {
+            ConsumeBlockComments();
+            if (CurrentToken.Kind == TokenKind.StringLiteral || CurrentToken.Kind == TokenKind.StringExpandable)
+            {
+                return _tokens[_index++].Lexeme;
+            }
+            else
+            {
+                throw new UnexpectedTokenException(TokenKind.StringLiteral, CurrentToken);
             }
         }
 
@@ -133,33 +147,49 @@ namespace Core.Parser
         {
 
             var definitionDocumentation = string.Empty;
-            if (CurrentToken.Kind == TokenKind.BlockComment)
+            while (CurrentToken.Kind == TokenKind.BlockComment)
             {
-                while (CurrentToken.Kind == TokenKind.BlockComment)
-                {
-                    definitionDocumentation = CurrentToken.Lexeme;
-                    Eat(TokenKind.BlockComment);
-                }
+                definitionDocumentation = CurrentToken.Lexeme;
+                _index++;
             }
             return definitionDocumentation;
         }
 
 
         /// <summary>
-        ///     Evaluates a schema and parses it into a <see cref="ISchema"/> object
+        ///     Parse the current input files into an <see cref="ISchema"/> object.
         /// </summary>
         /// <returns></returns>
-        public async Task<ISchema> Evaluate()
+        public async Task<ISchema> Parse()
         {
-            await Tokenize();
             _index = 0;
             _definitions.Clear();
             _typeReferences.Clear();
 
 
-            while (_index < _tokens.Length && !Eat(TokenKind.EndOfFile))
+            while (_index < _tokens.Count)
             {
-                ParseDefinition();
+                if (Eat(TokenKind.EndOfFile)) continue;
+                if (EatPseudoKeyword("import"))
+                {
+                    var currentFilePath = CurrentToken.Span.FileName;
+                    var currentFileDirectory = Path.GetDirectoryName(currentFilePath)!;
+                    var pathToken = CurrentToken;
+                    var relativePathFromCurrent = ExpectStringLiteral();
+                    var combinedPath = Path.Combine(currentFileDirectory, relativePathFromCurrent);
+                    try
+                    {
+                        await _tokenizer.AddFile(combinedPath);
+                    }
+                    catch (IOException)
+                    {
+                        throw File.Exists(combinedPath) ? new ImportFileReadException(pathToken) : new ImportFileNotFoundException(pathToken);
+                    }
+                }
+                else
+                {
+                    ParseDefinition();
+                }
             }
             foreach (var (typeToken, definitionToken) in _typeReferences)
             {
@@ -258,7 +288,7 @@ namespace Core.Parser
             var definitionEnd = CurrentToken.Span;
             while (!Eat(TokenKind.CloseBrace))
             {
-               
+
                 var value = 0u;
 
                 var fieldDocumentation = ConsumeBlockComments();
@@ -308,10 +338,12 @@ namespace Core.Parser
                         throw new UnexpectedTokenException(TokenKind.Number, CurrentToken, "Enum constant must be an unsigned integer.");
                     }
                 }
-                
+
 
                 var fieldEnd = CurrentToken.Span;
-                Expect(TokenKind.Semicolon, hint: $"Elements in {aKindName} are delimited using semicolons.");
+                Expect(TokenKind.Semicolon, hint: CurrentToken.Kind == TokenKind.OpenBracket
+                    ? "Try 'Type[] foo' instead of 'Type foo[]'."
+                    : $"Elements in {aKindName} are delimited using semicolons.");
                 fields.Add(new Field(fieldName, type, fieldStart.Combine(fieldEnd), deprecatedAttribute, value, fieldDocumentation));
                 definitionEnd = CurrentToken.Span;
             }
