@@ -153,8 +153,23 @@ namespace Core.Exceptions
     class CyclicDefinitionsException : SpanException
     {
         public CyclicDefinitionsException(Definition definition)
-            : base($"The schema contains an invalid cycle of definitions, involving '{definition.Name}'.", definition.Span, 115)
+            : base($"The schema contains an invalid cycle of definitions, involving '{definition.Name}'.", definition.Span, 116)
         { }
     }
 
+    [Serializable]
+    class ImportFileNotFoundException : SpanException
+    {
+        public ImportFileNotFoundException(Token pathLiteral)
+            : base($"No such file: {pathLiteral.Lexeme}.", pathLiteral.Span, 117)
+        { }
+    }
+
+    [Serializable]
+    class ImportFileReadException : SpanException
+    {
+        public ImportFileReadException(Token pathToken)
+            : base($"Error reading file: {pathToken.Lexeme}.", pathToken.Span, 118)
+        { }
+    }
 }

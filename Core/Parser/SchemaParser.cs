@@ -173,8 +173,17 @@ namespace Core.Parser
                 {
                     var currentFilePath = CurrentToken.Span.FileName;
                     var currentFileDirectory = Path.GetDirectoryName(currentFilePath)!;
+                    var pathToken = CurrentToken;
                     var relativePathFromCurrent = ExpectStringLiteral();
-                    await _tokenizer.AddFile(Path.Combine(currentFileDirectory, relativePathFromCurrent));
+                    var combinedPath = Path.Combine(currentFileDirectory, relativePathFromCurrent);
+                    try
+                    {
+                        await _tokenizer.AddFile(combinedPath);
+                    }
+                    catch (IOException)
+                    {
+                        throw File.Exists(combinedPath) ? new ImportFileReadException(pathToken) : new ImportFileNotFoundException(pathToken);
+                    }
                 }
                 else
                 {
