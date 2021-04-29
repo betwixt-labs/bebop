@@ -19,7 +19,7 @@ int main(int argc, char **argv)
 {
   const auto bytes = ReadAllBytes(argv[1]);
   Union1 u;
-  Union1::decodeInto(bytes.data(), u);
+  Union1::decodeInto(bytes, u);
   auto right = std::get_if<Right>(&u.variant);
   if (right != nullptr && right->r == "Success")
     return 0;
