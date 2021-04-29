@@ -412,6 +412,9 @@ namespace Core.Lexer.Extensions
 
         #endregion
 
+        /// <summary>
+        /// This character is artificially reported to the tokenizer at the end of each input file.
+        /// </summary>
         public static char FileSeparator = '\u001c';
     }
 }

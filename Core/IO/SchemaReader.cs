@@ -37,7 +37,7 @@ namespace Core.IO
 
         public static SchemaReader FromSchemaPaths(IEnumerable<string> schemaPaths)
         {
-            return new SchemaReader(schemaPaths.Select(path => (path, File.ReadAllText(path) + Environment.NewLine)).ToList());
+            return new SchemaReader(schemaPaths.Select(path => (path, File.ReadAllText(path))).ToList());
         }
 
         private string CurrentFile => _schemas[_schemaIndex].Item2;
@@ -47,14 +47,10 @@ namespace Core.IO
         private bool AtEndOfCurrentFile => !NoFilesLeft && _position >= CurrentFileLength;
 
         private string CurrentFileName => _schemas[_schemaIndex].Item1;
-        public Span CurrentSpan() => NoFilesLeft ? new Span("(eof)", 0, 0) : new Span(CurrentFileName, _currentLine, _currentColumn);
+        public Span CurrentSpan() => NoFilesLeft ? _latestEofSpan : new Span(CurrentFileName, _currentLine, _currentColumn);
 
-        /// <inheritdoc/>
-        public int Peek()
-        {
-            if (NoFilesLeft) return -1;
-            return CurrentChar;
-        }
+        private Span _latestEofSpan = new Span("(unknown file)", 0, 0);
+        public Span LatestEofSpan() => _latestEofSpan;
 
         /// <inheritdoc/>
         public char PeekChar()
@@ -70,6 +66,7 @@ namespace Core.IO
             if (NoFilesLeft) return '\0';
             if (AtEndOfCurrentFile)
             {
+                _latestEofSpan = CurrentSpan();
                 _schemaIndex++;
                 _position = 0;
                 _currentLine = 0;
@@ -96,7 +93,7 @@ namespace Core.IO
             if (!_schemas.Any(t => Path.GetFullPath(t.Item1) == fullPath))
             {
                 var text = await File.ReadAllTextAsync(fullPath);
-                _schemas.Add((fullPath, text + Environment.NewLine));
+                _schemas.Add((fullPath, text));
                 return true;
             }
             return false;

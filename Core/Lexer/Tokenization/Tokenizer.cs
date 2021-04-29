@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using Core.Exceptions;
+using Core.IO;
 using Core.IO.Interfaces;
 using Core.Lexer.Extensions;
 using Core.Lexer.Tokenization.Models;
@@ -25,8 +26,7 @@ namespace Core.Lexer.Tokenization
 
         private Token MakeToken(TokenKind kind, string lexeme)
         {
-            var tokenEnd = _reader.CurrentSpan();
-            var span = TokenStart.Combine(tokenEnd);
+            var span = kind == TokenKind.EndOfFile ? _reader.LatestEofSpan() : TokenStart.Combine(_reader.CurrentSpan());
             return new Token(kind, lexeme, span, TokenCount++);
         }
 

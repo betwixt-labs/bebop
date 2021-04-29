@@ -1,4 +1,5 @@
 ﻿using System.Threading.Tasks;
+using Core.Lexer.Extensions;
 using Core.Lexer.Tokenization.Models;
 
 namespace Core.IO.Interfaces
@@ -11,18 +12,16 @@ namespace Core.IO.Interfaces
         public Span CurrentSpan();
 
         /// <summary>
-        ///     Returns the next available character but does not consume it.
+        ///     Returns an empty span at the most recent end-of-file position.
         /// </summary>
-        /// <returns>
-        ///     An integer representing the next character to be read, or -1 if there are no characters to be read.
-        /// </returns>
-        public int Peek();
+        public Span LatestEofSpan();
 
         /// <summary>
         ///     Returns the next available character but does not consume it.
         /// </summary>
         /// <returns>
-        ///     An integer representing the next character to be read, or -1 if there are no characters to be read.
+        ///     A char literal, or \0 if there are no characters left to be read.
+        ///     At the end of each individual input file, an artificial <see cref="CharExtensions.FileSeparator"/> is returned.
         /// </returns>
         public char PeekChar();
 
@@ -30,7 +29,8 @@ namespace Core.IO.Interfaces
         ///     Reads the next character from the input stream and advances the character position by one character.
         /// </summary>
         /// <returns>
-        ///     A char literal, or \0 if there are no characters to be read.
+        ///     A char literal, or \0 if there are no characters left to be read.
+        ///     At the end of each individual input file, an artificial <see cref="CharExtensions.FileSeparator"/> is returned.
         /// </returns>
         public char GetChar();
 
