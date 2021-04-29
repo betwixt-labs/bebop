@@ -410,6 +410,8 @@ namespace Core.Lexer.Extensions
             return false;
         }
 
-    #endregion
+        #endregion
+
+        public static char FileSeparator = '\u001c';
     }
 }

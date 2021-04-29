@@ -72,5 +72,7 @@ namespace Core.Lexer.Tokenization.Models
         {
             return Span.CompareTo(other.Span);
         }
+
+        public override string ToString() => $"{Kind}({Lexeme})";
     }
 }

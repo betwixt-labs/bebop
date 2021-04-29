@@ -167,8 +167,9 @@ namespace Core.Parser
             _typeReferences.Clear();
 
 
-            while (_index < _tokens.Count && !Eat(TokenKind.EndOfFile))
+            while (_index < _tokens.Count)
             {
+                if (Eat(TokenKind.EndOfFile)) continue;
                 if (EatPseudoKeyword("import"))
                 {
                     var currentFilePath = CurrentToken.Span.FileName;

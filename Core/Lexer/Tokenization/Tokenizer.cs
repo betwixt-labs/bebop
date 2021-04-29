@@ -72,7 +72,7 @@ namespace Core.Lexer.Tokenization
 
         /// <summary>
         /// Skip over whitespace and comments, then return the first char of the next token.
-        /// (This may be '\0' if the end of file is reached.)
+        /// (This may be '\0' if the end of the token stream is reached.)
         /// </summary>
         /// <returns>The first char of the next token.</returns>
         public char GetCharSkippingTrivia()
@@ -81,9 +81,12 @@ namespace Core.Lexer.Tokenization
             while (true)
             {
                 var c = _reader.PeekChar();
-                
-                // Report EOF no matter what.
+
+                // Report end of token stream no matter what.
                 if (c == '\0') return c;
+
+                // Report (and skip over) a file separator no matter what.
+                if (c == CharExtensions.FileSeparator) return _reader.GetChar();
                 
                 // Parse \r or \n or \r\n as a newline.
                 var isNewLine = false;
@@ -132,6 +135,7 @@ namespace Core.Lexer.Tokenization
         /// <returns></returns>
         public Token? TryScan(char surrogate) => surrogate switch
         {
+            _ when surrogate == CharExtensions.FileSeparator => MakeToken(TokenKind.EndOfFile, ""),
             _ when IsBlockComment(surrogate, out var b) => b,
             _ when IsSymbol(surrogate, out var s) => s,
             _ when IsIdentifier(surrogate, out var i) => i,

@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Core.IO.Interfaces;
+using Core.Lexer.Extensions;
 using Core.Lexer.Tokenization.Models;
 
 namespace Core.IO
@@ -59,6 +60,7 @@ namespace Core.IO
         public char PeekChar()
         {
             if (NoFilesLeft) return '\0';
+            if (AtEndOfCurrentFile) return CharExtensions.FileSeparator;
             return CurrentChar;
         }
 
@@ -66,6 +68,14 @@ namespace Core.IO
         public char GetChar()
         {
             if (NoFilesLeft) return '\0';
+            if (AtEndOfCurrentFile)
+            {
+                _schemaIndex++;
+                _position = 0;
+                _currentLine = 0;
+                _currentColumn = 0;
+                return CharExtensions.FileSeparator;
+            }
             var ch = CurrentChar;
             if (ch == '\n')
             {
@@ -76,13 +86,6 @@ namespace Core.IO
                 _currentColumn++;
             }
             _position++;
-            while (AtEndOfCurrentFile)
-            {
-                _schemaIndex++;
-                _position = 0;
-                _currentLine = 0;
-                _currentColumn = 0;
-            }
             return ch;
         }
 
