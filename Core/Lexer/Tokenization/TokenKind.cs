@@ -87,7 +87,6 @@ namespace Core.Lexer.Tokenization
         /// A token that represents a multi-line block comment
         /// </summary>
         BlockComment,
-        EndOfFile,
 
     #endregion
 
