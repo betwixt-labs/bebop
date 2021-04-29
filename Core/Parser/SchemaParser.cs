@@ -167,7 +167,7 @@ namespace Core.Parser
             _typeReferences.Clear();
 
 
-            while (_index < _tokens.Count)
+            while (_index < _tokens.Count && !Eat(TokenKind.EndOfFile))
             {
                 if (EatPseudoKeyword("import"))
                 {
