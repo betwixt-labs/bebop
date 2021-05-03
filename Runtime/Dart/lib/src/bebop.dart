@@ -8,13 +8,13 @@ import 'tables.dart';
 /// It is used by the code that `bebopc --lang dart` generates. You shouldn't
 /// need to use it directly.
 class BebopReader {
-  Uint8List _bytes;
-  ByteData _view;
+  late Uint8List _bytes;
+  late ByteData _view;
   int index = 0;
 
   static const Utf8Decoder _utf8Decoder = Utf8Decoder();
   static final Uint8List _emptyByteList = Uint8List(0);
-  static const String _emptyString = "";
+  static const String _emptyString = '';
 
   BebopReader._();
   static final BebopReader _instance = BebopReader._();
@@ -146,9 +146,9 @@ class BebopReader {
 /// It is used by the code that `bebopc --lang dart` generates. You shouldn't
 /// need to use it directly.
 class BebopWriter {
-  ByteBuffer _buffer;
+  late ByteBuffer _buffer;
   Uint8List _bytes = Uint8List(256);
-  ByteData _view;
+  late ByteData _view;
   int length = 0;
 
   static const Utf8Encoder _utf8Encoder = Utf8Encoder();

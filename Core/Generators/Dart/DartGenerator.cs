@@ -52,9 +52,10 @@ namespace Core.Generators.Dart
                 {
                     continue;
                 }
-                builder.AppendLine($"if (message.{field.Name} != null) {{");
+                builder.AppendLine($"final m_{field.Name} = message.{field.Name};");
+                builder.AppendLine($"if (m_{field.Name} != null) {{");
                 builder.AppendLine($"  view.writeByte({field.ConstantValue});");
-                builder.AppendLine($"  {CompileEncodeField(field.Type, $"message.{field.Name}")}");
+                builder.AppendLine($"  {CompileEncodeField(field.Type, $"m_{field.Name}")}");
                 builder.AppendLine($"}}");
             }
             builder.AppendLine("view.writeByte(0);");
@@ -191,24 +192,26 @@ namespace Core.Generators.Dart
                 ArrayType at =>
                     $"{{" + nl +
                     $"{tab}var length{depth} = view.readUint32();" + nl +
-                    $"{tab}{target} = {TypeName(at)}(length{depth});" + nl +
+                    $"{tab}var array{depth} = <{TypeName(at.MemberType)}>[];" + nl +
                     $"{tab}for (var {i} = 0; {i} < length{depth}; {i}++) {{" + nl +
                     $"{tab}{tab}{TypeName(at.MemberType)} x{depth};" + nl +
                     $"{tab}{tab}{CompileDecodeField(at.MemberType, $"x{depth}", depth + 1)}" + nl +
-                    $"{tab}{tab}{target}[{i}] = x{depth};" + nl +
+                    $"{tab}{tab}array{depth}.add(x{depth});" + nl +
                     $"{tab}}}" + nl +
+                    $"{tab}{target} = array{depth};" + nl +
                     $"}}",
                 MapType mt =>
                     $"{{" + nl +
                     $"{tab}var length{depth} = view.readUint32();" + nl +
-                    $"{tab}{target} = {TypeName(mt)}();" + nl +
+                    $"{tab}var map{depth} = {TypeName(mt)}();" + nl +
                     $"{tab}for (var {i} = 0; {i} < length{depth}; {i}++) {{" + nl +
                     $"{tab}{tab}{TypeName(mt.KeyType)} k{depth};" + nl +
                     $"{tab}{tab}{TypeName(mt.ValueType)} v{depth};" + nl +
                     $"{tab}{tab}{CompileDecodeField(mt.KeyType, $"k{depth}", depth + 1)}" + nl +
                     $"{tab}{tab}{CompileDecodeField(mt.ValueType, $"v{depth}", depth + 1)}" + nl +
-                    $"{tab}{tab}{target}[k{depth}] = v{depth};" + nl +
+                    $"{tab}{tab}map{depth}[k{depth}] = v{depth};" + nl +
                     $"{tab}}}" + nl +
+                    $"{tab}{target} = map{depth};" + nl +
                     $"}}",
                 ScalarType st => st.BaseType switch
                 {
@@ -321,7 +324,8 @@ namespace Core.Generators.Dart
                                 builder.AppendLine($"  /// @deprecated {field.DeprecatedAttribute.Value}");
                             }
                             var final = fd is StructDefinition { IsReadOnly: true } ? "final " : "";
-                            builder.AppendLine($"  {final}{type} {field.Name};");
+                            var optional = fd is MessageDefinition ? "?" : "";
+                            builder.AppendLine($"  {final}{type}{optional} {field.Name};");
                         }
                         if (fd is MessageDefinition)
                         {
@@ -332,7 +336,7 @@ namespace Core.Generators.Dart
                             builder.AppendLine($"  {(fd is StructDefinition { IsReadOnly: true } ? "const " : "")}{fd.Name}({{");
                             foreach (var field in fd.Fields)
                             {
-                                builder.AppendLine($"    @required this.{field.Name},");
+                                builder.AppendLine($"    required this.{field.Name},");
                             }
                             builder.AppendLine("  });");
                         }
