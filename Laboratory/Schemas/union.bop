@@ -15,7 +15,9 @@ union U {
     }
 }
 
-union List {
-    1 -> struct Cons { uint32 head; List tail; }
-    2 -> struct Nil {}
+union WeirdOrder {
+    2 -> struct TwoComesFirst { byte b; }
+    4 -> struct ThreeIsSkipped {}
+    1 -> struct OneComesLast {}
 }
+
