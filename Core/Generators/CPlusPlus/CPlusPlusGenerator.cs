@@ -83,10 +83,11 @@ namespace Core.Generators.CPlusPlus
             builder.AppendLine($"writer.writeByte(discriminator);");
             builder.AppendLine($"const auto start = writer.length();");
             builder.AppendLine($"switch (discriminator) {{");
+            int i = 0;
             foreach (var branch in definition.Branches)
             {
                 builder.AppendLine($" case {branch.Discriminator}:");
-                builder.AppendLine($"  {branch.Definition.Name}::encodeInto(std::get<{branch.Discriminator - 1}>(message.variant), writer);");
+                builder.AppendLine($"  {branch.Definition.Name}::encodeInto(std::get<{i++}>(message.variant), writer);");
                 builder.AppendLine($"  break;");
             }
             builder.AppendLine($"}}");
@@ -207,13 +208,14 @@ namespace Core.Generators.CPlusPlus
             builder.AppendLine("const auto length = reader.readLengthPrefix();");
             builder.AppendLine("const auto end = reader.pointer() + length + 1;");
             builder.AppendLine("switch (reader.readByte()) {");
+            int i = 0;
             foreach (var branch in definition.Branches)
             {
-                var i = branch.Discriminator - 1;
                 builder.AppendLine($"  case {branch.Discriminator}:");
                 builder.AppendLine($"    target.variant.emplace<{i}>();");
                 builder.AppendLine($"    {branch.Definition.Name}::decodeInto(reader, std::get<{i}>(target.variant));");
                 builder.AppendLine("    break;");
+                i++;
             }
             builder.AppendLine("  default:");
             builder.AppendLine("    reader.seek(end); // do nothing?");
