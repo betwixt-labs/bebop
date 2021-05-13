@@ -8,6 +8,6 @@ const bool exampleConstFalse = false;
 const bool exampleConstTrue = false;
 const string exampleConstString = "hello";
 const guid exampleConstGuid = e215a946-b26f-4567-a276-13136f0a1708;
-const date exampleConstDateUTC = 2021-05-13T07:35:36Z;
-const date exampleConstDatePST = 2021-05-13T07:35:36.123456789-08:00;
+// const date exampleConstDateUTC = 2021-05-13T07:35:36Z;
+// const date exampleConstDatePST = 2021-05-13T07:35:36.123456789-08:00;
 

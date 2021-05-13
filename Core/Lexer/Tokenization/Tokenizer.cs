@@ -137,10 +137,10 @@ namespace Core.Lexer.Tokenization
         {
             _ when surrogate == CharExtensions.FileSeparator => MakeToken(TokenKind.EndOfFile, ""),
             _ when IsBlockComment(surrogate, out var b) => b,
+            _ when IsNumber(surrogate, out var n) => n,
             _ when IsSymbol(surrogate, out var s) => s,
             _ when IsIdentifier(surrogate, out var i) => i,
             _ when IsLiteral(surrogate, out var l) => l,
-            _ when IsNumber(surrogate, out var n) => n,
             _ => null
         };
 
@@ -191,7 +191,9 @@ namespace Core.Lexer.Tokenization
 
 
         /// <summary>
-        /// Determines if a surrogate is a integral token
+        /// Determines if a surrogate starts a numeric token.
+        /// A numeric token matches the regex: [0-9-][0-9A-Za-z_.-]*
+        /// This is a little "greedy": it includes things like GUID literals starting with a decimal digit, or "-inf".
         /// </summary>
         /// <param name="surrogate"></param>
         /// <param name="token"></param>
@@ -205,20 +207,11 @@ namespace Core.Lexer.Tokenization
             }
             var builder = new StringBuilder();
             builder.Append(surrogate);
-            if (surrogate == '0' && _reader.PeekChar() == 'x')
+
+            char c;
+            while ((c = _reader.PeekChar()).IsIdentifierFollow() || c == '.')
             {
                 builder.Append(_reader.GetChar());
-                while (_reader.PeekChar().IsHexDigit())
-                {
-                    builder.Append(_reader.GetChar());
-                }
-            }
-            else
-            {
-                while (_reader.PeekChar().IsDecimalDigit())
-                {
-                    builder.Append(_reader.GetChar());
-                }
             }
            
             token = MakeToken(TokenKind.Number, builder.ToString());
@@ -226,7 +219,7 @@ namespace Core.Lexer.Tokenization
         }
 
         /// <summary>
-        /// Determines if a surrogate is the beginning of a literal token
+        /// Determines if a surrogate is the beginning of a string literal token
         /// </summary>
         /// <param name="surrogate"></param>
         /// <param name="token"></param>

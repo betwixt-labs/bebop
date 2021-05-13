@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Core.Exceptions;
 using Core.IO;
@@ -123,6 +124,13 @@ namespace Core.Parser
             }
         }
 
+        private string ExpectLexeme(TokenKind kind, string? hint = null)
+        {
+            var lexeme = CurrentToken.Lexeme;
+            Expect(kind, hint);
+            return lexeme;
+        }
+
         /// <summary>
         /// Expect any string literal token, and return its contents.
         /// </summary>
@@ -205,6 +213,11 @@ namespace Core.Parser
         {
             var definitionDocumentation = ConsumeBlockComments();
 
+            if (EatPseudoKeyword("const"))
+            {
+                return ParseConstDefinition(definitionDocumentation);
+            }
+
             var opcodeAttribute = EatAttribute(TokenKind.Opcode);
 
             var isReadOnly = Eat(TokenKind.ReadOnly);
@@ -223,6 +236,65 @@ namespace Core.Parser
                     _ => throw new UnexpectedTokenException(TokenKind.Message, CurrentToken)
                 };
                 return ParseNonUnionDefinition(CurrentToken, kind, isReadOnly, definitionDocumentation, opcodeAttribute);
+            }
+        }
+
+        private ConstDefinition ParseConstDefinition(string definitionDocumentation)
+        {
+            var definitionStart = CurrentToken.Span;
+            var type = ParseType(CurrentToken);
+            var name = ExpectLexeme(TokenKind.Identifier);
+            Expect(TokenKind.Eq, hint: "A constant definition looks like: const uint32 pianoKeys = 88;");
+            var value = ParseLiteral(type);
+            Expect(TokenKind.Semicolon, hint: "A constant definition must end in a semicolon: const uint32 pianoKeys = 88;");
+            var definitionSpan = definitionStart.Combine(CurrentToken.Span);
+            var definition = new ConstDefinition(name, definitionSpan, definitionDocumentation, value);
+            _definitions.Add(name, definition);
+            return definition;
+        }
+
+        private readonly Regex _reFloat = new(@"^(-?inf|nan|-?\d+(\.\d*)?(e-?\d+)?)$");
+        private readonly Regex _reInteger = new(@"^-?(0[xX][0-9a-fA-F]+|\d+)$");
+        private readonly Regex _reGuid = new(@"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
+
+        private Literal ParseLiteral(TypeBase type)
+        {
+            var token = CurrentToken;
+            switch (type)
+            {
+                case ArrayType:
+                    throw new UnsupportedConstTypeException("Array-typed constant definitions are not supported.", type.Span);
+                case MapType:
+                    throw new UnsupportedConstTypeException("Map-typed constant definitions are not supported.", type.Span);
+                case DefinedType:
+                    throw new UnsupportedConstTypeException("User-defined-type constant definitions are not supported.", type.Span);
+                case ScalarType st when st.BaseType == BaseType.Date:
+                    throw new UnsupportedConstTypeException("Date-type constant definitions are not supported.", type.Span);
+                case ScalarType st when st.IsFloat:
+                    if (!Eat(TokenKind.Number)) Expect(TokenKind.Identifier);
+                    if (!_reFloat.IsMatch(token.Lexeme)) throw new InvalidLiteralException(token, st);
+                    return new FloatLiteral(st, token.Span, token.Lexeme);
+                case ScalarType st when st.IsInteger:
+                    Expect(TokenKind.Number);
+                    if (!_reInteger.IsMatch(token.Lexeme)) throw new InvalidLiteralException(token, st);
+                    return new IntegerLiteral(st, token.Span, token.Lexeme);
+                case ScalarType st when st.BaseType == BaseType.Bool:
+                    Expect(TokenKind.Identifier);
+                    return token.Lexeme switch
+                    {
+                        "true" => new BoolLiteral(st, token.Span, true),
+                        "false" => new BoolLiteral(st, token.Span, false),
+                        _ => throw new InvalidLiteralException(token, st),
+                    };
+                case ScalarType st when st.BaseType == BaseType.String:
+                    ExpectStringLiteral();
+                    return new StringLiteral(st, token.Span, token.Lexeme);
+                case ScalarType st when st.BaseType == BaseType.Guid:
+                    if (!Eat(TokenKind.Number)) Expect(TokenKind.Identifier);
+                    if (!_reGuid.IsMatch(token.Lexeme)) throw new InvalidLiteralException(token, st);
+                    return new GuidLiteral(st, token.Span, Guid.Parse(token.Lexeme));
+                default:
+                    throw new UnsupportedConstTypeException($"Constant definitions for type {type.AsString} are not supported.", type.Span);
             }
         }
 

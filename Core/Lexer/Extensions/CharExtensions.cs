@@ -352,7 +352,7 @@ namespace Core.Lexer.Extensions
         {
             if (c < 128)
             {
-                return (Traits[c] & (CharTraits.IdentifierStart | CharTraits.Digit)) != 0;
+                return (Traits[c] & (CharTraits.IdentifierStart | CharTraits.Digit)) != 0 || c == '-';
             }
 
             return char.IsLetterOrDigit(c);

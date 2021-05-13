@@ -164,4 +164,15 @@ namespace Core.Meta
             return 4 + 1 + (Branches.Count == 0 ? 0 : Branches.Min(b => b.Definition.MinimalEncodedSize(schema)));
         }
     }
+
+    public class ConstDefinition : Definition
+    {
+        public ConstDefinition(string name, Span span, string documentation, Literal value) : base(name, span, documentation)
+        {
+            Value = value;
+        }
+        public override IEnumerable<string> Dependencies() => Enumerable.Empty<string>();
+
+        public Literal Value { get; }
+    }
 }
