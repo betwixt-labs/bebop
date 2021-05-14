@@ -324,6 +324,21 @@ namespace Core.Generators.CPlusPlus
             return "std::optional<" + type + ">";
         }
 
+        private string EmitLiteral(Literal literal) {
+            return literal switch
+            {
+                BoolLiteral bl => bl.Value ? "true" : "false",
+                IntegerLiteral il => il.Value,
+                FloatLiteral fl when fl.Value == "inf" => $"std::numeric_limits<{TypeName(literal.Type)}>::infinity()",
+                FloatLiteral fl when fl.Value == "-inf" => $"-std::numeric_limits<{TypeName(literal.Type)}>::infinity()",
+                FloatLiteral fl when fl.Value == "nan" => $"std::numeric_limits<{TypeName(literal.Type)}>::quiet_NaN()",
+                FloatLiteral fl => fl.Value,
+                StringLiteral sl => "\"" + sl.Value + "\"", // TODO string escapes
+                GuidLiteral gl => $"::bebop::Guid::fromString(\"{gl.Value}\")",
+                _ => throw new ArgumentOutOfRangeException(literal.ToString()),
+            };
+        }
+
         /// <summary>
         /// Generate code for a Bebop schema.
         /// </summary>
@@ -467,6 +482,12 @@ namespace Core.Generators.CPlusPlus
                         builder.AppendLine("};");
                         builder.AppendLine("");
                         break;
+                    case ConstDefinition cd:
+                        builder.AppendLine($"const {TypeName(cd.Value.Type)} {cd.Name} = {EmitLiteral(cd.Value)};");
+                        builder.AppendLine("");
+                        break;
+                    default:
+                        throw new InvalidOperationException($"unsupported definition {definition}");
                 }
             }
 
