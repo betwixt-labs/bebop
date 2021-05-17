@@ -33,8 +33,10 @@ namespace Core.Lexer.Tokenization
         private List<Token> _tokens = new List<Token>();
         bool _newFilesToTokenize = true;
 
-        public List<Token> Tokens {
-            get {
+        public List<Token> Tokens
+        {
+            get
+            {
                 if (_newFilesToTokenize) _tokens.AddRange(GetPendingTokens());
                 return _tokens;
             }
@@ -87,7 +89,7 @@ namespace Core.Lexer.Tokenization
 
                 // Report (and skip over) a file separator no matter what.
                 if (c == CharExtensions.FileSeparator) return _reader.GetChar();
-                
+
                 // Parse \r or \n or \r\n as a newline.
                 var isNewLine = false;
                 if (c == '\r')
@@ -145,8 +147,8 @@ namespace Core.Lexer.Tokenization
         };
 
 
-      
-      
+
+
         /// <summary>
         /// Determines if a surrogate leads into a block comment.
         /// </summary>
@@ -160,7 +162,7 @@ namespace Core.Lexer.Tokenization
             {
                 return false;
             }
-           
+
             _reader.GetChar();
             var builder = new StringBuilder();
             var currentChar = _reader.GetChar();
@@ -213,7 +215,7 @@ namespace Core.Lexer.Tokenization
             {
                 builder.Append(_reader.GetChar());
             }
-           
+
             token = MakeToken(TokenKind.Number, builder.ToString());
             return true;
         }
@@ -229,59 +231,27 @@ namespace Core.Lexer.Tokenization
             token = default;
             return surrogate switch
             {
-                _ when surrogate.IsSingleQuote() => ScanStringLiteral(out token),
-                _ when surrogate.IsDoubleQuote() => ScanStringExpandable(out token),
+                '\'' => ScanString(out token, '\''),
+                '"' => ScanString(out token, '\"'),
                 _ => false
             };
         }
-
-        /// <summary>
-        /// Reads a string that is wrapped in double quotes
-        /// </summary>
-        /// <param name="token"></param>
-        /// <returns></returns>
-        private bool ScanStringExpandable(out Token token)
-        {
-            token = default;
-            var builder = new StringBuilder();
-            var currentChar = _reader.GetChar();
-            while (currentChar != '\0')
-            {
-                if (currentChar.IsDoubleQuote())
-                {
-                    if (!_reader.PeekChar().IsDoubleQuote())
-                    {
-                        break;
-                    }
-                    currentChar = _reader.GetChar();
-                }
-                builder.Append(currentChar);
-                currentChar = _reader.GetChar();
-            }
-            if (currentChar == '\0')
-            {
-                // EOF
-                return false;
-            }
-            token = MakeToken(TokenKind.StringExpandable, builder.ToString());
-            return true;
-        }
-
         /// <summary>
         /// Reads a string that is wrapped in single quotes.
         /// </summary>
         /// <param name="token"></param>
         /// <returns></returns>
-        private bool ScanStringLiteral(out Token token)
+        private bool ScanString(out Token token, char quote)
         {
             token = default;
             var builder = new StringBuilder();
             var currentChar = _reader.GetChar();
             while (currentChar != '\0')
             {
-                if (currentChar.IsSingleQuote())
+                if (currentChar == quote)
                 {
-                    if (!_reader.PeekChar().IsSingleQuote())
+                    // Quotes are escaped by doubling them. "Hello ""world""!" corresponds to: Hello "world"!
+                    if (_reader.PeekChar() != quote)
                     {
                         break;
                     }
@@ -295,7 +265,7 @@ namespace Core.Lexer.Tokenization
                 // EOF
                 return false;
             }
-            token = MakeToken(TokenKind.StringLiteral, builder.ToString());
+            token = MakeToken(TokenKind.String, builder.ToString());
             return true;
         }
 

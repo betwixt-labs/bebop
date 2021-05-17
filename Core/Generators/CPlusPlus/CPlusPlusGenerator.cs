@@ -3,6 +3,8 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Core.Meta;
 using Core.Meta.Extensions;
@@ -320,8 +322,13 @@ namespace Core.Generators.CPlusPlus
             throw new InvalidOperationException($"GetTypeName: {type}");
         }
 
-        private string Optional(string type) {
-            return "std::optional<" + type + ">";
+        private static string Optional(string type) => "std::optional<" + type + ">";
+
+        private static string EscapeStringLiteral(string value)
+        {
+            // C++ accepts \u0000 style escape sequences, so we can escape the string JSON-style.
+            var options = new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+            return JsonSerializer.Serialize(value, options);
         }
 
         private string EmitLiteral(Literal literal) {
@@ -333,7 +340,7 @@ namespace Core.Generators.CPlusPlus
                 FloatLiteral fl when fl.Value == "-inf" => $"-std::numeric_limits<{TypeName(literal.Type)}>::infinity()",
                 FloatLiteral fl when fl.Value == "nan" => $"std::numeric_limits<{TypeName(literal.Type)}>::quiet_NaN()",
                 FloatLiteral fl => fl.Value,
-                StringLiteral sl => "\"" + sl.Value + "\"", // TODO string escapes
+                StringLiteral sl => EscapeStringLiteral(sl.Value),
                 GuidLiteral gl => $"::bebop::Guid::fromString(\"{gl.Value}\")",
                 _ => throw new ArgumentOutOfRangeException(literal.ToString()),
             };

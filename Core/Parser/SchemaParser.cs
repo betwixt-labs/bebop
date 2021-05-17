@@ -137,13 +137,13 @@ namespace Core.Parser
         private string ExpectStringLiteral()
         {
             ConsumeBlockComments();
-            if (CurrentToken.Kind == TokenKind.StringLiteral || CurrentToken.Kind == TokenKind.StringExpandable)
+            if (CurrentToken.Kind == TokenKind.String)
             {
                 return _tokens[_index++].Lexeme;
             }
             else
             {
-                throw new UnexpectedTokenException(TokenKind.StringLiteral, CurrentToken);
+                throw new UnexpectedTokenException(TokenKind.String, CurrentToken);
             }
         }
 
@@ -313,14 +313,13 @@ namespace Core.Parser
                 if (Eat(TokenKind.OpenParenthesis))
                 {
                     value = CurrentToken.Lexeme;
-                    if (Eat(TokenKind.StringExpandable) || Eat(TokenKind.StringLiteral) || kind.IsHybridValue() && Eat(TokenKind.Number))
+                    if (Eat(TokenKind.String)|| (kind == TokenKind.Opcode && Eat(TokenKind.Number)))
                     {
                         isNumber = PeekToken(_index - 1).Kind == TokenKind.Number;
                     }
                     else
                     {
-                        throw new UnexpectedTokenException(
-                            TokenKind.StringExpandable | TokenKind.StringLiteral | TokenKind.Number, CurrentToken);
+                        throw new UnexpectedTokenException(TokenKind.String, CurrentToken);
                     }
                     Expect(TokenKind.CloseParenthesis);
                 }
