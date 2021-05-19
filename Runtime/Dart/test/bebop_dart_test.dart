@@ -1,5 +1,4 @@
 import 'package:bebop_dart/bebop_dart.dart';
-import 'package:bebop_dart/stacked_schemes.g.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -49,18 +48,6 @@ void main() {
       expect(list, hasLength(16));
       reader = BebopReader(list);
       expect(reader.readGuid(), equals(guid));
-    });
-
-    test('Stacked schemes', () {
-      var scheme1 = Schema1(prop1: "Hi I'm stacked");
-      var scheme2 = Schema2(schemaBytes: Schema1.encode(scheme1));
-
-      var bytes = Schema2.encode(scheme2);
-      var restored2 = Schema2.decode(bytes);
-      expect(restored2.schemaBytes, isNotNull);
-
-      var restored1 = Schema1.decode(restored2.schemaBytes);
-      expect(restored1.prop1, equals("Hi I'm stacked"));
     });
   });
 }

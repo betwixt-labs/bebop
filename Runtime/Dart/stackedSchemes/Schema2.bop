@@ -1,3 +1,0 @@
-struct Schema2 {
-    byte[] schemaBytes;
-}
