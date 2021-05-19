@@ -194,7 +194,7 @@ namespace Core.Lexer.Tokenization
 
         /// <summary>
         /// Determines if a surrogate starts a numeric token.
-        /// A numeric token matches the regex: [0-9-][0-9A-Za-z_.-]*
+        /// A numeric token matches the regex: [0-9-][0-9A-Za-z_.]*
         /// This is a little "greedy": it includes things like GUID literals starting with a decimal digit, or "-inf".
         /// </summary>
         /// <param name="surrogate"></param>
@@ -203,7 +203,7 @@ namespace Core.Lexer.Tokenization
         private bool IsNumber(char surrogate, out Token token)
         {
             token = default;
-            if (surrogate != '-' && !surrogate.IsDecimalDigit())
+            if (!surrogate.IsDecimalDigit())
             {
                 return false;
             }
@@ -216,6 +216,7 @@ namespace Core.Lexer.Tokenization
                 builder.Append(_reader.GetChar());
             }
 
+            var tokenString = builder.ToString();
             token = MakeToken(TokenKind.Number, builder.ToString());
             return true;
         }

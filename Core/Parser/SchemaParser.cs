@@ -257,6 +257,17 @@ namespace Core.Parser
         private readonly Regex _reInteger = new(@"^-?(0[xX][0-9a-fA-F]+|\d+)$");
         private readonly Regex _reGuid = new(@"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
 
+        private (Span, string) ParseNumberLiteral()
+        {
+            var startToken = CurrentToken;
+            var hyphen = "";
+            if (Eat(TokenKind.Hyphen)) hyphen = "-";
+            var numberToken = CurrentToken;
+            if (!Eat(TokenKind.Number)) Expect(TokenKind.Identifier);
+            var span = startToken.Span.Combine(numberToken.Span);
+            return (span, hyphen + numberToken.Lexeme);
+        }
+
         private Literal ParseLiteral(TypeBase type)
         {
             var token = CurrentToken;
@@ -271,13 +282,13 @@ namespace Core.Parser
                 case ScalarType st when st.BaseType == BaseType.Date:
                     throw new UnsupportedConstTypeException("Date-type constant definitions are not supported.", type.Span);
                 case ScalarType st when st.IsFloat:
-                    if (!Eat(TokenKind.Number)) Expect(TokenKind.Identifier);
-                    if (!_reFloat.IsMatch(token.Lexeme)) throw new InvalidLiteralException(token, st);
-                    return new FloatLiteral(st, token.Span, token.Lexeme);
+                    var (floatSpan, floatLexeme) = ParseNumberLiteral();
+                    if (!_reFloat.IsMatch(floatLexeme)) throw new InvalidLiteralException(token, st);
+                    return new FloatLiteral(st, floatSpan, floatLexeme);
                 case ScalarType st when st.IsInteger:
-                    Expect(TokenKind.Number);
-                    if (!_reInteger.IsMatch(token.Lexeme)) throw new InvalidLiteralException(token, st);
-                    return new IntegerLiteral(st, token.Span, token.Lexeme);
+                    var (intSpan, intLexeme) = ParseNumberLiteral();
+                    if (!_reInteger.IsMatch(intLexeme)) throw new InvalidLiteralException(token, st);
+                    return new IntegerLiteral(st, intSpan, intLexeme);
                 case ScalarType st when st.BaseType == BaseType.Bool:
                     Expect(TokenKind.Identifier);
                     return token.Lexeme switch
@@ -290,7 +301,7 @@ namespace Core.Parser
                     ExpectStringLiteral();
                     return new StringLiteral(st, token.Span, token.Lexeme);
                 case ScalarType st when st.BaseType == BaseType.Guid:
-                    if (!Eat(TokenKind.Number)) Expect(TokenKind.Identifier);
+                    ExpectStringLiteral();
                     if (!_reGuid.IsMatch(token.Lexeme)) throw new InvalidLiteralException(token, st);
                     return new GuidLiteral(st, token.Span, Guid.Parse(token.Lexeme));
                 default:

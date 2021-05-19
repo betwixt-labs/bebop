@@ -24,6 +24,7 @@ namespace Core.Meta
         public bool IsUnsignedInteger => BaseType == BaseType.UInt16 || BaseType == BaseType.UInt32 || BaseType == BaseType.UInt64;
         public bool IsFloat => BaseType == BaseType.Float32 || BaseType == BaseType.Float64;
         public bool IsInteger => IsSignedInteger || IsUnsignedInteger;
+        public bool Is64Bit => BaseType == BaseType.Int64 || BaseType == BaseType.UInt64;
     }
 
     /// <summary>

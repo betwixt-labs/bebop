@@ -32,6 +32,6 @@ namespace Core.Meta
         /// <summary>
         /// The human readable version which may contain additional labels.
         /// </summary>
-        public const string Informational = "0.0.1-20210517-1812";
+        public const string Informational = "0.0.1-20210519-1850";
     }
 }
