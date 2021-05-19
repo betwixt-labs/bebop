@@ -7,5 +7,5 @@ npm install   # Install dependencies
 gulp compile  # Compile test/*.pie into test/generated/*.ts
               # (if not on Windows, try ./compile-schemas.sh)
               # (or make the gulpfile cross-platform in a PR <3)
-jest          # Run all the test/*.ts tests
+npx jest      # Run all the test/*.ts tests
 ```
