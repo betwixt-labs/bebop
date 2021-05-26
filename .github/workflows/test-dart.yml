@@ -16,7 +16,7 @@ jobs:
       - name: Build and run tests
         run: |
           mkdir gen
-          dotnet run --project ../../Compiler --files ../Schemas/*.bop --dart gen/gen.dart
+          grep dotnet test.sh | sh
           dart pub get
           dart pub run test
         working-directory: ./Laboratory/Dart
