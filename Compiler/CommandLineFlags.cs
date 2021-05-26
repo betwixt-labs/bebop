@@ -565,7 +565,20 @@ namespace Compiler
                                 flagAttribute.Attribute.Name.Equals(aliasElement.GetString())))
                         {
                             flagAttribute.Property.SetValue(flagStore, outputElement.GetString());
+                            if (generatorElement.TryGetProperty("langVersion", out var langVersion) && System.Version.TryParse(langVersion.ToString(), out var version))
+                            {
+
+                                foreach (var flag in GetFlagAttributes())
+                                {
+                                    if ($"{flagAttribute.Attribute.Name}-version".Equals(flag.Attribute.Name, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        flag.Property.SetValue(flagStore, version, null);
+                                    }
+                                }
+
+                            }
                         }
+
                     }
                 }
             }
