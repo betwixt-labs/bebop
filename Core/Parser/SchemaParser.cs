@@ -406,6 +406,10 @@ namespace Core.Parser
                 {
                     throw new ReservedIdentifierException(fieldName, CurrentToken.Span);
                 }
+                if (fieldName.Equals(definitionToken.Lexeme, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new FieldNameException(CurrentToken);
+                }
                 var fieldStart = CurrentToken.Span;
 
                 Expect(TokenKind.Identifier);

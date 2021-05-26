@@ -136,7 +136,7 @@ struct Library {
             return new CompilerOutput
             {
                 IsOk = true,
-                Result = GeneratorUtils.ImplementedGenerators[generatorAlias](schema).Compile()
+                Result = GeneratorUtils.ImplementedGenerators[generatorAlias](schema).Compile(null)
             };
         }
         catch (Exception e)

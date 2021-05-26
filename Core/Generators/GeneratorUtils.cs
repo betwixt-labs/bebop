@@ -82,7 +82,7 @@ namespace Core.Generators
         /// <remarks>
         /// Generators are keyed via their commandline alias.
         /// </remarks>
-        public static Dictionary<string, Func<ISchema, Generator>> ImplementedGenerators  = new()
+        public static Dictionary<string, Func<ISchema, BaseGenerator>> ImplementedGenerators  = new()
         {
             { "ts", s => new TypeScriptGenerator(s) },
             { "cs", s => new CSharpGenerator(s) },
