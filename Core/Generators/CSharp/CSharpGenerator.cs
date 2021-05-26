@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Linq;
 using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
 using Core.Meta;
 using Core.Meta.Extensions;
 using Core.Meta.Interfaces;
@@ -208,6 +210,17 @@ namespace Core.Generators.CSharp
                         CompileUnionFamily(builder, ud);
                     }
                 }
+                else if (definition is ConstDefinition cd)
+                {
+                    var constish = CanBeDeclaredConst(cd.Value.Type) ? "const" : "static readonly";
+                    builder.AppendLine($"public {constish} {TypeName(cd.Value.Type)} {cd.Name} = {EmitLiteral(cd.Value)};");
+                    builder.AppendLine("");
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Unsupported definition {definition}");
+                }
+
             }
 
             if (!string.IsNullOrWhiteSpace(Schema.Namespace))
@@ -217,6 +230,40 @@ namespace Core.Generators.CSharp
             }
             return builder.ToString();
         }
+
+        #region Const
+        private static string EscapeStringLiteral(string value)
+        {
+            // C# accepts \u0000 style escape sequences, so we can escape the string JSON-style.
+            var options = new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+            return JsonSerializer.Serialize(value, options);
+        }
+
+        private string EmitLiteral(Literal literal)
+        {
+            return literal switch
+            {
+                BoolLiteral bl => bl.Value ? "true" : "false",
+                IntegerLiteral il => il.Value,
+                FloatLiteral fl when fl.Value == "inf" => "double.PositiveInfinity",
+                FloatLiteral fl when fl.Value == "-inf" => "double.NegativeInfinity",
+                FloatLiteral fl when fl.Value == "nan" => "double.NaN",
+                FloatLiteral fl => fl.Value,
+                StringLiteral sl => EscapeStringLiteral(sl.Value),
+                GuidLiteral gl => $"new global::System.Guid(\"{gl.Value}\")",
+                _ => throw new ArgumentOutOfRangeException(literal.ToString()),
+            };
+        }
+
+        private bool CanBeDeclaredConst(TypeBase type) =>
+            type switch
+            {
+                ScalarType st when st.IsFloat || st.IsInteger => true,
+                ScalarType { BaseType: BaseType.Bool or BaseType.String } => true,
+                _ => false,
+            };
+
+        #endregion
 
         #region Message
         private string CompileEncodeMessage(MessageDefinition definition)

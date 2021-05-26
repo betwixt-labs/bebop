@@ -33,8 +33,10 @@ namespace Core.Lexer.Tokenization
         private List<Token> _tokens = new List<Token>();
         bool _newFilesToTokenize = true;
 
-        public List<Token> Tokens {
-            get {
+        public List<Token> Tokens
+        {
+            get
+            {
                 if (_newFilesToTokenize) _tokens.AddRange(GetPendingTokens());
                 return _tokens;
             }
@@ -87,7 +89,7 @@ namespace Core.Lexer.Tokenization
 
                 // Report (and skip over) a file separator no matter what.
                 if (c == CharExtensions.FileSeparator) return _reader.GetChar();
-                
+
                 // Parse \r or \n or \r\n as a newline.
                 var isNewLine = false;
                 if (c == '\r')
@@ -137,16 +139,16 @@ namespace Core.Lexer.Tokenization
         {
             _ when surrogate == CharExtensions.FileSeparator => MakeToken(TokenKind.EndOfFile, ""),
             _ when IsBlockComment(surrogate, out var b) => b,
+            _ when IsNumber(surrogate, out var n) => n,
             _ when IsSymbol(surrogate, out var s) => s,
             _ when IsIdentifier(surrogate, out var i) => i,
             _ when IsLiteral(surrogate, out var l) => l,
-            _ when IsNumber(surrogate, out var n) => n,
             _ => null
         };
 
 
-      
-      
+
+
         /// <summary>
         /// Determines if a surrogate leads into a block comment.
         /// </summary>
@@ -160,7 +162,7 @@ namespace Core.Lexer.Tokenization
             {
                 return false;
             }
-           
+
             _reader.GetChar();
             var builder = new StringBuilder();
             var currentChar = _reader.GetChar();
@@ -191,7 +193,9 @@ namespace Core.Lexer.Tokenization
 
 
         /// <summary>
-        /// Determines if a surrogate is a integral token
+        /// Determines if a surrogate starts a numeric token.
+        /// A numeric token matches the regex: [0-9-][0-9A-Za-z_.]*
+        /// This is a little "greedy": it includes things like GUID literals starting with a decimal digit, or "-inf".
         /// </summary>
         /// <param name="surrogate"></param>
         /// <param name="token"></param>
@@ -199,34 +203,26 @@ namespace Core.Lexer.Tokenization
         private bool IsNumber(char surrogate, out Token token)
         {
             token = default;
-            if (surrogate != '-' && !surrogate.IsDecimalDigit())
+            if (!surrogate.IsDecimalDigit())
             {
                 return false;
             }
             var builder = new StringBuilder();
             builder.Append(surrogate);
-            if (surrogate == '0' && _reader.PeekChar() == 'x')
+
+            char c;
+            while ((c = _reader.PeekChar()).IsIdentifierFollow() || c == '.')
             {
                 builder.Append(_reader.GetChar());
-                while (_reader.PeekChar().IsHexDigit())
-                {
-                    builder.Append(_reader.GetChar());
-                }
             }
-            else
-            {
-                while (_reader.PeekChar().IsDecimalDigit())
-                {
-                    builder.Append(_reader.GetChar());
-                }
-            }
-           
+
+            var tokenString = builder.ToString();
             token = MakeToken(TokenKind.Number, builder.ToString());
             return true;
         }
 
         /// <summary>
-        /// Determines if a surrogate is the beginning of a literal token
+        /// Determines if a surrogate is the beginning of a string literal token
         /// </summary>
         /// <param name="surrogate"></param>
         /// <param name="token"></param>
@@ -236,59 +232,27 @@ namespace Core.Lexer.Tokenization
             token = default;
             return surrogate switch
             {
-                _ when surrogate.IsSingleQuote() => ScanStringLiteral(out token),
-                _ when surrogate.IsDoubleQuote() => ScanStringExpandable(out token),
+                '\'' => ScanString(out token, '\''),
+                '"' => ScanString(out token, '\"'),
                 _ => false
             };
         }
-
-        /// <summary>
-        /// Reads a string that is wrapped in double quotes
-        /// </summary>
-        /// <param name="token"></param>
-        /// <returns></returns>
-        private bool ScanStringExpandable(out Token token)
-        {
-            token = default;
-            var builder = new StringBuilder();
-            var currentChar = _reader.GetChar();
-            while (currentChar != '\0')
-            {
-                if (currentChar.IsDoubleQuote())
-                {
-                    if (!_reader.PeekChar().IsDoubleQuote())
-                    {
-                        break;
-                    }
-                    currentChar = _reader.GetChar();
-                }
-                builder.Append(currentChar);
-                currentChar = _reader.GetChar();
-            }
-            if (currentChar == '\0')
-            {
-                // EOF
-                return false;
-            }
-            token = MakeToken(TokenKind.StringExpandable, builder.ToString());
-            return true;
-        }
-
         /// <summary>
         /// Reads a string that is wrapped in single quotes.
         /// </summary>
         /// <param name="token"></param>
         /// <returns></returns>
-        private bool ScanStringLiteral(out Token token)
+        private bool ScanString(out Token token, char quote)
         {
             token = default;
             var builder = new StringBuilder();
             var currentChar = _reader.GetChar();
             while (currentChar != '\0')
             {
-                if (currentChar.IsSingleQuote())
+                if (currentChar == quote)
                 {
-                    if (!_reader.PeekChar().IsSingleQuote())
+                    // Quotes are escaped by doubling them. "Hello ""world""!" corresponds to: Hello "world"!
+                    if (_reader.PeekChar() != quote)
                     {
                         break;
                     }
@@ -302,7 +266,7 @@ namespace Core.Lexer.Tokenization
                 // EOF
                 return false;
             }
-            token = MakeToken(TokenKind.StringLiteral, builder.ToString());
+            token = MakeToken(TokenKind.String, builder.ToString());
             return true;
         }
 

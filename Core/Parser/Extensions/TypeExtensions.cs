@@ -41,17 +41,6 @@ namespace Core.Parser.Extensions
             }
         }
 
-        public static bool IsHybridValue(this TokenKind kind)
-        {
-            return kind switch
-            {
-                TokenKind.Opcode => true,
-                TokenKind.Deprecated => false,
-                _ => false
-            };
-        }
-
-
         public static bool IsAggregateKind(this Token token, out AggregateKind? kind)
         {
             kind = token.Kind switch

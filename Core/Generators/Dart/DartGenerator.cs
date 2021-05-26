@@ -3,6 +3,8 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
 using Core.Meta;
 using Core.Meta.Extensions;
 using Core.Meta.Interfaces;
@@ -269,6 +271,28 @@ namespace Core.Generators.Dart
             throw new InvalidOperationException($"GetTypeName: {type}");
         }
 
+        private static string EscapeStringLiteral(string value)
+        {
+            // Dart accepts \u0000 style escape sequences, so we can escape the string JSON-style.
+            var options = new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+            return JsonSerializer.Serialize(value, options);
+        }
+
+        private string EmitLiteral(Literal literal) {
+            return literal switch
+            {
+                BoolLiteral bl => bl.Value ? "true" : "false",
+                IntegerLiteral il => il.Value,
+                FloatLiteral fl when fl.Value == "inf" => $"{TypeName(literal.Type)}.infinity",
+                FloatLiteral fl when fl.Value == "-inf" => $"{TypeName(literal.Type)}.negativeInfinity",
+                FloatLiteral fl when fl.Value == "nan" => $"{TypeName(literal.Type)}.nan",
+                FloatLiteral fl => fl.Value,
+                StringLiteral sl => EscapeStringLiteral(sl.Value),
+                GuidLiteral gl => EscapeStringLiteral(gl.Value.ToString("D")),
+                _ => throw new ArgumentOutOfRangeException(literal.ToString()),
+            };
+        }
+
         /// <summary>
         /// Generate code for a Bebop schema.
         /// </summary>
@@ -367,6 +391,12 @@ namespace Core.Generators.Dart
                         builder.AppendLine("}");
                         builder.AppendLine("");
                         break;
+                    case ConstDefinition cd:
+                        builder.AppendLine($"final {TypeName(cd.Value.Type)} {cd.Name} = {EmitLiteral(cd.Value)};");
+                        builder.AppendLine("");
+                        break;
+                    default:
+                        throw new InvalidOperationException($"unsupported definition {definition}");
                 }
             }
 

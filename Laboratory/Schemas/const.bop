@@ -1,0 +1,14 @@
+const int32 exampleConstInt32 = -123;
+const uint64 exampleConstUint64 = 0x123ffffffff;
+const float64 exampleConstFloat64 = 123.45678e9;
+const float64 exampleConstInf = inf;
+const float64 exampleConstNegInf = -inf;
+const float64 exampleConstNan = nan;
+const bool exampleConstFalse = false;
+const bool exampleConstTrue = true;
+const string exampleConstString = "hello ""world""
+with newlines";
+const guid exampleConstGuid = "e215a946-b26f-4567-a276-13136f0a1708";
+// const date exampleConstDateUTC = 2021-05-13T07:35:36Z;
+// const date exampleConstDatePST = 2021-05-13T07:35:36.123456789-08:00;
+

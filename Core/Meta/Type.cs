@@ -19,6 +19,12 @@ namespace Core.Meta
         }
 
         internal override IEnumerable<string> Dependencies() => Enumerable.Empty<string>();
+
+        public bool IsSignedInteger => BaseType == BaseType.Int16 || BaseType == BaseType.Int32 || BaseType == BaseType.Int64;
+        public bool IsUnsignedInteger => BaseType == BaseType.Byte || BaseType == BaseType.UInt16 || BaseType == BaseType.UInt32 || BaseType == BaseType.UInt64;
+        public bool IsFloat => BaseType == BaseType.Float32 || BaseType == BaseType.Float64;
+        public bool IsInteger => IsSignedInteger || IsUnsignedInteger;
+        public bool Is64Bit => BaseType == BaseType.Int64 || BaseType == BaseType.UInt64;
     }
 
     /// <summary>

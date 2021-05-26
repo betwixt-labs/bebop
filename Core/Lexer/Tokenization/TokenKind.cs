@@ -70,14 +70,9 @@ namespace Core.Lexer.Tokenization
         Identifier,
 
         /// <summary>
-        ///     A single quoted string literal.
+        ///     A string literal.
         /// </summary>
-        StringLiteral,
-
-        /// <summary>
-        ///     A double quoted string literal.
-        /// </summary>
-        StringExpandable,
+        String,
 
         /// <summary>
         ///     Any numerical literal token.

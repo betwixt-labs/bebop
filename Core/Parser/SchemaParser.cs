@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Core.Exceptions;
 using Core.IO;
@@ -123,19 +124,26 @@ namespace Core.Parser
             }
         }
 
+        private string ExpectLexeme(TokenKind kind, string? hint = null)
+        {
+            var lexeme = CurrentToken.Lexeme;
+            Expect(kind, hint);
+            return lexeme;
+        }
+
         /// <summary>
         /// Expect any string literal token, and return its contents.
         /// </summary>
         private string ExpectStringLiteral()
         {
             ConsumeBlockComments();
-            if (CurrentToken.Kind == TokenKind.StringLiteral || CurrentToken.Kind == TokenKind.StringExpandable)
+            if (CurrentToken.Kind == TokenKind.String)
             {
                 return _tokens[_index++].Lexeme;
             }
             else
             {
-                throw new UnexpectedTokenException(TokenKind.StringLiteral, CurrentToken);
+                throw new UnexpectedTokenException(TokenKind.String, CurrentToken);
             }
         }
 
@@ -205,6 +213,11 @@ namespace Core.Parser
         {
             var definitionDocumentation = ConsumeBlockComments();
 
+            if (EatPseudoKeyword("const"))
+            {
+                return ParseConstDefinition(definitionDocumentation);
+            }
+
             var opcodeAttribute = EatAttribute(TokenKind.Opcode);
 
             var isReadOnly = Eat(TokenKind.ReadOnly);
@@ -226,6 +239,76 @@ namespace Core.Parser
             }
         }
 
+        private ConstDefinition ParseConstDefinition(string definitionDocumentation)
+        {
+            var definitionStart = CurrentToken.Span;
+            var type = ParseType(CurrentToken);
+            var name = ExpectLexeme(TokenKind.Identifier);
+            Expect(TokenKind.Eq, hint: "A constant definition looks like: const uint32 pianoKeys = 88;");
+            var value = ParseLiteral(type);
+            Expect(TokenKind.Semicolon, hint: "A constant definition must end in a semicolon: const uint32 pianoKeys = 88;");
+            var definitionSpan = definitionStart.Combine(CurrentToken.Span);
+            var definition = new ConstDefinition(name, definitionSpan, definitionDocumentation, value);
+            _definitions.Add(name, definition);
+            return definition;
+        }
+
+        private readonly Regex _reFloat = new(@"^(-?inf|nan|-?\d+(\.\d*)?(e-?\d+)?)$");
+        private readonly Regex _reInteger = new(@"^-?(0[xX][0-9a-fA-F]+|\d+)$");
+        private readonly Regex _reGuid = new(@"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
+
+        private (Span, string) ParseNumberLiteral()
+        {
+            var startToken = CurrentToken;
+            var hyphen = "";
+            if (Eat(TokenKind.Hyphen)) hyphen = "-";
+            var numberToken = CurrentToken;
+            if (!Eat(TokenKind.Number)) Expect(TokenKind.Identifier);
+            var span = startToken.Span.Combine(numberToken.Span);
+            return (span, hyphen + numberToken.Lexeme);
+        }
+
+        private Literal ParseLiteral(TypeBase type)
+        {
+            var token = CurrentToken;
+            switch (type)
+            {
+                case ArrayType:
+                    throw new UnsupportedConstTypeException("Array-typed constant definitions are not supported.", type.Span);
+                case MapType:
+                    throw new UnsupportedConstTypeException("Map-typed constant definitions are not supported.", type.Span);
+                case DefinedType:
+                    throw new UnsupportedConstTypeException("User-defined-type constant definitions are not supported.", type.Span);
+                case ScalarType st when st.BaseType == BaseType.Date:
+                    throw new UnsupportedConstTypeException("Date-type constant definitions are not supported.", type.Span);
+                case ScalarType st when st.IsFloat:
+                    var (floatSpan, floatLexeme) = ParseNumberLiteral();
+                    if (!_reFloat.IsMatch(floatLexeme)) throw new InvalidLiteralException(token, st);
+                    return new FloatLiteral(st, floatSpan, floatLexeme);
+                case ScalarType st when st.IsInteger:
+                    var (intSpan, intLexeme) = ParseNumberLiteral();
+                    if (!_reInteger.IsMatch(intLexeme)) throw new InvalidLiteralException(token, st);
+                    return new IntegerLiteral(st, intSpan, intLexeme);
+                case ScalarType st when st.BaseType == BaseType.Bool:
+                    Expect(TokenKind.Identifier);
+                    return token.Lexeme switch
+                    {
+                        "true" => new BoolLiteral(st, token.Span, true),
+                        "false" => new BoolLiteral(st, token.Span, false),
+                        _ => throw new InvalidLiteralException(token, st),
+                    };
+                case ScalarType st when st.BaseType == BaseType.String:
+                    ExpectStringLiteral();
+                    return new StringLiteral(st, token.Span, token.Lexeme);
+                case ScalarType st when st.BaseType == BaseType.Guid:
+                    ExpectStringLiteral();
+                    if (!_reGuid.IsMatch(token.Lexeme)) throw new InvalidLiteralException(token, st);
+                    return new GuidLiteral(st, token.Span, Guid.Parse(token.Lexeme));
+                default:
+                    throw new UnsupportedConstTypeException($"Constant definitions for type {type.AsString} are not supported.", type.Span);
+            }
+        }
+
         /// <summary>
         /// Consumes all the tokens belonging to an attribute
         /// </summary>
@@ -241,14 +324,13 @@ namespace Core.Parser
                 if (Eat(TokenKind.OpenParenthesis))
                 {
                     value = CurrentToken.Lexeme;
-                    if (Eat(TokenKind.StringExpandable) || Eat(TokenKind.StringLiteral) || kind.IsHybridValue() && Eat(TokenKind.Number))
+                    if (Eat(TokenKind.String)|| (kind == TokenKind.Opcode && Eat(TokenKind.Number)))
                     {
                         isNumber = PeekToken(_index - 1).Kind == TokenKind.Number;
                     }
                     else
                     {
-                        throw new UnexpectedTokenException(
-                            TokenKind.StringExpandable | TokenKind.StringLiteral | TokenKind.Number, CurrentToken);
+                        throw new UnexpectedTokenException(TokenKind.String, CurrentToken);
                     }
                     Expect(TokenKind.CloseParenthesis);
                 }

@@ -4,6 +4,8 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
 using Core.Meta;
 using Core.Meta.Extensions;
 using Core.Meta.Interfaces;
@@ -334,6 +336,29 @@ namespace Core.Generators.TypeScript
             throw new InvalidOperationException($"GetTypeName: {type}");
         }
 
+        private static string EscapeStringLiteral(string value)
+        {
+            // TypeScript accepts \u0000 style escape sequences, so we can escape the string JSON-style.
+            var options = new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+            return JsonSerializer.Serialize(value, options);
+        }
+
+        private string EmitLiteral(Literal literal) {
+            return literal switch
+            {
+                BoolLiteral bl => bl.Value ? "true" : "false",
+                IntegerLiteral il when il.Type is ScalarType st && st.Is64Bit => $"BigInt(\"{il.Value}\")",
+                IntegerLiteral il => il.Value,
+                FloatLiteral fl when fl.Value == "inf" => "Number.POSITIVE_INFINITY",
+                FloatLiteral fl when fl.Value == "-inf" => "Number.NEGATIVE_INFINITY",
+                FloatLiteral fl when fl.Value == "nan" => "Number.NaN",
+                FloatLiteral fl => fl.Value,
+                StringLiteral sl => EscapeStringLiteral(sl.Value),
+                GuidLiteral gl => EscapeStringLiteral(gl.Value.ToString("D")),
+                _ => throw new ArgumentOutOfRangeException(literal.ToString()),
+            };
+        }
+
         /// <summary>
         /// Generate code for a Bebop schema.
         /// </summary>
@@ -441,6 +466,15 @@ namespace Core.Generators.TypeScript
                     builder.AppendLine("  },");
                     builder.AppendLine("};");
                     builder.AppendLine("");
+                }
+                else if (definition is ConstDefinition cd)
+                {
+                    builder.AppendLine($"export const {cd.Name}: {TypeName(cd.Value.Type)} = {EmitLiteral(cd.Value)};");
+                    builder.AppendLine("");
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Unsupported definition {definition}");
                 }
             }
             if (!string.IsNullOrWhiteSpace(Schema.Namespace))

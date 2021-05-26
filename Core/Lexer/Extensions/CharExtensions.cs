@@ -267,36 +267,6 @@ namespace Core.Lexer.Extensions
             return char.IsSeparator(c);
         }
 
-
-        /// <summary>
-        /// Return true if the character is any of the normal or special
-        /// dash characters.
-        /// </summary>
-        /// <param name="c"></param>
-        /// <returns></returns>
-        internal static bool IsDash(this char c) => c == '-' || c == SpecialChars.EnDash || c == SpecialChars.EmDash ||
-            c == SpecialChars.HorizontalBar;
-
-        /// <summary>
-        /// Return true if the character is any of the normal or special
-        /// single quote characters.
-        /// </summary>
-        /// <param name="c"></param>
-        /// <returns></returns>
-        internal static bool IsSingleQuote(this char c) => c == '\'' || c == SpecialChars.QuoteSingleLeft ||
-            c == SpecialChars.QuoteSingleRight || c == SpecialChars.QuoteSingleBase || c == SpecialChars.QuoteReversed;
-
-
-        /// <summary>
-        /// Return true if the character is any of the normal or special
-        /// double quote characters.
-        /// </summary>
-        /// <param name="c"></param>
-        /// <returns></returns>
-
-        internal static bool IsDoubleQuote(this char c) => c == '"' || c == SpecialChars.QuoteDoubleLeft ||
-            c == SpecialChars.QuoteDoubleRight || c == SpecialChars.QuoteLowDoubleLeft;
-
         /// <summary>
         ///     Indicates whether a specified Unicode character is categorized as a control character.
         /// </summary>

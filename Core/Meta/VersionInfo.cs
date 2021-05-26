@@ -28,10 +28,10 @@ namespace Core.Meta
         /// <summary>
         /// The PATCH version of bebopc.
         /// </summary>
-        public const byte Patch = 0;
+        public const byte Patch = 1;
         /// <summary>
         /// The human readable version which may contain additional labels.
         /// </summary>
-        public const string Informational = "";
+        public const string Informational = "0.0.1-20210526-1533";
     }
 }
