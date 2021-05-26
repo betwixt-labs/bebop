@@ -218,7 +218,8 @@ namespace Core.Generators.CSharp
                 }
                 else if (definition is ConstDefinition cd)
                 {
-                    builder.AppendLine($"public static readonly {TypeName(cd.Value.Type)} {cd.Name} = {EmitLiteral(cd.Value)};");
+                    var constish = CanBeDeclaredConst(cd.Value.Type) ? "const" : "static readonly";
+                    builder.AppendLine($"public {constish} {TypeName(cd.Value.Type)} {cd.Name} = {EmitLiteral(cd.Value)};");
                     builder.AppendLine("");
                 }
                 else
@@ -260,6 +261,13 @@ namespace Core.Generators.CSharp
             };
         }
 
+        private bool CanBeDeclaredConst(TypeBase type) =>
+            type switch
+            {
+                ScalarType st when st.IsFloat || st.IsInteger => true,
+                ScalarType { BaseType: BaseType.Bool or BaseType.String } => true,
+                _ => false,
+            };
         #endregion
 
         #region Message

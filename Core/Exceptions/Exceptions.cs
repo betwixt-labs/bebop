@@ -196,4 +196,5 @@ namespace Core.Exceptions
             : base($"Field names cannot be the same as their enclosing type.", token.Span, 121)
         { }
     }
+
 }
