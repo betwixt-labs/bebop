@@ -13,7 +13,17 @@ using Core.Meta;
 
 namespace Compiler
 {
-#region FlagAttribute
+    #region Records
+    /// <summary>
+    /// Represents a code generator passed to bebopc.
+    /// </summary>
+    /// <param name="Alias">The alias of the code generator.</param>
+    /// <param name="OutputFile">The quailified file that the generator will produce.</param>
+    /// <param name="LangVersion">If set this value defines the version of the language generated code will use.</param>
+    public record CodeGenerator(string Alias, string OutputFile, Version? LangVersion);
+    #endregion
+
+    #region FlagAttribute
 
     /// <summary>
     ///     Models an application command-line flag.
@@ -71,11 +81,12 @@ namespace Compiler
         public bool IsGeneratorFlag { get; }
     }
 
-#endregion
+    #endregion
     /// <summary>
     /// Static extension methods for the command-line flag types.
     /// </summary>
-    public static class CommandLineExtensions {
+    public static class CommandLineExtensions
+    {
         /// <summary>
         /// Determines if the provided <paramref name="flags"/> contains the specified <paramref name="flagName"/>
         /// </summary>
@@ -118,7 +129,7 @@ namespace Compiler
         /// Indicates if the current flag has any values assigned to it.
         /// </summary>
         /// <returns>true if the flag has values, otherwise false.</returns>
-        public bool HasValues() => Values is {Length: > 0};
+        public bool HasValues() => Values is { Length: > 0 };
 
         /// <summary>
         /// Returns the first value associated with the current flag.
@@ -170,10 +181,10 @@ namespace Compiler
         public string? CPlusPlusOutput { get; private set; }
 
         [CommandLineFlag("namespace", "When this option is specified generated code will use namespaces",
-            "--lang cs --namespace [package]")]
+            "--cs --namespace [package]")]
         public string? Namespace { get; private set; }
 
-        [CommandLineFlag("dir", "Parse and generate code from a directory of schemas", "--lang ts --dir [input dir]")]
+        [CommandLineFlag("dir", "Parse and generate code from a directory of schemas", "--ts --dir [input dir]")]
         public string? SchemaDirectory { get; private set; }
 
         [CommandLineFlag("files", "Parse and generate code from a list of schemas", "--files [file1] [file2] ...")]
@@ -204,23 +215,45 @@ namespace Compiler
             "--log-format (structured|msbuild|json)")]
         public LogFormatter LogFormatter { get; private set; }
 
+        /// <summary>
+        ///     An optional flag to set the version of a language a code generator will use. 
+        /// </summary>
+        [CommandLineFlag("cs-version", "Defines the C# language version the C# generator will target.",
+            "--cs ./my/output/HelloWorld.cs --cs-version (9.0|8.0)")]
+        public Version? CSharpVersion { get; private set; }
+
         public string HelpText { get; }
+
+        /// <summary>
+        /// Finds a language version flag set for a generator.
+        /// </summary>
+        private Version? GetGeneratorVersion(CommandLineFlagAttribute attribute)
+        {
+            foreach (var flag in GetFlagAttributes())
+            {
+                if ($"{attribute.Name}-version".Equals(flag.Attribute.Name, StringComparison.OrdinalIgnoreCase) && flag.Property.GetValue(this) is Version value)
+                {
+                    return value;
+                }
+            }
+            return null;
+        }
 
         /// <summary>
         ///     Returns the alias and output file of all command-line specified code generators.
         /// </summary>
-        public IEnumerable<(string Alias, string OutputFile)> GetParsedGenerators()
+        public IEnumerable<CodeGenerator> GetParsedGenerators()
         {
             foreach (var flag in GetFlagAttributes())
             {
                 if (flag.Attribute.IsGeneratorFlag && flag.Property.GetValue(this) is string value)
                 {
-                    yield return (flag.Attribute.Name, value);
+                    yield return new CodeGenerator(flag.Attribute.Name, value, GetGeneratorVersion(flag.Attribute));
                 }
             }
         }
 
-    #region Static
+        #region Static
 
         /// <summary>
         ///     Walks all properties in <see cref="CommandLineFlags"/> and maps them to their assigned
@@ -233,7 +266,7 @@ namespace Compiler
                     let attr = p.GetCustomAttributes(typeof(CommandLineFlagAttribute), true)
                     where attr.Length == 1
                     select (p, attr.First() as CommandLineFlagAttribute))
-                .Select(t => ((PropertyInfo, CommandLineFlagAttribute)) t)
+                .Select(t => ((PropertyInfo, CommandLineFlagAttribute))t)
                 .ToList();
         }
 
@@ -255,12 +288,12 @@ namespace Compiler
             var configFile = Directory.GetFiles(workingDirectory, ConfigFileName).FirstOrDefault();
             while (string.IsNullOrWhiteSpace(configFile))
             {
-                if (Directory.GetParent(workingDirectory) is not {Exists: true} parent)
+                if (Directory.GetParent(workingDirectory) is not { Exists: true } parent)
                 {
                     break;
                 }
                 workingDirectory = parent.FullName;
-                if (parent.GetFiles(ConfigFileName)?.FirstOrDefault() is {Exists: true} file)
+                if (parent.GetFiles(ConfigFileName)?.FirstOrDefault() is { Exists: true } file)
                 {
                     configFile = file.FullName;
                 }
@@ -268,9 +301,9 @@ namespace Compiler
             return configFile;
         }
 
-    #endregion
+        #endregion
 
-    #region Parsing
+        #region Parsing
 
         /// <summary>
         ///     Parses an array of command-line flags into dictionary.
@@ -286,7 +319,7 @@ namespace Compiler
                 {
                     var key = new string(token.SkipWhile(c => c == '-').ToArray()).ToLowerInvariant();
                     var value = args.SkipWhile(i => i != $"--{key}").Skip(1).TakeWhile(i => !i.StartsWith("--")).ToArray();
-                    
+
                     flags.Add(new CommandLineFlag(key, value));
                 }
             }
@@ -442,7 +475,7 @@ namespace Compiler
                         errorMessage = $"Failed to activate '{flag.Property.Name}'.";
                         return false;
                     }
-   
+
                     // file paths wrapped in quotes may contain spaces. 
                     foreach (var item in parsedFlag.Values)
                     {
@@ -463,6 +496,13 @@ namespace Compiler
                         return false;
                     }
                     flag.Property.SetValue(flagStore, parsedEnum, null);
+                }
+                else if (propertyType == typeof(Version))
+                {
+                    if (System.Version.TryParse(parsedFlag.GetValue(), out var version) && version is Version)
+                    {
+                        flag.Property.SetValue(flagStore, version, null);
+                    }
                 }
                 else
                 {
@@ -525,7 +565,20 @@ namespace Compiler
                                 flagAttribute.Attribute.Name.Equals(aliasElement.GetString())))
                         {
                             flagAttribute.Property.SetValue(flagStore, outputElement.GetString());
+                            if (generatorElement.TryGetProperty("langVersion", out var langVersion) && System.Version.TryParse(langVersion.ToString(), out var version))
+                            {
+
+                                foreach (var flag in GetFlagAttributes())
+                                {
+                                    if ($"{flagAttribute.Attribute.Name}-version".Equals(flag.Attribute.Name, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        flag.Property.SetValue(flagStore, version, null);
+                                    }
+                                }
+
+                            }
                         }
+
                     }
                 }
             }
@@ -533,5 +586,5 @@ namespace Compiler
         }
     }
 
-#endregion
+    #endregion
 }
