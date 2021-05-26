@@ -4,6 +4,7 @@ on:
     branches:
       - master
       - test-action-new-cli
+  pull_request:
 jobs:
   test-dart:
     runs-on: ubuntu-18.04
@@ -16,7 +17,7 @@ jobs:
       - name: Build and run tests
         run: |
           mkdir gen
-          dotnet run --project ../../Compiler --files ../Schemas/*.bop --dart gen/gen.dart
+          grep dotnet test.sh | bash
           dart pub get
           dart pub run test
         working-directory: ./Laboratory/Dart
