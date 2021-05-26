@@ -11,7 +11,7 @@ using Core.Meta.Interfaces;
 
 namespace Core.Generators.Dart
 {
-    public class DartGenerator : Generator
+    public class DartGenerator : BaseGenerator
     {
         const int indentStep = 2;
 

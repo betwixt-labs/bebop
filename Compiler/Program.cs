@@ -119,7 +119,7 @@ namespace Compiler
                     await Log.Error(new CompilerException("No output file was specified."));
                     return 1;
                 }
-                var result = await CompileSchema(GeneratorUtils.ImplementedGenerators[parsedGenerator.Alias], paths, new FileInfo(parsedGenerator.OutputFile), _flags.Namespace ?? "");
+                var result = await CompileSchema(GeneratorUtils.ImplementedGenerators[parsedGenerator.Alias], paths, new FileInfo(parsedGenerator.OutputFile), _flags.Namespace ?? string.Empty, parsedGenerator.LangVersion);
                 if (result != Ok)
                 {
                     return result;
@@ -152,10 +152,10 @@ namespace Compiler
             return schema;
         }
 
-        private static async Task<int> CompileSchema(Func<ISchema, Generator> makeGenerator,
+        private static async Task<int> CompileSchema(Func<ISchema, BaseGenerator> makeGenerator,
             List<string> schemaPaths,
             FileInfo outputFile,
-            string nameSpace)
+            string nameSpace, Version? langVersion)
         {
             if (outputFile.Directory is not null && !outputFile.Directory.Exists)
             {
@@ -171,7 +171,7 @@ namespace Compiler
                 var schema = await ParseAndValidateSchemas(schemaPaths, nameSpace);
                 var generator = makeGenerator(schema);
                 generator.WriteAuxiliaryFiles(outputFile.DirectoryName ?? string.Empty);
-                var compiled = generator.Compile();
+                var compiled = generator.Compile(langVersion);
                 await File.WriteAllTextAsync(outputFile.FullName, compiled);
                 return Ok;
             }
