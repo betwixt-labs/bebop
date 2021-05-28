@@ -33,11 +33,37 @@ namespace Core.Generators.CSharp
             if (!string.IsNullOrWhiteSpace(Schema.Namespace))
             {
                 builder.AppendLine($"namespace {Schema.Namespace.ToPascalCase()} {{");
-                builder.Indent(indentStep);
+                builder.Indent(indentStep).AppendLine();
             }
+
+            if (Schema.Definitions.Values.Any(d => d is ConstDefinition))
+            {
+                builder.AppendLine(ConstantSummary);
+                builder.AppendLine(GeneratedAttribute);
+                builder.AppendLine($"public static class BopConstants {{");
+                builder.Indent(indentStep);
+ 
+                foreach (ConstDefinition cd in Schema.Definitions.Values.Where(d => d is ConstDefinition)) {
+                    var constish = CanBeDeclaredConst(cd.Value.Type) ? "const" : "static readonly";
+                    if (!string.IsNullOrWhiteSpace(cd.Documentation))
+                    {
+                        builder.AppendLine(FormatDocumentation(cd.Documentation, 0));
+                    }
+                    builder.AppendLine($"public {constish} {TypeName(cd.Value.Type)} {cd.Name.ToPascalCase()} = {EmitLiteral(cd.Value)};");
+                }
+                builder.Dedent(indentStep);
+                builder.AppendLine("}").AppendLine();
+            }
+          
+
+            
 
             foreach (var definition in Schema.Definitions.Values)
             {
+                if (definition is ConstDefinition)
+                {
+                    continue;
+                }
                 if (!string.IsNullOrWhiteSpace(definition.Documentation))
                 {
                     builder.AppendLine(FormatDocumentation(definition.Documentation, 0));
@@ -215,12 +241,6 @@ namespace Core.Generators.CSharp
                     {
                         CompileUnionFamily(builder, ud);
                     }
-                }
-                else if (definition is ConstDefinition cd)
-                {
-                    var constish = CanBeDeclaredConst(cd.Value.Type) ? "const" : "static readonly";
-                    builder.AppendLine($"public {constish} {TypeName(cd.Value.Type)} {cd.Name} = {EmitLiteral(cd.Value)};");
-                    builder.AppendLine("");
                 }
                 else
                 {
@@ -1227,6 +1247,7 @@ namespace Core.Generators.CSharp
         private const string HotPath = "[global::System.Runtime.CompilerServices.MethodImpl(global::Bebop.Runtime.BebopConstants.HotPath)]";
         private static readonly string GeneratedAttribute = $"[global::System.CodeDom.Compiler.GeneratedCode(\"{ReservedWords.CompilerName}\", \"{VersionInfo.Informational}\")]";
         private const string Warning = "/// <summary>DO NOT CALL THIS METHOD DIRECTLY!</summary>";
+        private const string ConstantSummary = "/// <summary>A static class which contains schema defined constants.</summary>";
         private const string NonUserCodeAttribute = "[global::System.Diagnostics.DebuggerNonUserCodeAttribute()]";
         private const string BrowsableAttribute = "[global::System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]";
         private const string BebopWriter = "global::Bebop.Runtime.BebopWriter";
