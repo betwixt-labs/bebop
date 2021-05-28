@@ -74,7 +74,6 @@ jobs:
       - if: matrix.os == 'macos-latest'
         name: Install gon via HomeBrew for Code Signing and App Notarization
         run: |
-          brew tap mitchellh/gon
           brew install mitchellh/gon/gon
 
       - if: matrix.os == 'macos-latest'
