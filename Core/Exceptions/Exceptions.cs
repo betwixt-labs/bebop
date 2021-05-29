@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using Core.Lexer.Tokenization;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta;
@@ -194,6 +195,14 @@ namespace Core.Exceptions
     {
         public FieldNameException(Token token)
             : base($"Field names cannot be the same as their enclosing type.", token.Span, 121)
+        { }
+    }
+
+    [Serializable]
+    class DuplicateConstDefinitionException : SpanException
+    {
+        public DuplicateConstDefinitionException(ConstDefinition definition)
+            : base($"An illegal redefinition for the constant '{definition.Name}' was found in '{Path.GetFileName(definition.Span.FileName)}'", definition.Span, 122)
         { }
     }
 
