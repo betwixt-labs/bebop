@@ -26,6 +26,7 @@ export interface Issue {
     endLine: number
     endColumn: number
     description: string
+    fileName: string
 }
 
 function getBebopCompilerPath() {
@@ -57,7 +58,8 @@ export async function check(path: string): Promise<{error: boolean, issues?: Iss
                     startLine: Span.StartLine,
                     endLine: Span.EndLine,
                     startColumn: Span.StartColumn,
-                    endColumn: Span.EndColumn
+                    endColumn: Span.EndColumn,
+                    fileName: Span.FileName
                 })
                 resolve({
                     error: true,
@@ -89,7 +91,8 @@ export async function checkSchema(contents: string): Promise<{error: boolean, is
                     startLine: Span.StartLine,
                     endLine: Span.EndLine,
                     startColumn: Span.StartColumn,
-                    endColumn: Span.EndColumn
+                    endColumn: Span.EndColumn,
+                    fileName: ""
                 })
                 resolve({
                     error: true,
