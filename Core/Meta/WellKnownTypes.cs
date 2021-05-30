@@ -16,7 +16,8 @@ namespace Core.Meta
             "BebopWriter",
             "BebopRecord",
             "BebopMirror",
-            "BebopConstants"
+            "BebopConstants",
+            "BopConstants"
         };
     }
 

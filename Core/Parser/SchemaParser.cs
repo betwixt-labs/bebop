@@ -181,7 +181,9 @@ namespace Core.Parser
                 if (EatPseudoKeyword("import"))
                 {
                     var currentFilePath = CurrentToken.Span.FileName;
+                    
                     var currentFileDirectory = Path.GetDirectoryName(currentFilePath)!;
+       
                     var pathToken = CurrentToken;
                     var relativePathFromCurrent = ExpectStringLiteral();
                     var combinedPath = Path.Combine(currentFileDirectory, relativePathFromCurrent);
@@ -249,6 +251,10 @@ namespace Core.Parser
             Expect(TokenKind.Semicolon, hint: "A constant definition must end in a semicolon: const uint32 pianoKeys = 88;");
             var definitionSpan = definitionStart.Combine(CurrentToken.Span);
             var definition = new ConstDefinition(name, definitionSpan, definitionDocumentation, value);
+            if (_definitions.ContainsKey(name))
+            {
+               throw new DuplicateConstDefinitionException(definition);
+            }
             _definitions.Add(name, definition);
             return definition;
         }

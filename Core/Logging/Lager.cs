@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Core.Exceptions;
 using Core.Meta;
+using Core.Meta.Extensions;
 
 namespace Core.Logging
 {
@@ -25,7 +26,7 @@ namespace Core.Logging
         /// </summary>
         public static async Task StandardOut(string message)
         {
-            await Console.Out.WriteLineAsync(message).ConfigureAwait(false);
+            await Console.Out.WriteLineAsync(message);
         }
 
         /// <summary>
@@ -33,7 +34,7 @@ namespace Core.Logging
         /// </summary>
         public static async Task StandardError(string message)
         {
-            await Console.Error.WriteLineAsync(message).ConfigureAwait(false);
+            await Console.Error.WriteLineAsync(message);
         }
 
         /// <summary>
@@ -45,10 +46,10 @@ namespace Core.Logging
             {
                 LogFormatter.MSBuild => $"{ex.Span.FileName}({ex.Span.StartColonString(',')}) : error BOP{ex.ErrorCode}: {ex.Message}",
                 LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] Issue located in '{ex.Span.FileName}' at {ex.Span.StartColonString()}: {ex.Message}",
-                LogFormatter.JSON => $@"{{""Message"": ""{ex.Message}"", ""Span"": {ex.Span.ToJson()}}}",
+                LogFormatter.JSON => $@"{{""Message"": ""{ex.Message.EscapeString()}"", ""Span"": {ex.Span.ToJson()}}}",
                 _ => throw new ArgumentOutOfRangeException()
             };
-            await Console.Error.WriteLineAsync(message).ConfigureAwait(false);
+            await Console.Error.WriteLineAsync(message);
         }
 
         /// <summary>
@@ -61,10 +62,10 @@ namespace Core.Logging
             {
                 LogFormatter.MSBuild => $"{ReservedWords.CompilerName} : fatal error BOP{msBuildErrorCode}: cannot open file '{ex.FileName}'",
                 LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] Unable to open file '{ex.FileName}'",
-                LogFormatter.JSON => $@"{{""Message"": ""{ex.Message}"", ""FileName"": {ex.FileName}}}",
+                LogFormatter.JSON => $@"{{""Message"": ""{ex.Message.EscapeString()}"", ""FileName"": {ex?.FileName?.EscapeString()}}}",
                 _ => throw new ArgumentOutOfRangeException()
             };
-            await Console.Error.WriteLineAsync(message).ConfigureAwait(false);
+            await Console.Error.WriteLineAsync(message);
         }
 
         /// <summary>
@@ -76,10 +77,10 @@ namespace Core.Logging
             {
                 LogFormatter.MSBuild => $"{ReservedWords.CompilerName} : fatal error BOP{ex.ErrorCode}: {ex.Message}",
                 LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] {ex.Message}",
-                LogFormatter.JSON => $@"{{""Message"": ""{ex.Message}""}}",
+                LogFormatter.JSON => $@"{{""Message"": ""{ex.Message.EscapeString()}""}}",
                 _ => throw new ArgumentOutOfRangeException()
             };
-            await Console.Error.WriteLineAsync(message).ConfigureAwait(false);
+            await Console.Error.WriteLineAsync(message);
         }
 
         /// <summary>
@@ -93,10 +94,10 @@ namespace Core.Logging
             {
                 LogFormatter.MSBuild => $"{ReservedWords.CompilerName} : fatal error BOP{msBuildErrorCode}: {ex.Message}",
                 LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] {ex.Message}",
-                LogFormatter.JSON => $@"{{""Message"": ""{ex.Message}""}}",
+                LogFormatter.JSON => $@"{{""Message"": ""{ex.Message.EscapeString()}""}}",
                 _ => throw new ArgumentOutOfRangeException()
             };
-            await Console.Error.WriteLineAsync(message).ConfigureAwait(false);
+            await Console.Error.WriteLineAsync(message);
         }
 
         /// <summary>
@@ -107,16 +108,16 @@ namespace Core.Logging
             switch (ex)
             {
                 case SpanException span:
-                    await WriteSpanError(span).ConfigureAwait(false);
+                    await WriteSpanError(span);
                     break;
                 case FileNotFoundException file:
-                    await WriteFileNotFoundError(file).ConfigureAwait(false);
+                    await WriteFileNotFoundError(file);
                     break;
                 case CompilerException compiler:
-                    await WriteCompilerException(compiler).ConfigureAwait(false);
+                    await WriteCompilerException(compiler);
                     break;
                 default:
-                    await WriteBaseError(ex).ConfigureAwait(false);
+                    await WriteBaseError(ex);
                     break;
             }
         }
