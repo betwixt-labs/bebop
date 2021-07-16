@@ -4,6 +4,7 @@ use std::time::Duration;
 /// A date is stored as a 64-bit integer amount of “ticks” since 00:00:00 UTC on January 1 of year
 /// 1 A.D. in the Gregorian calendar, where a “tick” is 100 nanoseconds.
 #[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy, Debug)]
+#[repr(transparent)]
 pub struct Date(u64);
 
 impl Deref for Date {
@@ -27,5 +28,62 @@ impl From<Date> for Duration {
         let remaining_ticks = d.0 - (micros * 10);
         let nanos = remaining_ticks * 100;
         Duration::from_micros(micros) + Duration::from_nanos(nanos)
+    }
+}
+
+impl Date {
+    #[inline]
+    pub const fn from_ticks(t: u64) -> Self {
+        Self(t)
+    }
+
+    #[inline]
+    pub const fn to_ticks(self) -> u64 {
+        self.0
+    }
+
+    #[inline]
+    pub const fn from_micros(t: u64) -> Self {
+        Self(t * 10)
+    }
+
+    #[inline]
+    pub const fn to_micros(self) -> u64 {
+        self.0 / 10
+    }
+
+    #[inline]
+    pub const fn from_millis(t: u64) -> Self {
+        Date::from_micros(t * 1000)
+    }
+
+    #[inline]
+    pub const fn to_millis(self) -> u64 {
+        self.to_micros() / 1000
+    }
+
+    #[inline]
+    pub const fn from_secs(t: u64) -> Self {
+        Date::from_millis(t * 1000)
+    }
+
+    #[inline]
+    pub const fn to_secs(self) -> u64 {
+        self.to_millis() / 1000
+    }
+
+    #[inline]
+    pub fn to_micros_f(self) -> f64 {
+        self.0 as f64 / 10.
+    }
+
+    #[inline]
+    pub fn to_millis_f(self) -> f64 {
+        self.to_micros_f() / 1000.
+    }
+
+    #[inline]
+    pub fn to_secs_f(self) -> f64 {
+        self.to_millis_f() / 1000.
     }
 }
