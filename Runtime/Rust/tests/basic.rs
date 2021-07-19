@@ -33,6 +33,7 @@
 //! }
 //! ```
 
+use crate::Album::{StudioAlbum, Unknown};
 use bebop::serialization::{read_len, DeserializeError, Result, LEN_SIZE};
 use bebop::*;
 use std::convert::{TryFrom, TryInto};
@@ -48,7 +49,6 @@ pub const IMPORTANT_PRODUCT_ID: Guid = Guid::from_be_bytes([
 ]);
 
 /// Generated from `enum Instrument`
-#[repr(u32)]
 pub enum Instrument {
     Sax = 0,
     Trumpet = 1,
@@ -119,10 +119,11 @@ impl<'de> Deserialize<'de> for Song<'de> {
         let mut song = Song::default();
 
         while i < len + LEN_SIZE {
-            match raw[i] {
+            let di = raw[i];
+            i += 1;
+            match di {
                 0 => {
                     // Reached the end, in theory... Check performed after loop
-                    i += 1;
                     break;
                 }
                 1 => {
@@ -159,6 +160,7 @@ impl<'de> Deserialize<'de> for Song<'de> {
 
 /// Generated from `union Album`
 pub enum Album<'de> {
+    Unknown,
     /// Generated from `struct Album::StudioAlbum`
     StudioAlbum { tracks: Vec<Song<'de>> },
     /// Generated from `message Album::LiveAlbum`
@@ -167,4 +169,28 @@ pub enum Album<'de> {
         venueName: Option<&'de str>,
         concertDate: Option<Date>,
     },
+}
+
+impl<'de> Deserialize<'de> for Album<'de> {
+    fn deserialize_chained(raw: &'de [u8]) -> Result<(usize, Self)> {
+        let len = read_len(&raw)?;
+        let di = raw[LEN_SIZE];
+        let mut i = LEN_SIZE + 1;
+        let album = match di {
+            1 => {
+                let (read, tracks) = <Vec<Song>>::deserialize_chained(&raw[i..])?;
+                i += read;
+                Album::StudioAlbum { tracks }
+            },
+            2 => {
+                // See deserialize_chained for Song as an example of what this code would look like
+                todo!()
+            },
+            _ => {
+                i = len + LEN_SIZE;
+                Album::Unknown
+            }
+        };
+        Ok((i, album))
+    }
 }
