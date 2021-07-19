@@ -4,6 +4,8 @@ use std::fmt::{Debug, Display, Formatter};
 use std::io::Write;
 
 pub type Result<T> = core::result::Result<T, DeserializeError>;
+pub trait Record<'de>: Serialize + Deserialize<'de> {}
+
 pub enum DeserializeError {
     /// Returns the number of additional bytes expected (at a minimum, may be returned on a subsequent call in special cases).
     MoreDataExpected(usize),
@@ -44,7 +46,7 @@ pub trait Deserialize<'de>: Sized {
     /// Deserialize this as the root message
     #[inline(always)]
     fn deserialize(raw: &'de [u8]) -> Result<Self> {
-        Ok(Self::deserialize_chained(extract_body(raw)?)?.1)
+        Ok(Self::deserialize_chained(raw)?.1)
     }
 
     /// Deserialize this object as a sub component of a larger message. Returns a tuple of
@@ -55,14 +57,14 @@ pub trait Deserialize<'de>: Sized {
 impl<'de> Deserialize<'de> for &'de str {
     fn deserialize_chained(raw: &'de [u8]) -> Result<(usize, Self)> {
         let len = read_len(raw)?;
-        let raw_str = &raw[4..len + 4];
+        let raw_str = &raw[LEN_SIZE..len + LEN_SIZE];
         #[cfg(not(feature = "unchecked"))]
         {
-            Ok((len + 4, std::str::from_utf8(raw_str)?))
+            Ok((len + LEN_SIZE, std::str::from_utf8(raw_str)?))
         }
         #[cfg(feature = "unchecked")]
         unsafe {
-            Ok((len + 4, std::str::from_utf8_unchecked(raw_str)))
+            Ok((len + LEN_SIZE, std::str::from_utf8_unchecked(raw_str)))
         }
     }
 }
@@ -96,30 +98,9 @@ impl_deserialize_for_num!(u64);
 impl_deserialize_for_num!(i64);
 impl_deserialize_for_num!(f64);
 
-/// Reads a message from a buffer and returns the deserialized value. The buffer does not have to be
-/// exact sized, but it should contain the entire object.
-///
-/// Returns the body bytes (excluding the null byte).
-///
-/// This should only be called from within an auto-implemented deserialize function or for byte
-/// hacking.
-pub fn extract_body(raw: &[u8]) -> Result<&[u8]> {
-    let len = read_len(raw)?;
-    let body = &raw[4..];
-    debug_assert!(len > 0);
-    if body.len() < len {
-        // frame does not contain all the data
-        return Err(DeserializeError::MoreDataExpected(len - body.len()));
-    }
-
-    if body[len - 1] != 0x00 {
-        // this is probably not a real frame since the null byte is not there
-        return Err(DeserializeError::CorruptFrame);
-    }
-
-    // return all of the body but the null byte
-    Ok(&body[0..len - 1])
-}
+pub type Len = u32;
+/// Size of length data
+pub const LEN_SIZE: usize = core::mem::size_of::<Len>();
 
 /// Read a 4-byte length value from the front of the raw data.
 ///
@@ -127,5 +108,5 @@ pub fn extract_body(raw: &[u8]) -> Result<&[u8]> {
 /// hacking.
 #[inline(always)]
 pub fn read_len(raw: &[u8]) -> Result<usize> {
-    Ok(u32::deserialize_chained(&raw)?.1 as usize)
+    Ok(Len::deserialize_chained(&raw)?.1 as usize)
 }
