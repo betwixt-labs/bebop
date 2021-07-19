@@ -33,7 +33,7 @@
 //! }
 //! ```
 
-use bebop::serialization::{DeserializeError, Result};
+use bebop::serialization::{read_len, DeserializeError, Result, LEN_SIZE};
 use bebop::*;
 use std::convert::{TryFrom, TryInto};
 
@@ -50,11 +50,10 @@ pub const IMPORTANT_PRODUCT_ID: Guid = Guid::from_be_bytes([
 /// Generated from `enum Instrument`
 #[repr(u32)]
 pub enum Instrument {
-    Sax = 0x00000000,
-    Trumpet = 0x00000001,
-    Clarinet = 0x00000002,
+    Sax = 0,
+    Trumpet = 1,
+    Clarinet = 2,
 }
-const _INSTRUMENT_MAX: u32 = 0x00000002;
 
 impl TryFrom<u32> for Instrument {
     type Error = DeserializeError;
@@ -85,9 +84,8 @@ pub struct Performer<'de> {
 
 impl<'de> Deserialize<'de> for Performer<'de> {
     fn deserialize_chained(raw: &'de [u8]) -> Result<(usize, Self)> {
-        let mut i = 0;
         let (read, name) = <&str>::deserialize_chained(raw)?;
-        i += read;
+        let mut i = read;
         let (read, plays) = Instrument::deserialize_chained(&raw[i..])?;
         i += read;
         Ok((i, Self { name, plays }))
@@ -102,6 +100,61 @@ pub struct Song<'de> {
     pub year: Option<u16>,
     /// Field 3
     pub performers: Option<Vec<Performer<'de>>>,
+}
+
+impl<'de> Default for Song<'de> {
+    fn default() -> Self {
+        Song {
+            title: None,
+            year: None,
+            performers: None,
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Song<'de> {
+    fn deserialize_chained(raw: &'de [u8]) -> Result<(usize, Self)> {
+        let len = read_len(raw)?;
+        let mut i = LEN_SIZE;
+        let mut song = Song::default();
+
+        while i < len + LEN_SIZE {
+            match raw[i] {
+                0 => {
+                    // Reached the end, in theory... Check performed after loop
+                    i += 1;
+                    break;
+                }
+                1 => {
+                    let (read, title) = <&str>::deserialize_chained(&raw[i..])?;
+                    i += read;
+                    song.title = Some(title);
+                }
+                2 => {
+                    let (read, year) = u16::deserialize_chained(&raw[i..])?;
+                    i += read;
+                    song.year = Some(year);
+                }
+                3 => {
+                    let (read, performers) = <Vec<Performer>>::deserialize_chained(&raw[i..])?;
+                    i += read;
+                    song.performers = Some(performers);
+                }
+                _ => {
+                    // Ignore unknown message field and all that come after
+                    i = len + LEN_SIZE;
+                    break;
+                }
+            }
+        }
+        if i != len + LEN_SIZE {
+            // We either ended past where we were supposed to or found a null terminator early,
+            // both imply something bad happened.
+            return Err(DeserializeError::CorruptFrame);
+        }
+
+        Ok((i, song))
+    }
 }
 
 /// Generated from `union Album`

@@ -69,6 +69,23 @@ impl<'de> Deserialize<'de> for &'de str {
     }
 }
 
+impl<'de, T> Deserialize<'de> for Vec<T>
+where
+    T: Deserialize<'de>,
+{
+    fn deserialize_chained(raw: &'de [u8]) -> Result<(usize, Self)> {
+        let len = read_len(raw)?;
+        let mut i = LEN_SIZE;
+        let mut v = Vec::with_capacity(len);
+        for _ in 0..len {
+            let (read, t) = T::deserialize_chained(&raw[i..])?;
+            i += read;
+            v.push(t);
+        }
+        Ok((i, v))
+    }
+}
+
 macro_rules! impl_deserialize_for_num {
     ($t:ty) => {
         impl<'de> Deserialize<'de> for $t {
