@@ -33,9 +33,85 @@
 //! }
 //! ```
 
+use bebop::serialization::{DeserializeError, Result};
 use bebop::*;
+use std::convert::{TryFrom, TryInto};
 
-const PIANO_KEYS: i32 = 88;
-const IMPORTANT_PRODUCT_ID: Guid = Guid::from_be_bytes([
+// Constants which are the same for all implementations
+
+/// Generated from `const PianoKeys`
+pub const PIANO_KEYS: i32 = 88;
+
+/// Generated from `const ImportantProductID`
+pub const IMPORTANT_PRODUCT_ID: Guid = Guid::from_be_bytes([
     0xa3, 0x62, 0x8e, 0xc7, 0x28, 0xd4, 0x45, 0x46, 0xad, 0x4a, 0xf6, 0xeb, 0xf5, 0x37, 0x5c, 0x96,
 ]);
+
+/// Generated from `enum Instrument`
+#[repr(u32)]
+pub enum Instrument {
+    Sax = 0x00000000,
+    Trumpet = 0x00000001,
+    Clarinet = 0x00000002,
+}
+const _INSTRUMENT_MAX: u32 = 0x00000002;
+
+impl TryFrom<u32> for Instrument {
+    type Error = DeserializeError;
+
+    fn try_from(value: u32) -> Result<Self> {
+        match value {
+            0 => Ok(Instrument::Sax),
+            1 => Ok(Instrument::Trumpet),
+            2 => Ok(Instrument::Clarinet),
+            _ => Err(DeserializeError::InvalidEnumDiscriminator),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Instrument {
+    #[inline]
+    fn deserialize_chained(raw: &'de [u8]) -> Result<(usize, Self)> {
+        let (n, v) = u32::deserialize_chained(raw)?;
+        Ok((n, v.try_into()?))
+    }
+}
+
+/// Generated from `struct Performer`
+pub struct Performer<'de> {
+    pub name: &'de str,
+    pub plays: Instrument,
+}
+
+impl<'de> Deserialize<'de> for Performer<'de> {
+    fn deserialize_chained(raw: &'de [u8]) -> Result<(usize, Self)> {
+        let mut i = 0;
+        let (read, name) = <&str>::deserialize_chained(raw)?;
+        i += read;
+        let (read, plays) = Instrument::deserialize_chained(&raw[i..])?;
+        i += read;
+        Ok((i, Self { name, plays }))
+    }
+}
+
+/// Generated from `message Song`
+pub struct Song<'de> {
+    /// Field 1
+    pub title: Option<&'de str>,
+    /// Field 2
+    pub year: Option<u16>,
+    /// Field 3
+    pub performers: Option<Vec<Performer<'de>>>,
+}
+
+/// Generated from `union Album`
+pub enum Album<'de> {
+    /// Generated from `struct Album::StudioAlbum`
+    StudioAlbum { tracks: Vec<Song<'de>> },
+    /// Generated from `message Album::LiveAlbum`
+    LiveAlbum {
+        tracks: Option<Vec<Song<'de>>>,
+        venueName: Option<&'de str>,
+        concertDate: Option<Date>,
+    },
+}

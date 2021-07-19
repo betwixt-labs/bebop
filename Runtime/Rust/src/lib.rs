@@ -1,4 +1,4 @@
-mod serialization;
+pub mod serialization;
 mod types;
+pub use serialization::{Deserialize, Serialize};
 pub use types::*;
-pub use serialization::{Message};
