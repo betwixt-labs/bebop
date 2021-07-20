@@ -51,6 +51,7 @@ pub const IMPORTANT_PRODUCT_ID: Guid = Guid::from_be_bytes([
 ]);
 
 /// Generated from `enum Instrument`
+#[repr(u32)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Instrument {
     Sax = 0,
@@ -84,6 +85,7 @@ impl From<Instrument> for u32 {
 impl<'de> Record<'de> for Instrument {
     const MIN_SERIALIZED_SIZE: usize = ENUM_SIZE;
 
+    #[inline]
     fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
         u32::from(*self).serialize(dest)
     }

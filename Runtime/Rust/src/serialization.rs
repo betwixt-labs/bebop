@@ -188,11 +188,13 @@ where
 impl<'de> Record<'de> for Guid {
     const MIN_SERIALIZED_SIZE: usize = 16;
 
+    #[inline]
     fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
         dest.write_all(&self.to_ms_bytes())?;
         Ok(16)
     }
 
+    #[inline]
     fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
         Ok((
             16,
@@ -208,10 +210,12 @@ impl<'de> Record<'de> for Guid {
 impl<'de> Record<'de> for Date {
     const MIN_SERIALIZED_SIZE: usize = 8;
 
+    #[inline]
     fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
         self.to_ticks().serialize(dest)
     }
 
+    #[inline]
     fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
         let (read, date) = u64::deserialize_chained(&raw)?;
         Ok((read, Date::from_ticks(date)))
@@ -221,6 +225,7 @@ impl<'de> Record<'de> for Date {
 impl<'de> Record<'de> for bool {
     const MIN_SERIALIZED_SIZE: usize = 1;
 
+    #[inline]
     fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
         dest.write_all(&[if *self { 1 } else { 0 }])?;
         Ok(1)
@@ -241,6 +246,7 @@ macro_rules! impl_record_for_num {
         impl<'de> Record<'de> for $t {
             const MIN_SERIALIZED_SIZE: usize = core::mem::size_of::<$t>();
 
+            #[inline]
             fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
                 dest.write_all(&self.to_le_bytes())?;
                 Ok(core::mem::size_of::<$t>())
@@ -296,8 +302,3 @@ pub fn write_len<W: Write>(dest: &mut W, len: usize) -> SeResult<()> {
         Ok(())
     }
 }
-
-// TODO: Use a macro to generate enums?
-// macro_rules! make_bebop_enum {
-//     ($enum:ty ()) => {}
-// }
