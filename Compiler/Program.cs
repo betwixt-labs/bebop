@@ -51,6 +51,7 @@ namespace Compiler
                 await WriteHelpText();
                 return 0;
             }
+
             if (_flags.CheckSchemaFile is not null)
             {
                 if (string.IsNullOrWhiteSpace(_flags.CheckSchemaFile))
@@ -60,11 +61,31 @@ namespace Compiler
                 }
                 return await CheckSchema(_flags.CheckSchemaFile);
             }
+
+            List<string>? paths = null;
+
+            if (_flags.SchemaDirectory is not null)
+            {
+                paths = new DirectoryInfo(_flags.SchemaDirectory!)
+                    .GetFiles($"*.{ReservedWords.SchemaExt}", SearchOption.AllDirectories)
+                    .Select(f => f.FullName)
+                    .ToList();
+            }
+            else if (_flags.SchemaFiles is not null)
+            {
+                paths = _flags.SchemaFiles;
+            }
+
             if (_flags.CheckSchemaFiles is not null)
             {
                 if (_flags.CheckSchemaFiles.Count > 0)
                 {
                     return await CheckSchemas(_flags.CheckSchemaFiles);
+                }
+                // Fall back to the paths defined by the config if none specified
+                else if (paths is not null && paths.Count > 0)
+                {
+                    return await CheckSchemas(paths);
                 }
                 await Log.Error(new CompilerException("No schemas specified in check."));
                 return 1;
@@ -83,20 +104,7 @@ namespace Compiler
                 return 1;
             }
 
-            List<string> paths;
-
-            if (_flags.SchemaDirectory is not null)
-            {
-                paths = new DirectoryInfo(_flags.SchemaDirectory!)
-                    .GetFiles($"*.{ReservedWords.SchemaExt}", SearchOption.AllDirectories)
-                    .Select(f => f.FullName)
-                    .ToList();
-            }
-            else if (_flags.SchemaFiles is not null)
-            {
-                paths = _flags.SchemaFiles;
-            }
-            else
+            if (paths is null)
             {
                 await Log.Error(new CompilerException("Specify one or more input files with --dir or --files."));
                 return 1;
@@ -106,6 +114,8 @@ namespace Compiler
                 await Log.Error(new CompilerException("No input files were found at the specified target location."));
                 return 1;
             }
+
+            // Everything below this point requires paths
 
             foreach (var parsedGenerator in _flags.GetParsedGenerators())
             {
