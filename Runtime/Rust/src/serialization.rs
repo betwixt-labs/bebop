@@ -5,7 +5,8 @@ use std::convert::TryInto;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::Hash;
-use std::io::Write;
+use std::io;
+use std::io::{Write, Read};
 
 pub type Len = u32;
 /// Size of length data
@@ -47,9 +48,15 @@ impl Debug for DeserializeError {
 
 impl Error for DeserializeError {}
 
-
 pub enum SerializeError {
+    IoError(io::Error),
+    LengthExceeds32Bits,
+}
 
+impl From<io::Error> for SerializeError {
+    fn from(err: io::Error) -> Self {
+        SerializeError::IoError(err)
+    }
 }
 
 impl Display for SerializeError {
@@ -71,10 +78,13 @@ pub trait Record<'de>: Sized {
     const MIN_SERIALIZED_SIZE: usize;
 
     // TODO: test performance of this versus a generic Write
+    // Serialize this record. It is highly recommend to use a buffered writer.
     fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize>;
-    // fn serialize_dyn(&self, dest: &mut dyn Write) -> SeResult<usize>;
 
-    /// Deserialize this as the root message
+    // TODO: support async serialization
+    // fn serialize_async<W: AsyncWrite>(&self, dest: &mut W) -> impl Future<Type=SeResult<usize>>;
+
+    /// Deserialize this record
     #[inline(always)]
     fn deserialize(raw: &'de [u8]) -> DeResult<Self> {
         Ok(Self::deserialize_chained(raw)?.1)
@@ -89,12 +99,11 @@ impl<'de> Record<'de> for &'de str {
     const MIN_SERIALIZED_SIZE: usize = LEN_SIZE;
 
     fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
-        todo!()
+        let raw = self.as_bytes();
+        write_len(dest, raw.len())?;
+        dest.write_all(raw)?;
+        Ok(LEN_SIZE + raw.len())
     }
-
-    // fn serialize_dyn(&self, dest: &mut dyn Write) -> SeResult<usize> {
-    //     todo!()
-    // }
 
     fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
         let len = read_len(raw)?;
@@ -120,7 +129,12 @@ where
     const MIN_SERIALIZED_SIZE: usize = LEN_SIZE;
 
     fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
-        todo!()
+        write_len(dest, self.len())?;
+        let mut i = LEN_SIZE;
+        for v in self.iter() {
+            i += v.serialize(dest)?;
+        }
+        Ok(i)
     }
 
     fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
@@ -144,7 +158,13 @@ where
     const MIN_SERIALIZED_SIZE: usize = LEN_SIZE;
 
     fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
-        todo!()
+        write_len(dest, self.len())?;
+        let mut i = LEN_SIZE;
+        for (k, v) in self.iter() {
+            i += k.serialize(dest)?;
+            i += v.serialize(dest)?;
+        }
+        Ok(i)
     }
 
     fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
@@ -166,7 +186,8 @@ impl<'de> Record<'de> for Guid {
     const MIN_SERIALIZED_SIZE: usize = 16;
 
     fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
-        todo!()
+        dest.write_all(&self.to_ms_bytes())?;
+        Ok(16)
     }
 
     fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
@@ -185,7 +206,7 @@ impl<'de> Record<'de> for Date {
     const MIN_SERIALIZED_SIZE: usize = 8;
 
     fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
-        todo!()
+        self.to_ticks().serialize(dest)
     }
 
     fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
@@ -198,7 +219,8 @@ impl<'de> Record<'de> for bool {
     const MIN_SERIALIZED_SIZE: usize = 1;
 
     fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
-        todo!()
+        dest.write_all(&[if *self { 1 } else { 0 }])?;
+        Ok(1)
     }
 
     #[inline]
@@ -217,7 +239,8 @@ macro_rules! impl_record_for_num {
             const MIN_SERIALIZED_SIZE: usize = core::mem::size_of::<$t>();
 
             fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
-                todo!()
+                dest.write_all(&self.to_le_bytes())?;
+                Ok(core::mem::size_of::<$t>())
             }
 
             #[inline]
@@ -255,4 +278,18 @@ impl_record_for_num!(f64);
 #[inline(always)]
 pub fn read_len(raw: &[u8]) -> DeResult<usize> {
     Ok(Len::deserialize_chained(&raw)?.1 as usize)
+}
+
+/// Write a 4-byte length value to the writer.
+///
+/// This should only be called from within an auto-implemented deserialize function or for byte
+/// hacking.
+#[inline(always)]
+pub fn write_len<W: Write>(dest: &mut W, len: usize) -> SeResult<()> {
+    if len > u32::MAX as usize {
+        Err(SerializeError::LengthExceeds32Bits)
+    } else {
+        (len as u32).serialize(dest)?;
+        Ok(())
+    }
 }
