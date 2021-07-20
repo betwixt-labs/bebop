@@ -1,3 +1,4 @@
+use crate::serialization::DeserializeError::MoreDataExpected;
 use crate::{Date, Guid};
 use std::collections::HashMap;
 use std::convert::TryInto;
@@ -6,11 +7,18 @@ use std::fmt::{Debug, Display, Formatter};
 use std::hash::Hash;
 use std::io::Write;
 
-pub type Result<T> = core::result::Result<T, DeserializeError>;
-pub trait Record<'de>: Serialize + Deserialize<'de> {}
+pub type Len = u32;
+/// Size of length data
+pub const LEN_SIZE: usize = core::mem::size_of::<Len>();
+/// Size of an enum
+pub const ENUM_SIZE: usize = 4;
+
+pub type DeResult<T> = core::result::Result<T, DeserializeError>;
+pub type SeResult<T> = core::result::Result<T, SerializeError>;
 
 pub enum DeserializeError {
-    /// Returns the number of additional bytes expected (at a minimum, may be returned on a subsequent call in special cases).
+    /// Returns the number of additional bytes expected at a minimum.
+    /// This will will never be an overestimate.
     MoreDataExpected(usize),
     /// The data seems to be invalid and cannot be deserialized.
     CorruptFrame,
@@ -39,28 +47,61 @@ impl Debug for DeserializeError {
 
 impl Error for DeserializeError {}
 
-/// Bebop message type which can be serialized and deserialized.
-pub trait Serialize: Sized {
-    // TODO: test performance of this versus a generic Write
-    fn serialize(&self, dest: &mut dyn Write);
+
+pub enum SerializeError {
+
 }
 
-pub trait Deserialize<'de>: Sized {
+impl Display for SerializeError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "SerializeError")
+    }
+}
+
+impl Debug for SerializeError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        (self as &dyn Display).fmt(f)
+    }
+}
+
+impl Error for SerializeError {}
+
+/// Bebop message type which can be serialized and deserialized.
+pub trait Record<'de>: Sized {
+    const MIN_SERIALIZED_SIZE: usize;
+
+    // TODO: test performance of this versus a generic Write
+    fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize>;
+    // fn serialize_dyn(&self, dest: &mut dyn Write) -> SeResult<usize>;
+
     /// Deserialize this as the root message
     #[inline(always)]
-    fn deserialize(raw: &'de [u8]) -> Result<Self> {
+    fn deserialize(raw: &'de [u8]) -> DeResult<Self> {
         Ok(Self::deserialize_chained(raw)?.1)
     }
 
     /// Deserialize this object as a sub component of a larger message. Returns a tuple of
     /// (bytes_read, deserialized_value).
-    fn deserialize_chained(raw: &'de [u8]) -> Result<(usize, Self)>;
+    fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)>;
 }
 
-impl<'de> Deserialize<'de> for &'de str {
-    fn deserialize_chained(raw: &'de [u8]) -> Result<(usize, Self)> {
+impl<'de> Record<'de> for &'de str {
+    const MIN_SERIALIZED_SIZE: usize = LEN_SIZE;
+
+    fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+        todo!()
+    }
+
+    // fn serialize_dyn(&self, dest: &mut dyn Write) -> SeResult<usize> {
+    //     todo!()
+    // }
+
+    fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
         let len = read_len(raw)?;
         let raw_str = &raw[LEN_SIZE..len + LEN_SIZE];
+        if raw_str.len() < len {
+            return Err(MoreDataExpected(len - raw_str.len()));
+        }
         #[cfg(not(feature = "unchecked"))]
         {
             Ok((len + LEN_SIZE, std::str::from_utf8(raw_str)?))
@@ -72,11 +113,17 @@ impl<'de> Deserialize<'de> for &'de str {
     }
 }
 
-impl<'de, T> Deserialize<'de> for Vec<T>
+impl<'de, T> Record<'de> for Vec<T>
 where
-    T: Deserialize<'de>,
+    T: Record<'de>,
 {
-    fn deserialize_chained(raw: &'de [u8]) -> Result<(usize, Self)> {
+    const MIN_SERIALIZED_SIZE: usize = LEN_SIZE;
+
+    fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+        todo!()
+    }
+
+    fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
         let len = read_len(raw)?;
         let mut i = LEN_SIZE;
         let mut v = Vec::with_capacity(len);
@@ -89,12 +136,18 @@ where
     }
 }
 
-impl<'de, K, V> Deserialize<'de> for HashMap<K, V>
+impl<'de, K, V> Record<'de> for HashMap<K, V>
 where
-    K: Deserialize<'de> + Eq + Hash,
-    V: Deserialize<'de>,
+    K: Record<'de> + Eq + Hash,
+    V: Record<'de>,
 {
-    fn deserialize_chained(raw: &'de [u8]) -> Result<(usize, Self)> {
+    const MIN_SERIALIZED_SIZE: usize = LEN_SIZE;
+
+    fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+        todo!()
+    }
+
+    fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
         let len = read_len(raw)?;
         let mut i = LEN_SIZE;
         let mut m = HashMap::with_capacity(len);
@@ -109,75 +162,97 @@ where
     }
 }
 
-impl<'de> Deserialize<'de> for Guid {
-    fn deserialize_chained(raw: &'de [u8]) -> Result<(usize, Self)> {
+impl<'de> Record<'de> for Guid {
+    const MIN_SERIALIZED_SIZE: usize = 16;
+
+    fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+        todo!()
+    }
+
+    fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
         Ok((
             16,
             Guid::from_ms_bytes(
                 raw[0..16]
                     .try_into()
-                    .map_err(|_| DeserializeError::CorruptFrame)?,
+                    .map_err(|_| DeserializeError::MoreDataExpected(16 - raw.len()))?,
             ),
         ))
     }
 }
 
-impl<'de> Deserialize<'de> for Date {
-    fn deserialize_chained(raw: &'de [u8]) -> Result<(usize, Self)> {
+impl<'de> Record<'de> for Date {
+    const MIN_SERIALIZED_SIZE: usize = 8;
+
+    fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+        todo!()
+    }
+
+    fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
         let (read, date) = u64::deserialize_chained(&raw)?;
         Ok((read, Date::from_ticks(date)))
     }
 }
 
-impl<'de> Deserialize<'de> for bool {
+impl<'de> Record<'de> for bool {
+    const MIN_SERIALIZED_SIZE: usize = 1;
+
+    fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+        todo!()
+    }
+
     #[inline]
-    fn deserialize_chained(raw: &'de [u8]) -> Result<(usize, Self)> {
+    fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
         if let Some(&b) = raw.first() {
             Ok((1, b > 0))
         } else {
-            Err(DeserializeError::CorruptFrame)
+            Err(DeserializeError::MoreDataExpected(1))
         }
     }
 }
 
-macro_rules! impl_deserialize_for_num {
+macro_rules! impl_record_for_num {
     ($t:ty) => {
-        impl<'de> Deserialize<'de> for $t {
+        impl<'de> Record<'de> for $t {
+            const MIN_SERIALIZED_SIZE: usize = core::mem::size_of::<$t>();
+
+            fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+                todo!()
+            }
+
             #[inline]
-            fn deserialize_chained(raw: &'de [u8]) -> Result<(usize, Self)> {
+            fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
                 Ok((
                     core::mem::size_of::<$t>(),
-                    <$t>::from_le_bytes(
-                        raw[0..core::mem::size_of::<$t>()]
-                            .try_into()
-                            .map_err(|_| DeserializeError::CorruptFrame)?,
-                    ),
+                    <$t>::from_le_bytes(raw[0..core::mem::size_of::<$t>()].try_into().map_err(
+                        |_| {
+                            DeserializeError::MoreDataExpected(
+                                core::mem::size_of::<$t>() - raw.len(),
+                            )
+                        },
+                    )?),
                 ))
             }
         }
     };
 }
 
-impl_deserialize_for_num!(u8);
+impl_record_for_num!(u8);
 // no signed byte type at this time
-impl_deserialize_for_num!(u16);
-impl_deserialize_for_num!(i16);
-impl_deserialize_for_num!(u32);
-impl_deserialize_for_num!(i32);
-impl_deserialize_for_num!(f32);
-impl_deserialize_for_num!(u64);
-impl_deserialize_for_num!(i64);
-impl_deserialize_for_num!(f64);
-
-pub type Len = u32;
-/// Size of length data
-pub const LEN_SIZE: usize = core::mem::size_of::<Len>();
+impl_record_for_num!(u16);
+impl_record_for_num!(i16);
+impl_record_for_num!(u32);
+impl_record_for_num!(i32);
+impl_record_for_num!(f32);
+impl_record_for_num!(u64);
+impl_record_for_num!(i64);
+impl_record_for_num!(f64);
 
 /// Read a 4-byte length value from the front of the raw data.
 ///
 /// This should only be called from within an auto-implemented deserialize function or for byte
 /// hacking.
 #[inline(always)]
-pub fn read_len(raw: &[u8]) -> Result<usize> {
+pub fn read_len(raw: &[u8]) -> DeResult<usize> {
     Ok(Len::deserialize_chained(&raw)?.1 as usize)
 }

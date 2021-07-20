@@ -33,10 +33,11 @@
 //! }
 //! ```
 
-use crate::Album::{StudioAlbum, Unknown};
-use bebop::serialization::{read_len, DeserializeError, Result, LEN_SIZE};
+use bebop::serialization::DeserializeError::MoreDataExpected;
+use bebop::serialization::{read_len, DeserializeError, DeResult, ENUM_SIZE, LEN_SIZE, SeResult};
 use bebop::*;
 use std::convert::{TryFrom, TryInto};
+use std::io::Write;
 
 // Constants which are the same for all implementations
 
@@ -58,7 +59,7 @@ pub enum Instrument {
 impl TryFrom<u32> for Instrument {
     type Error = DeserializeError;
 
-    fn try_from(value: u32) -> Result<Self> {
+    fn try_from(value: u32) -> DeResult<Self> {
         match value {
             0 => Ok(Instrument::Sax),
             1 => Ok(Instrument::Trumpet),
@@ -68,9 +69,15 @@ impl TryFrom<u32> for Instrument {
     }
 }
 
-impl<'de> Deserialize<'de> for Instrument {
+impl<'de> Record<'de> for Instrument {
+    const MIN_SERIALIZED_SIZE: usize = ENUM_SIZE;
+
+    fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+        todo!()
+    }
+
     #[inline]
-    fn deserialize_chained(raw: &'de [u8]) -> Result<(usize, Self)> {
+    fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
         let (n, v) = u32::deserialize_chained(raw)?;
         Ok((n, v.try_into()?))
     }
@@ -82,8 +89,18 @@ pub struct Performer<'de> {
     pub plays: Instrument,
 }
 
-impl<'de> Deserialize<'de> for Performer<'de> {
-    fn deserialize_chained(raw: &'de [u8]) -> Result<(usize, Self)> {
+impl<'de> Record<'de> for Performer<'de> {
+    const MIN_SERIALIZED_SIZE: usize =
+        <&str>::MIN_SERIALIZED_SIZE + Instrument::MIN_SERIALIZED_SIZE;
+
+    fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+        todo!()
+    }
+
+    fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
+        if raw.len() < Self::MIN_SERIALIZED_SIZE {
+            return Err(MoreDataExpected(raw.len() - Self::MIN_SERIALIZED_SIZE));
+        }
         let (read, name) = <&str>::deserialize_chained(raw)?;
         let mut i = read;
         let (read, plays) = Instrument::deserialize_chained(&raw[i..])?;
@@ -112,9 +129,20 @@ impl<'de> Default for Song<'de> {
     }
 }
 
-impl<'de> Deserialize<'de> for Song<'de> {
-    fn deserialize_chained(raw: &'de [u8]) -> Result<(usize, Self)> {
+impl<'de> Record<'de> for Song<'de> {
+    const MIN_SERIALIZED_SIZE: usize = LEN_SIZE + 1;
+
+    fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+        todo!()
+    }
+
+    fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
         let len = read_len(raw)?;
+        if raw.len() < len + LEN_SIZE {
+            return Err(DeserializeError::MoreDataExpected(
+                len + LEN_SIZE - raw.len(),
+            ));
+        }
         let mut i = LEN_SIZE;
         let mut song = Song::default();
 
@@ -149,12 +177,11 @@ impl<'de> Deserialize<'de> for Song<'de> {
             }
         }
         if i != len + LEN_SIZE {
-            // We either ended past where we were supposed to or found a null terminator early,
-            // both imply something bad happened.
-            return Err(DeserializeError::CorruptFrame);
+            debug_assert!(i > len + LEN_SIZE);
+            Err(DeserializeError::CorruptFrame)
+        } else {
+            Ok((i, song))
         }
-
-        Ok((i, song))
     }
 }
 
@@ -162,7 +189,9 @@ impl<'de> Deserialize<'de> for Song<'de> {
 pub enum Album<'de> {
     Unknown,
     /// Generated from `struct Album::StudioAlbum`
-    StudioAlbum { tracks: Vec<Song<'de>> },
+    StudioAlbum {
+        tracks: Vec<Song<'de>>,
+    },
     /// Generated from `message Album::LiveAlbum`
     LiveAlbum {
         tracks: Option<Vec<Song<'de>>>,
@@ -171,9 +200,20 @@ pub enum Album<'de> {
     },
 }
 
-impl<'de> Deserialize<'de> for Album<'de> {
-    fn deserialize_chained(raw: &'de [u8]) -> Result<(usize, Self)> {
+impl<'de> Record<'de> for Album<'de> {
+    const MIN_SERIALIZED_SIZE: usize = LEN_SIZE + 1;
+
+    fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+        todo!()
+    }
+
+    fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
         let len = read_len(&raw)?;
+        if raw.len() < len + LEN_SIZE {
+            return Err(DeserializeError::MoreDataExpected(
+                len + LEN_SIZE - raw.len(),
+            ));
+        }
         let di = raw[LEN_SIZE];
         let mut i = LEN_SIZE + 1;
         let album = match di {
@@ -181,21 +221,21 @@ impl<'de> Deserialize<'de> for Album<'de> {
                 let (read, tracks) = <Vec<Song>>::deserialize_chained(&raw[i..])?;
                 i += read;
                 Album::StudioAlbum { tracks }
-            },
+            }
             2 => {
-                // See deserialize_chained for Song as an example of what this code would look like
+                // See `deserialize_chained` for Song as an example of what this code would look like
                 todo!()
-            },
+            }
             _ => {
                 i = len + LEN_SIZE;
                 Album::Unknown
             }
         };
         if i != len + LEN_SIZE {
-            // ensure we ended where we expected, if not one of the internal types was possibly
-            // wrong or we just read something that was entirely invalid
-            return Err(DeserializeError::CorruptFrame);
+            debug_assert!(i > len + LEN_SIZE);
+            Err(DeserializeError::CorruptFrame)
+        } else {
+            Ok((i, album))
         }
-        Ok((i, album))
     }
 }

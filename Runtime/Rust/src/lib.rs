@@ -1,4 +1,4 @@
 pub mod serialization;
 mod types;
-pub use serialization::{Deserialize, Serialize};
+pub use serialization::Record;
 pub use types::*;
