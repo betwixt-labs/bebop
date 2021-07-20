@@ -107,7 +107,34 @@ pub struct Performer<'raw> {
     pub plays: Instrument,
 }
 
-impl<'de> Record<'de> for Performer<'de> {
+/// Generated from `struct Performer`
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct OwnedPerformer {
+    pub name: String,
+    pub plays: Instrument,
+}
+
+impl<'raw, 'ow: 'raw> From<&'ow OwnedPerformer> for Performer<'raw> {
+    #[inline]
+    fn from(owned: &'ow OwnedPerformer) -> Self {
+        Self {
+            name: &*owned.name,
+            plays: owned.plays,
+        }
+    }
+}
+
+impl<'raw> From<Performer<'raw>> for OwnedPerformer {
+    #[inline]
+    fn from(borrowed: Performer<'raw>) -> Self {
+        Self {
+            name: borrowed.name.to_owned(),
+            plays: borrowed.plays,
+        }
+    }
+}
+
+impl<'raw> Record<'raw> for Performer<'raw> {
     const MIN_SERIALIZED_SIZE: usize =
         <&str>::MIN_SERIALIZED_SIZE + Instrument::MIN_SERIALIZED_SIZE;
 
@@ -115,7 +142,7 @@ impl<'de> Record<'de> for Performer<'de> {
         Ok(self.name.serialize(dest)? + self.plays.serialize(dest)?)
     }
 
-    fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
+    fn deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
         if raw.len() < Self::MIN_SERIALIZED_SIZE {
             return Err(DeserializeError::MoreDataExpected(
                 raw.len() - Self::MIN_SERIALIZED_SIZE,
@@ -129,42 +156,17 @@ impl<'de> Record<'de> for Performer<'de> {
     }
 }
 
-impl<'se> Buildable for Performer<'se> {
-    type Builder = PerformerBuilder;
-}
+impl<'raw> Record<'raw> for OwnedPerformer {
+    const MIN_SERIALIZED_SIZE: usize = Performer::MIN_SERIALIZED_SIZE;
 
-impl<'se, 'ow: 'se> From<&'ow PerformerBuilder> for Performer<'se> {
-    #[inline]
-    fn from(builder: &'ow PerformerBuilder) -> Self {
-        builder.build()
-    }
-}
-
-#[derive(Default)]
-pub struct PerformerBuilder {
-    name: Option<String>,
-    plays: Option<Instrument>,
-}
-
-impl PerformerBuilder {
-    #[inline]
-    pub fn set_name(mut self, v: String) -> Self {
-        self.name = Some(v);
-        self
+    fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+        // basically the same code
+        todo!()
     }
 
-    #[inline]
-    pub fn set_plays(mut self, v: Instrument) -> Self {
-        self.plays = Some(v);
-        self
-    }
-
-    #[inline]
-    pub fn build(&self) -> Performer {
-        Performer {
-            name: self.name.as_ref().unwrap(),
-            plays: self.plays.unwrap(),
-        }
+    fn deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
+        // basically the same code
+        todo!()
     }
 }
 
@@ -177,6 +179,41 @@ pub struct Song<'raw> {
     pub year: Option<u16>,
     /// Field 3
     pub performers: Option<Vec<Performer<'raw>>>,
+}
+
+/// Generated from `message Song`
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
+pub struct OwnedSong {
+    pub title: Option<String>,
+    pub year: Option<u16>,
+    pub performers: Option<Vec<OwnedPerformer>>,
+}
+
+impl<'raw, 'ow: 'raw> From<&'ow OwnedSong> for Song<'raw> {
+    #[inline]
+    fn from(owned: &'ow OwnedSong) -> Self {
+        Self {
+            title: owned.title.as_ref().map(|v| v.as_str()),
+            year: owned.year,
+            performers: owned
+                .performers
+                .as_ref()
+                .map(|v| v.iter().map(Into::into).collect()),
+        }
+    }
+}
+
+impl<'raw> From<Song<'raw>> for OwnedSong {
+    #[inline]
+    fn from(borrowed: Song<'raw>) -> Self {
+        Self {
+            title: borrowed.title.map(ToOwned::to_owned),
+            year: borrowed.year,
+            performers: borrowed
+                .performers
+                .map(|v| v.into_iter().map(Into::into).collect()),
+        }
+    }
 }
 
 impl<'raw> Record<'raw> for Song<'raw> {
@@ -284,50 +321,17 @@ impl<'raw> Record<'raw> for Song<'raw> {
     }
 }
 
-impl<'se> Buildable for Song<'se> {
-    type Builder = SongBuilder;
-}
+impl<'raw> Record<'raw> for OwnedSong {
+    const MIN_SERIALIZED_SIZE: usize = Song::MIN_SERIALIZED_SIZE;
 
-impl<'se, 'ow: 'se> From<&'ow SongBuilder> for Song<'se> {
-    #[inline]
-    fn from(builder: &'ow SongBuilder) -> Self {
-        builder.build()
-    }
-}
-
-#[derive(Default)]
-pub struct SongBuilder {
-    title: Option<String>,
-    year: Option<u16>,
-    performers: Option<Vec<PerformerBuilder>>,
-}
-
-impl SongBuilder {
-    #[inline]
-    pub fn set_title(mut self, v: String) -> Self {
-        self.title = Some(v);
-        self
+    fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+        // basically the same code
+        todo!()
     }
 
-    #[inline]
-    pub fn set_year(mut self, v: u16) -> Self {
-        self.year = Some(v);
-        self
-    }
-
-    #[inline]
-    pub fn set_performers(mut self, v: Vec<PerformerBuilder>) -> Self {
-        self.performers = Some(v);
-        self
-    }
-
-    #[inline]
-    pub fn build(&self) -> Song {
-        Song {
-            title: self.title.as_ref().map(|v| v.as_str()),
-            year: self.year,
-            performers: self.performers.as_ref().map(|v| v.iter().map(|i| i.build()).collect()),
-        }
+    fn deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
+        // basically the same code
+        todo!()
     }
 }
 
@@ -347,37 +351,61 @@ pub enum Album<'raw> {
     },
 }
 
-impl<'se, 'ow: 'se> From<&'ow AlbumBuilder> for Album<'se> {
-    #[inline]
-    fn from(builder: &'ow AlbumBuilder) -> Self {
-        builder.build()
-    }
-}
-
-pub enum AlbumBuilder {
-    None,
+/// Generated from `union Album`
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum OwnedAlbum {
+    Unknown,
+    /// Generated from `struct Album::StudioAlbum`
     StudioAlbum {
-        tracks: Option<Vec<SongBuilder>>,
+        tracks: Vec<OwnedSong>,
     },
+    /// Generated from `message Album::LiveAlbum`
     LiveAlbum {
-        tracks: Option<Vec<SongBuilder>>,
+        tracks: Option<Vec<OwnedSong>>,
         venue_name: Option<String>,
         concert_date: Option<Date>,
+    },
+}
+
+impl<'raw, 'ow: 'raw> From<&'ow OwnedAlbum> for Album<'raw> {
+    #[inline]
+    fn from(owned: &'ow OwnedAlbum) -> Self {
+        match owned {
+            OwnedAlbum::Unknown => Self::Unknown,
+            OwnedAlbum::StudioAlbum { ref tracks } => Self::StudioAlbum {
+                tracks: tracks.iter().map(Into::into).collect(),
+            },
+            OwnedAlbum::LiveAlbum {
+                ref tracks,
+                ref venue_name,
+                ref concert_date,
+            } => Self::LiveAlbum {
+                tracks: tracks.as_ref().map(|v| v.iter().map(Into::into).collect()),
+                venue_name: venue_name.as_ref().map(|v| v.as_str()),
+                concert_date: *concert_date,
+            },
+        }
     }
 }
 
-impl Default for AlbumBuilder {
-    fn default() -> Self {
-        AlbumBuilder::None
-    }
-}
-
-impl AlbumBuilder {
-
-    pub fn choose()
-
-    pub fn build(&self) -> Song {
-        todo!()
+impl<'raw> From<Album<'raw>> for OwnedAlbum {
+    #[inline]
+    fn from(borrowed: Album<'raw>) -> Self {
+        match borrowed {
+            Album::Unknown => Self::Unknown,
+            Album::StudioAlbum { tracks } => Self::StudioAlbum {
+                tracks: tracks.into_iter().map(Into::into).collect(),
+            },
+            Album::LiveAlbum {
+                tracks,
+                venue_name,
+                concert_date,
+            } => Self::LiveAlbum {
+                tracks: tracks.map(|v| v.into_iter().map(Into::into).collect()),
+                venue_name: venue_name.map(|v| v.to_owned()),
+                concert_date,
+            },
+        }
     }
 }
 
@@ -438,5 +466,19 @@ impl<'raw> Record<'raw> for Album<'raw> {
         } else {
             Ok((i, album))
         }
+    }
+}
+
+impl<'raw> Record<'raw> for OwnedAlbum {
+    const MIN_SERIALIZED_SIZE: usize = Album::MIN_SERIALIZED_SIZE;
+
+    fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+        // basically the same code
+        todo!()
+    }
+
+    fn deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
+        // basically the same code
+        todo!()
     }
 }
