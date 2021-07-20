@@ -33,8 +33,9 @@
 //! }
 //! ```
 
-use bebop::serialization::DeserializeError::MoreDataExpected;
-use bebop::serialization::{read_len, DeserializeError, DeResult, ENUM_SIZE, LEN_SIZE, SeResult};
+use bebop::serialization::{
+    read_len, write_len, DeResult, DeserializeError, SeResult, SerializeError, ENUM_SIZE, LEN_SIZE,
+};
 use bebop::*;
 use std::convert::{TryFrom, TryInto};
 use std::io::Write;
@@ -50,6 +51,7 @@ pub const IMPORTANT_PRODUCT_ID: Guid = Guid::from_be_bytes([
 ]);
 
 /// Generated from `enum Instrument`
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Instrument {
     Sax = 0,
     Trumpet = 1,
@@ -69,11 +71,21 @@ impl TryFrom<u32> for Instrument {
     }
 }
 
+impl From<Instrument> for u32 {
+    fn from(value: Instrument) -> Self {
+        match value {
+            Instrument::Sax => 0,
+            Instrument::Trumpet => 1,
+            Instrument::Clarinet => 2,
+        }
+    }
+}
+
 impl<'de> Record<'de> for Instrument {
     const MIN_SERIALIZED_SIZE: usize = ENUM_SIZE;
 
     fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
-        todo!()
+        u32::from(*self).serialize(dest)
     }
 
     #[inline]
@@ -84,6 +96,7 @@ impl<'de> Record<'de> for Instrument {
 }
 
 /// Generated from `struct Performer`
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Performer<'de> {
     pub name: &'de str,
     pub plays: Instrument,
@@ -94,12 +107,14 @@ impl<'de> Record<'de> for Performer<'de> {
         <&str>::MIN_SERIALIZED_SIZE + Instrument::MIN_SERIALIZED_SIZE;
 
     fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
-        todo!()
+        Ok(self.name.serialize(dest)? + self.plays.serialize(dest)?)
     }
 
     fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
         if raw.len() < Self::MIN_SERIALIZED_SIZE {
-            return Err(MoreDataExpected(raw.len() - Self::MIN_SERIALIZED_SIZE));
+            return Err(DeserializeError::MoreDataExpected(
+                raw.len() - Self::MIN_SERIALIZED_SIZE,
+            ));
         }
         let (read, name) = <&str>::deserialize_chained(raw)?;
         let mut i = read;
@@ -110,6 +125,7 @@ impl<'de> Record<'de> for Performer<'de> {
 }
 
 /// Generated from `message Song`
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct Song<'de> {
     /// Field 1
     pub title: Option<&'de str>,
@@ -119,25 +135,38 @@ pub struct Song<'de> {
     pub performers: Option<Vec<Performer<'de>>>,
 }
 
-impl<'de> Default for Song<'de> {
-    fn default() -> Self {
-        Song {
-            title: None,
-            year: None,
-            performers: None,
-        }
-    }
-}
-
 impl<'de> Record<'de> for Song<'de> {
     const MIN_SERIALIZED_SIZE: usize = LEN_SIZE + 1;
 
     fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
-        todo!()
+        let mut buf = Vec::new();
+        if let Some(title) = self.title {
+            buf.push(1);
+            title.serialize(&mut buf)?;
+        }
+        if let Some(year) = self.year {
+            buf.push(2);
+            year.serialize(&mut buf)?;
+        }
+        if let Some(ref performers) = self.performers {
+            buf.push(3);
+            performers.serialize(&mut buf)?;
+        }
+        buf.push(0);
+        write_len(dest, buf.len())?;
+        dest.write_all(&buf)?;
+        Ok(buf.len() + LEN_SIZE)
     }
 
     fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
         let len = read_len(raw)?;
+
+        #[cfg(not(feature = "unchecked"))]
+        if len == 0 {
+            // a null message should still be length 1
+            return Err(DeserializeError::CorruptFrame);
+        }
+
         if raw.len() < len + LEN_SIZE {
             return Err(DeserializeError::MoreDataExpected(
                 len + LEN_SIZE - raw.len(),
@@ -146,8 +175,22 @@ impl<'de> Record<'de> for Song<'de> {
         let mut i = LEN_SIZE;
         let mut song = Song::default();
 
+        #[cfg(not(feature = "unchecked"))]
+        let mut last = 0;
+
         while i < len + LEN_SIZE {
             let di = raw[i];
+
+            #[cfg(not(feature = "unchecked"))]
+            if di != 0 {
+                // since fields should always be serialized in order, out of order fields implies
+                // the frame is corrupted
+                if di < last {
+                    return Err(DeserializeError::CorruptFrame);
+                }
+                last = di;
+            }
+
             i += 1;
             match di {
                 0 => {
@@ -155,16 +198,28 @@ impl<'de> Record<'de> for Song<'de> {
                     break;
                 }
                 1 => {
+                    #[cfg(not(feature = "unchecked"))]
+                    if song.title.is_some() {
+                        return Err(DeserializeError::DuplicateMessageField);
+                    }
                     let (read, title) = <&str>::deserialize_chained(&raw[i..])?;
                     i += read;
                     song.title = Some(title);
                 }
                 2 => {
+                    #[cfg(not(feature = "unchecked"))]
+                    if song.year.is_some() {
+                        return Err(DeserializeError::DuplicateMessageField);
+                    }
                     let (read, year) = u16::deserialize_chained(&raw[i..])?;
                     i += read;
                     song.year = Some(year);
                 }
                 3 => {
+                    #[cfg(not(feature = "unchecked"))]
+                    if song.performers.is_some() {
+                        return Err(DeserializeError::DuplicateMessageField);
+                    }
                     let (read, performers) = <Vec<Performer>>::deserialize_chained(&raw[i..])?;
                     i += read;
                     song.performers = Some(performers);
@@ -186,6 +241,7 @@ impl<'de> Record<'de> for Song<'de> {
 }
 
 /// Generated from `union Album`
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Album<'de> {
     Unknown,
     /// Generated from `struct Album::StudioAlbum`
@@ -204,7 +260,27 @@ impl<'de> Record<'de> for Album<'de> {
     const MIN_SERIALIZED_SIZE: usize = LEN_SIZE + 1;
 
     fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
-        todo!()
+        let mut buf = Vec::new();
+        match self {
+            Album::Unknown => {
+                return Err(SerializeError::CannotSerializeUnknownUnion);
+            }
+            Album::StudioAlbum { tracks } => {
+                buf.push(1);
+                tracks.serialize(&mut buf)?;
+            }
+            Album::LiveAlbum {
+                tracks,
+                venue_name,
+                concert_date,
+            } => {
+                buf.push(2);
+                // see `serialize` for Song as an example of what this code would look like
+            }
+        }
+        write_len(dest, buf.len())?;
+        dest.write_all(&buf)?;
+        Ok(buf.len() + LEN_SIZE)
     }
 
     fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {

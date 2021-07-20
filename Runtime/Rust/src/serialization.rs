@@ -6,7 +6,7 @@ use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::Hash;
 use std::io;
-use std::io::{Write, Read};
+use std::io::{Read, Write};
 
 pub type Len = u32;
 /// Size of length data
@@ -26,6 +26,8 @@ pub enum DeserializeError {
     /// There was an issue with a string encoding
     Utf8EncodingError(std::str::Utf8Error),
     InvalidEnumDiscriminator,
+    /// A message type had multiple definitions for the same field
+    DuplicateMessageField
 }
 
 impl From<std::str::Utf8Error> for DeserializeError {
@@ -51,6 +53,7 @@ impl Error for DeserializeError {}
 pub enum SerializeError {
     IoError(io::Error),
     LengthExceeds32Bits,
+    CannotSerializeUnknownUnion
 }
 
 impl From<io::Error> for SerializeError {
@@ -293,3 +296,8 @@ pub fn write_len<W: Write>(dest: &mut W, len: usize) -> SeResult<()> {
         Ok(())
     }
 }
+
+// TODO: Use a macro to generate enums?
+// macro_rules! make_bebop_enum {
+//     ($enum:ty ()) => {}
+// }
