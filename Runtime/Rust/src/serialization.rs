@@ -1,6 +1,9 @@
+use crate::{Date, Guid};
+use std::collections::HashMap;
 use std::convert::TryInto;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
+use std::hash::Hash;
 use std::io::Write;
 
 pub type Result<T> = core::result::Result<T, DeserializeError>;
@@ -83,6 +86,57 @@ where
             v.push(t);
         }
         Ok((i, v))
+    }
+}
+
+impl<'de, K, V> Deserialize<'de> for HashMap<K, V>
+where
+    K: Deserialize<'de> + Eq + Hash,
+    V: Deserialize<'de>,
+{
+    fn deserialize_chained(raw: &'de [u8]) -> Result<(usize, Self)> {
+        let len = read_len(raw)?;
+        let mut i = LEN_SIZE;
+        let mut m = HashMap::with_capacity(len);
+        for _ in 0..len {
+            let (read, k) = K::deserialize_chained(&raw[i..])?;
+            i += read;
+            let (read, v) = V::deserialize_chained(&raw[i..])?;
+            i += read;
+            m.insert(k, v);
+        }
+        Ok((i, m))
+    }
+}
+
+impl<'de> Deserialize<'de> for Guid {
+    fn deserialize_chained(raw: &'de [u8]) -> Result<(usize, Self)> {
+        Ok((
+            16,
+            Guid::from_ms_bytes(
+                raw[0..16]
+                    .try_into()
+                    .map_err(|_| DeserializeError::CorruptFrame)?,
+            ),
+        ))
+    }
+}
+
+impl<'de> Deserialize<'de> for Date {
+    fn deserialize_chained(raw: &'de [u8]) -> Result<(usize, Self)> {
+        let (read, date) = u64::deserialize_chained(&raw)?;
+        Ok((read, Date::from_ticks(date)))
+    }
+}
+
+impl<'de> Deserialize<'de> for bool {
+    #[inline]
+    fn deserialize_chained(raw: &'de [u8]) -> Result<(usize, Self)> {
+        if let Some(&b) = raw.first() {
+            Ok((1, b > 0))
+        } else {
+            Err(DeserializeError::CorruptFrame)
+        }
     }
 }
 

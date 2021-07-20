@@ -166,8 +166,8 @@ pub enum Album<'de> {
     /// Generated from `message Album::LiveAlbum`
     LiveAlbum {
         tracks: Option<Vec<Song<'de>>>,
-        venueName: Option<&'de str>,
-        concertDate: Option<Date>,
+        venue_name: Option<&'de str>,
+        concert_date: Option<Date>,
     },
 }
 
@@ -191,6 +191,11 @@ impl<'de> Deserialize<'de> for Album<'de> {
                 Album::Unknown
             }
         };
+        if i != len + LEN_SIZE {
+            // ensure we ended where we expected, if not one of the internal types was possibly
+            // wrong or we just read something that was entirely invalid
+            return Err(DeserializeError::CorruptFrame);
+        }
         Ok((i, album))
     }
 }
