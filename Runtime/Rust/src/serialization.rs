@@ -77,7 +77,7 @@ impl Debug for SerializeError {
 impl Error for SerializeError {}
 
 /// Bebop message type which can be serialized and deserialized.
-pub trait Record<'de>: Sized {
+pub trait Record<'raw>: Sized {
     const MIN_SERIALIZED_SIZE: usize;
 
     // TODO: test performance of this versus a generic Write
@@ -89,16 +89,26 @@ pub trait Record<'de>: Sized {
 
     /// Deserialize this record
     #[inline(always)]
-    fn deserialize(raw: &'de [u8]) -> DeResult<Self> {
+    fn deserialize(raw: &'raw [u8]) -> DeResult<Self> {
         Ok(Self::deserialize_chained(raw)?.1)
     }
 
     /// Deserialize this object as a sub component of a larger message. Returns a tuple of
     /// (bytes_read, deserialized_value).
-    fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)>;
+    fn deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)>;
 }
 
-impl<'de> Record<'de> for &'de str {
+pub trait Buildable {
+    type Builder: Default + From<Self::Builder>;
+
+    #[inline]
+    fn builder() -> Self::Builder {
+        Self::Builder::default()
+    }
+}
+
+
+impl<'raw> Record<'raw> for &'raw str {
     const MIN_SERIALIZED_SIZE: usize = LEN_SIZE;
 
     fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
@@ -108,7 +118,7 @@ impl<'de> Record<'de> for &'de str {
         Ok(LEN_SIZE + raw.len())
     }
 
-    fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
+    fn deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
         let len = read_len(raw)?;
         let raw_str = &raw[LEN_SIZE..len + LEN_SIZE];
         if raw_str.len() < len {
@@ -125,9 +135,9 @@ impl<'de> Record<'de> for &'de str {
     }
 }
 
-impl<'de, T> Record<'de> for Vec<T>
+impl<'raw, T> Record<'raw> for Vec<T>
 where
-    T: Record<'de>,
+    T: Record<'raw>,
 {
     const MIN_SERIALIZED_SIZE: usize = LEN_SIZE;
 
@@ -140,7 +150,7 @@ where
         Ok(i)
     }
 
-    fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
+    fn deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
         let len = read_len(raw)?;
         let mut i = LEN_SIZE;
         let mut v = Vec::with_capacity(len);
@@ -153,10 +163,10 @@ where
     }
 }
 
-impl<'de, K, V> Record<'de> for HashMap<K, V>
+impl<'raw, K, V> Record<'raw> for HashMap<K, V>
 where
-    K: Record<'de> + Eq + Hash,
-    V: Record<'de>,
+    K: Record<'raw> + Eq + Hash,
+    V: Record<'raw>,
 {
     const MIN_SERIALIZED_SIZE: usize = LEN_SIZE;
 
@@ -170,7 +180,7 @@ where
         Ok(i)
     }
 
-    fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
+    fn deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
         let len = read_len(raw)?;
         let mut i = LEN_SIZE;
         let mut m = HashMap::with_capacity(len);
@@ -185,7 +195,7 @@ where
     }
 }
 
-impl<'de> Record<'de> for Guid {
+impl<'raw> Record<'raw> for Guid {
     const MIN_SERIALIZED_SIZE: usize = 16;
 
     #[inline]
@@ -195,7 +205,7 @@ impl<'de> Record<'de> for Guid {
     }
 
     #[inline]
-    fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
+    fn deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
         Ok((
             16,
             Guid::from_ms_bytes(
@@ -207,7 +217,7 @@ impl<'de> Record<'de> for Guid {
     }
 }
 
-impl<'de> Record<'de> for Date {
+impl<'raw> Record<'raw> for Date {
     const MIN_SERIALIZED_SIZE: usize = 8;
 
     #[inline]
@@ -216,7 +226,7 @@ impl<'de> Record<'de> for Date {
     }
 
     #[inline]
-    fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
+    fn deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
         let (read, date) = u64::deserialize_chained(&raw)?;
         Ok((read, Date::from_ticks(date)))
     }
@@ -243,7 +253,7 @@ impl<'de> Record<'de> for bool {
 
 macro_rules! impl_record_for_num {
     ($t:ty) => {
-        impl<'de> Record<'de> for $t {
+        impl<'raw> Record<'raw> for $t {
             const MIN_SERIALIZED_SIZE: usize = core::mem::size_of::<$t>();
 
             #[inline]
@@ -253,7 +263,7 @@ macro_rules! impl_record_for_num {
             }
 
             #[inline]
-            fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
+            fn deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
                 Ok((
                     core::mem::size_of::<$t>(),
                     <$t>::from_le_bytes(raw[0..core::mem::size_of::<$t>()].try_into().map_err(

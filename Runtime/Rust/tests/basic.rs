@@ -34,11 +34,14 @@
 //! ```
 
 use bebop::serialization::{
-    read_len, write_len, DeResult, DeserializeError, SeResult, SerializeError, ENUM_SIZE, LEN_SIZE,
+    read_len, write_len, Buildable, DeResult, DeserializeError, SeResult, SerializeError,
+    ENUM_SIZE, LEN_SIZE,
 };
 use bebop::*;
 use std::convert::{TryFrom, TryInto};
 use std::io::Write;
+use std::marker::PhantomData;
+use std::thread::Builder;
 
 // Constants which are the same for all implementations
 
@@ -99,8 +102,8 @@ impl<'de> Record<'de> for Instrument {
 
 /// Generated from `struct Performer`
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Performer<'de> {
-    pub name: &'de str,
+pub struct Performer<'raw> {
+    pub name: &'raw str,
     pub plays: Instrument,
 }
 
@@ -126,18 +129,57 @@ impl<'de> Record<'de> for Performer<'de> {
     }
 }
 
+impl<'se> Buildable for Performer<'se> {
+    type Builder = PerformerBuilder;
+}
+
+impl<'se, 'ow: 'se> From<&'ow PerformerBuilder> for Performer<'se> {
+    #[inline]
+    fn from(builder: &'ow PerformerBuilder) -> Self {
+        builder.build()
+    }
+}
+
+#[derive(Default)]
+pub struct PerformerBuilder {
+    name: Option<String>,
+    plays: Option<Instrument>,
+}
+
+impl PerformerBuilder {
+    #[inline]
+    pub fn set_name(mut self, v: String) -> Self {
+        self.name = Some(v);
+        self
+    }
+
+    #[inline]
+    pub fn set_plays(mut self, v: Instrument) -> Self {
+        self.plays = Some(v);
+        self
+    }
+
+    #[inline]
+    pub fn build(&self) -> Performer {
+        Performer {
+            name: self.name.as_ref().unwrap(),
+            plays: self.plays.unwrap(),
+        }
+    }
+}
+
 /// Generated from `message Song`
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct Song<'de> {
+pub struct Song<'raw> {
     /// Field 1
-    pub title: Option<&'de str>,
+    pub title: Option<&'raw str>,
     /// Field 2
     pub year: Option<u16>,
     /// Field 3
-    pub performers: Option<Vec<Performer<'de>>>,
+    pub performers: Option<Vec<Performer<'raw>>>,
 }
 
-impl<'de> Record<'de> for Song<'de> {
+impl<'raw> Record<'raw> for Song<'raw> {
     const MIN_SERIALIZED_SIZE: usize = LEN_SIZE + 1;
 
     fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
@@ -160,7 +202,7 @@ impl<'de> Record<'de> for Song<'de> {
         Ok(buf.len() + LEN_SIZE)
     }
 
-    fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
+    fn deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
         let len = read_len(raw)?;
 
         #[cfg(not(feature = "unchecked"))]
@@ -242,23 +284,104 @@ impl<'de> Record<'de> for Song<'de> {
     }
 }
 
+impl<'se> Buildable for Song<'se> {
+    type Builder = SongBuilder;
+}
+
+impl<'se, 'ow: 'se> From<&'ow SongBuilder> for Song<'se> {
+    #[inline]
+    fn from(builder: &'ow SongBuilder) -> Self {
+        builder.build()
+    }
+}
+
+#[derive(Default)]
+pub struct SongBuilder {
+    title: Option<String>,
+    year: Option<u16>,
+    performers: Option<Vec<PerformerBuilder>>,
+}
+
+impl SongBuilder {
+    #[inline]
+    pub fn set_title(mut self, v: String) -> Self {
+        self.title = Some(v);
+        self
+    }
+
+    #[inline]
+    pub fn set_year(mut self, v: u16) -> Self {
+        self.year = Some(v);
+        self
+    }
+
+    #[inline]
+    pub fn set_performers(mut self, v: Vec<PerformerBuilder>) -> Self {
+        self.performers = Some(v);
+        self
+    }
+
+    #[inline]
+    pub fn build(&self) -> Song {
+        Song {
+            title: self.title.as_ref().map(|v| v.as_str()),
+            year: self.year,
+            performers: self.performers.as_ref().map(|v| v.iter().map(|i| i.build()).collect()),
+        }
+    }
+}
+
 /// Generated from `union Album`
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum Album<'de> {
+pub enum Album<'raw> {
     Unknown,
     /// Generated from `struct Album::StudioAlbum`
     StudioAlbum {
-        tracks: Vec<Song<'de>>,
+        tracks: Vec<Song<'raw>>,
     },
     /// Generated from `message Album::LiveAlbum`
     LiveAlbum {
-        tracks: Option<Vec<Song<'de>>>,
-        venue_name: Option<&'de str>,
+        tracks: Option<Vec<Song<'raw>>>,
+        venue_name: Option<&'raw str>,
         concert_date: Option<Date>,
     },
 }
 
-impl<'de> Record<'de> for Album<'de> {
+impl<'se, 'ow: 'se> From<&'ow AlbumBuilder> for Album<'se> {
+    #[inline]
+    fn from(builder: &'ow AlbumBuilder) -> Self {
+        builder.build()
+    }
+}
+
+pub enum AlbumBuilder {
+    None,
+    StudioAlbum {
+        tracks: Option<Vec<SongBuilder>>,
+    },
+    LiveAlbum {
+        tracks: Option<Vec<SongBuilder>>,
+        venue_name: Option<String>,
+        concert_date: Option<Date>,
+    }
+}
+
+impl Default for AlbumBuilder {
+    fn default() -> Self {
+        AlbumBuilder::None
+    }
+}
+
+impl AlbumBuilder {
+
+    pub fn choose()
+
+    pub fn build(&self) -> Song {
+        todo!()
+    }
+}
+
+impl<'raw> Record<'raw> for Album<'raw> {
     const MIN_SERIALIZED_SIZE: usize = LEN_SIZE + 1;
 
     fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
@@ -285,7 +408,7 @@ impl<'de> Record<'de> for Album<'de> {
         Ok(buf.len() + LEN_SIZE)
     }
 
-    fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
+    fn deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
         let len = read_len(&raw)?;
         if raw.len() < len + LEN_SIZE {
             return Err(DeserializeError::MoreDataExpected(
