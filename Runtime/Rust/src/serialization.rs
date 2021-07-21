@@ -1,12 +1,13 @@
-use crate::serialization::DeserializeError::MoreDataExpected;
-use crate::{Date, Guid};
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::Hash;
 use std::io;
-use std::io::{Read, Write};
+use std::io::Write;
+
+use crate::serialization::DeserializeError::MoreDataExpected;
+use crate::{Date, Guid};
 
 pub type Len = u32;
 /// Size of length data
@@ -27,7 +28,7 @@ pub enum DeserializeError {
     Utf8EncodingError(std::str::Utf8Error),
     InvalidEnumDiscriminator,
     /// A message type had multiple definitions for the same field
-    DuplicateMessageField
+    DuplicateMessageField,
 }
 
 impl From<std::str::Utf8Error> for DeserializeError {
@@ -53,7 +54,7 @@ impl Error for DeserializeError {}
 pub enum SerializeError {
     IoError(io::Error),
     LengthExceeds32Bits,
-    CannotSerializeUnknownUnion
+    CannotSerializeUnknownUnion,
 }
 
 impl From<io::Error> for SerializeError {
@@ -77,21 +78,23 @@ impl Debug for SerializeError {
 impl Error for SerializeError {}
 
 /// Bebop message type which can be serialized and deserialized.
-pub trait Record<'raw>: Sized {
-    const MIN_SERIALIZED_SIZE: usize;
-
-    // TODO: test performance of this versus a generic Write
-    // Serialize this record. It is highly recommend to use a buffered writer.
-    fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize>;
-
-    // TODO: support async serialization
-    // fn serialize_async<W: AsyncWrite>(&self, dest: &mut W) -> impl Future<Type=SeResult<usize>>;
-
+pub trait Record<'raw>: SubRecord<'raw> {
     /// Deserialize this record
     #[inline(always)]
     fn deserialize(raw: &'raw [u8]) -> DeResult<Self> {
         Ok(Self::deserialize_chained(raw)?.1)
     }
+}
+
+pub trait SubRecord<'raw>: Sized {
+    const MIN_SERIALIZED_SIZE: usize;
+
+    // TODO: support async serialization
+    // fn serialize_async<W: AsyncWrite>(&self, dest: &mut W) -> impl Future<Type=SeResult<usize>>;
+
+    // TODO: test performance of this versus a generic Write
+    // Serialize this record. It is highly recommend to use a buffered writer.
+    fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize>;
 
     /// Deserialize this object as a sub component of a larger message. Returns a tuple of
     /// (bytes_read, deserialized_value).
@@ -107,8 +110,7 @@ pub trait Buildable {
     }
 }
 
-
-impl<'raw> Record<'raw> for &'raw str {
+impl<'raw> SubRecord<'raw> for &'raw str {
     const MIN_SERIALIZED_SIZE: usize = LEN_SIZE;
 
     fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
@@ -135,7 +137,7 @@ impl<'raw> Record<'raw> for &'raw str {
     }
 }
 
-impl<'raw, T> Record<'raw> for Vec<T>
+impl<'raw, T> SubRecord<'raw> for Vec<T>
 where
     T: Record<'raw>,
 {
@@ -163,7 +165,7 @@ where
     }
 }
 
-impl<'raw, K, V> Record<'raw> for HashMap<K, V>
+impl<'raw, K, V> SubRecord<'raw> for HashMap<K, V>
 where
     K: Record<'raw> + Eq + Hash,
     V: Record<'raw>,
@@ -195,7 +197,7 @@ where
     }
 }
 
-impl<'raw> Record<'raw> for Guid {
+impl<'raw> SubRecord<'raw> for Guid {
     const MIN_SERIALIZED_SIZE: usize = 16;
 
     #[inline]
@@ -217,7 +219,7 @@ impl<'raw> Record<'raw> for Guid {
     }
 }
 
-impl<'raw> Record<'raw> for Date {
+impl<'raw> SubRecord<'raw> for Date {
     const MIN_SERIALIZED_SIZE: usize = 8;
 
     #[inline]
@@ -232,7 +234,7 @@ impl<'raw> Record<'raw> for Date {
     }
 }
 
-impl<'de> Record<'de> for bool {
+impl<'de> SubRecord<'de> for bool {
     const MIN_SERIALIZED_SIZE: usize = 1;
 
     #[inline]
@@ -253,7 +255,7 @@ impl<'de> Record<'de> for bool {
 
 macro_rules! impl_record_for_num {
     ($t:ty) => {
-        impl<'raw> Record<'raw> for $t {
+        impl<'raw> SubRecord<'raw> for $t {
             const MIN_SERIALIZED_SIZE: usize = core::mem::size_of::<$t>();
 
             #[inline]

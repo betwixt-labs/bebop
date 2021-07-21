@@ -1,5 +1,6 @@
 //! Manual implementation which can be used for testing coherence and also for testing performance
 //!
+//!
 //! ```
 //! const int32 PianoKeys = 88;
 //! const guid ImportantProductID = "a3628ec7-28d4-4546-ad4a-f6ebf5375c96";
@@ -33,15 +34,14 @@
 //! }
 //! ```
 
+use std::convert::{TryFrom, TryInto};
+use std::io::Write;
+
 use bebop::serialization::{
-    read_len, write_len, Buildable, DeResult, DeserializeError, SeResult, SerializeError,
+    read_len, write_len, DeResult, DeserializeError, SeResult, SerializeError, SubRecord,
     ENUM_SIZE, LEN_SIZE,
 };
 use bebop::*;
-use std::convert::{TryFrom, TryInto};
-use std::io::Write;
-use std::marker::PhantomData;
-use std::thread::Builder;
 
 // Constants which are the same for all implementations
 
@@ -85,7 +85,7 @@ impl From<Instrument> for u32 {
     }
 }
 
-impl<'de> Record<'de> for Instrument {
+impl<'raw> SubRecord<'raw> for Instrument {
     const MIN_SERIALIZED_SIZE: usize = ENUM_SIZE;
 
     #[inline]
@@ -94,11 +94,13 @@ impl<'de> Record<'de> for Instrument {
     }
 
     #[inline]
-    fn deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
+    fn deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
         let (n, v) = u32::deserialize_chained(raw)?;
         Ok((n, v.try_into()?))
     }
 }
+
+impl<'raw> Record<'raw> for Instrument {}
 
 /// Generated from `struct Performer`
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -134,7 +136,7 @@ impl<'raw> From<Performer<'raw>> for OwnedPerformer {
     }
 }
 
-impl<'raw> Record<'raw> for Performer<'raw> {
+impl<'raw> SubRecord<'raw> for Performer<'raw> {
     const MIN_SERIALIZED_SIZE: usize =
         <&str>::MIN_SERIALIZED_SIZE + Instrument::MIN_SERIALIZED_SIZE;
 
@@ -156,7 +158,9 @@ impl<'raw> Record<'raw> for Performer<'raw> {
     }
 }
 
-impl<'raw> Record<'raw> for OwnedPerformer {
+impl<'raw> Record<'raw> for Performer<'raw> {}
+
+impl<'raw> SubRecord<'raw> for OwnedPerformer {
     const MIN_SERIALIZED_SIZE: usize = Performer::MIN_SERIALIZED_SIZE;
 
     fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
@@ -169,6 +173,8 @@ impl<'raw> Record<'raw> for OwnedPerformer {
         todo!()
     }
 }
+
+impl<'raw> Record<'raw> for OwnedPerformer {}
 
 /// Generated from `message Song`
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
@@ -216,7 +222,7 @@ impl<'raw> From<Song<'raw>> for OwnedSong {
     }
 }
 
-impl<'raw> Record<'raw> for Song<'raw> {
+impl<'raw> SubRecord<'raw> for Song<'raw> {
     const MIN_SERIALIZED_SIZE: usize = LEN_SIZE + 1;
 
     fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
@@ -321,7 +327,9 @@ impl<'raw> Record<'raw> for Song<'raw> {
     }
 }
 
-impl<'raw> Record<'raw> for OwnedSong {
+impl<'raw> Record<'raw> for Song<'raw> {}
+
+impl<'raw> SubRecord<'raw> for OwnedSong {
     const MIN_SERIALIZED_SIZE: usize = Song::MIN_SERIALIZED_SIZE;
 
     fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
@@ -334,6 +342,8 @@ impl<'raw> Record<'raw> for OwnedSong {
         todo!()
     }
 }
+
+impl<'raw> Record<'raw> for OwnedSong {}
 
 /// Generated from `union Album`
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -352,6 +362,8 @@ pub enum Album<'raw> {
 }
 
 /// Generated from `union Album`
+/// TODO: each of these should actually be defined as structs globally with the enum variants
+///   being a simple tuple struct
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum OwnedAlbum {
     Unknown,
@@ -409,7 +421,7 @@ impl<'raw> From<Album<'raw>> for OwnedAlbum {
     }
 }
 
-impl<'raw> Record<'raw> for Album<'raw> {
+impl<'raw> SubRecord<'raw> for Album<'raw> {
     const MIN_SERIALIZED_SIZE: usize = LEN_SIZE + 1;
 
     fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
@@ -469,7 +481,9 @@ impl<'raw> Record<'raw> for Album<'raw> {
     }
 }
 
-impl<'raw> Record<'raw> for OwnedAlbum {
+impl<'raw> Record<'raw> for Album<'raw> {}
+
+impl<'raw> SubRecord<'raw> for OwnedAlbum {
     const MIN_SERIALIZED_SIZE: usize = Album::MIN_SERIALIZED_SIZE;
 
     fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
@@ -482,3 +496,5 @@ impl<'raw> Record<'raw> for OwnedAlbum {
         todo!()
     }
 }
+
+impl<'raw> Record<'raw> for OwnedAlbum {}
