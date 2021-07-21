@@ -18,6 +18,15 @@ pub const ENUM_SIZE: usize = 4;
 pub type DeResult<T> = core::result::Result<T, DeserializeError>;
 pub type SeResult<T> = core::result::Result<T, SerializeError>;
 
+/// Primitive multi byte array type alias.
+/// In little endian systems we can just borrow the primitive array instead of copying.
+#[cfg(target_endian = "little")]
+pub type PrimitiveMultiByteArray<'raw, T> = &'raw [T];
+/// Primitive multi byte array type alias.
+/// In big endian systems we have to actually copy and transpose the data.
+#[cfg(target_endian = "big")]
+pub type PrimitiveMultiByteArray<'raw, T> = Vec<T>;
+
 pub enum DeserializeError {
     /// Returns the number of additional bytes expected at a minimum.
     /// This will will never be an overestimate.

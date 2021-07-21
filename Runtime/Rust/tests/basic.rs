@@ -34,14 +34,9 @@
 //! }
 //! ```
 
+use bebop::*;
 use std::convert::{TryFrom, TryInto};
 use std::io::Write;
-
-use bebop::serialization::{
-    read_len, write_len, DeResult, DeserializeError, SeResult, SerializeError, SubRecord,
-    ENUM_SIZE, LEN_SIZE,
-};
-use bebop::*;
 
 // Constants which are the same for all implementations
 

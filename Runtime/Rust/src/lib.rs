@@ -1,4 +1,5 @@
-pub mod serialization;
+mod serialization;
 mod types;
-pub use serialization::Record;
+
+pub use serialization::*;
 pub use types::*;
