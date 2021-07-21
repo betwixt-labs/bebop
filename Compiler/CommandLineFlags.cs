@@ -579,7 +579,11 @@ namespace Compiler
                             .Where(flagAttribute => flagAttribute.Attribute.IsGeneratorFlag &&
                                 flagAttribute.Attribute.Name.Equals(aliasElement.GetString())))
                         {
-                            flagAttribute.Property.SetValue(flagStore, outputElement.GetString());
+                            var outputElementPath = outputElement.GetString();
+                            if (configFile.DirectoryName is not null && outputElementPath is not null)
+                            {
+                                flagAttribute.Property.SetValue(flagStore, Path.GetFullPath(Path.Combine(configFile.DirectoryName, outputElementPath)));
+                            }
                             if (generatorElement.TryGetProperty("langVersion", out var langVersion) && System.Version.TryParse(langVersion.ToString(), out var version))
                             {
 
