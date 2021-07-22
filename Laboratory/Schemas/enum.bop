@@ -2,13 +2,16 @@
     Sax = 0;
     Trumpet = 1;
     Clarinet = 2;
+    string_bass = 3;
 }
 
 enum letters {
+    [deprecated("for fun")]
     a = 0;
     b = 1;
     c = 2;
     d = 3;
+    [deprecated]
     f = 4;
     g = 5;
     h = 6;

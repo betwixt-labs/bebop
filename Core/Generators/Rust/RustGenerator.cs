@@ -11,6 +11,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Core.Meta;
+using Core.Meta.Attributes;
 using Core.Meta.Extensions;
 using Core.Meta.Interfaces;
 
@@ -25,7 +26,7 @@ namespace Core.Generators.Rust
 
     public class RustGenerator : BaseGenerator
     {
-        const int indentStep = 4;
+        const int _tab = 4;
 
         private static readonly string[] _reservedWordsArray =
         {
@@ -81,7 +82,7 @@ namespace Core.Generators.Rust
                         break;
                 }
 
-                ;
+                builder.AppendLine();
             }
 
             return builder.ToString();
@@ -91,18 +92,89 @@ namespace Core.Generators.Rust
         {
             // Nothing to do because the runtime is a cargo package.
         }
-        
+
         private static void WriteConstDefinition(ref IndentedStringBuilder builder, ConstDefinition d)
         {
             builder.AppendLine(
                 $"pub const {MakeConstIdent(d.Name)}: {TypeName(d.Value.Type, OwnershipType.Constant)} = {EmitLiteral(d.Value)};");
         }
-        
-        private void WriteEnumDefinition(ref IndentedStringBuilder builder, EnumDefinition ed)
+
+        private void WriteEnumDefinition(ref IndentedStringBuilder builder, EnumDefinition d)
         {
-            throw new NotImplementedException();
+            // main definition
+            var name = MakeDefIdent(d.Name);
+            builder
+                .AppendLine("#[repr(u32)]")
+                .AppendLine("#[derive(Copy, Clone, Debug, Eq, PartialEq)]")
+                .AppendLine($"pub enum {name} {{")
+                .Indent(_tab);
+            foreach (var m in d.Members)
+            {
+                WriteDocumentation(ref builder, d.Documentation);
+                WriteDeprecation(ref builder, m.DeprecatedAttribute);
+                builder.AppendLine($"{MakeEnumVariantIdent(m.Name)} = {m.ConstantValue},");
+            }
+
+            builder.Dedent(_tab).AppendLine("}"); // enum
+
+            // conversion from int
+            builder
+                .AppendLine($"impl core::convert::TryFrom<u32> for {name} {{").Indent(_tab)
+                .AppendLine("type Error = bebop::DeserializeError;")
+                .AppendLine()
+                .AppendLine("fn try_from(value: u32) -> bebop::DeResult<Self> {").Indent(_tab)
+                .AppendLine("match value {").Indent(_tab);
+            foreach (var m in d.Members)
+            {
+                builder.AppendLine($"{m.ConstantValue} => Ok({name}::{MakeEnumVariantIdent(m.Name)}),");
+            }
+
+            builder
+                .AppendLine("d => Err(bebop::DeserializeError::InvalidEnumDiscriminator(d)),")
+                .Dedent(_tab).AppendLine("}") // match
+                .Dedent(_tab).AppendLine("}") // fn
+                .Dedent(_tab).AppendLine("}"); // impl
+
+            // conversion to int
+            builder
+                .AppendLine($"impl core::convert::From<{name}> for u32 {{")
+                .Indent(_tab)
+                .AppendLine($"fn from(value: {name}) -> Self {{")
+                .Indent(_tab)
+                .AppendLine("match value {")
+                .Indent(_tab);
+            foreach (var m in d.Members)
+            {
+                builder.AppendLine($"{name}::{m.Name} => {m.ConstantValue},");
+            }
+
+            builder
+                .Dedent(_tab).AppendLine("}") // match
+                .Dedent(_tab).AppendLine("}") // fn
+                .Dedent(_tab).AppendLine("}"); // impl
+
+            // sub record
+            builder
+                .AppendLine($"impl<'raw> bebop::SubRecord<'raw> for {name} {{").Indent(_tab)
+                .AppendLine("const MIN_SERIALIZED_SIZE: usize = bebop::ENUM_SIZE")
+                .AppendLine()
+                .AppendLine("#[inline]")
+                .AppendLine("fn serialize<W: std::io::Write>(&self, dest: &mut W) -> bebop::SeResult<usize> {")
+                .Indent(_tab)
+                .AppendLine("u32::from(*self).serialize(dest)")
+                .Dedent(_tab).AppendLine("}") // fn
+                .AppendLine("#[inline]")
+                .AppendLine("fn deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {")
+                .Indent(_tab)
+                .AppendLine("let (n, v) = u32::deserialize_chained(raw)?;")
+                .AppendLine("Ok((n, v.try_into()?))")
+                .Dedent(_tab).AppendLine("}") // fn
+                .Dedent(_tab).AppendLine("}"); // impl
+
+            // record
+            builder.AppendLine($"impl<'raw> Record<'raw> for {name} {{}}");
         }
-        
+
         /// <summary>
         /// Generate a Rust type name for the given <see cref="TypeBase"/>.
         /// </summary>
@@ -160,11 +232,26 @@ namespace Core.Generators.Rust
 
         private static void WriteDocumentation(ref IndentedStringBuilder builder, string documentation)
         {
+            if (string.IsNullOrEmpty(documentation)) { return; }
+
             foreach (var line in documentation.GetLines())
             {
                 // TODO: make the docs more friendly to rustdoc by formatting as markdown
                 builder.AppendLine($"/// {line}");
             }
+        }
+
+        private static void WriteDeprecation(ref IndentedStringBuilder builder, BaseAttribute? attr)
+        {
+            if (attr is null) { return; }
+
+            builder.Append("#[deprecated");
+            if (!string.IsNullOrEmpty(attr.Value))
+            {
+                builder.AppendMid($"(note = \"{attr.Value}\")");
+            }
+
+            builder.AppendEnd("]");
         }
 
         private static string MakeConstIdent(string ident)

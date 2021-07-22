@@ -31,6 +31,32 @@ namespace Core.Generators
             Builder.Append(indentedText);
             return this;
         }
+        
+        /// <summary>
+        /// Append text in the middle of the current line; includes no newline and no indent and the beginning.
+        /// </summary>
+        public IndentedStringBuilder AppendMid(string text)
+        {
+            if (text.GetLines().Length > 1)
+            {
+                throw new ArgumentException("AppendMid must not contain multiple lines");
+            }
+            Builder.Append(text);
+            return this;
+        }
+        
+        /// <summary>
+        /// Append the last part of a line. This will add a new line but no indent at the beginning.
+        /// </summary>
+        public IndentedStringBuilder AppendEnd(string text) 
+        {
+            if (text.GetLines().Length > 1)
+            {
+                throw new ArgumentException("AppendEnd must not contain multiple lines");
+            }
+            Builder.AppendLine(text.TrimEnd());
+            return this;
+        }
 
         public IndentedStringBuilder AppendLine(string text)
         {

@@ -65,11 +65,10 @@ impl TryFrom<u32> for Instrument {
             0 => Ok(Instrument::Sax),
             1 => Ok(Instrument::Trumpet),
             2 => Ok(Instrument::Clarinet),
-            _ => Err(DeserializeError::InvalidEnumDiscriminator),
+            d => Err(DeserializeError::InvalidEnumDiscriminator(d)),
         }
     }
 }
-
 impl From<Instrument> for u32 {
     fn from(value: Instrument) -> Self {
         match value {
