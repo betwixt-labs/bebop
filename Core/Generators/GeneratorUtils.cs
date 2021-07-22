@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Core.Generators.CPlusPlus;
 using Core.Generators.CSharp;
 using Core.Generators.Dart;
+using Core.Generators.Rust;
 using Core.Generators.TypeScript;
 using Core.Meta;
 using Core.Meta.Extensions;
@@ -84,18 +85,20 @@ namespace Core.Generators
         /// </remarks>
         public static Dictionary<string, Func<ISchema, BaseGenerator>> ImplementedGenerators  = new()
         {
-            { "ts", s => new TypeScriptGenerator(s) },
+            { "cpp", s => new CPlusPlusGenerator(s) },
             { "cs", s => new CSharpGenerator(s) },
             { "dart", s => new DartGenerator(s) },
-            { "cpp", s => new CPlusPlusGenerator(s) },
+            { "rust", s => new RustGenerator(s) },
+            { "ts", s => new TypeScriptGenerator(s) },
         };
 
         public static Dictionary<string, string> ImplementedGeneratorNames  = new()
         {
-            { "ts", "TypeScript" },
+            { "cpp", "C++" },
             { "cs", "C#" },
             { "dart", "Dart" },
-            { "cpp", "C++" },
+            { "rust", "Rust" },
+            { "ts", "TypeScript" },
         };
 
         /// <summary>

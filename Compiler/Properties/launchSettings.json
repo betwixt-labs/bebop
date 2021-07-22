@@ -8,6 +8,11 @@
       "commandName": "Project",
       "commandLineArgs": "--lang cs --namespace Bebop.Codegen --files ..\\Laboratory\\Schemas\\lab.bop ..\\Laboratory\\Schemas\\jazz.bop --cs ..\\Laboratory\\C#\\GeneratedTestCode\\Output.g.cs",
       "workingDirectory": "C:\\Users\\Andrew\\PierogiVNext\\Compiler"
+    },
+    "Generate Test Code Rust": {
+      "commandName": "Project",
+      "commandLineArgs": "--namespace Bebop.Codegen --files ..\\Laboratory\\Schemas\\const.bop --rust ..\\Laboratory\\Rust\\GeneratedTestCode\\Output.g.rs",
+      "workingDirectory": "C:\\Users\\Matthew\\workspace\\Bebop\\Compiler"
     }
   }
 }

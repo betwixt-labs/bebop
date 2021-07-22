@@ -101,7 +101,7 @@ namespace Core.Meta.Extensions
         /// </summary>
         private static char Peek(this Span<char> array, int index)
         {
-            return index < array.Length ? array[index] : default;
+            return index < array.Length && index >= 0 ? array[index] : default;
         }
 
         /// <summary>
@@ -151,17 +151,16 @@ namespace Core.Meta.Extensions
             var charArray = new Span<char>(input.ToCharArray());
             var builder = new StringBuilder();
 
-            for (var i = 1; i < charArray.Length; i++)
+            for (var i = 0; i < charArray.Length; i++)
             {
                 var currentChar = charArray[i];
-                var lastChar = charArray[i - 1];
                 var nextChar = charArray.Peek(i + 1);
 
                 if (currentChar is SnakeSeparator or KebabSeparator)
                 {
                     builder.Append(SnakeSeparator);
                 }
-                else if (char.IsUpper(lastChar) && char.IsUpper(currentChar) && char.IsLower(nextChar))
+                else if (char.IsUpper(currentChar) && char.IsLower(nextChar))
                 {
                     builder.Append('_');
                     builder.Append(char.ToLowerInvariant(currentChar));
