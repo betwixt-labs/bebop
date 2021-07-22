@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
 using System.Linq;
 using System.Net.NetworkInformation;
@@ -19,9 +20,12 @@ namespace Core.Generators.Rust
 {
     enum OwnershipType
     {
+        // name used when borrowed, E.g. `&'raw [u8]` or `&'raw str`. 
         Borrowed,
+        // name used when owned, E.g. `Vec<u8>` or `String`.  
         Owned,
-        Constant,
+        // name used when declared as a global constant, E.g. `&[u8]` or `&str`.
+        Constant
     }
 
     public class RustGenerator : BaseGenerator
@@ -38,6 +42,7 @@ namespace Core.Generators.Rust
         };
 
         private static readonly HashSet<string> _reservedWords = RustGenerator._reservedWordsArray.ToHashSet();
+        private Dictionary<string, bool> _needsLifetime = new Dictionary<string, bool>();
 
         public RustGenerator(ISchema schema) : base(schema) { }
 
@@ -65,9 +70,9 @@ namespace Core.Generators.Rust
                     // case MessageDefinition md:
                     //     throw new NotImplementedException();
                     //     break;
-                    // case StructDefinition sd:
-                    //     throw new NotImplementedException();
-                    //     break;
+                    case StructDefinition sd:
+                        WriteStructDefinition(builder, sd);
+                        break;
                     // case FieldsDefinition fd:
                     //     throw new NotImplementedException();
                     //     break;
@@ -93,7 +98,7 @@ namespace Core.Generators.Rust
             // Nothing to do because the runtime is a cargo package.
         }
 
-        private static void WriteConstDefinition(IndentedStringBuilder builder, ConstDefinition d)
+        private void WriteConstDefinition(IndentedStringBuilder builder, ConstDefinition d)
         {
             builder.AppendLine(
                 $"pub const {MakeConstIdent(d.Name)}: {TypeName(d.Value.Type, OwnershipType.Constant)} = {EmitLiteral(d.Value)};");
@@ -176,13 +181,32 @@ namespace Core.Generators.Rust
             builder.AppendLine($"impl<'raw> Record<'raw> for {name} {{}}");
         }
 
+        private void WriteStructDefinition(IndentedStringBuilder builder, StructDefinition d)
+        {
+            var needsLifetime = NeedsLifetime(d);
+            var name = d.Name + (needsLifetime ? "<'raw>" : "");
+            WriteDocumentation(builder, d.Documentation);
+
+            builder
+                .AppendLine("#[derive(Clone, Debug, PartialEq)]")
+                .CodeBlock($"pub struct {name}", _tab, () =>
+                {
+                    foreach (var f in d.Fields)
+                    {
+                        WriteDocumentation(builder, f.Documentation);
+                        WriteDeprecation(builder, f.DeprecatedAttribute);
+                        builder.AppendLine($"pub {MakeAttrIdent(f.Name)}: {TypeName(f.Type)},");
+                    }
+                }).AppendLine();
+        }
+
         /// <summary>
         /// Generate a Rust type name for the given <see cref="TypeBase"/>.
         /// </summary>
         /// <param name="type">The field type to generate code for.</param>
         /// <param name="ot">Ownership type, e.g. <c>&'raw str</c> versus <c>String</c>.</param>
         /// <returns>The Rust type name.</returns>
-        private static string TypeName(in TypeBase type, OwnershipType ot = OwnershipType.Borrowed)
+        private string TypeName(in TypeBase type, OwnershipType ot = OwnershipType.Borrowed)
         {
             switch (type)
             {
@@ -211,12 +235,31 @@ namespace Core.Generators.Rust
                         _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                     };
                 case ArrayType at:
-                    if (ot is OwnershipType.Borrowed or OwnershipType.Constant && at.MemberType is ScalarType)
+                    if (at.MemberType is ScalarType mst && ot is OwnershipType.Borrowed or OwnershipType.Constant)
                     {
                         var lifetime = ot is OwnershipType.Borrowed ? "'raw" : "'static";
-                        return at.IsOneByteUnits()
-                            ? $"&{lifetime} [{TypeName(at.MemberType)}]"
-                            : $"bebop::PrimitiveMultiByteArray<{lifetime}, {TypeName(at.MemberType)}>";
+                        if (at.IsOneByteUnits())
+                        {
+                            return $"&{lifetime} [{TypeName(at.MemberType)}]";
+                        }
+
+                        var pmba = $"bebop::PrimitiveMultiByteArray<{lifetime}, {TypeName(at.MemberType)}>";
+                        return mst.BaseType switch
+                        {
+                            BaseType.UInt16 => pmba,
+                            BaseType.Int16 => pmba,
+                            BaseType.UInt32 => pmba,
+                            BaseType.Int32 => pmba,
+                            BaseType.UInt64 => pmba,
+                            BaseType.Int64 => pmba,
+                            BaseType.Float32 => pmba,
+                            BaseType.Float64 => pmba,
+                            BaseType.String => $"std::vec::Vec<{TypeName(at.MemberType)}>",
+                            // this one does not care what endian the system is
+                            BaseType.Guid => $"&{lifetime} [bebop::Guid]",
+                            BaseType.Date => pmba,
+                            _ => throw new ArgumentOutOfRangeException(mst.BaseType.ToString())
+                        };
                     }
                     else
                     {
@@ -225,11 +268,42 @@ namespace Core.Generators.Rust
                 case MapType mt:
                     return $"std::collections::HashMap<{TypeName(mt.KeyType)}, {TypeName(mt.ValueType)}>";
                 case DefinedType dt:
-                    return dt.Name;
+                    return ot switch
+                    {
+                        OwnershipType.Borrowed => NeedsLifetime(Schema.Definitions[dt.Name])
+                            ? $"{dt.Name}<'raw>"
+                            : dt.Name,
+                        OwnershipType.Owned => NeedsLifetime(Schema.Definitions[dt.Name])
+                            ? $"{dt.Name}<'raw>"
+                            : dt.Name,
+                        OwnershipType.Constant => throw new NotSupportedException("Cannot have a const defined type"),
+                        _ => throw new ArgumentOutOfRangeException(nameof(ot), ot, null)
+                    };
             }
 
             throw new InvalidOperationException($"GetTypeName: {type}");
         }
+
+        // /// <summary>
+        // /// Some types (if they have a lifetime) should have it as part of their name such as "&'raw str" and others
+        // /// like 
+        // /// </summary>
+        // /// <param name="type"></param>
+        // /// <returns></returns>
+        // /// <exception cref="ArgumentOutOfRangeException"></exception>
+        // private static bool TypeNameContainsLifetime(TypeBase type) =>
+        //     type switch
+        //     {
+        //         // always internal as part of the `&`
+        //         ArrayType at => true,
+        //         // always written externally
+        //         DefinedType dt => false,
+        //         // always internal
+        //         MapType mt => true,
+        //         // always internal
+        //         ScalarType st => true,
+        //         _ => throw new ArgumentOutOfRangeException(type.ToString())
+        //     };
 
         private static void WriteDocumentation(IndentedStringBuilder builder, string documentation)
         {
@@ -281,6 +355,20 @@ namespace Core.Generators.Rust
                 : reCased;
         }
 
+        private string EmitLiteral(Literal literal) =>
+            literal switch
+            {
+                BoolLiteral bl => bl.Value ? "true" : "false",
+                IntegerLiteral il => il.Value,
+                FloatLiteral {Value: "inf"} => $"{TypeName(literal.Type)}::INFINITY",
+                FloatLiteral {Value: "-inf"} => $"{TypeName(literal.Type)}::NEG_INFINITY",
+                FloatLiteral {Value: "nan"} => $"{TypeName(literal.Type)}::NAN",
+                FloatLiteral fl => fl.Value.Contains('.') ? fl.Value : fl.Value + '.',
+                StringLiteral sl => MakeStringLiteral(sl.Value),
+                GuidLiteral gl => MakeGuidLiteral(gl.Value),
+                _ => throw new ArgumentOutOfRangeException(literal.ToString()),
+            };
+
         private static string MakeStringLiteral(string value) =>
             // rust accepts full UTF-8 strings in code AND even supports newlines
             value.Contains("\"#") ? value.Replace("\\", "\\\\").Replace("\"", "\\\"") : $"r#\"{value}\"#";
@@ -302,18 +390,44 @@ namespace Core.Generators.Rust
             return builder.ToString();
         }
 
-        private static string EmitLiteral(Literal literal) =>
-            literal switch
+        private bool TypeNeedsLifetime(TypeBase type) =>
+            type switch
             {
-                BoolLiteral bl => bl.Value ? "true" : "false",
-                IntegerLiteral il => il.Value,
-                FloatLiteral {Value: "inf"} => $"{TypeName(literal.Type)}::INFINITY",
-                FloatLiteral {Value: "-inf"} => $"{TypeName(literal.Type)}::NEG_INFINITY",
-                FloatLiteral {Value: "nan"} => $"{TypeName(literal.Type)}::NAN",
-                FloatLiteral fl => fl.Value.Contains('.') ? fl.Value : fl.Value + '.',
-                StringLiteral sl => MakeStringLiteral(sl.Value),
-                GuidLiteral gl => MakeGuidLiteral(gl.Value),
-                _ => throw new ArgumentOutOfRangeException(literal.ToString()),
+                ArrayType at => true,
+                DefinedType dt => NeedsLifetime(Schema.Definitions[dt.Name]),
+                MapType mt => TypeNeedsLifetime(mt.KeyType) || TypeNeedsLifetime(mt.ValueType),
+                ScalarType st => !st.IsFixedScalar(),
+                _ => throw new ArgumentOutOfRangeException(type.ToString())
             };
+
+        private bool FieldNeedsLifetime(Definition d, IField f)
+        {
+            var key = $"{d.Name}::{f.Name}";
+            if (_needsLifetime.ContainsKey(key))
+            {
+                return _needsLifetime[key];
+            }
+
+            _needsLifetime[key] = TypeNeedsLifetime(f.Type);
+            return _needsLifetime[key];
+        }
+
+        private bool NeedsLifetime(Definition d)
+        {
+            if (_needsLifetime.ContainsKey(d.Name))
+            {
+                return _needsLifetime[d.Name];
+            }
+
+            _needsLifetime[d.Name] = d switch
+            {
+                ConstDefinition cd => false,
+                EnumDefinition ed => false,
+                FieldsDefinition fd => fd.Fields.Any(f => FieldNeedsLifetime(d, f)),
+                UnionDefinition ud => ud.Branches.Any(b => NeedsLifetime(b.Definition)),
+                _ => throw new ArgumentOutOfRangeException(d.Name)
+            };
+            return _needsLifetime[d.Name];
+        }
     }
 }

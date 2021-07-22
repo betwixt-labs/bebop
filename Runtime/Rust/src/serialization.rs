@@ -88,6 +88,8 @@ impl Error for SerializeError {}
 
 /// Bebop message type which can be serialized and deserialized.
 pub trait Record<'raw>: SubRecord<'raw> {
+    const OPCODE: Option<u32> = None;
+
     /// Deserialize this record
     #[inline(always)]
     fn deserialize(raw: &'raw [u8]) -> DeResult<Self> {

@@ -3,7 +3,7 @@
 //!
 //!
 //!   bebopc version:
-//!       0.0.1-20210722-2118
+//!       0.0.1-20210722-2330
 //!
 //!
 //!   bebopc source:
@@ -16,119 +16,74 @@
 
 use bebop::{Record as _, SubRecord as _};
 
-#[repr(u32)]
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Instrument {
-    Sax = 0,
-    Trumpet = 1,
-    Clarinet = 2,
-    StringBass = 3,
+#[derive(Clone, Debug, PartialEq)]
+pub struct BasicTypes<'raw> {
+    pub a_bool: bool,
+    pub a_byte: u8,
+    pub a_int16: i16,
+    pub a_uint16: u16,
+    pub a_int32: i32,
+    pub a_uint32: u32,
+    pub a_int64: i64,
+    pub a_uint64: u64,
+    pub a_float32: f32,
+    pub a_float64: f64,
+    pub a_string: &'raw str,
+    pub a_guid: bebop::Guid,
+    pub a_date: bebop::Date,
 }
 
-impl core::convert::TryFrom<u32> for Instrument {
-    type Error = bebop::DeserializeError;
 
-    fn try_from(value: u32) -> bebop::DeResult<Self> {
-        match value {
-            0 => Ok(Instrument::Sax),
-            1 => Ok(Instrument::Trumpet),
-            2 => Ok(Instrument::Clarinet),
-            3 => Ok(Instrument::StringBass),
-            d => Err(bebop::DeserializeError::InvalidEnumDiscriminator(d)),
-        }
-    }
+#[derive(Clone, Debug, PartialEq)]
+pub struct BasicArrays<'raw> {
+    pub a_bool: &'raw [bool],
+    pub a_byte: &'raw [u8],
+    pub a_int16: bebop::PrimitiveMultiByteArray<'raw, i16>,
+    pub a_uint16: bebop::PrimitiveMultiByteArray<'raw, u16>,
+    pub a_int32: bebop::PrimitiveMultiByteArray<'raw, i32>,
+    pub a_uint32: bebop::PrimitiveMultiByteArray<'raw, u32>,
+    pub a_int64: bebop::PrimitiveMultiByteArray<'raw, i64>,
+    pub a_uint64: bebop::PrimitiveMultiByteArray<'raw, u64>,
+    pub a_float32: bebop::PrimitiveMultiByteArray<'raw, f32>,
+    pub a_float64: bebop::PrimitiveMultiByteArray<'raw, f64>,
+    pub a_string: std::vec::Vec<&'raw str>,
+    pub a_guid: &'raw [bebop::Guid],
 }
 
-impl core::convert::From<Instrument> for u32 {
-    fn from(value: Instrument) -> Self {
-        match value {
-            Instrument::Sax => 0,
-            Instrument::Trumpet => 1,
-            Instrument::Clarinet => 2,
-            Instrument::string_bass => 3,
-        }
-    }
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct TestInt32Array<'raw> {
+    pub a: bebop::PrimitiveMultiByteArray<'raw, i32>,
 }
 
-impl<'raw> bebop::SubRecord<'raw> for Instrument {
-    const MIN_SERIALIZED_SIZE: usize = bebop::ENUM_SIZE
 
-    #[inline]
-    fn serialize<W: std::io::Write>(&self, dest: &mut W) -> bebop::SeResult<usize> {
-        u32::from(*self).serialize(dest)
-    }
-
-    #[inline]
-    fn deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
-        let (n, v) = u32::deserialize_chained(raw)?;
-        Ok((n, v.try_into()?))
-    }
+#[derive(Clone, Debug, PartialEq)]
+pub struct ArrayOfStrings<'raw> {
+    pub strings: std::vec::Vec<&'raw str>,
 }
 
-impl<'raw> Record<'raw> for Instrument {}
 
-/// Doc comment on enum
-#[repr(u32)]
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Letters {
-    /// Doc comment on deprecated attr
-    #[deprecated(note = "for fun")]
-    A = 0,
-    B = 1,
-    /// Doc comment on attribute
-    C = 2,
-    D = 3,
-    #[deprecated]
-    F = 4,
-    G = 5,
-    H = 6,
+#[derive(Clone, Debug, PartialEq)]
+pub struct StructOfStructs<'raw> {
+    pub basic_types: BasicTypes<'raw>,
+    pub basic_arrays: BasicArrays<'raw>,
 }
 
-impl core::convert::TryFrom<u32> for Letters {
-    type Error = bebop::DeserializeError;
 
-    fn try_from(value: u32) -> bebop::DeResult<Self> {
-        match value {
-            0 => Ok(Letters::A),
-            1 => Ok(Letters::B),
-            2 => Ok(Letters::C),
-            3 => Ok(Letters::D),
-            4 => Ok(Letters::F),
-            5 => Ok(Letters::G),
-            6 => Ok(Letters::H),
-            d => Err(bebop::DeserializeError::InvalidEnumDiscriminator(d)),
-        }
-    }
+#[derive(Clone, Debug, PartialEq)]
+pub struct EmptyStruct {
 }
 
-impl core::convert::From<Letters> for u32 {
-    fn from(value: Letters) -> Self {
-        match value {
-            Letters::a => 0,
-            Letters::b => 1,
-            Letters::c => 2,
-            Letters::d => 3,
-            Letters::f => 4,
-            Letters::g => 5,
-            Letters::h => 6,
-        }
-    }
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct OpcodeStruct {
+    pub x: i32,
 }
 
-impl<'raw> bebop::SubRecord<'raw> for Letters {
-    const MIN_SERIALIZED_SIZE: usize = bebop::ENUM_SIZE
 
-    #[inline]
-    fn serialize<W: std::io::Write>(&self, dest: &mut W) -> bebop::SeResult<usize> {
-        u32::from(*self).serialize(dest)
-    }
-
-    #[inline]
-    fn deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
-        let (n, v) = u32::deserialize_chained(raw)?;
-        Ok((n, v.try_into()?))
-    }
+#[derive(Clone, Debug, PartialEq)]
+pub struct ShouldNotHaveLifetime<'raw> {
+    pub v: std::vec::Vec<OpcodeStruct>,
 }
 
-impl<'raw> Record<'raw> for Letters {}
 
