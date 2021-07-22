@@ -5,10 +5,13 @@
     string_bass = 3;
 }
 
+/** Doc comment on enum */
 enum letters {
+    /** Doc comment on deprecated attr */
     [deprecated("for fun")]
     a = 0;
     b = 1;
+    /** Doc comment on attribute */
     c = 2;
     d = 3;
     [deprecated]

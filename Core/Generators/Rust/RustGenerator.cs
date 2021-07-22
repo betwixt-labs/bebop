@@ -110,7 +110,7 @@ namespace Core.Generators.Rust
                 {
                     foreach (var m in d.Members)
                     {
-                        WriteDocumentation(builder, d.Documentation);
+                        WriteDocumentation(builder, m.Documentation);
                         WriteDeprecation(builder, m.DeprecatedAttribute);
                         builder.AppendLine($"{MakeEnumVariantIdent(m.Name)} = {m.ConstantValue},");
                     }
@@ -170,7 +170,7 @@ namespace Core.Generators.Rust
                             .AppendLine("let (n, v) = u32::deserialize_chained(raw)?;")
                             .AppendLine("Ok((n, v.try_into()?))");
                     });
-            });
+            }).AppendLine();
 
             // record
             builder.AppendLine($"impl<'raw> Record<'raw> for {name} {{}}");
