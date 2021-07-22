@@ -11,7 +11,7 @@
     },
     "Generate Test Code Rust": {
       "commandName": "Project",
-      "commandLineArgs": "--namespace Bebop.Codegen --files ..\\Laboratory\\Schemas\\const.bop --rust ..\\Laboratory\\Rust\\GeneratedTestCode\\Output.g.rs",
+      "commandLineArgs": "--files ..\\Laboratory\\Schemas\\const.bop --rust ..\\Laboratory\\Rust\\GeneratedTestCode\\output.g.rs",
       "workingDirectory": "C:\\Users\\Matthew\\workspace\\Bebop\\Compiler"
     }
   }
