@@ -1,0 +1,14 @@
+﻿message M { 1 -> float32 a; 2 -> float64 b; }
+message InnerM { 1 -> int32 x; }
+struct InnerS { bool y; }
+
+message OuterM {
+    1 -> InnerM innerM;
+    2 -> InnerS innerS;
+}
+
+struct OuterS {
+    InnerM innerM;
+    InnerS innerS;
+}
+

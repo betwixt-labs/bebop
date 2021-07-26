@@ -70,9 +70,9 @@ namespace Core.Generators.Rust
                     case EnumDefinition ed:
                         WriteEnumDefinition(builder, ed);
                         break;
-                    // case MessageDefinition md:
-                    //     throw new NotImplementedException();
-                    //     break;
+                    case MessageDefinition md:
+                        WriteMessageDefinition(builder, md);
+                        break;
                     case StructDefinition sd:
                         WriteStructDefinition(builder, sd);
                         break;
@@ -184,33 +184,35 @@ namespace Core.Generators.Rust
             builder.AppendLine($"impl<'raw> Record<'raw> for {name} {{}}");
         }
 
+
         private void WriteStructDefinition(IndentedStringBuilder builder, StructDefinition d)
         {
             var needsLifetime = NeedsLifetime(d);
             var name = d.Name + (needsLifetime ? "<'raw>" : "");
             WriteDocumentation(builder, d.Documentation);
 
-            builder
-                .AppendLine("#[derive(Clone, Debug, PartialEq)]")
-                .CodeBlock($"pub struct {name}", _tab, () =>
+            builder.AppendLine("#[derive(Clone, Debug, PartialEq)]");
+            builder.CodeBlock($"pub struct {name}", _tab, () =>
+            {
+                foreach (var f in d.Fields.OrderBy((f) => f.ConstantValue))
                 {
-                    foreach (var f in d.Fields)
-                    {
-                        WriteDocumentation(builder, f.Documentation);
-                        WriteDeprecation(builder, f.DeprecatedAttribute);
-                        builder.AppendLine($"pub {MakeAttrIdent(f.Name)}: {TypeName(f.Type)},");
-                    }
-                }).AppendLine();
+                    WriteDocumentation(builder, f.Documentation);
+                    WriteDeprecation(builder, f.DeprecatedAttribute);
+                    builder.AppendLine($"pub {MakeAttrIdent(f.Name)}: {TypeName(f.Type)},");
+                }
+            }).AppendLine();
 
             builder
                 .CodeBlock($"impl<'raw> bebop::SubRecord<'raw> for {name}", _tab, () =>
                 {
                     if (d.Fields.Count == 0)
                     {
+                        // special case
                         builder.AppendLine("const MIN_SERIALIZED_SIZE: usize = 0;");
                     }
                     else
                     {
+                        // sum size of all fields at compile time
                         builder.AppendLine("const MIN_SERIALIZED_SIZE: usize =");
                         var parts = d.Fields.Select(f =>
                             $"<{TypeName(f.Type)}>::MIN_SERIALIZED_SIZE");
@@ -227,6 +229,7 @@ namespace Core.Generators.Rust
                             }
                             else
                             {
+                                // just serialize all fields and sum their bytes written
                                 builder.CodeBlock("Ok(", _tab, () =>
                                 {
                                     builder.AppendLine(string.Join(" +\n",
@@ -265,29 +268,140 @@ namespace Core.Generators.Rust
                         });
                 }).AppendLine();
 
-            builder.AppendLine($"impl<'raw> bebop::Record<'raw> for {name} {{}}");
+            WriteRecordImpl(builder, name, d);
         }
 
-        // /// <summary>
-        // /// Some types (if they have a lifetime) should have it as part of their name such as "&'raw str" and others
-        // /// like 
-        // /// </summary>
-        // /// <param name="type"></param>
-        // /// <returns></returns>
-        // /// <exception cref="ArgumentOutOfRangeException"></exception>
-        // private static bool TypeNameContainsLifetime(TypeBase type) =>
-        //     type switch
-        //     {
-        //         // always internal as part of the `&`
-        //         ArrayType at => true,
-        //         // always written externally
-        //         DefinedType dt => false,
-        //         // always internal
-        //         MapType mt => true,
-        //         // always internal
-        //         ScalarType st => true,
-        //         _ => throw new ArgumentOutOfRangeException(type.ToString())
-        //     };
+        private void WriteMessageDefinition(IndentedStringBuilder builder, MessageDefinition d)
+        {
+            var needsLifetime = NeedsLifetime(d);
+            var name = d.Name + (needsLifetime ? "<'raw>" : "");
+            WriteDocumentation(builder, d.Documentation);
+
+            builder.AppendLine("#[derive(Clone, Debug, PartialEq, Default)]");
+            builder.CodeBlock($"pub struct {name}", _tab, () =>
+            {
+                foreach (var f in d.Fields.OrderBy((f) => f.ConstantValue))
+                {
+                    WriteDocumentation(builder, f.Documentation);
+                    WriteDocumentation(builder, $"Field {f.ConstantValue}");
+                    WriteDeprecation(builder, f.DeprecatedAttribute);
+                    builder.AppendLine($"pub {MakeAttrIdent(f.Name)}: core::option::Option<{TypeName(f.Type)}>,");
+                }
+            }).AppendLine();
+
+            builder
+                .CodeBlock($"impl<'raw> bebop::SubRecord<'raw> for {name}", _tab, () =>
+                {
+                    // messages are size in bytes + null byte end
+                    builder
+                        .AppendLine("const MIN_SERIALIZED_SIZE: usize = bebop::LEN_SIZE + 1;")
+                        .CodeBlock("fn serialize<W: std::io::Write>(&self, dest: &mut W) -> bebop::SeResult<usize>",
+                            _tab, () =>
+                            {
+                                // message needs if let for each field to only serialize if present.
+                                builder.AppendLine("let mut buf = Vec::new();");
+                                ;
+                                foreach (var f in d.Fields.OrderBy((f) => f.ConstantValue))
+                                {
+                                    builder.CodeBlock($"if let Some(ref v) = self.{MakeAttrIdent(f.Name)}", _tab, () =>
+                                    {
+                                        builder.AppendLine($"buf.push({f.ConstantValue});")
+                                            .AppendLine($"v.serialize(&mut buf)?;");
+                                    });
+                                }
+
+                                builder
+                                    .AppendLine("buf.push(0);")
+                                    .AppendLine("bebop::write_len(dest, buf.len())?;")
+                                    .AppendLine("dest.write_all(&buf)?;")
+                                    .AppendLine("Ok(buf.len() + bebop::LEN_SIZE)");
+                            }).AppendLine();
+
+                    builder.CodeBlock("fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)>", _tab,
+                        () =>
+                        {
+                            builder
+                                .AppendLine("let len = bebop::read_len(raw)?;")
+                                .AppendLine("#[cfg(not(feature = \"unchecked\"))]")
+                                .CodeBlock("if len == 0", _tab, () =>
+                                {
+                                    builder.AppendLine("return Err(bebop::DeserializeError::CorruptFrame);");
+                                })
+                                .AppendLine()
+                                .CodeBlock("if raw.len() < len + bebpp::LEN_SIZE", _tab, () =>
+                                {
+                                    builder.AppendLine(
+                                        "return Err(bebop::DeserializeError::MoreDataExpected(len + bebop::LEN_SIZE - raw.len()));");
+                                })
+                                .AppendLine("let mut i = bebop::LEN_SIZE;")
+                                .AppendLine("let mut de = Self::default();")
+                                .AppendLine()
+                                .AppendLine("#[cfg(not(feature = \"unchecked\"))]")
+                                .AppendLine("let mut last = 0;")
+                                .AppendLine()
+                                .CodeBlock("while i < len + bebop::LEN_SIZE", _tab, () =>
+                                {
+                                    builder
+                                        .AppendLine("let di = raw[i];")
+                                        .AppendLine()
+                                        .AppendLine("#[cfg(not(feature = \"unchecked\"))]")
+                                        .CodeBlock("if di != 0", _tab, () =>
+                                        {
+                                            builder.CodeBlock("if di < last", _tab, () =>
+                                            {
+                                                builder.AppendLine("return Err(bebop::DeserializeError::CorruptFrame);");
+                                            });
+                                            builder.AppendLine("last = di;");
+                                        })
+                                        .AppendLine()
+                                        .AppendLine("i += 1;")
+                                        .CodeBlock("match di", _tab, () =>
+                                        {
+                                            builder.CodeBlock("0 =>", _tab, () =>
+                                            {
+                                                builder.AppendLine("break;");
+                                            });
+                                            foreach (var f in d.Fields.OrderBy((f) => f.ConstantValue))
+                                            {
+                                                var fname = MakeAttrIdent(f.Name);
+                                                builder.CodeBlock($"{f.ConstantValue} =>", _tab, () =>
+                                                {
+                                                    builder
+                                                        .AppendLine("#[cfg(not(feature = \"unchecked\"))]")
+                                                        .CodeBlock($"if de.{fname}.is_some()", _tab, () =>
+                                                        {
+                                                            builder.AppendLine(
+                                                                "return Err(bebop::DeserializeError::DuplicateMessageField);");
+                                                        })
+                                                        .AppendLine(
+                                                            $"let (read, value) = <{TypeName(f.Type)}>::deserialize_chained(&raw[i..])?;")
+                                                        .AppendLine("i += read;")
+                                                        .AppendLine($"de.{fname} = Some(value)");
+                                                });
+                                            }
+
+                                            builder.CodeBlock("_ =>", _tab, () =>
+                                            {
+                                                builder
+                                                    .AppendLine("i = len + bebop::LEN_SIZE;")
+                                                    .AppendLine("break;");
+                                            });
+                                        });
+                                })
+                                .CodeBlock("if i != len + bebop::LEN_SIZE", _tab, () =>
+                                {
+                                    builder
+                                        .AppendLine("debug_assert!(i > len + bebop::LEN_SIZE);")
+                                        .AppendLine("Err(bebop::DeserializeError::CorruptFrame)");
+                                }).CodeBlock("else", _tab, () =>
+                                {
+                                    builder.AppendLine("Ok((i, de))");
+                                });
+                        });
+                }).AppendLine();
+
+            WriteRecordImpl(builder, name, d);
+        }
 
         private static void WriteDocumentation(IndentedStringBuilder builder, string documentation)
         {
@@ -311,6 +425,22 @@ namespace Core.Generators.Rust
             }
 
             builder.AppendEnd("]");
+        }
+
+        private static void WriteRecordImpl(IndentedStringBuilder builder, string name, TopLevelDefinition d)
+        {
+            var opcode = d.OpcodeAttribute?.Value;
+            if (string.IsNullOrEmpty(opcode))
+            {
+                builder.AppendLine($"impl<'raw> bebop::Record<'raw> for {name} {{}}");
+            }
+            else
+            {
+                builder.CodeBlock($"impl<'raw> bebop::Record<'raw> for {name}", _tab, () =>
+                {
+                    builder.AppendLine($"const OPCODE: core::option::Option<u32> = Some({opcode})");
+                });
+            }
         }
 
         private static string MakeConstIdent(string ident)

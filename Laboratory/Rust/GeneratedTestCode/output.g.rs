@@ -3,7 +3,7 @@
 //!
 //!
 //!   bebopc version:
-//!       0.0.1-20210726-1803
+//!       0.0.1-20210726-2053
 //!
 //!
 //!   bebopc source:
@@ -16,54 +16,191 @@
 
 use bebop::{Record as _, SubRecord as _};
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct BasicTypes<'raw> {
-    pub a_bool: bool,
-    pub a_byte: u8,
-    pub a_int16: i16,
-    pub a_uint16: u16,
-    pub a_int32: i32,
-    pub a_uint32: u32,
-    pub a_int64: i64,
-    pub a_uint64: u64,
-    pub a_float32: f32,
-    pub a_float64: f64,
-    pub a_string: &'raw str,
-    pub a_guid: bebop::Guid,
-    pub a_date: bebop::Date,
+#[derive(Clone, Debug, PartialEq, Default)]
+pub struct M {
+    /// Field 1
+    pub a: core::option::Option<f32>,
+    /// Field 2
+    pub b: core::option::Option<f64>,
 }
 
-impl<'raw> bebop::SubRecord<'raw> for BasicTypes<'raw> {
+impl<'raw> bebop::SubRecord<'raw> for M {
+    const MIN_SERIALIZED_SIZE: usize = bebop::LEN_SIZE + 1;
+    fn serialize<W: std::io::Write>(&self, dest: &mut W) -> bebop::SeResult<usize> {
+        let mut buf = Vec::new();
+        if let Some(ref v) = self.a {
+            buf.push(1);
+            v.serialize(&mut buf)?;
+        }
+        if let Some(ref v) = self.b {
+            buf.push(2);
+            v.serialize(&mut buf)?;
+        }
+        buf.push(0);
+        bebop::write_len(dest, buf.len())?;
+        dest.write_all(&buf)?;
+        Ok(buf.len() + bebop::LEN_SIZE)
+    }
+
+    fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)> {
+        let len = bebop::read_len(raw)?;
+        #[cfg(not(feature = "unchecked"))]
+        if len == 0 {
+            return Err(bebop::DeserializeError::CorruptFrame);
+        }
+
+        if raw.len() < len + bebpp::LEN_SIZE {
+            return Err(bebop::DeserializeError::MoreDataExpected(len + bebop::LEN_SIZE - raw.len()));
+        }
+        let mut i = bebop::LEN_SIZE;
+        let mut de = Self::default();
+
+        #[cfg(not(feature = "unchecked"))]
+        let mut last = 0;
+
+        while i < len + bebop::LEN_SIZE {
+            let di = raw[i];
+
+            #[cfg(not(feature = "unchecked"))]
+            if di != 0 {
+                if di < last {
+                    return Err(bebop::DeserializeError::CorruptFrame);
+                }
+                last = di;
+            }
+
+            i += 1;
+            match di {
+                0 => {
+                    break;
+                }
+                1 => {
+                    #[cfg(not(feature = "unchecked"))]
+                    if de.a.is_some() {
+                        return Err(bebop::DeserializeError::DuplicateMessageField);
+                    }
+                    let (read, value) = <f32>::deserialize_chained(&raw[i..])?;
+                    i += read;
+                    de.a = Some(value)
+                }
+                2 => {
+                    #[cfg(not(feature = "unchecked"))]
+                    if de.b.is_some() {
+                        return Err(bebop::DeserializeError::DuplicateMessageField);
+                    }
+                    let (read, value) = <f64>::deserialize_chained(&raw[i..])?;
+                    i += read;
+                    de.b = Some(value)
+                }
+                _ => {
+                    i = len + bebop::LEN_SIZE;
+                    break;
+                }
+            }
+        }
+        if i != len + bebop::LEN_SIZE {
+            debug_assert!(i > len + bebop::LEN_SIZE);
+            Err(bebop::DeserializeError::CorruptFrame)
+        }
+        else {
+            Ok((i, de))
+        }
+    }
+}
+
+impl<'raw> bebop::Record<'raw> for M {}
+
+#[derive(Clone, Debug, PartialEq, Default)]
+pub struct InnerM {
+    /// Field 1
+    pub x: core::option::Option<i32>,
+}
+
+impl<'raw> bebop::SubRecord<'raw> for InnerM {
+    const MIN_SERIALIZED_SIZE: usize = bebop::LEN_SIZE + 1;
+    fn serialize<W: std::io::Write>(&self, dest: &mut W) -> bebop::SeResult<usize> {
+        let mut buf = Vec::new();
+        if let Some(ref v) = self.x {
+            buf.push(1);
+            v.serialize(&mut buf)?;
+        }
+        buf.push(0);
+        bebop::write_len(dest, buf.len())?;
+        dest.write_all(&buf)?;
+        Ok(buf.len() + bebop::LEN_SIZE)
+    }
+
+    fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)> {
+        let len = bebop::read_len(raw)?;
+        #[cfg(not(feature = "unchecked"))]
+        if len == 0 {
+            return Err(bebop::DeserializeError::CorruptFrame);
+        }
+
+        if raw.len() < len + bebpp::LEN_SIZE {
+            return Err(bebop::DeserializeError::MoreDataExpected(len + bebop::LEN_SIZE - raw.len()));
+        }
+        let mut i = bebop::LEN_SIZE;
+        let mut de = Self::default();
+
+        #[cfg(not(feature = "unchecked"))]
+        let mut last = 0;
+
+        while i < len + bebop::LEN_SIZE {
+            let di = raw[i];
+
+            #[cfg(not(feature = "unchecked"))]
+            if di != 0 {
+                if di < last {
+                    return Err(bebop::DeserializeError::CorruptFrame);
+                }
+                last = di;
+            }
+
+            i += 1;
+            match di {
+                0 => {
+                    break;
+                }
+                1 => {
+                    #[cfg(not(feature = "unchecked"))]
+                    if de.x.is_some() {
+                        return Err(bebop::DeserializeError::DuplicateMessageField);
+                    }
+                    let (read, value) = <i32>::deserialize_chained(&raw[i..])?;
+                    i += read;
+                    de.x = Some(value)
+                }
+                _ => {
+                    i = len + bebop::LEN_SIZE;
+                    break;
+                }
+            }
+        }
+        if i != len + bebop::LEN_SIZE {
+            debug_assert!(i > len + bebop::LEN_SIZE);
+            Err(bebop::DeserializeError::CorruptFrame)
+        }
+        else {
+            Ok((i, de))
+        }
+    }
+}
+
+impl<'raw> bebop::Record<'raw> for InnerM {}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct InnerS {
+    pub y: bool,
+}
+
+impl<'raw> bebop::SubRecord<'raw> for InnerS {
     const MIN_SERIALIZED_SIZE: usize =
-        <bool>::MIN_SERIALIZED_SIZE +
-        <u8>::MIN_SERIALIZED_SIZE +
-        <i16>::MIN_SERIALIZED_SIZE +
-        <u16>::MIN_SERIALIZED_SIZE +
-        <i32>::MIN_SERIALIZED_SIZE +
-        <u32>::MIN_SERIALIZED_SIZE +
-        <i64>::MIN_SERIALIZED_SIZE +
-        <u64>::MIN_SERIALIZED_SIZE +
-        <f32>::MIN_SERIALIZED_SIZE +
-        <f64>::MIN_SERIALIZED_SIZE +
-        <&'raw str>::MIN_SERIALIZED_SIZE +
-        <bebop::Guid>::MIN_SERIALIZED_SIZE +
-        <bebop::Date>::MIN_SERIALIZED_SIZE;
+        <bool>::MIN_SERIALIZED_SIZE;
 
     fn serialize<W: std::io::Write>(&self, dest: &mut W) -> bebop::SeResult<usize> {
         Ok(
-            self.a_bool.serialize(dest)? +
-            self.a_byte.serialize(dest)? +
-            self.a_int16.serialize(dest)? +
-            self.a_uint16.serialize(dest)? +
-            self.a_int32.serialize(dest)? +
-            self.a_uint32.serialize(dest)? +
-            self.a_int64.serialize(dest)? +
-            self.a_uint64.serialize(dest)? +
-            self.a_float32.serialize(dest)? +
-            self.a_float64.serialize(dest)? +
-            self.a_string.serialize(dest)? +
-            self.a_guid.serialize(dest)? +
-            self.a_date.serialize(dest)?
+            self.y.serialize(dest)?
         )
     }
 
@@ -76,96 +213,124 @@ impl<'raw> bebop::SubRecord<'raw> for BasicTypes<'raw> {
         let mut i = 0;
         let (read, v0) = <bool>::deserialize_chained(raw)?;
         i += read;
-        let (read, v1) = <u8>::deserialize_chained(raw)?;
-        i += read;
-        let (read, v2) = <i16>::deserialize_chained(raw)?;
-        i += read;
-        let (read, v3) = <u16>::deserialize_chained(raw)?;
-        i += read;
-        let (read, v4) = <i32>::deserialize_chained(raw)?;
-        i += read;
-        let (read, v5) = <u32>::deserialize_chained(raw)?;
-        i += read;
-        let (read, v6) = <i64>::deserialize_chained(raw)?;
-        i += read;
-        let (read, v7) = <u64>::deserialize_chained(raw)?;
-        i += read;
-        let (read, v8) = <f32>::deserialize_chained(raw)?;
-        i += read;
-        let (read, v9) = <f64>::deserialize_chained(raw)?;
-        i += read;
-        let (read, v10) = <&'raw str>::deserialize_chained(raw)?;
-        i += read;
-        let (read, v11) = <bebop::Guid>::deserialize_chained(raw)?;
-        i += read;
-        let (read, v12) = <bebop::Date>::deserialize_chained(raw)?;
-        i += read;
 
         Ok((i, Self {
-            a_bool: v0,
-            a_byte: v1,
-            a_int16: v2,
-            a_uint16: v3,
-            a_int32: v4,
-            a_uint32: v5,
-            a_int64: v6,
-            a_uint64: v7,
-            a_float32: v8,
-            a_float64: v9,
-            a_string: v10,
-            a_guid: v11,
-            a_date: v12,
+            y: v0,
         }))
     }
 }
 
-impl<'raw> bebop::Record<'raw> for BasicTypes<'raw> {}
+impl<'raw> bebop::Record<'raw> for InnerS {}
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct BasicArrays<'raw> {
-    pub a_bool: &'raw [bool],
-    pub a_byte: &'raw [u8],
-    pub a_int16: bebop::PrimitiveMultiByteArray<'raw, i16>,
-    pub a_uint16: bebop::PrimitiveMultiByteArray<'raw, u16>,
-    pub a_int32: bebop::PrimitiveMultiByteArray<'raw, i32>,
-    pub a_uint32: bebop::PrimitiveMultiByteArray<'raw, u32>,
-    pub a_int64: bebop::PrimitiveMultiByteArray<'raw, i64>,
-    pub a_uint64: bebop::PrimitiveMultiByteArray<'raw, u64>,
-    pub a_float32: bebop::PrimitiveMultiByteArray<'raw, f32>,
-    pub a_float64: bebop::PrimitiveMultiByteArray<'raw, f64>,
-    pub a_string: std::vec::Vec<&'raw str>,
-    pub a_guid: &'raw [bebop::Guid],
+#[derive(Clone, Debug, PartialEq, Default)]
+pub struct OuterM {
+    /// Field 1
+    pub innerm: core::option::Option<InnerM>,
+    /// Field 2
+    pub inners: core::option::Option<InnerS>,
 }
 
-impl<'raw> bebop::SubRecord<'raw> for BasicArrays<'raw> {
+impl<'raw> bebop::SubRecord<'raw> for OuterM {
+    const MIN_SERIALIZED_SIZE: usize = bebop::LEN_SIZE + 1;
+    fn serialize<W: std::io::Write>(&self, dest: &mut W) -> bebop::SeResult<usize> {
+        let mut buf = Vec::new();
+        if let Some(ref v) = self.innerm {
+            buf.push(1);
+            v.serialize(&mut buf)?;
+        }
+        if let Some(ref v) = self.inners {
+            buf.push(2);
+            v.serialize(&mut buf)?;
+        }
+        buf.push(0);
+        bebop::write_len(dest, buf.len())?;
+        dest.write_all(&buf)?;
+        Ok(buf.len() + bebop::LEN_SIZE)
+    }
+
+    fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)> {
+        let len = bebop::read_len(raw)?;
+        #[cfg(not(feature = "unchecked"))]
+        if len == 0 {
+            return Err(bebop::DeserializeError::CorruptFrame);
+        }
+
+        if raw.len() < len + bebpp::LEN_SIZE {
+            return Err(bebop::DeserializeError::MoreDataExpected(len + bebop::LEN_SIZE - raw.len()));
+        }
+        let mut i = bebop::LEN_SIZE;
+        let mut de = Self::default();
+
+        #[cfg(not(feature = "unchecked"))]
+        let mut last = 0;
+
+        while i < len + bebop::LEN_SIZE {
+            let di = raw[i];
+
+            #[cfg(not(feature = "unchecked"))]
+            if di != 0 {
+                if di < last {
+                    return Err(bebop::DeserializeError::CorruptFrame);
+                }
+                last = di;
+            }
+
+            i += 1;
+            match di {
+                0 => {
+                    break;
+                }
+                1 => {
+                    #[cfg(not(feature = "unchecked"))]
+                    if de.innerm.is_some() {
+                        return Err(bebop::DeserializeError::DuplicateMessageField);
+                    }
+                    let (read, value) = <InnerM>::deserialize_chained(&raw[i..])?;
+                    i += read;
+                    de.innerm = Some(value)
+                }
+                2 => {
+                    #[cfg(not(feature = "unchecked"))]
+                    if de.inners.is_some() {
+                        return Err(bebop::DeserializeError::DuplicateMessageField);
+                    }
+                    let (read, value) = <InnerS>::deserialize_chained(&raw[i..])?;
+                    i += read;
+                    de.inners = Some(value)
+                }
+                _ => {
+                    i = len + bebop::LEN_SIZE;
+                    break;
+                }
+            }
+        }
+        if i != len + bebop::LEN_SIZE {
+            debug_assert!(i > len + bebop::LEN_SIZE);
+            Err(bebop::DeserializeError::CorruptFrame)
+        }
+        else {
+            Ok((i, de))
+        }
+    }
+}
+
+impl<'raw> bebop::Record<'raw> for OuterM {}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct OuterS {
+    pub innerm: InnerM,
+    pub inners: InnerS,
+}
+
+impl<'raw> bebop::SubRecord<'raw> for OuterS {
     const MIN_SERIALIZED_SIZE: usize =
-        <&'raw [bool]>::MIN_SERIALIZED_SIZE +
-        <&'raw [u8]>::MIN_SERIALIZED_SIZE +
-        <bebop::PrimitiveMultiByteArray<'raw, i16>>::MIN_SERIALIZED_SIZE +
-        <bebop::PrimitiveMultiByteArray<'raw, u16>>::MIN_SERIALIZED_SIZE +
-        <bebop::PrimitiveMultiByteArray<'raw, i32>>::MIN_SERIALIZED_SIZE +
-        <bebop::PrimitiveMultiByteArray<'raw, u32>>::MIN_SERIALIZED_SIZE +
-        <bebop::PrimitiveMultiByteArray<'raw, i64>>::MIN_SERIALIZED_SIZE +
-        <bebop::PrimitiveMultiByteArray<'raw, u64>>::MIN_SERIALIZED_SIZE +
-        <bebop::PrimitiveMultiByteArray<'raw, f32>>::MIN_SERIALIZED_SIZE +
-        <bebop::PrimitiveMultiByteArray<'raw, f64>>::MIN_SERIALIZED_SIZE +
-        <std::vec::Vec<&'raw str>>::MIN_SERIALIZED_SIZE +
-        <&'raw [bebop::Guid]>::MIN_SERIALIZED_SIZE;
+        <InnerM>::MIN_SERIALIZED_SIZE +
+        <InnerS>::MIN_SERIALIZED_SIZE;
 
     fn serialize<W: std::io::Write>(&self, dest: &mut W) -> bebop::SeResult<usize> {
         Ok(
-            self.a_bool.serialize(dest)? +
-            self.a_byte.serialize(dest)? +
-            self.a_int16.serialize(dest)? +
-            self.a_uint16.serialize(dest)? +
-            self.a_int32.serialize(dest)? +
-            self.a_uint32.serialize(dest)? +
-            self.a_int64.serialize(dest)? +
-            self.a_uint64.serialize(dest)? +
-            self.a_float32.serialize(dest)? +
-            self.a_float64.serialize(dest)? +
-            self.a_string.serialize(dest)? +
-            self.a_guid.serialize(dest)?
+            self.innerM.serialize(dest)? +
+            self.innerS.serialize(dest)?
         )
     }
 
@@ -176,243 +341,17 @@ impl<'raw> bebop::SubRecord<'raw> for BasicArrays<'raw> {
         }
 
         let mut i = 0;
-        let (read, v0) = <&'raw [bool]>::deserialize_chained(raw)?;
+        let (read, v0) = <InnerM>::deserialize_chained(raw)?;
         i += read;
-        let (read, v1) = <&'raw [u8]>::deserialize_chained(raw)?;
-        i += read;
-        let (read, v2) = <bebop::PrimitiveMultiByteArray<'raw, i16>>::deserialize_chained(raw)?;
-        i += read;
-        let (read, v3) = <bebop::PrimitiveMultiByteArray<'raw, u16>>::deserialize_chained(raw)?;
-        i += read;
-        let (read, v4) = <bebop::PrimitiveMultiByteArray<'raw, i32>>::deserialize_chained(raw)?;
-        i += read;
-        let (read, v5) = <bebop::PrimitiveMultiByteArray<'raw, u32>>::deserialize_chained(raw)?;
-        i += read;
-        let (read, v6) = <bebop::PrimitiveMultiByteArray<'raw, i64>>::deserialize_chained(raw)?;
-        i += read;
-        let (read, v7) = <bebop::PrimitiveMultiByteArray<'raw, u64>>::deserialize_chained(raw)?;
-        i += read;
-        let (read, v8) = <bebop::PrimitiveMultiByteArray<'raw, f32>>::deserialize_chained(raw)?;
-        i += read;
-        let (read, v9) = <bebop::PrimitiveMultiByteArray<'raw, f64>>::deserialize_chained(raw)?;
-        i += read;
-        let (read, v10) = <std::vec::Vec<&'raw str>>::deserialize_chained(raw)?;
-        i += read;
-        let (read, v11) = <&'raw [bebop::Guid]>::deserialize_chained(raw)?;
+        let (read, v1) = <InnerS>::deserialize_chained(raw)?;
         i += read;
 
         Ok((i, Self {
-            a_bool: v0,
-            a_byte: v1,
-            a_int16: v2,
-            a_uint16: v3,
-            a_int32: v4,
-            a_uint32: v5,
-            a_int64: v6,
-            a_uint64: v7,
-            a_float32: v8,
-            a_float64: v9,
-            a_string: v10,
-            a_guid: v11,
+            innerm: v0,
+            inners: v1,
         }))
     }
 }
 
-impl<'raw> bebop::Record<'raw> for BasicArrays<'raw> {}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct TestInt32Array<'raw> {
-    pub a: bebop::PrimitiveMultiByteArray<'raw, i32>,
-}
-
-impl<'raw> bebop::SubRecord<'raw> for TestInt32Array<'raw> {
-    const MIN_SERIALIZED_SIZE: usize =
-        <bebop::PrimitiveMultiByteArray<'raw, i32>>::MIN_SERIALIZED_SIZE;
-
-    fn serialize<W: std::io::Write>(&self, dest: &mut W) -> bebop::SeResult<usize> {
-        Ok(
-            self.a.serialize(dest)?
-        )
-    }
-
-    fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)> {
-        if raw.len() < Self::MIN_SERIALIZED_SIZE {
-            let missing = raw.len() - Self::MIN_SERIALIZED_SIZE;
-            return Err(bebop::DeserializeError::MoreDataExpected(missing));
-        }
-
-        let mut i = 0;
-        let (read, v0) = <bebop::PrimitiveMultiByteArray<'raw, i32>>::deserialize_chained(raw)?;
-        i += read;
-
-        Ok((i, Self {
-            a: v0,
-        }))
-    }
-}
-
-impl<'raw> bebop::Record<'raw> for TestInt32Array<'raw> {}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct ArrayOfStrings<'raw> {
-    pub strings: std::vec::Vec<&'raw str>,
-}
-
-impl<'raw> bebop::SubRecord<'raw> for ArrayOfStrings<'raw> {
-    const MIN_SERIALIZED_SIZE: usize =
-        <std::vec::Vec<&'raw str>>::MIN_SERIALIZED_SIZE;
-
-    fn serialize<W: std::io::Write>(&self, dest: &mut W) -> bebop::SeResult<usize> {
-        Ok(
-            self.strings.serialize(dest)?
-        )
-    }
-
-    fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)> {
-        if raw.len() < Self::MIN_SERIALIZED_SIZE {
-            let missing = raw.len() - Self::MIN_SERIALIZED_SIZE;
-            return Err(bebop::DeserializeError::MoreDataExpected(missing));
-        }
-
-        let mut i = 0;
-        let (read, v0) = <std::vec::Vec<&'raw str>>::deserialize_chained(raw)?;
-        i += read;
-
-        Ok((i, Self {
-            strings: v0,
-        }))
-    }
-}
-
-impl<'raw> bebop::Record<'raw> for ArrayOfStrings<'raw> {}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct StructOfStructs<'raw> {
-    pub basic_types: BasicTypes<'raw>,
-    pub basic_arrays: BasicArrays<'raw>,
-}
-
-impl<'raw> bebop::SubRecord<'raw> for StructOfStructs<'raw> {
-    const MIN_SERIALIZED_SIZE: usize =
-        <BasicTypes<'raw>>::MIN_SERIALIZED_SIZE +
-        <BasicArrays<'raw>>::MIN_SERIALIZED_SIZE;
-
-    fn serialize<W: std::io::Write>(&self, dest: &mut W) -> bebop::SeResult<usize> {
-        Ok(
-            self.basicTypes.serialize(dest)? +
-            self.basicArrays.serialize(dest)?
-        )
-    }
-
-    fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)> {
-        if raw.len() < Self::MIN_SERIALIZED_SIZE {
-            let missing = raw.len() - Self::MIN_SERIALIZED_SIZE;
-            return Err(bebop::DeserializeError::MoreDataExpected(missing));
-        }
-
-        let mut i = 0;
-        let (read, v0) = <BasicTypes<'raw>>::deserialize_chained(raw)?;
-        i += read;
-        let (read, v1) = <BasicArrays<'raw>>::deserialize_chained(raw)?;
-        i += read;
-
-        Ok((i, Self {
-            basic_types: v0,
-            basic_arrays: v1,
-        }))
-    }
-}
-
-impl<'raw> bebop::Record<'raw> for StructOfStructs<'raw> {}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct EmptyStruct {
-}
-
-impl<'raw> bebop::SubRecord<'raw> for EmptyStruct {
-    const MIN_SERIALIZED_SIZE: usize = 0;
-    fn serialize<W: std::io::Write>(&self, dest: &mut W) -> bebop::SeResult<usize> {
-        Ok(0)
-    }
-
-    fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)> {
-        if raw.len() < Self::MIN_SERIALIZED_SIZE {
-            let missing = raw.len() - Self::MIN_SERIALIZED_SIZE;
-            return Err(bebop::DeserializeError::MoreDataExpected(missing));
-        }
-
-        let mut i = 0;
-
-        Ok((i, Self {
-        }))
-    }
-}
-
-impl<'raw> bebop::Record<'raw> for EmptyStruct {}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct OpcodeStruct {
-    pub x: i32,
-}
-
-impl<'raw> bebop::SubRecord<'raw> for OpcodeStruct {
-    const MIN_SERIALIZED_SIZE: usize =
-        <i32>::MIN_SERIALIZED_SIZE;
-
-    fn serialize<W: std::io::Write>(&self, dest: &mut W) -> bebop::SeResult<usize> {
-        Ok(
-            self.x.serialize(dest)?
-        )
-    }
-
-    fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)> {
-        if raw.len() < Self::MIN_SERIALIZED_SIZE {
-            let missing = raw.len() - Self::MIN_SERIALIZED_SIZE;
-            return Err(bebop::DeserializeError::MoreDataExpected(missing));
-        }
-
-        let mut i = 0;
-        let (read, v0) = <i32>::deserialize_chained(raw)?;
-        i += read;
-
-        Ok((i, Self {
-            x: v0,
-        }))
-    }
-}
-
-impl<'raw> bebop::Record<'raw> for OpcodeStruct {}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct ShouldNotHaveLifetime {
-    pub v: std::vec::Vec<OpcodeStruct>,
-}
-
-impl<'raw> bebop::SubRecord<'raw> for ShouldNotHaveLifetime {
-    const MIN_SERIALIZED_SIZE: usize =
-        <std::vec::Vec<OpcodeStruct>>::MIN_SERIALIZED_SIZE;
-
-    fn serialize<W: std::io::Write>(&self, dest: &mut W) -> bebop::SeResult<usize> {
-        Ok(
-            self.v.serialize(dest)?
-        )
-    }
-
-    fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)> {
-        if raw.len() < Self::MIN_SERIALIZED_SIZE {
-            let missing = raw.len() - Self::MIN_SERIALIZED_SIZE;
-            return Err(bebop::DeserializeError::MoreDataExpected(missing));
-        }
-
-        let mut i = 0;
-        let (read, v0) = <std::vec::Vec<OpcodeStruct>>::deserialize_chained(raw)?;
-        i += read;
-
-        Ok((i, Self {
-            v: v0,
-        }))
-    }
-}
-
-impl<'raw> bebop::Record<'raw> for ShouldNotHaveLifetime {}
+impl<'raw> bebop::Record<'raw> for OuterS {}
 
