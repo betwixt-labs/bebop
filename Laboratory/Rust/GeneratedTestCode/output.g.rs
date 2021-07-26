@@ -3,7 +3,7 @@
 //!
 //!
 //!   bebopc version:
-//!       0.0.1-20210722-2330
+//!       0.0.1-20210726-1508
 //!
 //!
 //!   bebopc source:
@@ -82,7 +82,7 @@ pub struct OpcodeStruct {
 
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct ShouldNotHaveLifetime<'raw> {
+pub struct ShouldNotHaveLifetime {
     pub v: std::vec::Vec<OpcodeStruct>,
 }
 

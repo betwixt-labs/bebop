@@ -200,90 +200,6 @@ namespace Core.Generators.Rust
                 }).AppendLine();
         }
 
-        /// <summary>
-        /// Generate a Rust type name for the given <see cref="TypeBase"/>.
-        /// </summary>
-        /// <param name="type">The field type to generate code for.</param>
-        /// <param name="ot">Ownership type, e.g. <c>&'raw str</c> versus <c>String</c>.</param>
-        /// <returns>The Rust type name.</returns>
-        private string TypeName(in TypeBase type, OwnershipType ot = OwnershipType.Borrowed)
-        {
-            switch (type)
-            {
-                case ScalarType st:
-                    return st.BaseType switch
-                    {
-                        BaseType.Bool => "bool",
-                        BaseType.Byte => "u8",
-                        BaseType.UInt16 => "u16",
-                        BaseType.Int16 => "i16",
-                        BaseType.UInt32 => "u32",
-                        BaseType.Int32 => "i32",
-                        BaseType.UInt64 => "u64",
-                        BaseType.Int64 => "i64",
-                        BaseType.Float32 => "f32",
-                        BaseType.Float64 => "f64",
-                        BaseType.String => ot switch
-                        {
-                            OwnershipType.Borrowed => "&'raw str",
-                            OwnershipType.Constant => "&str",
-                            OwnershipType.Owned => "String",
-                            _ => throw new ArgumentOutOfRangeException(nameof(ot))
-                        },
-                        BaseType.Guid => "bebop::Guid",
-                        BaseType.Date => "bebop::Date",
-                        _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
-                    };
-                case ArrayType at:
-                    if (at.MemberType is ScalarType mst && ot is OwnershipType.Borrowed or OwnershipType.Constant)
-                    {
-                        var lifetime = ot is OwnershipType.Borrowed ? "'raw" : "'static";
-                        if (at.IsOneByteUnits())
-                        {
-                            return $"&{lifetime} [{TypeName(at.MemberType)}]";
-                        }
-
-                        var pmba = $"bebop::PrimitiveMultiByteArray<{lifetime}, {TypeName(at.MemberType)}>";
-                        return mst.BaseType switch
-                        {
-                            BaseType.UInt16 => pmba,
-                            BaseType.Int16 => pmba,
-                            BaseType.UInt32 => pmba,
-                            BaseType.Int32 => pmba,
-                            BaseType.UInt64 => pmba,
-                            BaseType.Int64 => pmba,
-                            BaseType.Float32 => pmba,
-                            BaseType.Float64 => pmba,
-                            BaseType.String => $"std::vec::Vec<{TypeName(at.MemberType)}>",
-                            // this one does not care what endian the system is
-                            BaseType.Guid => $"&{lifetime} [bebop::Guid]",
-                            BaseType.Date => pmba,
-                            _ => throw new ArgumentOutOfRangeException(mst.BaseType.ToString())
-                        };
-                    }
-                    else
-                    {
-                        return $"std::vec::Vec<{TypeName(at.MemberType)}>";
-                    }
-                case MapType mt:
-                    return $"std::collections::HashMap<{TypeName(mt.KeyType)}, {TypeName(mt.ValueType)}>";
-                case DefinedType dt:
-                    return ot switch
-                    {
-                        OwnershipType.Borrowed => NeedsLifetime(Schema.Definitions[dt.Name])
-                            ? $"{dt.Name}<'raw>"
-                            : dt.Name,
-                        OwnershipType.Owned => NeedsLifetime(Schema.Definitions[dt.Name])
-                            ? $"{dt.Name}<'raw>"
-                            : dt.Name,
-                        OwnershipType.Constant => throw new NotSupportedException("Cannot have a const defined type"),
-                        _ => throw new ArgumentOutOfRangeException(nameof(ot), ot, null)
-                    };
-            }
-
-            throw new InvalidOperationException($"GetTypeName: {type}");
-        }
-
         // /// <summary>
         // /// Some types (if they have a lifetime) should have it as part of their name such as "&'raw str" and others
         // /// like 
@@ -389,18 +305,100 @@ namespace Core.Generators.Rust
             builder.Append("])");
             return builder.ToString();
         }
+        
+        /// <summary>
+        /// Generate a Rust type name for the given <see cref="TypeBase"/>.
+        /// </summary>
+        /// <param name="type">The field type to generate code for.</param>
+        /// <param name="ot">Ownership type, e.g. <c>&'raw str</c> versus <c>String</c>.</param>
+        /// <returns>The Rust type name.</returns>
+        private string TypeName(in TypeBase type, OwnershipType ot = OwnershipType.Borrowed)
+        {
+            switch (type)
+            {
+                case ScalarType st:
+                    return st.BaseType switch
+                    {
+                        BaseType.Bool => "bool",
+                        BaseType.Byte => "u8",
+                        BaseType.UInt16 => "u16",
+                        BaseType.Int16 => "i16",
+                        BaseType.UInt32 => "u32",
+                        BaseType.Int32 => "i32",
+                        BaseType.UInt64 => "u64",
+                        BaseType.Int64 => "i64",
+                        BaseType.Float32 => "f32",
+                        BaseType.Float64 => "f64",
+                        BaseType.String => ot switch
+                        {
+                            OwnershipType.Borrowed => "&'raw str",
+                            OwnershipType.Constant => "&str",
+                            OwnershipType.Owned => "String",
+                            _ => throw new ArgumentOutOfRangeException(nameof(ot))
+                        },
+                        BaseType.Guid => "bebop::Guid",
+                        BaseType.Date => "bebop::Date",
+                        _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
+                    };
+                case ArrayType at:
+                    if (at.MemberType is ScalarType mst && ot is OwnershipType.Borrowed or OwnershipType.Constant)
+                    {
+                        var lifetime = ot is OwnershipType.Borrowed ? "'raw" : "'static";
+                        if (at.IsOneByteUnits())
+                        {
+                            return $"&{lifetime} [{TypeName(at.MemberType)}]";
+                        }
 
-        private bool TypeNeedsLifetime(TypeBase type) =>
+                        var pmba = $"bebop::PrimitiveMultiByteArray<{lifetime}, {TypeName(at.MemberType)}>";
+                        return mst.BaseType switch
+                        {
+                            BaseType.UInt16 => pmba,
+                            BaseType.Int16 => pmba,
+                            BaseType.UInt32 => pmba,
+                            BaseType.Int32 => pmba,
+                            BaseType.UInt64 => pmba,
+                            BaseType.Int64 => pmba,
+                            BaseType.Float32 => pmba,
+                            BaseType.Float64 => pmba,
+                            BaseType.String => $"std::vec::Vec<{TypeName(at.MemberType)}>",
+                            // this one does not care what endian the system is
+                            BaseType.Guid => $"&{lifetime} [bebop::Guid]",
+                            BaseType.Date => pmba,
+                            _ => throw new ArgumentOutOfRangeException(mst.BaseType.ToString())
+                        };
+                    }
+                    else
+                    {
+                        return $"std::vec::Vec<{TypeName(at.MemberType)}>";
+                    }
+                case MapType mt:
+                    return $"std::collections::HashMap<{TypeName(mt.KeyType)}, {TypeName(mt.ValueType)}>";
+                case DefinedType dt:
+                    return ot switch
+                    {
+                        OwnershipType.Borrowed => NeedsLifetime(Schema.Definitions[dt.Name])
+                            ? $"{dt.Name}<'raw>"
+                            : dt.Name,
+                        OwnershipType.Owned => NeedsLifetime(Schema.Definitions[dt.Name])
+                            ? $"{dt.Name}<'raw>"
+                            : dt.Name,
+                        OwnershipType.Constant => throw new NotSupportedException("Cannot have a const defined type"),
+                        _ => throw new ArgumentOutOfRangeException(nameof(ot), ot, null)
+                    };
+            }
+
+            throw new InvalidOperationException($"GetTypeName: {type}");
+        }
+
+        private bool TypeNeedsLifetime(TypeBase type, OwnershipType ot = OwnershipType.Borrowed) =>
             type switch
             {
-                ArrayType at => true,
                 DefinedType dt => NeedsLifetime(Schema.Definitions[dt.Name]),
                 MapType mt => TypeNeedsLifetime(mt.KeyType) || TypeNeedsLifetime(mt.ValueType),
-                ScalarType st => !st.IsFixedScalar(),
-                _ => throw new ArgumentOutOfRangeException(type.ToString())
+                { } tb => TypeName(tb, ot).Contains("'raw") 
             };
 
-        private bool FieldNeedsLifetime(Definition d, IField f)
+        private bool FieldNeedsLifetime(Definition d, IField f, OwnershipType ot = OwnershipType.Borrowed)
         {
             var key = $"{d.Name}::{f.Name}";
             if (_needsLifetime.ContainsKey(key))
@@ -408,11 +406,11 @@ namespace Core.Generators.Rust
                 return _needsLifetime[key];
             }
 
-            _needsLifetime[key] = TypeNeedsLifetime(f.Type);
+            _needsLifetime[key] = TypeNeedsLifetime(f.Type, ot);
             return _needsLifetime[key];
         }
 
-        private bool NeedsLifetime(Definition d)
+        private bool NeedsLifetime(Definition d, OwnershipType ot = OwnershipType.Borrowed)
         {
             if (_needsLifetime.ContainsKey(d.Name))
             {
@@ -423,7 +421,7 @@ namespace Core.Generators.Rust
             {
                 ConstDefinition cd => false,
                 EnumDefinition ed => false,
-                FieldsDefinition fd => fd.Fields.Any(f => FieldNeedsLifetime(d, f)),
+                FieldsDefinition fd => fd.Fields.Any(f => FieldNeedsLifetime(d, f, ot)),
                 UnionDefinition ud => ud.Branches.Any(b => NeedsLifetime(b.Definition)),
                 _ => throw new ArgumentOutOfRangeException(d.Name)
             };
