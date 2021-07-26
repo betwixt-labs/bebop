@@ -292,6 +292,59 @@ macro_rules! impl_record_for_num {
     };
 }
 
+macro_rules! impl_record_for_slice {
+    ($t:ty) => {
+        impl<'raw> SubRecord<'raw> for &[$t] {
+            const MIN_SERIALIZED_SIZE: usize = core::mem::size_of::<&[$t]>();
+
+            #[inline]
+            fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+                #[cfg(target_endian = "big")]
+                if core::mem::size_of::<$t>() > 1 {
+                    unimplemented!()
+                }
+
+                let b: &[u8] = unsafe {
+                    std::slice::from_raw_parts(
+                        self.as_ptr() as *const u8,
+                        self.len() * core::mem::size_of::<$t>(),
+                    )
+                };
+                dest.write_all(b)?;
+                Ok(b.len())
+            }
+
+            #[inline]
+            fn deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
+                #[cfg(target_endian = "big")]
+                if core::mem::size_of::<$t>() > 1 {
+                    unimplemented!()
+                }
+                let len = read_len(raw)?;
+                let bytes = len * core::mem::size_of::<$t>() + 4;
+                if bytes > raw.len() {
+                    Err(DeserializeError::MoreDataExpected(bytes - raw.len()))
+                } else {
+                    let slice = unsafe {
+                        std::slice::from_raw_parts((&raw[4..]).as_ptr() as *const $t, len)
+                    };
+                    Ok((bytes, slice))
+                }
+            }
+        }
+    };
+}
+
+impl_record_for_slice!(bool);
+impl_record_for_slice!(u8);
+impl_record_for_slice!(u16);
+impl_record_for_slice!(i16);
+impl_record_for_slice!(u32);
+impl_record_for_slice!(i32);
+impl_record_for_slice!(u64);
+impl_record_for_slice!(i64);
+
+
 impl_record_for_num!(u8);
 // no signed byte type at this time
 impl_record_for_num!(u16);

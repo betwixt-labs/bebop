@@ -1,6 +1,7 @@
 ﻿// unset
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
@@ -22,8 +23,10 @@ namespace Core.Generators.Rust
     {
         // name used when borrowed, E.g. `&'raw [u8]` or `&'raw str`. 
         Borrowed,
+
         // name used when owned, E.g. `Vec<u8>` or `String`.  
         Owned,
+
         // name used when declared as a global constant, E.g. `&[u8]` or `&str`.
         Constant
     }
@@ -198,6 +201,71 @@ namespace Core.Generators.Rust
                         builder.AppendLine($"pub {MakeAttrIdent(f.Name)}: {TypeName(f.Type)},");
                     }
                 }).AppendLine();
+
+            builder
+                .CodeBlock($"impl<'raw> bebop::SubRecord<'raw> for {name}", _tab, () =>
+                {
+                    if (d.Fields.Count == 0)
+                    {
+                        builder.AppendLine("const MIN_SERIALIZED_SIZE: usize = 0;");
+                    }
+                    else
+                    {
+                        builder.AppendLine("const MIN_SERIALIZED_SIZE: usize =");
+                        var parts = d.Fields.Select(f =>
+                            $"<{TypeName(f.Type)}>::MIN_SERIALIZED_SIZE");
+                        builder.Indent(_tab).Append(string.Join(" +\n", parts)).AppendEnd(";").Dedent(_tab)
+                            .AppendLine();
+                    }
+
+                    builder.CodeBlock("fn serialize<W: std::io::Write>(&self, dest: &mut W) -> bebop::SeResult<usize>",
+                        _tab, () =>
+                        {
+                            if (d.Fields.Count == 0)
+                            {
+                                builder.AppendLine("Ok(0)");
+                            }
+                            else
+                            {
+                                builder.CodeBlock("Ok(", _tab, () =>
+                                {
+                                    builder.AppendLine(string.Join(" +\n",
+                                        d.Fields.Select((f) => $"self.{f.Name}.serialize(dest)?")));
+                                }, "", ")");
+                            }
+                        }).AppendLine();
+
+                    builder.CodeBlock("fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)>", _tab,
+                        () =>
+                        {
+                            builder.CodeBlock("if raw.len() < Self::MIN_SERIALIZED_SIZE", _tab, () =>
+                            {
+                                builder
+                                    .AppendLine("let missing = raw.len() - Self::MIN_SERIALIZED_SIZE;")
+                                    .AppendLine("return Err(bebop::DeserializeError::MoreDataExpected(missing));");
+                            }).AppendLine();
+                            builder.AppendLine("let mut i = 0;");
+                            var vars = new LinkedList<(string, string)>();
+                            var j = 0;
+                            foreach (var f in d.Fields)
+                            {
+                                builder
+                                    .AppendLine($"let (read, v{j}) = <{TypeName(f.Type)}>::deserialize_chained(raw)?;")
+                                    .AppendLine("i += read;");
+                                vars.AddLast((MakeAttrIdent(f.Name), $"v{j++}"));
+                            }
+
+                            builder.AppendLine().CodeBlock("Ok((i, Self {", _tab, () =>
+                            {
+                                foreach (var (k, v) in vars)
+                                {
+                                    builder.AppendLine($"{k}: {v},");
+                                }
+                            }, "", "}))");
+                        });
+                }).AppendLine();
+
+            builder.AppendLine($"impl<'raw> bebop::Record<'raw> for {name} {{}}");
         }
 
         // /// <summary>
@@ -305,7 +373,7 @@ namespace Core.Generators.Rust
             builder.Append("])");
             return builder.ToString();
         }
-        
+
         /// <summary>
         /// Generate a Rust type name for the given <see cref="TypeBase"/>.
         /// </summary>
@@ -395,7 +463,7 @@ namespace Core.Generators.Rust
             {
                 DefinedType dt => NeedsLifetime(Schema.Definitions[dt.Name]),
                 MapType mt => TypeNeedsLifetime(mt.KeyType) || TypeNeedsLifetime(mt.ValueType),
-                { } tb => TypeName(tb, ot).Contains("'raw") 
+                { } tb => TypeName(tb, ot).Contains("'raw")
             };
 
         private bool FieldNeedsLifetime(Definition d, IField f, OwnershipType ot = OwnershipType.Borrowed)
