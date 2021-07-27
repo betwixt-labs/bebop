@@ -33,6 +33,8 @@ namespace Core.Generators.Rust
 
     public class RustGenerator : BaseGenerator
     {
+        #region state
+
         const int _tab = 4;
 
         private static readonly string[] _reservedWordsArray =
@@ -46,6 +48,10 @@ namespace Core.Generators.Rust
 
         private static readonly HashSet<string> _reservedWords = RustGenerator._reservedWordsArray.ToHashSet();
         private Dictionary<string, bool> _needsLifetime = new Dictionary<string, bool>();
+
+        #endregion
+
+        #region entrypoints
 
         public RustGenerator(ISchema schema) : base(schema) { }
 
@@ -94,6 +100,10 @@ namespace Core.Generators.Rust
         {
             // Nothing to do because the runtime is a cargo package.
         }
+
+        #endregion
+
+        #region definition_writers
 
         private void WriteConstDefinition(IndentedStringBuilder builder, ConstDefinition d)
         {
@@ -341,7 +351,8 @@ namespace Core.Generators.Rust
                                         {
                                             builder.CodeBlock("if di < last", _tab, () =>
                                             {
-                                                builder.AppendLine("return Err(bebop::DeserializeError::CorruptFrame);");
+                                                builder.AppendLine(
+                                                    "return Err(bebop::DeserializeError::CorruptFrame);");
                                             });
                                             builder.AppendLine("last = di;");
                                         })
@@ -395,6 +406,10 @@ namespace Core.Generators.Rust
             WriteRecordImpl(builder, name, d);
         }
 
+        #endregion
+
+        #region component_writers
+
         private static void WriteDocumentation(IndentedStringBuilder builder, string documentation)
         {
             if (string.IsNullOrEmpty(documentation)) { return; }
@@ -435,6 +450,10 @@ namespace Core.Generators.Rust
             }
         }
 
+        #endregion
+
+        #region types_and_identifiers
+
         private static string MakeConstIdent(string ident)
         {
             var reCased = ident.ToSnakeCase().ToUpper();
@@ -460,42 +479,7 @@ namespace Core.Generators.Rust
                 ? $"_{reCased}"
                 : reCased;
         }
-
-        private string EmitLiteral(Literal literal) =>
-            literal switch
-            {
-                BoolLiteral bl => bl.Value ? "true" : "false",
-                IntegerLiteral il => il.Value,
-                FloatLiteral {Value: "inf"} => $"{TypeName(literal.Type)}::INFINITY",
-                FloatLiteral {Value: "-inf"} => $"{TypeName(literal.Type)}::NEG_INFINITY",
-                FloatLiteral {Value: "nan"} => $"{TypeName(literal.Type)}::NAN",
-                FloatLiteral fl => fl.Value.Contains('.') ? fl.Value : fl.Value + '.',
-                StringLiteral sl => MakeStringLiteral(sl.Value),
-                GuidLiteral gl => MakeGuidLiteral(gl.Value),
-                _ => throw new ArgumentOutOfRangeException(literal.ToString()),
-            };
-
-        private static string MakeStringLiteral(string value) =>
-            // rust accepts full UTF-8 strings in code AND even supports newlines
-            value.Contains("\"#") ? value.Replace("\\", "\\\\").Replace("\"", "\\\"") : $"r#\"{value}\"#";
-
-        private static string MakeGuidLiteral(Guid guid)
-        {
-            var g = guid.ToString("N").ToCharArray();
-            var builder = new StringBuilder();
-            builder.Append("bebop::Guid::from_be_bytes([");
-            for (var i = 0; i < g.Length; i += 2)
-            {
-                builder.Append("0x")
-                    .Append(g[i])
-                    .Append(g[i + 1])
-                    .Append(',');
-            }
-
-            builder.Append("])");
-            return builder.ToString();
-        }
-
+        
         /// <summary>
         /// Generate a Rust type name for the given <see cref="TypeBase"/>.
         /// </summary>
@@ -617,5 +601,46 @@ namespace Core.Generators.Rust
             };
             return _needsLifetime[d.Name];
         }
+
+        #endregion
+
+        #region literals
+
+        private string EmitLiteral(Literal literal) =>
+            literal switch
+            {
+                BoolLiteral bl => bl.Value ? "true" : "false",
+                IntegerLiteral il => il.Value,
+                FloatLiteral {Value: "inf"} => $"{TypeName(literal.Type)}::INFINITY",
+                FloatLiteral {Value: "-inf"} => $"{TypeName(literal.Type)}::NEG_INFINITY",
+                FloatLiteral {Value: "nan"} => $"{TypeName(literal.Type)}::NAN",
+                FloatLiteral fl => fl.Value.Contains('.') ? fl.Value : fl.Value + '.',
+                StringLiteral sl => MakeStringLiteral(sl.Value),
+                GuidLiteral gl => MakeGuidLiteral(gl.Value),
+                _ => throw new ArgumentOutOfRangeException(literal.ToString()),
+            };
+
+        private static string MakeStringLiteral(string value) =>
+            // rust accepts full UTF-8 strings in code AND even supports newlines
+            value.Contains("\"#") ? value.Replace("\\", "\\\\").Replace("\"", "\\\"") : $"r#\"{value}\"#";
+
+        private static string MakeGuidLiteral(Guid guid)
+        {
+            var g = guid.ToString("N").ToCharArray();
+            var builder = new StringBuilder();
+            builder.Append("bebop::Guid::from_be_bytes([");
+            for (var i = 0; i < g.Length; i += 2)
+            {
+                builder.Append("0x")
+                    .Append(g[i])
+                    .Append(g[i + 1])
+                    .Append(',');
+            }
+
+            builder.Append("])");
+            return builder.ToString();
+        }
+
+        #endregion
     }
 }
