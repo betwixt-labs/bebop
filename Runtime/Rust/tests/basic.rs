@@ -449,9 +449,8 @@ impl<'raw> SubRecord<'raw> for Album<'raw> {
                 len + LEN_SIZE - raw.len(),
             ));
         }
-        let di = raw[LEN_SIZE];
         let mut i = LEN_SIZE + 1;
-        let album = match di {
+        let album = match raw[LEN_SIZE] {
             1 => {
                 let (read, tracks) = <Vec<Song>>::deserialize_chained(&raw[i..])?;
                 i += read;
@@ -466,7 +465,7 @@ impl<'raw> SubRecord<'raw> for Album<'raw> {
                 Album::Unknown
             }
         };
-        if i != len + LEN_SIZE {
+        if !cfg!(feature = "unchecked") && i != len + LEN_SIZE {
             debug_assert!(i > len + LEN_SIZE);
             Err(DeserializeError::CorruptFrame)
         } else {

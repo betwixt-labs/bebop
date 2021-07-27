@@ -250,7 +250,8 @@ namespace Core.Generators.Rust
                             foreach (var f in d.Fields)
                             {
                                 builder
-                                    .AppendLine($"let (read, v{j}) = <{TypeName(f.Type)}>::deserialize_chained(raw)?;")
+                                    .AppendLine(
+                                        $"let (read, v{j}) = <{TypeName(f.Type)}>::deserialize_chained(&raw[i..])?;")
                                     .AppendLine("i += read;");
                                 vars.AddLast((MakeAttrIdent(f.Name), $"v{j++}"));
                             }
@@ -536,7 +537,81 @@ namespace Core.Generators.Rust
                 builder.CodeBlock("fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)>", _tab,
                     () =>
                     {
-                        builder.AppendLine("todo!()");
+                        builder
+                            .AppendLine("let len = bebop::read_len(&raw)?;")
+                            .CodeBlock("if raw.len() < len + bebop::LEN_SIZE", _tab, () =>
+                            {
+                                builder.AppendLine(
+                                    "return Err(bebop::DeserializeError::MoreDataExpected(len + bebop::LEN_SIZE - raw.len()));");
+                            })
+                            .AppendLine("let mut i = bebop::LEN_SIZE + 1;");
+
+                        builder.CodeBlock("let de = match raw[bebop::LEN_SIZE]", _tab, () =>
+                        {
+                            foreach (var b in d.Branches.OrderBy((b) => b.Discriminator))
+                            {
+                                var branchName = MakeEnumVariantIdent(b.Definition.Name);
+                                builder.CodeBlock($"{b.Discriminator} =>", _tab, () =>
+                                {
+                                    switch (b.Definition)
+                                    {
+                                        case StructDefinition sd:
+                                            builder.CodeBlock("if raw.len() - i < Self::MIN_SERIALIZED_SIZE", _tab,
+                                                () =>
+                                                {
+                                                    builder
+                                                        .AppendLine(
+                                                            "let missing = raw.len() - Self::MIN_SERIALIZED_SIZE;")
+                                                        .AppendLine(
+                                                            "return Err(bebop::DeserializeError::MoreDataExpected(missing));");
+                                                }).AppendLine();
+
+                                            var vars = new LinkedList<(string, string)>();
+                                            var j = 0;
+                                            foreach (var sdField in sd.Fields)
+                                            {
+                                                builder
+                                                    .AppendLine(
+                                                        $"let (read, v{j}) = <{TypeName(sdField.Type)}>::deserialize_chained(&raw[i..])?;")
+                                                    .AppendLine("i += read;");
+                                                vars.AddLast((MakeAttrIdent(sdField.Name), $"v{j++}"));
+                                            }
+
+                                            builder.AppendLine().CodeBlock($"{scopeName}::{branchName}", _tab, () =>
+                                            {
+                                                foreach (var (k, v) in vars)
+                                                {
+                                                    builder.AppendLine($"{k}: {v},");
+                                                }
+                                            });
+                                            break;
+                                        case MessageDefinition md:
+                                            builder.AppendLine("todo!();");
+                                            break;
+                                        default:
+                                            throw new ArgumentOutOfRangeException(b.Definition.ToString());
+                                    }
+                                });
+                            }
+
+                            builder.CodeBlock($"_ =>", _tab, () =>
+                            {
+                                builder
+                                    .AppendLine("i = len + bebop::LEN_SIZE;")
+                                    .AppendLine($"{scopeName}::Unknown");
+                            });
+                        }, "{", "};");
+                        builder.CodeBlock("if !cfg!(feature = \"unchecked\") && i != len + bebop::LEN_SIZE", _tab,
+                            () =>
+                            {
+                                builder
+                                    .AppendLine("debug_assert!(i > len + bebop::LEN_SIZE);")
+                                    .AppendLine("Err(bebop::DeserializeError::CorruptFrame)");
+                            });
+                        builder.CodeBlock("else", _tab, () =>
+                        {
+                            builder.AppendLine("Ok((i, de))");
+                        });
                     }).AppendLine();
             }).AppendLine();
         }
