@@ -3,7 +3,7 @@
 //!
 //!
 //!   bebopc version:
-//!       0.0.1-20210727-2243
+//!       0.0.1-20210727-2256
 //!
 //!
 //!   bebopc source:
@@ -13,6 +13,8 @@
 //! Changes to this file may cause incorrect behavior and will be lost if
 //! the code is regenerated.
 //!
+
+#![allow(warnings)]
 
 use std::io::Write as _;
 
