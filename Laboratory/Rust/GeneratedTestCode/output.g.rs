@@ -3,7 +3,7 @@
 //!
 //!
 //!   bebopc version:
-//!       0.0.1-20210727-2124
+//!       0.0.1-20210727-2229
 //!
 //!
 //!   bebopc source:
@@ -37,22 +37,24 @@ impl<'raw> bebop::SubRecord<'raw> for InnerM {
     }
 
     fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)> {
-        let len = bebop::read_len(raw)?;
+        let len = bebop::read_len(raw)? + bebop::LEN_SIZE;
+
         #[cfg(not(feature = "unchecked"))]
         if len == 0 {
             return Err(bebop::DeserializeError::CorruptFrame);
         }
 
-        if raw.len() < len + bebop::LEN_SIZE {
-            return Err(bebop::DeserializeError::MoreDataExpected(len + bebop::LEN_SIZE - raw.len()));
+        if raw.len() < len {
+            return Err(bebop::DeserializeError::MoreDataExpected(len - raw.len()));
         }
-        let mut i = bebop::LEN_SIZE;
-        let mut de = Self::default();
+
+        let mut _x = None;
 
         #[cfg(not(feature = "unchecked"))]
         let mut last = 0;
 
-        while i < len + bebop::LEN_SIZE {
+        let mut i = bebop::LEN_SIZE;
+        while i < len {
             let di = raw[i];
 
             #[cfg(not(feature = "unchecked"))]
@@ -70,26 +72,28 @@ impl<'raw> bebop::SubRecord<'raw> for InnerM {
                 }
                 1 => {
                     #[cfg(not(feature = "unchecked"))]
-                    if de.x.is_some() {
+                    if _x.is_some() {
                         return Err(bebop::DeserializeError::DuplicateMessageField);
                     }
                     let (read, value) = <i32>::deserialize_chained(&raw[i..])?;
                     i += read;
-                    de.x = Some(value)
+                    _x = Some(value)
                 }
                 _ => {
-                    i = len + bebop::LEN_SIZE;
+                    i = len;
                     break;
                 }
             }
         }
-        if i != len + bebop::LEN_SIZE {
-            debug_assert!(i > len + bebop::LEN_SIZE);
-            Err(bebop::DeserializeError::CorruptFrame)
+
+        if i != len {
+            debug_assert!(i > len);
+            return Err(bebop::DeserializeError::CorruptFrame)
         }
-        else {
-            Ok((i, de))
-        }
+
+        Ok((i, Self {
+            x: _x,
+        }))
     }
 }
 
@@ -116,22 +120,24 @@ impl<'raw> bebop::SubRecord<'raw> for A {
     }
 
     fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)> {
-        let len = bebop::read_len(raw)?;
+        let len = bebop::read_len(raw)? + bebop::LEN_SIZE;
+
         #[cfg(not(feature = "unchecked"))]
         if len == 0 {
             return Err(bebop::DeserializeError::CorruptFrame);
         }
 
-        if raw.len() < len + bebop::LEN_SIZE {
-            return Err(bebop::DeserializeError::MoreDataExpected(len + bebop::LEN_SIZE - raw.len()));
+        if raw.len() < len {
+            return Err(bebop::DeserializeError::MoreDataExpected(len - raw.len()));
         }
-        let mut i = bebop::LEN_SIZE;
-        let mut de = Self::default();
+
+        let mut _b = None;
 
         #[cfg(not(feature = "unchecked"))]
         let mut last = 0;
 
-        while i < len + bebop::LEN_SIZE {
+        let mut i = bebop::LEN_SIZE;
+        while i < len {
             let di = raw[i];
 
             #[cfg(not(feature = "unchecked"))]
@@ -149,26 +155,28 @@ impl<'raw> bebop::SubRecord<'raw> for A {
                 }
                 1 => {
                     #[cfg(not(feature = "unchecked"))]
-                    if de.b.is_some() {
+                    if _b.is_some() {
                         return Err(bebop::DeserializeError::DuplicateMessageField);
                     }
                     let (read, value) = <u32>::deserialize_chained(&raw[i..])?;
                     i += read;
-                    de.b = Some(value)
+                    _b = Some(value)
                 }
                 _ => {
-                    i = len + bebop::LEN_SIZE;
+                    i = len;
                     break;
                 }
             }
         }
-        if i != len + bebop::LEN_SIZE {
-            debug_assert!(i > len + bebop::LEN_SIZE);
-            Err(bebop::DeserializeError::CorruptFrame)
+
+        if i != len {
+            debug_assert!(i > len);
+            return Err(bebop::DeserializeError::CorruptFrame)
         }
-        else {
-            Ok((i, de))
-        }
+
+        Ok((i, Self {
+            b: _b,
+        }))
     }
 }
 
@@ -343,14 +351,69 @@ impl<'raw> bebop::SubRecord<'raw> for U {
     }
 
     fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)> {
-        let len = bebop::read_len(&raw)?;
-        if raw.len() < len + bebop::LEN_SIZE {
-            return Err(bebop::DeserializeError::MoreDataExpected(len + bebop::LEN_SIZE - raw.len()));
+        let len = bebop::read_len(&raw)? + bebop::LEN_SIZE;
+        if raw.len() < len {
+            return Err(bebop::DeserializeError::MoreDataExpected(len - raw.len()));
         }
         let mut i = bebop::LEN_SIZE + 1;
         let de = match raw[bebop::LEN_SIZE] {
             1 => {
-                todo!();
+                let len = bebop::read_len(raw)? + i + bebop::LEN_SIZE;
+
+                #[cfg(not(feature = "unchecked"))]
+                if len == 0 {
+                    return Err(bebop::DeserializeError::CorruptFrame);
+                }
+
+                if raw.len() < len {
+                    return Err(bebop::DeserializeError::MoreDataExpected(len - raw.len()));
+                }
+
+                let mut _b = None;
+
+                #[cfg(not(feature = "unchecked"))]
+                let mut last = 0;
+
+                while i < len {
+                    let di = raw[i];
+
+                    #[cfg(not(feature = "unchecked"))]
+                    if di != 0 {
+                        if di < last {
+                            return Err(bebop::DeserializeError::CorruptFrame);
+                        }
+                        last = di;
+                    }
+
+                    i += 1;
+                    match di {
+                        0 => {
+                            break;
+                        }
+                        1 => {
+                            #[cfg(not(feature = "unchecked"))]
+                            if _b.is_some() {
+                                return Err(bebop::DeserializeError::DuplicateMessageField);
+                            }
+                            let (read, value) = <u32>::deserialize_chained(&raw[i..])?;
+                            i += read;
+                            _b = Some(value)
+                        }
+                        _ => {
+                            i = len;
+                            break;
+                        }
+                    }
+                }
+
+                if i != len {
+                    debug_assert!(i > len);
+                    return Err(bebop::DeserializeError::CorruptFrame)
+                }
+
+                U::A {
+                    b: _b,
+                }
             }
             2 => {
                 if raw.len() - i < Self::MIN_SERIALIZED_SIZE {
@@ -360,6 +423,7 @@ impl<'raw> bebop::SubRecord<'raw> for U {
 
                 let (read, v0) = <bool>::deserialize_chained(&raw[i..])?;
                 i += read;
+
                 U::B {
                     c: v0,
                 }
@@ -369,6 +433,7 @@ impl<'raw> bebop::SubRecord<'raw> for U {
                     let missing = raw.len() - Self::MIN_SERIALIZED_SIZE;
                     return Err(bebop::DeserializeError::MoreDataExpected(missing));
                 }
+
 
                 U::C {
                 }
@@ -381,17 +446,18 @@ impl<'raw> bebop::SubRecord<'raw> for U {
 
                 let (read, v0) = <InnerM>::deserialize_chained(&raw[i..])?;
                 i += read;
+
                 U::D {
                     msg: v0,
                 }
             }
             _ => {
-                i = len + bebop::LEN_SIZE;
+                i = len;
                 U::Unknown
             }
         };
-        if !cfg!(feature = "unchecked") && i != len + bebop::LEN_SIZE {
-            debug_assert!(i > len + bebop::LEN_SIZE);
+        if !cfg!(feature = "unchecked") && i != len {
+            debug_assert!(i > len);
             Err(bebop::DeserializeError::CorruptFrame)
         }
         else {
@@ -401,6 +467,9 @@ impl<'raw> bebop::SubRecord<'raw> for U {
 
 }
 
+impl<'raw> bebop::Record<'raw> for U {
+    const OPCODE: core::option::Option<u32> = Some(0x68616579);
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct TwoComesFirst {
@@ -537,9 +606,9 @@ impl<'raw> bebop::SubRecord<'raw> for WeirdOrder {
     }
 
     fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)> {
-        let len = bebop::read_len(&raw)?;
-        if raw.len() < len + bebop::LEN_SIZE {
-            return Err(bebop::DeserializeError::MoreDataExpected(len + bebop::LEN_SIZE - raw.len()));
+        let len = bebop::read_len(&raw)? + bebop::LEN_SIZE;
+        if raw.len() < len {
+            return Err(bebop::DeserializeError::MoreDataExpected(len - raw.len()));
         }
         let mut i = bebop::LEN_SIZE + 1;
         let de = match raw[bebop::LEN_SIZE] {
@@ -548,6 +617,7 @@ impl<'raw> bebop::SubRecord<'raw> for WeirdOrder {
                     let missing = raw.len() - Self::MIN_SERIALIZED_SIZE;
                     return Err(bebop::DeserializeError::MoreDataExpected(missing));
                 }
+
 
                 WeirdOrder::OneComesLast {
                 }
@@ -560,6 +630,7 @@ impl<'raw> bebop::SubRecord<'raw> for WeirdOrder {
 
                 let (read, v0) = <u8>::deserialize_chained(&raw[i..])?;
                 i += read;
+
                 WeirdOrder::TwoComesFirst {
                     b: v0,
                 }
@@ -570,16 +641,17 @@ impl<'raw> bebop::SubRecord<'raw> for WeirdOrder {
                     return Err(bebop::DeserializeError::MoreDataExpected(missing));
                 }
 
+
                 WeirdOrder::ThreeIsSkipped {
                 }
             }
             _ => {
-                i = len + bebop::LEN_SIZE;
+                i = len;
                 WeirdOrder::Unknown
             }
         };
-        if !cfg!(feature = "unchecked") && i != len + bebop::LEN_SIZE {
-            debug_assert!(i > len + bebop::LEN_SIZE);
+        if !cfg!(feature = "unchecked") && i != len {
+            debug_assert!(i > len);
             Err(bebop::DeserializeError::CorruptFrame)
         }
         else {
@@ -589,4 +661,5 @@ impl<'raw> bebop::SubRecord<'raw> for WeirdOrder {
 
 }
 
+impl<'raw> bebop::Record<'raw> for WeirdOrder {}
 
