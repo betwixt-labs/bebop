@@ -3,7 +3,7 @@
 //!
 //!
 //!   bebopc version:
-//!       0.0.1-20210727-2229
+//!       0.0.1-20210727-2243
 //!
 //!
 //!   bebopc source:
@@ -199,12 +199,12 @@ impl<'raw> bebop::SubRecord<'raw> for B {
     }
 
     fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)> {
-        if raw.len() < Self::MIN_SERIALIZED_SIZE {
-            let missing = raw.len() - Self::MIN_SERIALIZED_SIZE;
+        let mut i = 0;
+        if raw.len() - i < Self::MIN_SERIALIZED_SIZE {
+            let missing = Self::MIN_SERIALIZED_SIZE - (raw.len() - i);
             return Err(bebop::DeserializeError::MoreDataExpected(missing));
         }
 
-        let mut i = 0;
         let (read, v0) = <bool>::deserialize_chained(&raw[i..])?;
         i += read;
 
@@ -227,12 +227,12 @@ impl<'raw> bebop::SubRecord<'raw> for C {
     }
 
     fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)> {
-        if raw.len() < Self::MIN_SERIALIZED_SIZE {
-            let missing = raw.len() - Self::MIN_SERIALIZED_SIZE;
+        let mut i = 0;
+        if raw.len() - i < Self::MIN_SERIALIZED_SIZE {
+            let missing = Self::MIN_SERIALIZED_SIZE - (raw.len() - i);
             return Err(bebop::DeserializeError::MoreDataExpected(missing));
         }
 
-        let mut i = 0;
 
         Ok((i, Self {
         }))
@@ -257,12 +257,12 @@ impl<'raw> bebop::SubRecord<'raw> for D {
     }
 
     fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)> {
-        if raw.len() < Self::MIN_SERIALIZED_SIZE {
-            let missing = raw.len() - Self::MIN_SERIALIZED_SIZE;
+        let mut i = 0;
+        if raw.len() - i < Self::MIN_SERIALIZED_SIZE {
+            let missing = Self::MIN_SERIALIZED_SIZE - (raw.len() - i);
             return Err(bebop::DeserializeError::MoreDataExpected(missing));
         }
 
-        let mut i = 0;
         let (read, v0) = <InnerM>::deserialize_chained(&raw[i..])?;
         i += read;
 
@@ -417,7 +417,7 @@ impl<'raw> bebop::SubRecord<'raw> for U {
             }
             2 => {
                 if raw.len() - i < Self::MIN_SERIALIZED_SIZE {
-                    let missing = raw.len() - Self::MIN_SERIALIZED_SIZE;
+                    let missing = Self::MIN_SERIALIZED_SIZE - (raw.len() - i);
                     return Err(bebop::DeserializeError::MoreDataExpected(missing));
                 }
 
@@ -430,7 +430,7 @@ impl<'raw> bebop::SubRecord<'raw> for U {
             }
             3 => {
                 if raw.len() - i < Self::MIN_SERIALIZED_SIZE {
-                    let missing = raw.len() - Self::MIN_SERIALIZED_SIZE;
+                    let missing = Self::MIN_SERIALIZED_SIZE - (raw.len() - i);
                     return Err(bebop::DeserializeError::MoreDataExpected(missing));
                 }
 
@@ -440,7 +440,7 @@ impl<'raw> bebop::SubRecord<'raw> for U {
             }
             4 => {
                 if raw.len() - i < Self::MIN_SERIALIZED_SIZE {
-                    let missing = raw.len() - Self::MIN_SERIALIZED_SIZE;
+                    let missing = Self::MIN_SERIALIZED_SIZE - (raw.len() - i);
                     return Err(bebop::DeserializeError::MoreDataExpected(missing));
                 }
 
@@ -487,12 +487,12 @@ impl<'raw> bebop::SubRecord<'raw> for TwoComesFirst {
     }
 
     fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)> {
-        if raw.len() < Self::MIN_SERIALIZED_SIZE {
-            let missing = raw.len() - Self::MIN_SERIALIZED_SIZE;
+        let mut i = 0;
+        if raw.len() - i < Self::MIN_SERIALIZED_SIZE {
+            let missing = Self::MIN_SERIALIZED_SIZE - (raw.len() - i);
             return Err(bebop::DeserializeError::MoreDataExpected(missing));
         }
 
-        let mut i = 0;
         let (read, v0) = <u8>::deserialize_chained(&raw[i..])?;
         i += read;
 
@@ -515,12 +515,12 @@ impl<'raw> bebop::SubRecord<'raw> for ThreeIsSkipped {
     }
 
     fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)> {
-        if raw.len() < Self::MIN_SERIALIZED_SIZE {
-            let missing = raw.len() - Self::MIN_SERIALIZED_SIZE;
+        let mut i = 0;
+        if raw.len() - i < Self::MIN_SERIALIZED_SIZE {
+            let missing = Self::MIN_SERIALIZED_SIZE - (raw.len() - i);
             return Err(bebop::DeserializeError::MoreDataExpected(missing));
         }
 
-        let mut i = 0;
 
         Ok((i, Self {
         }))
@@ -540,12 +540,12 @@ impl<'raw> bebop::SubRecord<'raw> for OneComesLast {
     }
 
     fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)> {
-        if raw.len() < Self::MIN_SERIALIZED_SIZE {
-            let missing = raw.len() - Self::MIN_SERIALIZED_SIZE;
+        let mut i = 0;
+        if raw.len() - i < Self::MIN_SERIALIZED_SIZE {
+            let missing = Self::MIN_SERIALIZED_SIZE - (raw.len() - i);
             return Err(bebop::DeserializeError::MoreDataExpected(missing));
         }
 
-        let mut i = 0;
 
         Ok((i, Self {
         }))
@@ -614,7 +614,7 @@ impl<'raw> bebop::SubRecord<'raw> for WeirdOrder {
         let de = match raw[bebop::LEN_SIZE] {
             1 => {
                 if raw.len() - i < Self::MIN_SERIALIZED_SIZE {
-                    let missing = raw.len() - Self::MIN_SERIALIZED_SIZE;
+                    let missing = Self::MIN_SERIALIZED_SIZE - (raw.len() - i);
                     return Err(bebop::DeserializeError::MoreDataExpected(missing));
                 }
 
@@ -624,7 +624,7 @@ impl<'raw> bebop::SubRecord<'raw> for WeirdOrder {
             }
             2 => {
                 if raw.len() - i < Self::MIN_SERIALIZED_SIZE {
-                    let missing = raw.len() - Self::MIN_SERIALIZED_SIZE;
+                    let missing = Self::MIN_SERIALIZED_SIZE - (raw.len() - i);
                     return Err(bebop::DeserializeError::MoreDataExpected(missing));
                 }
 
@@ -637,7 +637,7 @@ impl<'raw> bebop::SubRecord<'raw> for WeirdOrder {
             }
             4 => {
                 if raw.len() - i < Self::MIN_SERIALIZED_SIZE {
-                    let missing = raw.len() - Self::MIN_SERIALIZED_SIZE;
+                    let missing = Self::MIN_SERIALIZED_SIZE - (raw.len() - i);
                     return Err(bebop::DeserializeError::MoreDataExpected(missing));
                 }
 

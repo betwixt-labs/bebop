@@ -238,31 +238,7 @@ namespace Core.Generators.Rust
                     builder.CodeBlock("fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)>", _tab,
                         () =>
                         {
-                            builder.CodeBlock("if raw.len() < Self::MIN_SERIALIZED_SIZE", _tab, () =>
-                            {
-                                builder
-                                    .AppendLine("let missing = raw.len() - Self::MIN_SERIALIZED_SIZE;")
-                                    .AppendLine("return Err(bebop::DeserializeError::MoreDataExpected(missing));");
-                            }).AppendLine();
-                            builder.AppendLine("let mut i = 0;");
-                            var vars = new LinkedList<(string, string)>();
-                            var j = 0;
-                            foreach (var f in d.Fields)
-                            {
-                                builder
-                                    .AppendLine(
-                                        $"let (read, v{j}) = <{TypeName(f.Type)}>::deserialize_chained(&raw[i..])?;")
-                                    .AppendLine("i += read;");
-                                vars.AddLast((MakeAttrIdent(f.Name), $"v{j++}"));
-                            }
-
-                            builder.AppendLine().CodeBlock("Ok((i, Self {", _tab, () =>
-                            {
-                                foreach (var (k, v) in vars)
-                                {
-                                    builder.AppendLine($"{k}: {v},");
-                                }
-                            }, "", "}))");
+                            WriteStructDeserialization(builder, d);
                         });
                 }).AppendLine();
 
@@ -281,6 +257,40 @@ namespace Core.Generators.Rust
                 var pub = makePub ? "pub " : "";
                 builder.AppendLine($"{pub}{MakeAttrIdent(f.Name)}: {TypeName(f.Type)},");
             }
+        }
+
+        private void WriteStructDeserialization(IndentedStringBuilder builder, StructDefinition d,
+            bool externalIter = false, string selfClass = "Self", bool directReturn = false)
+        {
+            if (!externalIter)
+            {
+                builder.AppendLine("let mut i = 0;");
+            }
+
+            builder.CodeBlock("if raw.len() - i < Self::MIN_SERIALIZED_SIZE", _tab, () =>
+            {
+                builder
+                    .AppendLine("let missing = Self::MIN_SERIALIZED_SIZE - (raw.len() - i);")
+                    .AppendLine("return Err(bebop::DeserializeError::MoreDataExpected(missing));");
+            }).AppendLine();
+            var vars = new LinkedList<(string, string)>();
+            var j = 0;
+            foreach (var f in d.Fields)
+            {
+                builder
+                    .AppendLine(
+                        $"let (read, v{j}) = <{TypeName(f.Type)}>::deserialize_chained(&raw[i..])?;")
+                    .AppendLine("i += read;");
+                vars.AddLast((MakeAttrIdent(f.Name), $"v{j++}"));
+            }
+
+            builder.AppendLine().CodeBlock((directReturn ? "" : "Ok((i, ") + $"{selfClass}", _tab, () =>
+            {
+                foreach (var (k, v) in vars)
+                {
+                    builder.AppendLine($"{k}: {v},");
+                }
+            }, "{", directReturn ? "}" : "}))");
         }
 
         private void WriteMessageDefinition(IndentedStringBuilder builder, MessageDefinition d)
@@ -383,6 +393,7 @@ namespace Core.Generators.Rust
             {
                 builder.AppendLine("let mut i = bebop::LEN_SIZE;");
             }
+
             builder.CodeBlock("while i < len", _tab, () =>
             {
                 builder
@@ -439,7 +450,7 @@ namespace Core.Generators.Rust
                     .AppendLine("debug_assert!(i > len);")
                     .AppendLine("return Err(bebop::DeserializeError::CorruptFrame)");
             });
-            
+
             builder.AppendLine().CodeBlock((directReturn ? "" : "Ok((i, ") + $"{selfClass}", _tab, () =>
             {
                 foreach (var f in d.Fields.OrderBy((f) => f.ConstantValue))
@@ -448,7 +459,6 @@ namespace Core.Generators.Rust
                     builder.AppendLine($"{fieldName}: _{fieldName},");
                 }
             }, "{", directReturn ? "}" : "}))");
-            
         }
 
         private void WriteUnionDefinition(IndentedStringBuilder builder, UnionDefinition d)
@@ -577,34 +587,8 @@ namespace Core.Generators.Rust
                                     switch (b.Definition)
                                     {
                                         case StructDefinition sd:
-                                            builder.CodeBlock("if raw.len() - i < Self::MIN_SERIALIZED_SIZE", _tab,
-                                                () =>
-                                                {
-                                                    builder
-                                                        .AppendLine(
-                                                            "let missing = raw.len() - Self::MIN_SERIALIZED_SIZE;")
-                                                        .AppendLine(
-                                                            "return Err(bebop::DeserializeError::MoreDataExpected(missing));");
-                                                }).AppendLine();
-
-                                            var vars = new LinkedList<(string, string)>();
-                                            var j = 0;
-                                            foreach (var sdField in sd.Fields)
-                                            {
-                                                builder
-                                                    .AppendLine(
-                                                        $"let (read, v{j}) = <{TypeName(sdField.Type)}>::deserialize_chained(&raw[i..])?;")
-                                                    .AppendLine("i += read;");
-                                                vars.AddLast((MakeAttrIdent(sdField.Name), $"v{j++}"));
-                                            }
-
-                                            builder.AppendLine().CodeBlock($"{scopeName}::{branchName}", _tab, () =>
-                                            {
-                                                foreach (var (k, v) in vars)
-                                                {
-                                                    builder.AppendLine($"{k}: {v},");
-                                                }
-                                            });
+                                            WriteStructDeserialization(builder, sd, true, $"{scopeName}::{branchName}",
+                                                true);
                                             break;
                                         case MessageDefinition md:
                                             WriteMessageDeserialization(builder, md, true, $"{scopeName}::{branchName}",
