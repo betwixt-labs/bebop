@@ -3,7 +3,7 @@
 //!
 //!
 //!   bebopc version:
-//!       0.0.1-20210727-1716
+//!       0.0.1-20210727-1832
 //!
 //!
 //!   bebopc source:
@@ -17,23 +17,17 @@
 use bebop::{Record as _, SubRecord as _};
 
 #[derive(Clone, Debug, PartialEq, Default)]
-pub struct M {
+pub struct A {
     /// Field 1
-    pub a: core::option::Option<f32>,
-    /// Field 2
-    pub b: core::option::Option<f64>,
+    pub b: core::option::Option<u32>,
 }
 
-impl<'raw> bebop::SubRecord<'raw> for M {
+impl<'raw> bebop::SubRecord<'raw> for A {
     const MIN_SERIALIZED_SIZE: usize = bebop::LEN_SIZE + 1;
     fn serialize<W: std::io::Write>(&self, dest: &mut W) -> bebop::SeResult<usize> {
         let mut buf = Vec::new();
-        if let Some(ref v) = self.a {
-            buf.push(1);
-            v.serialize(&mut buf)?;
-        }
         if let Some(ref v) = self.b {
-            buf.push(2);
+            buf.push(1);
             v.serialize(&mut buf)?;
         }
         buf.push(0);
@@ -76,19 +70,10 @@ impl<'raw> bebop::SubRecord<'raw> for M {
                 }
                 1 => {
                     #[cfg(not(feature = "unchecked"))]
-                    if de.a.is_some() {
-                        return Err(bebop::DeserializeError::DuplicateMessageField);
-                    }
-                    let (read, value) = <f32>::deserialize_chained(&raw[i..])?;
-                    i += read;
-                    de.a = Some(value)
-                }
-                2 => {
-                    #[cfg(not(feature = "unchecked"))]
                     if de.b.is_some() {
                         return Err(bebop::DeserializeError::DuplicateMessageField);
                     }
-                    let (read, value) = <f64>::deserialize_chained(&raw[i..])?;
+                    let (read, value) = <u32>::deserialize_chained(&raw[i..])?;
                     i += read;
                     de.b = Some(value)
                 }
@@ -108,100 +93,21 @@ impl<'raw> bebop::SubRecord<'raw> for M {
     }
 }
 
-impl<'raw> bebop::Record<'raw> for M {}
+impl<'raw> bebop::Record<'raw> for A {}
 
-/// other docs
-#[derive(Clone, Debug, PartialEq, Default)]
-pub struct InnerM {
-    /// Field 1
-    pub x: core::option::Option<i32>,
-}
-
-impl<'raw> bebop::SubRecord<'raw> for InnerM {
-    const MIN_SERIALIZED_SIZE: usize = bebop::LEN_SIZE + 1;
-    fn serialize<W: std::io::Write>(&self, dest: &mut W) -> bebop::SeResult<usize> {
-        let mut buf = Vec::new();
-        if let Some(ref v) = self.x {
-            buf.push(1);
-            v.serialize(&mut buf)?;
-        }
-        buf.push(0);
-        bebop::write_len(dest, buf.len())?;
-        dest.write_all(&buf)?;
-        Ok(buf.len() + bebop::LEN_SIZE)
-    }
-
-    fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)> {
-        let len = bebop::read_len(raw)?;
-        #[cfg(not(feature = "unchecked"))]
-        if len == 0 {
-            return Err(bebop::DeserializeError::CorruptFrame);
-        }
-
-        if raw.len() < len + bebpp::LEN_SIZE {
-            return Err(bebop::DeserializeError::MoreDataExpected(len + bebop::LEN_SIZE - raw.len()));
-        }
-        let mut i = bebop::LEN_SIZE;
-        let mut de = Self::default();
-
-        #[cfg(not(feature = "unchecked"))]
-        let mut last = 0;
-
-        while i < len + bebop::LEN_SIZE {
-            let di = raw[i];
-
-            #[cfg(not(feature = "unchecked"))]
-            if di != 0 {
-                if di < last {
-                    return Err(bebop::DeserializeError::CorruptFrame);
-                }
-                last = di;
-            }
-
-            i += 1;
-            match di {
-                0 => {
-                    break;
-                }
-                1 => {
-                    #[cfg(not(feature = "unchecked"))]
-                    if de.x.is_some() {
-                        return Err(bebop::DeserializeError::DuplicateMessageField);
-                    }
-                    let (read, value) = <i32>::deserialize_chained(&raw[i..])?;
-                    i += read;
-                    de.x = Some(value)
-                }
-                _ => {
-                    i = len + bebop::LEN_SIZE;
-                    break;
-                }
-            }
-        }
-        if i != len + bebop::LEN_SIZE {
-            debug_assert!(i > len + bebop::LEN_SIZE);
-            Err(bebop::DeserializeError::CorruptFrame)
-        }
-        else {
-            Ok((i, de))
-        }
-    }
-}
-
-impl<'raw> bebop::Record<'raw> for InnerM {}
-
+/// This branch is, too!
 #[derive(Clone, Debug, PartialEq)]
-pub struct InnerS {
-    pub y: bool,
+pub struct B {
+    pub c: bool,
 }
 
-impl<'raw> bebop::SubRecord<'raw> for InnerS {
+impl<'raw> bebop::SubRecord<'raw> for B {
     const MIN_SERIALIZED_SIZE: usize =
         <bool>::MIN_SERIALIZED_SIZE;
 
     fn serialize<W: std::io::Write>(&self, dest: &mut W) -> bebop::SeResult<usize> {
         Ok(
-            self.y.serialize(dest)?
+            self.c.serialize(dest)?
         )
     }
 
@@ -216,126 +122,74 @@ impl<'raw> bebop::SubRecord<'raw> for InnerS {
         i += read;
 
         Ok((i, Self {
-            y: v0,
+            c: v0,
         }))
     }
 }
 
-impl<'raw> bebop::Record<'raw> for InnerS {}
+impl<'raw> bebop::Record<'raw> for B {}
 
-#[derive(Clone, Debug, PartialEq, Default)]
-pub struct OuterM {
-    /// Field 1
-    #[deprecated(note = "reasons")]
-    pub innerm: core::option::Option<InnerM>,
-    /// some docs
-    /// Field 2
-    pub inners: core::option::Option<InnerS>,
+#[derive(Clone, Debug, PartialEq)]
+pub struct C {
 }
 
-impl<'raw> bebop::SubRecord<'raw> for OuterM {
-    const MIN_SERIALIZED_SIZE: usize = bebop::LEN_SIZE + 1;
+impl<'raw> bebop::SubRecord<'raw> for C {
+    const MIN_SERIALIZED_SIZE: usize = 0;
     fn serialize<W: std::io::Write>(&self, dest: &mut W) -> bebop::SeResult<usize> {
-        let mut buf = Vec::new();
-        if let Some(ref v) = self.innerm {
-            buf.push(1);
-            v.serialize(&mut buf)?;
-        }
-        if let Some(ref v) = self.inners {
-            buf.push(2);
-            v.serialize(&mut buf)?;
-        }
-        buf.push(0);
-        bebop::write_len(dest, buf.len())?;
-        dest.write_all(&buf)?;
-        Ok(buf.len() + bebop::LEN_SIZE)
+        Ok(0)
     }
 
     fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)> {
-        let len = bebop::read_len(raw)?;
-        #[cfg(not(feature = "unchecked"))]
-        if len == 0 {
-            return Err(bebop::DeserializeError::CorruptFrame);
+        if raw.len() < Self::MIN_SERIALIZED_SIZE {
+            let missing = raw.len() - Self::MIN_SERIALIZED_SIZE;
+            return Err(bebop::DeserializeError::MoreDataExpected(missing));
         }
 
-        if raw.len() < len + bebpp::LEN_SIZE {
-            return Err(bebop::DeserializeError::MoreDataExpected(len + bebop::LEN_SIZE - raw.len()));
-        }
-        let mut i = bebop::LEN_SIZE;
-        let mut de = Self::default();
+        let mut i = 0;
 
-        #[cfg(not(feature = "unchecked"))]
-        let mut last = 0;
-
-        while i < len + bebop::LEN_SIZE {
-            let di = raw[i];
-
-            #[cfg(not(feature = "unchecked"))]
-            if di != 0 {
-                if di < last {
-                    return Err(bebop::DeserializeError::CorruptFrame);
-                }
-                last = di;
-            }
-
-            i += 1;
-            match di {
-                0 => {
-                    break;
-                }
-                1 => {
-                    #[cfg(not(feature = "unchecked"))]
-                    if de.innerm.is_some() {
-                        return Err(bebop::DeserializeError::DuplicateMessageField);
-                    }
-                    let (read, value) = <InnerM>::deserialize_chained(&raw[i..])?;
-                    i += read;
-                    de.innerm = Some(value)
-                }
-                2 => {
-                    #[cfg(not(feature = "unchecked"))]
-                    if de.inners.is_some() {
-                        return Err(bebop::DeserializeError::DuplicateMessageField);
-                    }
-                    let (read, value) = <InnerS>::deserialize_chained(&raw[i..])?;
-                    i += read;
-                    de.inners = Some(value)
-                }
-                _ => {
-                    i = len + bebop::LEN_SIZE;
-                    break;
-                }
-            }
-        }
-        if i != len + bebop::LEN_SIZE {
-            debug_assert!(i > len + bebop::LEN_SIZE);
-            Err(bebop::DeserializeError::CorruptFrame)
-        }
-        else {
-            Ok((i, de))
-        }
+        Ok((i, Self {
+        }))
     }
 }
 
-impl<'raw> bebop::Record<'raw> for OuterM {
-    const OPCODE: core::option::Option<u32> = Some(0x36A);
+impl<'raw> bebop::Record<'raw> for C {}
+
+/// This union is so documented!
+#[derive(Clone, Debug, PartialEq)]
+pub enum U {
+    /// An unknown type which is likely defined in a newer version of the schema.
+    Unknown,
+
+    /// Discriminator 1
+    A {
+        /// Field 1
+        b: core::option::Option<u32>,
+    },
+
+    /// This branch is, too!
+    /// Discriminator 2
+    B {
+        c: bool,
+    },
+
+    /// Discriminator 3
+    C {
+    },
 }
+
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct OuterS {
-    pub innerm: InnerM,
-    pub inners: InnerS,
+pub struct TwoComesFirst {
+    pub b: u8,
 }
 
-impl<'raw> bebop::SubRecord<'raw> for OuterS {
+impl<'raw> bebop::SubRecord<'raw> for TwoComesFirst {
     const MIN_SERIALIZED_SIZE: usize =
-        <InnerM>::MIN_SERIALIZED_SIZE +
-        <InnerS>::MIN_SERIALIZED_SIZE;
+        <u8>::MIN_SERIALIZED_SIZE;
 
     fn serialize<W: std::io::Write>(&self, dest: &mut W) -> bebop::SeResult<usize> {
         Ok(
-            self.innerM.serialize(dest)? +
-            self.innerS.serialize(dest)?
+            self.b.serialize(dest)?
         )
     }
 
@@ -346,17 +200,84 @@ impl<'raw> bebop::SubRecord<'raw> for OuterS {
         }
 
         let mut i = 0;
-        let (read, v0) = <InnerM>::deserialize_chained(raw)?;
-        i += read;
-        let (read, v1) = <InnerS>::deserialize_chained(raw)?;
+        let (read, v0) = <u8>::deserialize_chained(raw)?;
         i += read;
 
         Ok((i, Self {
-            innerm: v0,
-            inners: v1,
+            b: v0,
         }))
     }
 }
 
-impl<'raw> bebop::Record<'raw> for OuterS {}
+impl<'raw> bebop::Record<'raw> for TwoComesFirst {}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ThreeIsSkipped {
+}
+
+impl<'raw> bebop::SubRecord<'raw> for ThreeIsSkipped {
+    const MIN_SERIALIZED_SIZE: usize = 0;
+    fn serialize<W: std::io::Write>(&self, dest: &mut W) -> bebop::SeResult<usize> {
+        Ok(0)
+    }
+
+    fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)> {
+        if raw.len() < Self::MIN_SERIALIZED_SIZE {
+            let missing = raw.len() - Self::MIN_SERIALIZED_SIZE;
+            return Err(bebop::DeserializeError::MoreDataExpected(missing));
+        }
+
+        let mut i = 0;
+
+        Ok((i, Self {
+        }))
+    }
+}
+
+impl<'raw> bebop::Record<'raw> for ThreeIsSkipped {}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct OneComesLast {
+}
+
+impl<'raw> bebop::SubRecord<'raw> for OneComesLast {
+    const MIN_SERIALIZED_SIZE: usize = 0;
+    fn serialize<W: std::io::Write>(&self, dest: &mut W) -> bebop::SeResult<usize> {
+        Ok(0)
+    }
+
+    fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)> {
+        if raw.len() < Self::MIN_SERIALIZED_SIZE {
+            let missing = raw.len() - Self::MIN_SERIALIZED_SIZE;
+            return Err(bebop::DeserializeError::MoreDataExpected(missing));
+        }
+
+        let mut i = 0;
+
+        Ok((i, Self {
+        }))
+    }
+}
+
+impl<'raw> bebop::Record<'raw> for OneComesLast {}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum WeirdOrder {
+    /// An unknown type which is likely defined in a newer version of the schema.
+    Unknown,
+
+    /// Discriminator 1
+    OneComesLast {
+    },
+
+    /// Discriminator 2
+    TwoComesFirst {
+        b: u8,
+    },
+
+    /// Discriminator 4
+    ThreeIsSkipped {
+    },
+}
+
 

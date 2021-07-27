@@ -12,6 +12,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Core.Exceptions;
 using Core.Meta;
 using Core.Meta.Attributes;
 using Core.Meta.Extensions;
@@ -82,9 +83,9 @@ namespace Core.Generators.Rust
                     case StructDefinition sd:
                         WriteStructDefinition(builder, sd);
                         break;
-                    // case UnionDefinition ud:
-                    //     throw new NotImplementedException();
-                    //     break;
+                    case UnionDefinition ud:
+                        WriteUnionDefinition(builder, ud);
+                        break;
                     default:
                         throw new InvalidOperationException($"unsupported definition {definition.GetType()}");
                         break;
@@ -188,22 +189,15 @@ namespace Core.Generators.Rust
             builder.AppendLine($"impl<'raw> Record<'raw> for {name} {{}}");
         }
 
-
         private void WriteStructDefinition(IndentedStringBuilder builder, StructDefinition d)
         {
             var needsLifetime = NeedsLifetime(d);
-            var name = d.Name + (needsLifetime ? "<'raw>" : "");
+            var name = MakeDefIdent(d.Name) + (needsLifetime ? "<'raw>" : "");
 
-            builder.AppendLine("#[derive(Clone, Debug, PartialEq)]");
-            builder.CodeBlock($"pub struct {name}", _tab, () =>
-            {
-                foreach (var f in d.Fields.OrderBy((f) => f.ConstantValue))
-                {
-                    WriteDocumentation(builder, f.Documentation);
-                    WriteDeprecation(builder, f.DeprecatedAttribute);
-                    builder.AppendLine($"pub {MakeAttrIdent(f.Name)}: {TypeName(f.Type)},");
-                }
-            }).AppendLine();
+            builder
+                .AppendLine("#[derive(Clone, Debug, PartialEq)]")
+                .CodeBlock($"pub struct {name}", _tab, () => WriteStructDefinitionAttrs(builder, d))
+                .AppendLine();
 
             builder
                 .CodeBlock($"impl<'raw> bebop::SubRecord<'raw> for {name}", _tab, () =>
@@ -274,22 +268,29 @@ namespace Core.Generators.Rust
             WriteRecordImpl(builder, name, d);
         }
 
+        /// <summary>
+        /// Write the part within the `pub struct` definition. This will just write the attributes.
+        /// </summary>
+        private void WriteStructDefinitionAttrs(IndentedStringBuilder builder, StructDefinition d, bool makePub = true)
+        {
+            foreach (var f in d.Fields)
+            {
+                WriteDocumentation(builder, f.Documentation);
+                WriteDeprecation(builder, f.DeprecatedAttribute);
+                var pub = makePub ? "pub " : "";
+                builder.AppendLine($"{pub}{MakeAttrIdent(f.Name)}: {TypeName(f.Type)},");
+            }
+        }
+
         private void WriteMessageDefinition(IndentedStringBuilder builder, MessageDefinition d)
         {
             var needsLifetime = NeedsLifetime(d);
-            var name = d.Name + (needsLifetime ? "<'raw>" : "");
+            var name = MakeDefIdent(d.Name) + (needsLifetime ? "<'raw>" : "");
 
-            builder.AppendLine("#[derive(Clone, Debug, PartialEq, Default)]");
-            builder.CodeBlock($"pub struct {name}", _tab, () =>
-            {
-                foreach (var f in d.Fields.OrderBy((f) => f.ConstantValue))
-                {
-                    WriteDocumentation(builder, f.Documentation);
-                    WriteDocumentation(builder, $"Field {f.ConstantValue}");
-                    WriteDeprecation(builder, f.DeprecatedAttribute);
-                    builder.AppendLine($"pub {MakeAttrIdent(f.Name)}: core::option::Option<{TypeName(f.Type)}>,");
-                }
-            }).AppendLine();
+            builder
+                .AppendLine("#[derive(Clone, Debug, PartialEq, Default)]")
+                .CodeBlock($"pub struct {name}", _tab, () => WriteMessageDefinitionAttrs(builder, d))
+                .AppendLine();
 
             builder
                 .CodeBlock($"impl<'raw> bebop::SubRecord<'raw> for {name}", _tab, () =>
@@ -302,7 +303,6 @@ namespace Core.Generators.Rust
                             {
                                 // message needs if let for each field to only serialize if present.
                                 builder.AppendLine("let mut buf = Vec::new();");
-                                ;
                                 foreach (var f in d.Fields.OrderBy((f) => f.ConstantValue))
                                 {
                                     builder.CodeBlock($"if let Some(ref v) = self.{MakeAttrIdent(f.Name)}", _tab, () =>
@@ -406,6 +406,60 @@ namespace Core.Generators.Rust
             WriteRecordImpl(builder, name, d);
         }
 
+        /// <summary>
+        /// Write the part within the `pub struct` definition. This will just write the attributes.
+        /// </summary>
+        private void WriteMessageDefinitionAttrs(IndentedStringBuilder builder, MessageDefinition d, bool makePub = true)
+        {
+            foreach (var f in d.Fields.OrderBy((f) => f.ConstantValue))
+            {
+                WriteDocumentation(builder, f.Documentation);
+                WriteDocumentation(builder, $"Field {f.ConstantValue}");
+                WriteDeprecation(builder, f.DeprecatedAttribute);
+                var pub = makePub ? "pub " : "";
+                builder.AppendLine($"{pub}{MakeAttrIdent(f.Name)}: core::option::Option<{TypeName(f.Type)}>,");
+            }
+        }
+
+        private void WriteUnionDefinition(IndentedStringBuilder builder, UnionDefinition d)
+        {
+            var name = MakeDefIdent(d.Name) + (NeedsLifetime(d) ? "<'raw>" : "");
+            builder.AppendLine("#[derive(Clone, Debug, PartialEq)]");
+            builder.CodeBlock($"pub enum {name}", _tab, () =>
+            {
+                if (d.Branches.Any((b) => b.Definition.Name == "Unknown"))
+                {
+                    throw new Exception("Unknown is a reserved Union branch name");
+                }
+
+                WriteDocumentation(builder,
+                    "An unknown type which is likely defined in a newer version of the schema.");
+                builder.AppendLine("Unknown,");
+
+                foreach (var b in d.Branches.OrderBy((b) => b.Discriminator))
+                {
+                    builder.AppendLine();
+                    WriteDocumentation(builder, b.Definition.Documentation);
+                    WriteDocumentation(builder, $"Discriminator {b.Discriminator}");
+                    builder.CodeBlock(MakeEnumVariantIdent(b.Definition.Name), _tab, () =>
+                    {
+                        switch (b.Definition)
+                        {
+                            case StructDefinition sd:
+                                WriteStructDefinitionAttrs(builder, sd, false);
+                                break;
+                            case MessageDefinition md:
+                                WriteMessageDefinitionAttrs(builder, md, false);
+                                break;
+                            default:
+                                throw new ArgumentOutOfRangeException(b.Definition.ToString());
+                        }
+                    }, "{", "},");
+                }
+            }).AppendLine();
+            
+        }
+
         #endregion
 
         #region component_writers
@@ -479,7 +533,7 @@ namespace Core.Generators.Rust
                 ? $"_{reCased}"
                 : reCased;
         }
-        
+
         /// <summary>
         /// Generate a Rust type name for the given <see cref="TypeBase"/>.
         /// </summary>
