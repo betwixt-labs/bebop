@@ -1,9 +1,13 @@
 ﻿message M { 1 -> float32 a; 2 -> float64 b; }
+/** other docs */
 message InnerM { 1 -> int32 x; }
 struct InnerS { bool y; }
 
+[opcode(874)]
 message OuterM {
+    [deprecated("reasons")]
     1 -> InnerM innerM;
+    /** some docs */
     2 -> InnerS innerS;
 }
 
@@ -11,4 +15,3 @@ struct OuterS {
     InnerM innerM;
     InnerS innerS;
 }
-

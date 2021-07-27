@@ -3,7 +3,7 @@
 //!
 //!
 //!   bebopc version:
-//!       0.0.1-20210726-2053
+//!       0.0.1-20210727-1716
 //!
 //!
 //!   bebopc source:
@@ -110,6 +110,7 @@ impl<'raw> bebop::SubRecord<'raw> for M {
 
 impl<'raw> bebop::Record<'raw> for M {}
 
+/// other docs
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct InnerM {
     /// Field 1
@@ -225,7 +226,9 @@ impl<'raw> bebop::Record<'raw> for InnerS {}
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct OuterM {
     /// Field 1
+    #[deprecated(note = "reasons")]
     pub innerm: core::option::Option<InnerM>,
+    /// some docs
     /// Field 2
     pub inners: core::option::Option<InnerS>,
 }
@@ -314,7 +317,9 @@ impl<'raw> bebop::SubRecord<'raw> for OuterM {
     }
 }
 
-impl<'raw> bebop::Record<'raw> for OuterM {}
+impl<'raw> bebop::Record<'raw> for OuterM {
+    const OPCODE: core::option::Option<u32> = Some(0x36A);
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct OuterS {

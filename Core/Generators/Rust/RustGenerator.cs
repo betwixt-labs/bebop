@@ -76,13 +76,7 @@ namespace Core.Generators.Rust
                     case StructDefinition sd:
                         WriteStructDefinition(builder, sd);
                         break;
-                    // case FieldsDefinition fd:
-                    //     throw new NotImplementedException();
-                    //     break;
                     // case UnionDefinition ud:
-                    //     throw new NotImplementedException();
-                    //     break;
-                    // case TopLevelDefinition tld:
                     //     throw new NotImplementedException();
                     //     break;
                     default:
@@ -189,7 +183,6 @@ namespace Core.Generators.Rust
         {
             var needsLifetime = NeedsLifetime(d);
             var name = d.Name + (needsLifetime ? "<'raw>" : "");
-            WriteDocumentation(builder, d.Documentation);
 
             builder.AppendLine("#[derive(Clone, Debug, PartialEq)]");
             builder.CodeBlock($"pub struct {name}", _tab, () =>
@@ -275,7 +268,6 @@ namespace Core.Generators.Rust
         {
             var needsLifetime = NeedsLifetime(d);
             var name = d.Name + (needsLifetime ? "<'raw>" : "");
-            WriteDocumentation(builder, d.Documentation);
 
             builder.AppendLine("#[derive(Clone, Debug, PartialEq, Default)]");
             builder.CodeBlock($"pub struct {name}", _tab, () =>
@@ -438,7 +430,7 @@ namespace Core.Generators.Rust
             {
                 builder.CodeBlock($"impl<'raw> bebop::Record<'raw> for {name}", _tab, () =>
                 {
-                    builder.AppendLine($"const OPCODE: core::option::Option<u32> = Some({opcode})");
+                    builder.AppendLine($"const OPCODE: core::option::Option<u32> = Some({opcode});");
                 });
             }
         }
