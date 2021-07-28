@@ -737,27 +737,25 @@ namespace Core.Generators.Rust
                 case ArrayType at:
                     if (at.MemberType is ScalarType mst && ot is OwnershipType.Borrowed or OwnershipType.Constant)
                     {
+                        // TODO: expand this to make better use of the slice wrapper
                         var lifetime = ot is OwnershipType.Borrowed ? "'raw" : "'static";
-                        if (at.IsOneByteUnits())
-                        {
-                            return $"&{lifetime} [{TypeName(at.MemberType)}]";
-                        }
-
-                        var pmba = $"bebop::PrimitiveMultiByteArray<{lifetime}, {TypeName(at.MemberType)}>";
+                        var wrappedSlice = $"bebop::SliceWrapper<{lifetime}, {TypeName(at.MemberType)}>";
                         return mst.BaseType switch
                         {
-                            BaseType.UInt16 => pmba,
-                            BaseType.Int16 => pmba,
-                            BaseType.UInt32 => pmba,
-                            BaseType.Int32 => pmba,
-                            BaseType.UInt64 => pmba,
-                            BaseType.Int64 => pmba,
-                            BaseType.Float32 => pmba,
-                            BaseType.Float64 => pmba,
+                            BaseType.Bool => wrappedSlice,
+                            BaseType.Byte => wrappedSlice,
+                            BaseType.UInt16 => wrappedSlice,
+                            BaseType.Int16 => wrappedSlice,
+                            BaseType.UInt32 => wrappedSlice,
+                            BaseType.Int32 => wrappedSlice,
+                            BaseType.UInt64 => wrappedSlice,
+                            BaseType.Int64 => wrappedSlice,
+                            BaseType.Float32 => wrappedSlice,
+                            BaseType.Float64 => wrappedSlice,
                             BaseType.String => $"std::vec::Vec<{TypeName(at.MemberType)}>",
                             // this one does not care what endian the system is
-                            BaseType.Guid => $"&{lifetime} [bebop::Guid]",
-                            BaseType.Date => pmba,
+                            BaseType.Guid => wrappedSlice, //$"&{lifetime} [bebop::Guid]",
+                            BaseType.Date => wrappedSlice,
                             _ => throw new ArgumentOutOfRangeException(mst.BaseType.ToString())
                         };
                     }

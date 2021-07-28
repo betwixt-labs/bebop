@@ -1,0 +1,6 @@
+[workspace]
+
+members = [
+    "manual-testing",
+    "auto-testing"
+]

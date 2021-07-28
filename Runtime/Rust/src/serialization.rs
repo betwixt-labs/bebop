@@ -7,7 +7,7 @@ use std::io;
 use std::io::Write;
 
 use crate::serialization::DeserializeError::MoreDataExpected;
-use crate::{Date, Guid};
+use crate::{Date, Guid, SliceWrapper};
 
 pub type Len = u32;
 /// Size of length data
@@ -17,15 +17,6 @@ pub const ENUM_SIZE: usize = 4;
 
 pub type DeResult<T> = core::result::Result<T, DeserializeError>;
 pub type SeResult<T> = core::result::Result<T, SerializeError>;
-
-/// Primitive multi byte array type alias.
-/// In little endian systems we can just borrow the primitive array instead of copying.
-#[cfg(target_endian = "little")]
-pub type PrimitiveMultiByteArray<'raw, T> = &'raw [T];
-/// Primitive multi byte array type alias.
-/// In big endian systems we have to actually copy and transpose the data.
-#[cfg(target_endian = "big")]
-pub type PrimitiveMultiByteArray<'raw, T> = Vec<T>;
 
 pub enum DeserializeError {
     /// Returns the number of additional bytes expected at a minimum.
@@ -150,7 +141,7 @@ impl<'raw> SubRecord<'raw> for &'raw str {
 
 impl<'raw, T> SubRecord<'raw> for Vec<T>
 where
-    T: Record<'raw>,
+    T: SubRecord<'raw>,
 {
     const MIN_SERIALIZED_SIZE: usize = LEN_SIZE;
 
@@ -178,8 +169,8 @@ where
 
 impl<'raw, K, V> SubRecord<'raw> for HashMap<K, V>
 where
-    K: Record<'raw> + Eq + Hash,
-    V: Record<'raw>,
+    K: SubRecord<'raw> + Eq + Hash,
+    V: SubRecord<'raw>,
 {
     const MIN_SERIALIZED_SIZE: usize = LEN_SIZE;
 
@@ -264,6 +255,55 @@ impl<'de> SubRecord<'de> for bool {
     }
 }
 
+impl<'raw, T> SubRecord<'raw> for SliceWrapper<'raw, T>
+where
+    T: Sized + Copy + SubRecord<'raw>,
+{
+    const MIN_SERIALIZED_SIZE: usize = LEN_SIZE;
+
+    fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+        write_len(dest, self.len())?;
+        match *self {
+            SliceWrapper::Raw(raw) => {
+                dest.write_all(&raw)?;
+                Ok(raw.len() + LEN_SIZE)
+            }
+            SliceWrapper::Cooked(ary) => {
+                #[cfg(target_endian = "big")]
+                todo!();
+
+                let b: &[u8] = unsafe {
+                    std::slice::from_raw_parts(
+                        ary.as_ptr() as *const u8,
+                        ary.len() * core::mem::size_of::<T>(),
+                    )
+                };
+                dest.write_all(b)?;
+                Ok(b.len() + LEN_SIZE)
+            }
+        }
+    }
+
+    fn deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
+        let len = read_len(raw)?;
+        let bytes = len * std::mem::size_of::<T>() + LEN_SIZE;
+        if bytes > raw.len() {
+            return Err(DeserializeError::MoreDataExpected(bytes - raw.len()));
+        }
+        Ok((
+            bytes,
+            if std::mem::size_of::<T>() == 1 {
+                SliceWrapper::from_cooked(&unsafe {
+                    std::slice::from_raw_parts((&raw[LEN_SIZE..bytes]).as_ptr() as *const T, len)
+                })
+            } else {
+                SliceWrapper::from_raw(&raw[LEN_SIZE..bytes])
+            },
+            // TODO: we can also consider anything with correct alignment "cooked", need to be careful about packing though
+        ))
+    }
+}
+
 macro_rules! impl_record_for_num {
     ($t:ty) => {
         impl<'raw> SubRecord<'raw> for $t {
@@ -291,59 +331,6 @@ macro_rules! impl_record_for_num {
         }
     };
 }
-
-macro_rules! impl_record_for_slice {
-    ($t:ty) => {
-        impl<'raw> SubRecord<'raw> for &[$t] {
-            const MIN_SERIALIZED_SIZE: usize = core::mem::size_of::<&[$t]>();
-
-            #[inline]
-            fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
-                #[cfg(target_endian = "big")]
-                if core::mem::size_of::<$t>() > 1 {
-                    unimplemented!()
-                }
-
-                let b: &[u8] = unsafe {
-                    std::slice::from_raw_parts(
-                        self.as_ptr() as *const u8,
-                        self.len() * core::mem::size_of::<$t>(),
-                    )
-                };
-                dest.write_all(b)?;
-                Ok(b.len())
-            }
-
-            #[inline]
-            fn deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
-                #[cfg(target_endian = "big")]
-                if core::mem::size_of::<$t>() > 1 {
-                    unimplemented!()
-                }
-                let len = read_len(raw)?;
-                let bytes = len * core::mem::size_of::<$t>() + 4;
-                if bytes > raw.len() {
-                    Err(DeserializeError::MoreDataExpected(bytes - raw.len()))
-                } else {
-                    let slice = unsafe {
-                        std::slice::from_raw_parts((&raw[4..]).as_ptr() as *const $t, len)
-                    };
-                    Ok((bytes, slice))
-                }
-            }
-        }
-    };
-}
-
-impl_record_for_slice!(bool);
-impl_record_for_slice!(u8);
-impl_record_for_slice!(u16);
-impl_record_for_slice!(i16);
-impl_record_for_slice!(u32);
-impl_record_for_slice!(i32);
-impl_record_for_slice!(u64);
-impl_record_for_slice!(i64);
-
 
 impl_record_for_num!(u8);
 // no signed byte type at this time
