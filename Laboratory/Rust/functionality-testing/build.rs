@@ -3,7 +3,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-const SCHEMA_DIR: &str = "../../Schemas";
+const SCHEMA_DIR: &str = "schemas";
+const GENERATED_DIR: &str = "src/generated";
 
 #[cfg(windows)]
 const BEBOP_BIN: &str = "../../../bin/compiler/Windows-Debug/bebopc.exe";
@@ -12,30 +13,27 @@ const BEBOP_BIN: &str = "../../../../bin/compiler/Linux-Debug/bebopc";
 
 fn main() {
     println!("cargo:rerun-if-changed={}", BEBOP_BIN);
-    println!("cargo:rerun-if-changed={}", "src/lib.rs");
+    println!("cargo:rerun-if-changed={}/mod.rs", GENERATED_DIR);
     // clean all previously built files
-    fs::read_dir("src")
+    fs::read_dir(GENERATED_DIR)
         .unwrap()
         .filter_map(|entry| {
             let entry = entry.unwrap();
             let name = entry.file_name().to_str().unwrap().to_string();
-            if entry.file_type().unwrap().is_file()
-                && name.starts_with("_")
-                && name.ends_with(".rs")
-            {
+            if entry.file_type().unwrap().is_file() && name != "mod.rs" {
                 Some(name)
             } else {
                 None
             }
         })
-        .for_each(|file| fs::remove_file(format!("src/{}", file)).unwrap());
+        .for_each(|file| fs::remove_file(PathBuf::from(GENERATED_DIR).join(file)).unwrap());
 
     // build all files and update lib.rs
     let files = process_schema_dir(SCHEMA_DIR);
 
-    // update the lib file
+    // update the mod file
     fs::write(
-        "./src/lib.rs",
+        PathBuf::from(GENERATED_DIR).join("mod.rs"),
         &files
             .into_iter()
             .map(|mut schema_name| {
@@ -69,17 +67,16 @@ fn process_schema_dir(dir: impl AsRef<Path>) -> LinkedList<String> {
                 .to_str()
                 .unwrap()
                 .to_string();
-            let new_name = format!("_{}", file_stem);
             let schema_path = path.to_str().unwrap();
             println!("cargo:rerun-if-changed={}", schema_path);
             Command::new(BEBOP_BIN)
                 .arg("--files")
                 .arg(schema_path)
                 .arg("--rust")
-                .arg(format!("./src/{}.rs", &new_name))
+                .arg(format!("{}/{}.rs", GENERATED_DIR, &file_stem))
                 .output()
                 .expect("failed to build schema");
-            list.push_back(new_name);
+            list.push_back(file_stem);
         } else {
             // do nothing
         }

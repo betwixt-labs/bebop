@@ -34,9 +34,11 @@
 //! }
 //! ```
 
-use bebop::*;
 use std::convert::{TryFrom, TryInto};
 use std::io::Write;
+
+use bebop::*;
+use bebop::error::{DeResult, DeserializeError, SeResult, SerializeError};
 
 // Constants which are the same for all implementations
 
@@ -83,12 +85,12 @@ impl<'raw> SubRecord<'raw> for Instrument {
     const MIN_SERIALIZED_SIZE: usize = ENUM_SIZE;
 
     #[inline]
-    fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+    fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
         u32::from(*self).serialize(dest)
     }
 
     #[inline]
-    fn deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
+    fn _deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
         let (n, v) = u32::deserialize_chained(raw)?;
         Ok((n, v.try_into()?))
     }
@@ -134,19 +136,19 @@ impl<'raw> SubRecord<'raw> for Performer<'raw> {
     const MIN_SERIALIZED_SIZE: usize =
         <&str>::MIN_SERIALIZED_SIZE + Instrument::MIN_SERIALIZED_SIZE;
 
-    fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
-        Ok(self.name.serialize(dest)? + self.plays.serialize(dest)?)
+    fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+        Ok(self.name._serialize_chained(dest)? + self.plays._serialize_chained(dest)?)
     }
 
-    fn deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
+    fn _deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
         if raw.len() < Self::MIN_SERIALIZED_SIZE {
             return Err(DeserializeError::MoreDataExpected(
                 raw.len() - Self::MIN_SERIALIZED_SIZE,
             ));
         }
-        let (read, name) = <&str>::deserialize_chained(raw)?;
+        let (read, name) = <&str>::_deserialize_chained(raw)?;
         let mut i = read;
-        let (read, plays) = Instrument::deserialize_chained(&raw[i..])?;
+        let (read, plays) = Instrument::_deserialize_chained(&raw[i..])?;
         i += read;
         Ok((i, Self { name, plays }))
     }
@@ -157,12 +159,12 @@ impl<'raw> Record<'raw> for Performer<'raw> {}
 impl<'raw> SubRecord<'raw> for OwnedPerformer {
     const MIN_SERIALIZED_SIZE: usize = Performer::MIN_SERIALIZED_SIZE;
 
-    fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+    fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
         // basically the same code
         todo!()
     }
 
-    fn deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
+    fn _deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
         // basically the same code
         todo!()
     }
@@ -219,11 +221,11 @@ impl<'raw> From<Song<'raw>> for OwnedSong {
 impl<'raw> SubRecord<'raw> for Song<'raw> {
     const MIN_SERIALIZED_SIZE: usize = LEN_SIZE + 1;
 
-    fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+    fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
         let mut buf = Vec::new();
         if let Some(title) = self.title {
             buf.push(1);
-            title.serialize(&mut buf)?;
+            title._serialize_chained(&mut buf)?;
         }
         if let Some(year) = self.year {
             buf.push(2);
@@ -231,7 +233,7 @@ impl<'raw> SubRecord<'raw> for Song<'raw> {
         }
         if let Some(ref performers) = self.performers {
             buf.push(3);
-            performers.serialize(&mut buf)?;
+            performers._serialize_chained(&mut buf)?;
         }
         buf.push(0);
         write_len(dest, buf.len())?;
@@ -239,7 +241,7 @@ impl<'raw> SubRecord<'raw> for Song<'raw> {
         Ok(buf.len() + LEN_SIZE)
     }
 
-    fn deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
+    fn _deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
         let len = read_len(raw)?;
 
         #[cfg(not(feature = "unchecked"))]
@@ -283,7 +285,7 @@ impl<'raw> SubRecord<'raw> for Song<'raw> {
                     if song.title.is_some() {
                         return Err(DeserializeError::DuplicateMessageField);
                     }
-                    let (read, title) = <&str>::deserialize_chained(&raw[i..])?;
+                    let (read, title) = <&str>::_deserialize_chained(&raw[i..])?;
                     i += read;
                     song.title = Some(title);
                 }
@@ -301,7 +303,7 @@ impl<'raw> SubRecord<'raw> for Song<'raw> {
                     if song.performers.is_some() {
                         return Err(DeserializeError::DuplicateMessageField);
                     }
-                    let (read, performers) = <Vec<Performer>>::deserialize_chained(&raw[i..])?;
+                    let (read, performers) = <Vec<Performer>>::_deserialize_chained(&raw[i..])?;
                     i += read;
                     song.performers = Some(performers);
                 }
@@ -326,12 +328,12 @@ impl<'raw> Record<'raw> for Song<'raw> {}
 impl<'raw> SubRecord<'raw> for OwnedSong {
     const MIN_SERIALIZED_SIZE: usize = Song::MIN_SERIALIZED_SIZE;
 
-    fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+    fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
         // basically the same code
         todo!()
     }
 
-    fn deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
+    fn _deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
         // basically the same code
         todo!()
     }
@@ -418,7 +420,7 @@ impl<'raw> From<Album<'raw>> for OwnedAlbum {
 impl<'raw> SubRecord<'raw> for Album<'raw> {
     const MIN_SERIALIZED_SIZE: usize = LEN_SIZE + 1;
 
-    fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+    fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
         let mut buf = Vec::new();
         match self {
             Album::Unknown => {
@@ -426,7 +428,7 @@ impl<'raw> SubRecord<'raw> for Album<'raw> {
             }
             Album::StudioAlbum { tracks } => {
                 buf.push(1);
-                tracks.serialize(&mut buf)?;
+                tracks._serialize_chained(&mut buf)?;
             }
             Album::LiveAlbum {
                 tracks,
@@ -442,7 +444,7 @@ impl<'raw> SubRecord<'raw> for Album<'raw> {
         Ok(buf.len() + LEN_SIZE)
     }
 
-    fn deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
+    fn _deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
         let len = read_len(&raw)?;
         if raw.len() < len + LEN_SIZE {
             return Err(DeserializeError::MoreDataExpected(
@@ -452,7 +454,7 @@ impl<'raw> SubRecord<'raw> for Album<'raw> {
         let mut i = LEN_SIZE + 1;
         let album = match raw[LEN_SIZE] {
             1 => {
-                let (read, tracks) = <Vec<Song>>::deserialize_chained(&raw[i..])?;
+                let (read, tracks) = <Vec<Song>>::_deserialize_chained(&raw[i..])?;
                 i += read;
                 Album::StudioAlbum { tracks }
             }
@@ -479,12 +481,12 @@ impl<'raw> Record<'raw> for Album<'raw> {}
 impl<'raw> SubRecord<'raw> for OwnedAlbum {
     const MIN_SERIALIZED_SIZE: usize = Album::MIN_SERIALIZED_SIZE;
 
-    fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+    fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
         // basically the same code
         todo!()
     }
 
-    fn deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
+    fn _deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
         // basically the same code
         todo!()
     }

@@ -51,7 +51,7 @@ where
                             size_of::<T>(),
                         )
                     };
-                    Some(T::deserialize_chained(raw).map(|(_, v)| v).unwrap())
+                    Some(T::_deserialize_chained(raw).map(|(_, v)| v).unwrap())
                 }
             }
             SliceWrapper::Cooked(ary) => ary.get(i).copied(),

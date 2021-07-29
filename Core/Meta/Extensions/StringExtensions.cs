@@ -160,10 +160,10 @@ namespace Core.Meta.Extensions
                 {
                     builder.Append(SnakeSeparator);
                 }
-                else if (char.IsUpper(currentChar) && char.IsLower(nextChar))
+                else if (char.IsLower(currentChar) && char.IsUpper(nextChar))
                 {
-                    builder.Append('_');
                     builder.Append(char.ToLowerInvariant(currentChar));
+                    builder.Append('_');
                 }
                 else if (char.IsUpper(currentChar))
                 {

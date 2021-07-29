@@ -2,5 +2,6 @@
 
 members = [
     "manual-testing",
-    "auto-testing"
+    "auto-testing",
+    "functionality-testing"
 ]

@@ -173,25 +173,25 @@ namespace Core.Generators.Rust
                     .AppendLine("const MIN_SERIALIZED_SIZE: usize = ::bebop::ENUM_SIZE;")
                     .AppendLine()
                     .AppendLine("#[inline]")
-                    .CodeBlock("fn serialize<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
+                    .CodeBlock("fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
                         _tab,
                         () =>
                         {
-                            builder.AppendLine("u32::from(*self).serialize(dest)");
+                            builder.AppendLine("u32::from(*self)._serialize_chained(dest)");
                         })
                     .AppendLine()
                     .AppendLine("#[inline]")
-                    .CodeBlock("fn deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)>", _tab,
+                    .CodeBlock("fn _deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)>", _tab,
                         () =>
                         {
                             builder
-                                .AppendLine("let (n, v) = u32::deserialize_chained(raw)?;")
+                                .AppendLine("let (n, v) = u32::_deserialize_chained(raw)?;")
                                 .AppendLine("Ok((n, v.try_into()?))");
                         });
             }).AppendLine();
 
             // record
-            builder.AppendLine($"impl<'raw> ::bebop::Record<'raw> for {name} {{}}");
+            // builder.AppendLine($"impl<'raw> ::bebop::Record<'raw> for {name} {{}}");
         }
 
         private void WriteStructDefinition(IndentedStringBuilder builder, StructDefinition d)
@@ -223,7 +223,7 @@ namespace Core.Generators.Rust
                     }
 
                     builder.CodeBlock(
-                        "fn serialize<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
+                        "fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
                         _tab, () =>
                         {
                             if (d.Fields.Count == 0)
@@ -236,12 +236,12 @@ namespace Core.Generators.Rust
                                 builder.CodeBlock("Ok(", _tab, () =>
                                 {
                                     builder.AppendLine(string.Join(" +\n",
-                                        d.Fields.Select((f) => $"self.{MakeAttrIdent(f.Name)}.serialize(dest)?")));
+                                        d.Fields.Select((f) => $"self.{MakeAttrIdent(f.Name)}._serialize_chained(dest)?")));
                                 }, "", ")");
                             }
                         }).AppendLine();
 
-                    builder.CodeBlock("fn deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)>",
+                    builder.CodeBlock("fn _deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)>",
                         _tab,
                         () =>
                         {
@@ -286,7 +286,7 @@ namespace Core.Generators.Rust
             {
                 builder
                     .AppendLine(
-                        $"let (read, v{j}) = <{TypeName(f.Type)}>::deserialize_chained(&raw[i..])?;")
+                        $"let (read, v{j}) = <{TypeName(f.Type)}>::_deserialize_chained(&raw[i..])?;")
                     .AppendLine("i += read;");
                 vars.AddLast((MakeAttrIdent(f.Name), $"v{j++}"));
             }
@@ -316,14 +316,14 @@ namespace Core.Generators.Rust
                     // messages are size in bytes + null byte end
                     builder
                         .AppendLine("const MIN_SERIALIZED_SIZE: usize = ::bebop::LEN_SIZE + 1;")
-                        .CodeBlock("fn serialize<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
+                        .CodeBlock("fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
                             _tab, () =>
                             {
                                 WriteMessageSerialization(builder, d, "buf");
                                 builder.AppendLine("Ok(buf.len() + ::bebop::LEN_SIZE)");
                             }).AppendLine();
 
-                    builder.CodeBlock("fn deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)>",
+                    builder.CodeBlock("fn _deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)>",
                         _tab,
                         () => WriteMessageDeserialization(builder, d));
                 }).AppendLine();
@@ -358,7 +358,7 @@ namespace Core.Generators.Rust
                 builder.CodeBlock($"if let Some(ref v) = {obj}{MakeAttrIdent(f.Name)}", _tab, () =>
                 {
                     builder.AppendLine($"{buf}.push({f.ConstantValue});")
-                        .AppendLine($"v.serialize(&mut {buf})?;");
+                        .AppendLine($"v._serialize_chained(&mut {buf})?;");
                 });
             }
 
@@ -438,7 +438,7 @@ namespace Core.Generators.Rust
                             });
                             builder
                                 .AppendLine(
-                                    $"let (read, value) = <{TypeName(f.Type)}>::deserialize_chained(&raw[i..])?;")
+                                    $"let (read, value) = <{TypeName(f.Type)}>::_deserialize_chained(&raw[i..])?;")
                                 .AppendLine("i += read;")
                                 .AppendLine($"_{fname} = Some(value)");
                         });
@@ -513,7 +513,7 @@ namespace Core.Generators.Rust
                     .AppendLine("const MIN_SERIALIZED_SIZE: usize = ::bebop::LEN_SIZE + 1;")
                     .AppendLine();
 
-                builder.CodeBlock("fn serialize<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
+                builder.CodeBlock("fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
                     _tab, () =>
                     {
                         builder.AppendLine("let mut buf = ::std::vec::Vec::new();");
@@ -553,7 +553,7 @@ namespace Core.Generators.Rust
                                             foreach (var sdField in sd.Fields)
                                             {
                                                 builder.AppendLine(
-                                                    $"_{MakeAttrIdent(sdField.Name)}.serialize(&mut buf);");
+                                                    $"_{MakeAttrIdent(sdField.Name)}._serialize_chained(&mut buf);");
                                             }
 
                                             break;
@@ -573,7 +573,7 @@ namespace Core.Generators.Rust
                             .AppendLine("Ok(buf.len() + ::bebop::LEN_SIZE)");
                     }).AppendLine();
 
-                builder.CodeBlock("fn deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)>", _tab,
+                builder.CodeBlock("fn _deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)>", _tab,
                     () =>
                     {
                         builder
