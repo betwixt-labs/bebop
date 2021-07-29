@@ -40,9 +40,9 @@ namespace Core.Generators.Rust
 
         private static readonly string[] _reservedWordsArray =
         {
-            "Self", "abstract", "as", "bebop", "become", "box", "break", "const", "continue", "crate", "do", "else",
+            "Self", "abstract", "as", "become", "box", "break", "const", "continue", "crate", "do", "else",
             "enum", "extern", "false", "final", "fn", "for", "if", "impl", "in", "let", "loop", "macro", "match",
-            "mod", "move", "mut", "override", "priv", "pub", "ref", "return", "self", "static", "std", "struct",
+            "mod", "move", "mut", "override", "priv", "pub", "ref", "return", "self", "static", "struct",
             "super", "trait", "true", "try", "type", "typeof", "unsafe", "unsized", "use", "virtual", "where",
             "while", "yield",
         };
@@ -63,8 +63,8 @@ namespace Core.Generators.Rust
                 .AppendLine()
                 .AppendLine("#![allow(warnings)]")
                 .AppendLine()
-                .AppendLine("use std::io::Write as _;")
-                .AppendLine("use core::convert::TryInto as _;")
+                .AppendLine("use ::std::io::Write as _;")
+                .AppendLine("use ::core::convert::TryInto as _;")
                 .AppendLine();
 
             // TODO: do we need to do something with the namespace? Probably not since the file is itself a module.
@@ -133,11 +133,11 @@ namespace Core.Generators.Rust
                 }).AppendLine();
 
             // conversion from int
-            builder.CodeBlock($"impl core::convert::TryFrom<u32> for {name}", _tab, () =>
+            builder.CodeBlock($"impl ::core::convert::TryFrom<u32> for {name}", _tab, () =>
             {
-                builder.AppendLine("type Error = bebop::DeserializeError;")
+                builder.AppendLine("type Error = ::bebop::DeserializeError;")
                     .AppendLine()
-                    .CodeBlock("fn try_from(value: u32) -> bebop::DeResult<Self>", _tab, () =>
+                    .CodeBlock("fn try_from(value: u32) -> ::bebop::DeResult<Self>", _tab, () =>
                     {
                         builder.CodeBlock("match value", _tab, () =>
                         {
@@ -146,13 +146,13 @@ namespace Core.Generators.Rust
                                 builder.AppendLine($"{m.ConstantValue} => Ok({name}::{MakeEnumVariantIdent(m.Name)}),");
                             }
 
-                            builder.AppendLine("d => Err(bebop::DeserializeError::InvalidEnumDiscriminator(d)),");
+                            builder.AppendLine("d => Err(::bebop::DeserializeError::InvalidEnumDiscriminator(d)),");
                         });
                     });
             }).AppendLine();
 
             // conversion to int
-            builder.CodeBlock($"impl core::convert::From<{name}> for u32", _tab, () =>
+            builder.CodeBlock($"impl ::core::convert::From<{name}> for u32", _tab, () =>
             {
                 builder.CodeBlock($"fn from(value: {name}) -> Self", _tab, () =>
                 {
@@ -167,29 +167,31 @@ namespace Core.Generators.Rust
             }).AppendLine();
 
             // sub record
-            builder.CodeBlock($"impl<'raw> bebop::SubRecord<'raw> for {name}", _tab, () =>
+            builder.CodeBlock($"impl<'raw> ::bebop::SubRecord<'raw> for {name}", _tab, () =>
             {
                 builder
-                    .AppendLine("const MIN_SERIALIZED_SIZE: usize = bebop::ENUM_SIZE;")
+                    .AppendLine("const MIN_SERIALIZED_SIZE: usize = ::bebop::ENUM_SIZE;")
                     .AppendLine()
                     .AppendLine("#[inline]")
-                    .CodeBlock("fn serialize<W: std::io::Write>(&self, dest: &mut W) -> bebop::SeResult<usize>", _tab,
+                    .CodeBlock("fn serialize<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
+                        _tab,
                         () =>
                         {
                             builder.AppendLine("u32::from(*self).serialize(dest)");
                         })
                     .AppendLine()
                     .AppendLine("#[inline]")
-                    .CodeBlock("fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)>", _tab, () =>
-                    {
-                        builder
-                            .AppendLine("let (n, v) = u32::deserialize_chained(raw)?;")
-                            .AppendLine("Ok((n, v.try_into()?))");
-                    });
+                    .CodeBlock("fn deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)>", _tab,
+                        () =>
+                        {
+                            builder
+                                .AppendLine("let (n, v) = u32::deserialize_chained(raw)?;")
+                                .AppendLine("Ok((n, v.try_into()?))");
+                        });
             }).AppendLine();
 
             // record
-            builder.AppendLine($"impl<'raw> bebop::Record<'raw> for {name} {{}}");
+            builder.AppendLine($"impl<'raw> ::bebop::Record<'raw> for {name} {{}}");
         }
 
         private void WriteStructDefinition(IndentedStringBuilder builder, StructDefinition d)
@@ -203,7 +205,7 @@ namespace Core.Generators.Rust
                 .AppendLine();
 
             builder
-                .CodeBlock($"impl<'raw> bebop::SubRecord<'raw> for {name}", _tab, () =>
+                .CodeBlock($"impl<'raw> ::bebop::SubRecord<'raw> for {name}", _tab, () =>
                 {
                     if (d.Fields.Count == 0)
                     {
@@ -220,7 +222,8 @@ namespace Core.Generators.Rust
                             .AppendLine();
                     }
 
-                    builder.CodeBlock("fn serialize<W: std::io::Write>(&self, dest: &mut W) -> bebop::SeResult<usize>",
+                    builder.CodeBlock(
+                        "fn serialize<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
                         _tab, () =>
                         {
                             if (d.Fields.Count == 0)
@@ -238,7 +241,8 @@ namespace Core.Generators.Rust
                             }
                         }).AppendLine();
 
-                    builder.CodeBlock("fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)>", _tab,
+                    builder.CodeBlock("fn deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)>",
+                        _tab,
                         () =>
                         {
                             WriteStructDeserialization(builder, d);
@@ -274,7 +278,7 @@ namespace Core.Generators.Rust
             {
                 builder
                     .AppendLine("let missing = Self::MIN_SERIALIZED_SIZE - (raw.len() - i);")
-                    .AppendLine("return Err(bebop::DeserializeError::MoreDataExpected(missing));");
+                    .AppendLine("return Err(::bebop::DeserializeError::MoreDataExpected(missing));");
             }).AppendLine();
             var vars = new LinkedList<(string, string)>();
             var j = 0;
@@ -307,19 +311,20 @@ namespace Core.Generators.Rust
                 .AppendLine();
 
             builder
-                .CodeBlock($"impl<'raw> bebop::SubRecord<'raw> for {name}", _tab, () =>
+                .CodeBlock($"impl<'raw> ::bebop::SubRecord<'raw> for {name}", _tab, () =>
                 {
                     // messages are size in bytes + null byte end
                     builder
-                        .AppendLine("const MIN_SERIALIZED_SIZE: usize = bebop::LEN_SIZE + 1;")
-                        .CodeBlock("fn serialize<W: std::io::Write>(&self, dest: &mut W) -> bebop::SeResult<usize>",
+                        .AppendLine("const MIN_SERIALIZED_SIZE: usize = ::bebop::LEN_SIZE + 1;")
+                        .CodeBlock("fn serialize<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
                             _tab, () =>
                             {
                                 WriteMessageSerialization(builder, d, "buf");
-                                builder.AppendLine("Ok(buf.len() + bebop::LEN_SIZE)");
+                                builder.AppendLine("Ok(buf.len() + ::bebop::LEN_SIZE)");
                             }).AppendLine();
 
-                    builder.CodeBlock("fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)>", _tab,
+                    builder.CodeBlock("fn deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)>",
+                        _tab,
                         () => WriteMessageDeserialization(builder, d));
                 }).AppendLine();
 
@@ -338,7 +343,7 @@ namespace Core.Generators.Rust
                 WriteDocumentation(builder, $"Field {f.ConstantValue}");
                 WriteDeprecation(builder, f.DeprecatedAttribute);
                 var pub = makePub ? "pub " : "";
-                builder.AppendLine($"{pub}{MakeAttrIdent(f.Name)}: core::option::Option<{TypeName(f.Type)}>,");
+                builder.AppendLine($"{pub}{MakeAttrIdent(f.Name)}: ::core::option::Option<{TypeName(f.Type)}>,");
             }
         }
 
@@ -347,7 +352,7 @@ namespace Core.Generators.Rust
         {
             obj = string.IsNullOrEmpty(obj) ? "_" : $"{obj}.";
             // message needs if let for each field to only serialize if present.
-            builder.AppendLine($"let mut {buf} = std::vec::Vec::new();");
+            builder.AppendLine($"let mut {buf} = ::std::vec::Vec::new();");
             foreach (var f in d.Fields.OrderBy((f) => f.ConstantValue))
             {
                 builder.CodeBlock($"if let Some(ref v) = {obj}{MakeAttrIdent(f.Name)}", _tab, () =>
@@ -359,7 +364,7 @@ namespace Core.Generators.Rust
 
             builder.AppendLine($"{buf}.push(0);");
             builder
-                .AppendLine($"bebop::write_len({dest}, {buf}.len())?;")
+                .AppendLine($"::bebop::write_len({dest}, {buf}.len())?;")
                 .AppendLine($"{dest}.write_all(&{buf})?;");
         }
 
@@ -368,17 +373,17 @@ namespace Core.Generators.Rust
         {
             var plusI = externalIter ? " + i" : "";
             builder
-                .AppendLine($"let len = bebop::read_len(raw)?{plusI} + bebop::LEN_SIZE;")
+                .AppendLine($"let len = ::bebop::read_len(raw)?{plusI} + ::bebop::LEN_SIZE;")
                 .AppendLine()
                 .AppendLine("#[cfg(not(feature = \"unchecked\"))]")
                 .CodeBlock("if len == 0", _tab, () =>
                 {
-                    builder.AppendLine("return Err(bebop::DeserializeError::CorruptFrame);");
+                    builder.AppendLine("return Err(::bebop::DeserializeError::CorruptFrame);");
                 }).AppendLine();
             builder.CodeBlock($"if raw.len() < len", _tab, () =>
             {
                 builder.AppendLine(
-                    "return Err(bebop::DeserializeError::MoreDataExpected(len - raw.len()));");
+                    "return Err(::bebop::DeserializeError::MoreDataExpected(len - raw.len()));");
             }).AppendLine();
 
             // define vars
@@ -394,7 +399,7 @@ namespace Core.Generators.Rust
                 .AppendLine();
             if (!externalIter)
             {
-                builder.AppendLine("let mut i = bebop::LEN_SIZE;");
+                builder.AppendLine("let mut i = ::bebop::LEN_SIZE;");
             }
 
             builder.CodeBlock("while i < len", _tab, () =>
@@ -408,7 +413,7 @@ namespace Core.Generators.Rust
                         builder.CodeBlock("if di < last", _tab, () =>
                         {
                             builder.AppendLine(
-                                "return Err(bebop::DeserializeError::CorruptFrame);");
+                                "return Err(::bebop::DeserializeError::CorruptFrame);");
                         });
                         builder.AppendLine("last = di;");
                     })
@@ -429,7 +434,7 @@ namespace Core.Generators.Rust
                             builder.CodeBlock($"if _{fname}.is_some()", _tab, () =>
                             {
                                 builder.AppendLine(
-                                    "return Err(bebop::DeserializeError::DuplicateMessageField);");
+                                    "return Err(::bebop::DeserializeError::DuplicateMessageField);");
                             });
                             builder
                                 .AppendLine(
@@ -451,7 +456,7 @@ namespace Core.Generators.Rust
             {
                 builder
                     .AppendLine("debug_assert!(i > len);")
-                    .AppendLine("return Err(bebop::DeserializeError::CorruptFrame)");
+                    .AppendLine("return Err(::bebop::DeserializeError::CorruptFrame)");
             });
 
             builder.AppendLine().CodeBlock((directReturn ? "" : "Ok((i, ") + $"{selfClass}", _tab, () =>
@@ -502,21 +507,21 @@ namespace Core.Generators.Rust
                 }
             }).AppendLine();
 
-            builder.CodeBlock($"impl<'raw> bebop::SubRecord<'raw> for {name}", _tab, () =>
+            builder.CodeBlock($"impl<'raw> ::bebop::SubRecord<'raw> for {name}", _tab, () =>
             {
                 builder
-                    .AppendLine("const MIN_SERIALIZED_SIZE: usize = bebop::LEN_SIZE + 1;")
+                    .AppendLine("const MIN_SERIALIZED_SIZE: usize = ::bebop::LEN_SIZE + 1;")
                     .AppendLine();
 
-                builder.CodeBlock("fn serialize<W: std::io::Write>(&self, dest: &mut W) -> bebop::SeResult<usize>",
+                builder.CodeBlock("fn serialize<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
                     _tab, () =>
                     {
-                        builder.AppendLine("let mut buf = std::vec::Vec::new();");
+                        builder.AppendLine("let mut buf = ::std::vec::Vec::new();");
                         builder.CodeBlock("match self", _tab, () =>
                         {
                             builder.CodeBlock($"{scopeName}::Unknown =>", _tab, () =>
                             {
-                                builder.AppendLine("return Err(bebop::SerializeError::CannotSerializeUnknownUnion);");
+                                builder.AppendLine("return Err(::bebop::SerializeError::CannotSerializeUnknownUnion);");
                             });
                             foreach (var b in d.Branches.OrderBy((b) => b.Discriminator))
                             {
@@ -563,24 +568,24 @@ namespace Core.Generators.Rust
                         });
 
                         builder
-                            .AppendLine("bebop::write_len(dest, buf.len());")
+                            .AppendLine("::bebop::write_len(dest, buf.len());")
                             .AppendLine("dest.write_all(&buf)?;")
-                            .AppendLine("Ok(buf.len() + bebop::LEN_SIZE)");
+                            .AppendLine("Ok(buf.len() + ::bebop::LEN_SIZE)");
                     }).AppendLine();
 
-                builder.CodeBlock("fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)>", _tab,
+                builder.CodeBlock("fn deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)>", _tab,
                     () =>
                     {
                         builder
-                            .AppendLine("let len = bebop::read_len(&raw)? + bebop::LEN_SIZE;")
+                            .AppendLine("let len = ::bebop::read_len(&raw)? + ::bebop::LEN_SIZE;")
                             .CodeBlock("if raw.len() < len", _tab, () =>
                             {
                                 builder.AppendLine(
-                                    "return Err(bebop::DeserializeError::MoreDataExpected(len - raw.len()));");
+                                    "return Err(::bebop::DeserializeError::MoreDataExpected(len - raw.len()));");
                             })
-                            .AppendLine("let mut i = bebop::LEN_SIZE + 1;");
+                            .AppendLine("let mut i = ::bebop::LEN_SIZE + 1;");
 
-                        builder.CodeBlock("let de = match raw[bebop::LEN_SIZE]", _tab, () =>
+                        builder.CodeBlock("let de = match raw[::bebop::LEN_SIZE]", _tab, () =>
                         {
                             foreach (var b in d.Branches.OrderBy((b) => b.Discriminator))
                             {
@@ -615,7 +620,7 @@ namespace Core.Generators.Rust
                             {
                                 builder
                                     .AppendLine("debug_assert!(i > len);")
-                                    .AppendLine("Err(bebop::DeserializeError::CorruptFrame)");
+                                    .AppendLine("Err(::bebop::DeserializeError::CorruptFrame)");
                             });
                         builder.CodeBlock("else", _tab, () =>
                         {
@@ -660,13 +665,13 @@ namespace Core.Generators.Rust
             var opcode = d.OpcodeAttribute?.Value;
             if (string.IsNullOrEmpty(opcode))
             {
-                builder.AppendLine($"impl<'raw> bebop::Record<'raw> for {name} {{}}");
+                builder.AppendLine($"impl<'raw> ::bebop::Record<'raw> for {name} {{}}");
             }
             else
             {
-                builder.CodeBlock($"impl<'raw> bebop::Record<'raw> for {name}", _tab, () =>
+                builder.CodeBlock($"impl<'raw> ::bebop::Record<'raw> for {name}", _tab, () =>
                 {
-                    builder.AppendLine($"const OPCODE: core::option::Option<u32> = Some({opcode});");
+                    builder.AppendLine($"const OPCODE: ::core::option::Option<u32> = Some({opcode});");
                 });
             }
         }
@@ -731,8 +736,8 @@ namespace Core.Generators.Rust
                             OwnershipType.Owned => "String",
                             _ => throw new ArgumentOutOfRangeException(nameof(ot))
                         },
-                        BaseType.Guid => "bebop::Guid",
-                        BaseType.Date => "bebop::Date",
+                        BaseType.Guid => "::bebop::Guid",
+                        BaseType.Date => "::bebop::Date",
                         _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                     };
                 case ArrayType at:
@@ -740,7 +745,7 @@ namespace Core.Generators.Rust
                     {
                         // TODO: expand this to make better use of the slice wrapper
                         var lifetime = ot is OwnershipType.Borrowed ? "'raw" : "'static";
-                        var wrappedSlice = $"bebop::SliceWrapper<{lifetime}, {TypeName(at.MemberType)}>";
+                        var wrappedSlice = $"::bebop::SliceWrapper<{lifetime}, {TypeName(at.MemberType)}>";
                         return mst.BaseType switch
                         {
                             BaseType.Bool => wrappedSlice,
@@ -753,19 +758,19 @@ namespace Core.Generators.Rust
                             BaseType.Int64 => wrappedSlice,
                             BaseType.Float32 => wrappedSlice,
                             BaseType.Float64 => wrappedSlice,
-                            BaseType.String => $"std::vec::Vec<{TypeName(at.MemberType)}>",
+                            BaseType.String => $"::std::vec::Vec<{TypeName(at.MemberType)}>",
                             // this one does not care what endian the system is
-                            BaseType.Guid => wrappedSlice, //$"&{lifetime} [bebop::Guid]",
+                            BaseType.Guid => wrappedSlice, //$"&{lifetime} [::bebop::Guid]",
                             BaseType.Date => wrappedSlice,
                             _ => throw new ArgumentOutOfRangeException(mst.BaseType.ToString())
                         };
                     }
                     else
                     {
-                        return $"std::vec::Vec<{TypeName(at.MemberType)}>";
+                        return $"::std::vec::Vec<{TypeName(at.MemberType)}>";
                     }
                 case MapType mt:
-                    return $"std::collections::HashMap<{TypeName(mt.KeyType)}, {TypeName(mt.ValueType)}>";
+                    return $"::std::collections::HashMap<{TypeName(mt.KeyType)}, {TypeName(mt.ValueType)}>";
                 case DefinedType dt:
                     return ot switch
                     {
@@ -847,7 +852,7 @@ namespace Core.Generators.Rust
         {
             var g = guid.ToString("N").ToCharArray();
             var builder = new StringBuilder();
-            builder.Append("bebop::Guid::from_be_bytes([");
+            builder.Append("::bebop::Guid::from_be_bytes([");
             for (var i = 0; i < g.Length; i += 2)
             {
                 builder.Append("0x")
