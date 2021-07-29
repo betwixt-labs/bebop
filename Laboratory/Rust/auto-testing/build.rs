@@ -11,17 +11,41 @@ const BEBOP_BIN: &str = "../../../bin/compiler/Windows-Debug/bebopc.exe";
 const BEBOP_BIN: &str = "../../../../bin/compiler/Linux-Debug/bebopc";
 
 fn main() {
-
-    let lib: String = process_schema_dir(SCHEMA_DIR)
-        .into_iter()
-        .map(|mut schema_name| {
-            schema_name.insert_str(0, "pub mod ");
-            schema_name.push(';');
-            schema_name.push('\n');
-            schema_name
+    println!("cargo:rerun-if-changed={}", BEBOP_BIN);
+    // clean all previously built files
+    fs::read_dir("src")
+        .unwrap()
+        .filter_map(|entry| {
+            let entry = entry.unwrap();
+            let name = entry.file_name().to_str().unwrap().to_string();
+            if entry.file_type().unwrap().is_file()
+                && name.starts_with("_")
+                && name.ends_with(".rs")
+            {
+                Some(name)
+            } else {
+                None
+            }
         })
-        .collect();
-    fs::write("./src/lib.rs", &lib).unwrap();
+        .for_each(|file| fs::remove_file(format!("src/{}", file)).unwrap());
+
+    // build all files and update lib.rs
+    let files = process_schema_dir(SCHEMA_DIR);
+
+    // update the lib file
+    fs::write(
+        "./src/lib.rs",
+        &files
+            .into_iter()
+            .map(|mut schema_name| {
+                schema_name.insert_str(0, "pub mod ");
+                schema_name.push(';');
+                schema_name.push('\n');
+                schema_name
+            })
+            .collect::<String>(),
+    )
+    .unwrap();
 }
 
 fn process_schema_dir(dir: impl AsRef<Path>) -> LinkedList<String> {
@@ -37,11 +61,19 @@ fn process_schema_dir(dir: impl AsRef<Path>) -> LinkedList<String> {
                 list.append(&mut process_schema_dir(path));
             }
         } else if file_type.is_file() {
-            let file_stem = dir_entry.path().file_stem().unwrap().to_str().unwrap().to_string();
+            let file_stem = dir_entry
+                .path()
+                .file_stem()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_string();
             let new_name = format!("_{}", file_stem);
+            let schema_path = path.to_str().unwrap();
+            println!("cargo:rerun-if-changed={}", schema_path);
             Command::new(BEBOP_BIN)
                 .arg("--files")
-                .arg(path.to_str().unwrap())
+                .arg(schema_path)
                 .arg("--rust")
                 .arg(format!("./src/{}.rs", &new_name))
                 .output()
