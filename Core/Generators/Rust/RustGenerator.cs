@@ -64,6 +64,7 @@ namespace Core.Generators.Rust
                 .AppendLine("#![allow(warnings)]")
                 .AppendLine()
                 .AppendLine("use std::io::Write as _;")
+                .AppendLine("use core::convert::TryInto as _;")
                 .AppendLine();
 
             // TODO: do we need to do something with the namespace? Probably not since the file is itself a module.
@@ -159,7 +160,7 @@ namespace Core.Generators.Rust
                     {
                         foreach (var m in d.Members)
                         {
-                            builder.AppendLine($"{name}::{m.Name} => {m.ConstantValue},");
+                            builder.AppendLine($"{name}::{MakeEnumVariantIdent(m.Name)} => {m.ConstantValue},");
                         }
                     });
                 });
@@ -169,7 +170,7 @@ namespace Core.Generators.Rust
             builder.CodeBlock($"impl<'raw> bebop::SubRecord<'raw> for {name}", _tab, () =>
             {
                 builder
-                    .AppendLine("const MIN_SERIALIZED_SIZE: usize = bebop::ENUM_SIZE")
+                    .AppendLine("const MIN_SERIALIZED_SIZE: usize = bebop::ENUM_SIZE;")
                     .AppendLine()
                     .AppendLine("#[inline]")
                     .CodeBlock("fn serialize<W: std::io::Write>(&self, dest: &mut W) -> bebop::SeResult<usize>", _tab,
@@ -179,7 +180,7 @@ namespace Core.Generators.Rust
                         })
                     .AppendLine()
                     .AppendLine("#[inline]")
-                    .CodeBlock("fn deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)>", _tab, () =>
+                    .CodeBlock("fn deserialize_chained(raw: &'raw [u8]) -> bebop::DeResult<(usize, Self)>", _tab, () =>
                     {
                         builder
                             .AppendLine("let (n, v) = u32::deserialize_chained(raw)?;")
@@ -188,7 +189,7 @@ namespace Core.Generators.Rust
             }).AppendLine();
 
             // record
-            builder.AppendLine($"impl<'raw> Record<'raw> for {name} {{}}");
+            builder.AppendLine($"impl<'raw> bebop::Record<'raw> for {name} {{}}");
         }
 
         private void WriteStructDefinition(IndentedStringBuilder builder, StructDefinition d)

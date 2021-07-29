@@ -5,7 +5,7 @@ use std::iter::FusedIterator;
 use std::ptr::slice_from_raw_parts;
 
 /// This allows us to either wrap an existing &[T] slice to serialize it OR to store a raw byte
-/// slice from an encoding and access it's potentially unaligned values.
+/// slice from an encoding and access its potentially unaligned values.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum SliceWrapper<'a, T> {
     Raw(&'a [u8]),
