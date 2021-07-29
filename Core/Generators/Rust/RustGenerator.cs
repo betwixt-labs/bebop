@@ -40,11 +40,10 @@ namespace Core.Generators.Rust
 
         private static readonly string[] _reservedWordsArray =
         {
-            "Self", "abstract", "as", "become", "box", "break", "const", "continue", "crate", "do", "else",
-            "enum", "extern", "false", "final", "fn", "for", "if", "impl", "in", "let", "loop", "macro", "match",
-            "mod", "move", "mut", "override", "priv", "pub", "ref", "return", "self", "static", "struct",
-            "super", "trait", "true", "try", "type", "typeof", "unsafe", "unsized", "use", "virtual", "where",
-            "while", "yield",
+            "Self", "abstract", "as", "become", "box", "break", "const", "continue", "crate", "do", "else", "enum",
+            "extern", "false", "final", "fn", "for", "if", "impl", "in", "let", "loop", "macro", "match", "mod",
+            "move", "mut", "override", "priv", "pub", "ref", "return", "self", "static", "struct", "super", "trait",
+            "true", "try", "type", "typeof", "unsafe", "unsized", "use", "virtual", "where", "while", "yield",
         };
 
         private static readonly HashSet<string> _reservedWords = RustGenerator._reservedWordsArray.ToHashSet();
@@ -173,7 +172,8 @@ namespace Core.Generators.Rust
                     .AppendLine("const MIN_SERIALIZED_SIZE: usize = ::bebop::ENUM_SIZE;")
                     .AppendLine()
                     .AppendLine("#[inline]")
-                    .CodeBlock("fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
+                    .CodeBlock(
+                        "fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
                         _tab,
                         () =>
                         {
@@ -236,7 +236,8 @@ namespace Core.Generators.Rust
                                 builder.CodeBlock("Ok(", _tab, () =>
                                 {
                                     builder.AppendLine(string.Join(" +\n",
-                                        d.Fields.Select((f) => $"self.{MakeAttrIdent(f.Name)}._serialize_chained(dest)?")));
+                                        d.Fields.Select(
+                                            (f) => $"self.{MakeAttrIdent(f.Name)}._serialize_chained(dest)?")));
                                 }, "", ")");
                             }
                         }).AppendLine();
@@ -316,7 +317,8 @@ namespace Core.Generators.Rust
                     // messages are size in bytes + null byte end
                     builder
                         .AppendLine("const MIN_SERIALIZED_SIZE: usize = ::bebop::LEN_SIZE + 1;")
-                        .CodeBlock("fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
+                        .CodeBlock(
+                            "fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
                             _tab, () =>
                             {
                                 WriteMessageSerialization(builder, d, "buf");
@@ -371,9 +373,14 @@ namespace Core.Generators.Rust
         private void WriteMessageDeserialization(IndentedStringBuilder builder, MessageDefinition d,
             bool externalIter = false, string selfClass = "Self", bool directReturn = false)
         {
+            if (!externalIter)
+            {
+                builder.AppendLine("let mut i = 0;");
+            }
             var plusI = externalIter ? " + i" : "";
             builder
-                .AppendLine($"let len = ::bebop::read_len(raw)?{plusI} + ::bebop::LEN_SIZE;")
+                .AppendLine($"let len = ::bebop::read_len(&raw[i..])?{plusI} + ::bebop::LEN_SIZE;")
+                .AppendLine($"i += ::bebop::LEN_SIZE;")
                 .AppendLine()
                 .AppendLine("#[cfg(not(feature = \"unchecked\"))]")
                 .CodeBlock("if len == 0", _tab, () =>
@@ -397,10 +404,6 @@ namespace Core.Generators.Rust
                 .AppendLine("#[cfg(not(feature = \"unchecked\"))]")
                 .AppendLine("let mut last = 0;")
                 .AppendLine();
-            if (!externalIter)
-            {
-                builder.AppendLine("let mut i = ::bebop::LEN_SIZE;");
-            }
 
             builder.CodeBlock("while i < len", _tab, () =>
             {
@@ -513,7 +516,8 @@ namespace Core.Generators.Rust
                     .AppendLine("const MIN_SERIALIZED_SIZE: usize = ::bebop::LEN_SIZE + 1;")
                     .AppendLine();
 
-                builder.CodeBlock("fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
+                builder.CodeBlock(
+                    "fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
                     _tab, () =>
                     {
                         builder.AppendLine("let mut buf = ::std::vec::Vec::new();");
@@ -523,6 +527,7 @@ namespace Core.Generators.Rust
                             {
                                 builder.AppendLine("return Err(::bebop::SerializeError::CannotSerializeUnknownUnion);");
                             });
+                            // matching against each possible union type
                             foreach (var b in d.Branches.OrderBy((b) => b.Discriminator))
                             {
                                 var branchName = MakeEnumVariantIdent(b.Definition.Name);
@@ -568,7 +573,8 @@ namespace Core.Generators.Rust
                         });
 
                         builder
-                            .AppendLine("::bebop::write_len(dest, buf.len());")
+                            // sub 1 from length since discriminator is not part of the body
+                            .AppendLine("::bebop::write_len(dest, buf.len() - 1);")
                             .AppendLine("dest.write_all(&buf)?;")
                             .AppendLine("Ok(buf.len() + ::bebop::LEN_SIZE)");
                     }).AppendLine();
@@ -577,7 +583,8 @@ namespace Core.Generators.Rust
                     () =>
                     {
                         builder
-                            .AppendLine("let len = ::bebop::read_len(&raw)? + ::bebop::LEN_SIZE;")
+                            // add 1 for discriminator
+                            .AppendLine("let len = ::bebop::read_len(&raw)? + ::bebop::LEN_SIZE + 1;")
                             .CodeBlock("if raw.len() < len", _tab, () =>
                             {
                                 builder.AppendLine(
@@ -587,6 +594,7 @@ namespace Core.Generators.Rust
 
                         builder.CodeBlock("let de = match raw[::bebop::LEN_SIZE]", _tab, () =>
                         {
+                            // matching against each possible union type
                             foreach (var b in d.Branches.OrderBy((b) => b.Discriminator))
                             {
                                 var branchName = MakeEnumVariantIdent(b.Definition.Name);
