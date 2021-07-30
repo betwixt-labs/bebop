@@ -1,5 +1,5 @@
 use crate::generated::jazz::*;
-use bebop::{Date, Guid, Record, SubRecord, ENUM_SIZE, LEN_SIZE};
+use bebop::{test_serialization, Date, Guid, Record, SubRecord, ENUM_SIZE, LEN_SIZE};
 
 fn song1() -> Song<'static> {
     Song {
@@ -51,72 +51,98 @@ fn instrument_values_correct() {
 }
 
 #[test]
+fn instrument_values_correct_when_serialized() {
+    let mut buf = Vec::new();
+    Instrument::Sax._serialize_chained(&mut buf).unwrap();
+    assert_eq!(buf[0..ENUM_SIZE], [0x00, 0x00, 0x00, 0x00]);
+    buf.clear();
+    Instrument::Trumpet._serialize_chained(&mut buf).unwrap();
+    assert_eq!(buf[0..ENUM_SIZE], [0x01, 0x00, 0x00, 0x00]);
+    buf.clear();
+    Instrument::Clarinet._serialize_chained(&mut buf).unwrap();
+    assert_eq!(buf[0..ENUM_SIZE], [0x02, 0x00, 0x00, 0x00]);
+    buf.clear();
+    Instrument::Piano._serialize_chained(&mut buf).unwrap();
+    assert_eq!(buf[0..ENUM_SIZE], [0x05, 0x00, 0x00, 0x00]);
+    buf.clear();
+}
+
+#[test]
 fn validate_memory_logic() {
     assert_eq!(std::mem::size_of::<Instrument>(), ENUM_SIZE);
 }
 
-#[test]
-fn serialization_of_instrument() {
-    let mut buf = Vec::new();
-    assert_eq!(
-        Instrument::Trumpet._serialize_chained(&mut buf).unwrap(),
-        ENUM_SIZE
-    );
-    assert_eq!(buf.len(), ENUM_SIZE);
-    assert_eq!(buf[0..ENUM_SIZE], [0x01, 0x00, 0x00, 0x00]);
-    let (read, instrument) = Instrument::_deserialize_chained(&buf).unwrap();
-    assert_eq!(read, ENUM_SIZE);
-    assert_eq!(instrument, Instrument::Trumpet);
-}
-
-#[test]
-fn serialization_of_performer() {
-    let mut buf = Vec::new();
-    let perf = Performer {
+test_serialization!(
+    serialization_of_instrument,
+    Instrument,
+    Instrument::Trumpet,
+    ENUM_SIZE
+);
+test_serialization!(
+    serialization_of_performer,
+    Performer,
+    Performer {
         name: "Charlie Parker",
         plays: Instrument::Sax,
-    };
-    const LEN: usize = LEN_SIZE + 14 + ENUM_SIZE;
-    assert_eq!(perf.serialize(&mut buf).unwrap(), LEN);
-    assert_eq!(buf.len(), LEN);
-
-    let de_perf = Performer::deserialize(&buf).unwrap();
-    assert_eq!(de_perf, perf);
-}
-
-#[test]
-fn serialization_of_song_all_fields() {
-    let mut buf = Vec::new();
-    let song = song1();
-    song.serialize(&mut buf).unwrap();
-    assert_eq!(
-        buf.len(),
-        LEN_SIZE * 5 + 4 + 18 + 2 + 15 + 15 + ENUM_SIZE * 2
-    );
-    let de_song = Song::deserialize(&buf).unwrap();
-    assert_eq!(de_song, song);
-}
-
-#[test]
-fn serialization_of_song_some_fields() {
-    let mut buf = Vec::new();
-    let song = song2();
-    song.serialize(&mut buf).unwrap();
-    assert_eq!(buf.len(), LEN_SIZE * 2 + 3 + 11 + 2);
-    let de_song = Song::deserialize(&buf).unwrap();
-    assert_eq!(de_song, song);
-}
-
-#[test]
-fn serialization_of_song_no_fields() {
-    let mut buf = Vec::new();
-    let song = Song::default();
-    song.serialize(&mut buf).unwrap();
-    assert_eq!(buf.len(), 5);
-    assert_eq!(buf[0..5], [0x01, 0x00, 0x00, 0x00, 0x00]);
-    let de_song = Song::deserialize(&buf).unwrap();
-    assert_eq!(de_song, song);
-}
+    },
+    LEN_SIZE + 14 + ENUM_SIZE
+);
+test_serialization!(
+    serialization_of_song_all_fields,
+    Song,
+    song1(),
+    LEN_SIZE * 5 + 4 + 18 + 2 + 15 + 15 + ENUM_SIZE * 2
+);
+test_serialization!(
+    serialization_of_song_some_fields,
+    Song,
+    song2(),
+    LEN_SIZE * 2 + 3 + 11 + 2
+);
+test_serialization!(
+    serialization_of_song_no_fields,
+    Song,
+    Song::default(),
+    5
+);
+test_serialization!(
+    serialization_of_studio_album,
+    Album,
+    Album::StudioAlbum {
+        tracks: vec![song1(), song2()],
+    },
+    115
+);
+test_serialization!(
+    serialization_of_live_album_all_fields,
+    Album,
+    Album::LiveAlbum {
+        tracks: Some(vec![song1(), song2()]),
+        venue_name: Some("Perdido"),
+        concert_date: Some(Date::from_secs(1627595855)),
+    },
+    142
+);
+test_serialization!(
+    serialization_of_live_album_some_fields,
+    Album,
+    Album::LiveAlbum {
+        tracks: None,
+        venue_name: Some("Perdido"),
+        concert_date: Some(Date::from_secs(1627595855)),
+    },
+    31
+);
+test_serialization!(
+    serialization_of_live_album_no_fields,
+    Album,
+    Album::LiveAlbum {
+        tracks: None,
+        venue_name: None,
+        concert_date: None,
+    },
+    10
+);
 
 #[test]
 fn deserialization_of_song_unknown_fields() {
@@ -132,57 +158,6 @@ fn deserialization_of_song_unknown_fields() {
             performers: None
         }
     );
-}
-
-#[test]
-fn serialization_of_studio_album() {
-    let mut buf = Vec::new();
-    let album = Album::StudioAlbum {
-        tracks: vec![song1(), song2()],
-    };
-    album.serialize(&mut buf).unwrap();
-    let de_album = Album::deserialize(&buf).unwrap();
-    assert_eq!(album, de_album);
-}
-
-#[test]
-fn serialization_of_live_album_all_fields() {
-    let mut buf = Vec::new();
-    let album = Album::LiveAlbum {
-        tracks: Some(vec![song1(), song2()]),
-        venue_name: Some("Perdido"),
-        concert_date: Some(Date::from_secs(1627595855)),
-    };
-    album.serialize(&mut buf).unwrap();
-    let de_album = Album::deserialize(&buf).unwrap();
-    // println!("{}", de_album.unwrap_err());
-    assert_eq!(album, de_album);
-}
-
-#[test]
-fn serialization_of_live_album_some_fields() {
-    let mut buf = Vec::new();
-    let album = Album::LiveAlbum {
-        tracks: None,
-        venue_name: Some("Perdido"),
-        concert_date: Some(Date::from_secs(1627595855)),
-    };
-    album.serialize(&mut buf).unwrap();
-    let de_album = Album::deserialize(&buf).unwrap();
-    assert_eq!(album, de_album);
-}
-
-#[test]
-fn serialization_of_live_album_no_fields() {
-    let mut buf = Vec::new();
-    let album = Album::LiveAlbum {
-        tracks: None,
-        venue_name: None,
-        concert_date: None,
-    };
-    album.serialize(&mut buf).unwrap();
-    let de_album = Album::deserialize(&buf).unwrap();
-    assert_eq!(album, de_album);
 }
 
 #[test]

@@ -8,6 +8,7 @@ pub use error::*;
 use crate::{Date, Guid, SliceWrapper};
 
 pub mod error;
+pub mod testing;
 
 pub type Len = u32;
 /// Size of length data
