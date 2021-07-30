@@ -129,12 +129,10 @@ fn file_stem(path: impl AsRef<Path>) -> String {
 }
 
 fn canonicalize(path: impl AsRef<Path>) -> PathBuf {
-    path.as_ref()
-        .canonicalize()
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .strip_prefix(r"\\?\")
-        .unwrap()
-        .into()
+    let p = path.as_ref().canonicalize().unwrap().to_str().unwrap().to_string();
+    if p.starts_with(r"\\?\") {
+        p.strip_prefix(r"\\?\").unwrap()
+    } else {
+        &p
+    }.into()
 }
