@@ -28,5 +28,5 @@ jobs:
         run: cargo check -p auto-testing
         working-directory: ./Laboratory/Rust
       - name: Generator Funcunality Tests
-        run: cargo test -p funcunality-testing
+        run: cargo test -p functionality-testing
         working-directory: ./Laboratory/Rust
