@@ -190,9 +190,6 @@ namespace Core.Generators.Rust
                                 .AppendLine("Ok((n, v.try_into()?))");
                         });
             }).AppendLine();
-
-            // record
-            // builder.AppendLine($"impl<'raw> ::bebop::Record<'raw> for {name} {{}}");
         }
 
         private void WriteStructDefinition(IndentedStringBuilder builder, StructDefinition d)
