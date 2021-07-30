@@ -1,0 +1,7 @@
+union U {
+  1 -> struct S { int32 x; }
+}
+
+struct O {
+  S y;
+}
