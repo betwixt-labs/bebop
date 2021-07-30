@@ -239,14 +239,13 @@ where
         }
         Ok((
             bytes,
-            if std::mem::size_of::<T>() == 1 {
+            if std::mem::align_of::<T>() == 1 {
                 SliceWrapper::from_cooked(&unsafe {
                     std::slice::from_raw_parts((&raw[LEN_SIZE..bytes]).as_ptr() as *const T, len)
                 })
             } else {
                 SliceWrapper::from_raw(&raw[LEN_SIZE..bytes])
             },
-            // TODO: we can also consider anything with correct alignment "cooked", need to be careful about packing though
         ))
     }
 }

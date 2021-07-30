@@ -63,6 +63,12 @@ where
     }
 }
 
+impl<'a, T> SliceWrapper<'a, T> {
+    pub fn is_raw(&self) -> bool {
+        matches!(self, SliceWrapper::Raw(_))
+    }
+}
+
 impl<'a, T> SliceWrapper<'a, T>
 where
     T: Sized,

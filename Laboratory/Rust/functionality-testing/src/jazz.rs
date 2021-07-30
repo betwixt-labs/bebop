@@ -51,6 +51,11 @@ fn instrument_values_correct() {
 }
 
 #[test]
+fn validate_memory_logic() {
+    assert_eq!(std::mem::size_of::<Instrument>(), ENUM_SIZE);
+}
+
+#[test]
 fn serialization_of_instrument() {
     let mut buf = Vec::new();
     assert_eq!(
