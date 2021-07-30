@@ -23,7 +23,7 @@ jobs:
       - name: Build Compiler
         run: |
           dotnet build Compiler
-          ln -s ./bin/compiler/Debug ./bin/compiler/Linux-Debug
+          mv bin/compiler/Debug bin/compiler/Linux-Debug
       - name: Generator Compiliation Tests
         run: cargo check -p auto-testing
         working-directory: ./Laboratory/Rust
