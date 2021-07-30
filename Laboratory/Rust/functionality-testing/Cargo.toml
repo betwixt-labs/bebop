@@ -7,3 +7,6 @@ edition = "2018"
 
 [dependencies]
 bebop = { path = "../../../Runtime/Rust" }
+
+[build-dependencies]
+bebop = { path = "../../../Runtime/Rust", features = ["cargo"] }

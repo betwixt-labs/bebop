@@ -12,3 +12,6 @@ edition = "2018"
 # where reasonable, skip decoding checks, this will cause random issues if invalid UTF8 is sent to
 # the program
 unchecked = []
+# Enable this feature to use in a buildscript. Prevents building all other code and includes code
+# for use in cargo build scripts.
+cargo = []
