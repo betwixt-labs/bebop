@@ -91,7 +91,6 @@ namespace Core.Generators.Rust
                         break;
                     default:
                         throw new InvalidOperationException($"unsupported definition {definition.GetType()}");
-                        break;
                 }
 
                 builder.AppendLine();

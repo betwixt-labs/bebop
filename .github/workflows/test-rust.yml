@@ -1,0 +1,30 @@
+name: Test Rust
+on:
+  push:
+    branches:
+      - master
+      - test-action-new-cli
+  pull_request:
+jobs:
+  test-typescript:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+      - name: Runtime Tests
+        run: cargo test
+        working-directory: ./Runtime/Rust
+      - uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '5.0.x' # SDK Version to use; x will use the latest version of the 5.0 channel
+      - name: Build Compiler
+        run: dotnet build Compiler
+      - name: Generator Compiliation Tests
+        run: cargo -p auto-testing check
+        working-directory: ./Laboratory/Rust
+      - name: Generator Funcunality Tests
+        run: cargo -p funcunality-testing test
+        working-directory: ./Laboratory/Rust
