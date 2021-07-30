@@ -23,8 +23,8 @@ jobs:
       - name: Build Compiler
         run: dotnet build Compiler
       - name: Generator Compiliation Tests
-        run: cargo -p auto-testing check
+        run: cargo check -p auto-testing
         working-directory: ./Laboratory/Rust
       - name: Generator Funcunality Tests
-        run: cargo -p funcunality-testing test
+        run: cargo test -p funcunality-testing
         working-directory: ./Laboratory/Rust
