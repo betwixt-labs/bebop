@@ -4,7 +4,7 @@ use std::path::PathBuf;
 #[cfg(windows)]
 const BEBOP_BIN: &str = "../../../bin/compiler/Windows-Debug/bebopc.exe";
 #[cfg(unix)]
-const BEBOP_BIN: &str = "../../../../bin/compiler/Linux-Debug/bebopc";
+const BEBOP_BIN: &str = "../../../bin/compiler/Linux-Debug/bebopc";
 
 fn main() {
     unsafe {
