@@ -81,13 +81,13 @@ impl Guid {
         // this is inefficient because of the unicode representation used by Rust but probably
         // fine for now
         for i in 0..16 {
-            if let Ok(v) = u8::from_str_radix(&s[i * 2..i * 2 + 1], 16) {
-                buf[i] = v
+            if let Ok(v) = u8::from_str_radix(&s[i * 2..i * 2 + 2], 16) {
+                buf[BYTE_MAP[i]] = v
             } else {
                 return Err(GUID_PARSE_ERR);
             }
         }
-        Ok(Self::from_be_bytes(buf))
+        Ok(Guid(buf))
     }
 
     #[inline]
@@ -99,22 +99,22 @@ impl Guid {
 
     pub const fn from_le_bytes(b: [u8; 16]) -> Self {
         Self([
-            b[BYTE_MAP[15]],
-            b[BYTE_MAP[14]],
-            b[BYTE_MAP[13]],
-            b[BYTE_MAP[12]],
-            b[BYTE_MAP[11]],
-            b[BYTE_MAP[10]],
-            b[BYTE_MAP[9]],
-            b[BYTE_MAP[8]],
-            b[BYTE_MAP[7]],
-            b[BYTE_MAP[6]],
-            b[BYTE_MAP[5]],
-            b[BYTE_MAP[4]],
-            b[BYTE_MAP[3]],
-            b[BYTE_MAP[2]],
-            b[BYTE_MAP[1]],
-            b[BYTE_MAP[0]],
+            b[15 - BYTE_MAP[0]],
+            b[15 - BYTE_MAP[1]],
+            b[15 - BYTE_MAP[2]],
+            b[15 - BYTE_MAP[3]],
+            b[15 - BYTE_MAP[4]],
+            b[15 - BYTE_MAP[5]],
+            b[15 - BYTE_MAP[6]],
+            b[15 - BYTE_MAP[7]],
+            b[15 - BYTE_MAP[8]],
+            b[15 - BYTE_MAP[9]],
+            b[15 - BYTE_MAP[10]],
+            b[15 - BYTE_MAP[11]],
+            b[15 - BYTE_MAP[12]],
+            b[15 - BYTE_MAP[13]],
+            b[15 - BYTE_MAP[14]],
+            b[15 - BYTE_MAP[15]],
         ])
     }
 
@@ -182,4 +182,67 @@ impl Guid {
             self.0[BYTE_MAP[15]],
         ]
     }
+}
+
+#[cfg(test)]
+const BYTES_BE: [u8; 16] = [
+    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+];
+#[cfg(test)]
+const BYTES_LE: [u8; 16] = [
+    0x0f, 0x0e, 0x0d, 0x0c, 0x0b, 0x0a, 0x09, 0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, 0x00,
+];
+#[cfg(test)]
+const BYTES_MS: [u8; 16] = [
+    0x03, 0x02, 0x01, 0x00, 0x05, 0x04, 0x07, 0x06, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+];
+#[cfg(test)]
+const BYTES_STR: &str = "00010203-0405-0607-0809-0a0b0c0d0e0f";
+#[cfg(test)]
+const BYTES_STR_NO_HYPH: &str = "000102030405060708090a0b0c0d0e0f";
+
+#[test]
+fn from_ms_bytes() {
+    assert_eq!(Guid::from_ms_bytes(&BYTES_MS).0, BYTES_MS);
+}
+
+#[test]
+fn to_ms_bytes() {
+    assert_eq!(Guid(BYTES_MS).to_ms_bytes(), BYTES_MS);
+}
+
+#[test]
+fn from_le_bytes() {
+    assert_eq!(Guid::from_le_bytes(BYTES_LE).0, BYTES_MS);
+}
+
+#[test]
+fn to_le_bytes() {
+    assert_eq!(Guid(BYTES_MS).to_le_bytes(), BYTES_LE);
+}
+
+#[test]
+fn from_be_bytes() {
+    assert_eq!(Guid::from_be_bytes(BYTES_BE).0, BYTES_MS);
+}
+
+#[test]
+fn to_be_bytes() {
+    assert_eq!(Guid(BYTES_MS).to_be_bytes(), BYTES_BE);
+}
+
+#[test]
+fn from_str() {
+    assert_eq!(Guid::from_str(BYTES_STR).unwrap().0, BYTES_MS);
+    assert_eq!(Guid::from_str(BYTES_STR_NO_HYPH).unwrap().0, BYTES_MS);
+    assert_eq!(Guid::from_str_with_hyphens(BYTES_STR).unwrap().0, BYTES_MS);
+    assert_eq!(
+        Guid::from_str_without_hyphens(BYTES_STR_NO_HYPH).unwrap().0,
+        BYTES_MS
+    );
+}
+
+#[test]
+fn to_str() {
+    assert_eq!(Guid(BYTES_MS).to_string(), BYTES_STR);
 }

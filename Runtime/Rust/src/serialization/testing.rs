@@ -11,7 +11,23 @@ macro_rules! test_serialization {
             buf.extend_from_slice(&[0x05, 0x01, 0x00, 0x00, 0x13, 0x42, 0x12]);
             let (read, deserialized) = <$type>::_deserialize_chained(&buf).unwrap();
             assert_eq!(read, $se_size);
-            assert_eq!(value, deserialized);
+            assert_eq!(deserialized, value);
         }
     };
+}
+
+/// Macro to define collections easily. Very useful when testing.
+/// Copied from https://stackoverflow.com/a/27582993/4404257
+#[macro_export]
+macro_rules! collection {
+    // map-like
+    ($($k:expr => $v:expr),* $(,)?) => {{
+        use std::iter::{Iterator, IntoIterator};
+        Iterator::collect(IntoIterator::into_iter([$(($k, $v),)*]))
+    }};
+    // set-like
+    ($($v:expr),* $(,)?) => {{
+        use std::iter::{Iterator, IntoIterator};
+        Iterator::collect(IntoIterator::into_iter([$($v,)*]))
+    }};
 }

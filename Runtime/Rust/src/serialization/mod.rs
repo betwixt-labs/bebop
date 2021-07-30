@@ -5,7 +5,7 @@ use std::io::Write;
 
 pub use error::*;
 
-use crate::{Date, Guid, SliceWrapper};
+use crate::{collection, test_serialization, Date, Guid, SliceWrapper};
 
 pub mod error;
 pub mod testing;
@@ -87,6 +87,9 @@ impl<'raw> SubRecord<'raw> for &'raw str {
     }
 }
 
+test_serialization!(serialization_str, &str, "some random string", 18 + LEN_SIZE);
+test_serialization!(serialization_str_empty, &str, "", LEN_SIZE);
+
 impl<'raw, T> SubRecord<'raw> for Vec<T>
 where
     T: SubRecord<'raw>,
@@ -114,6 +117,21 @@ where
         Ok((i, v))
     }
 }
+
+test_serialization!(
+    serialization_vec_str,
+    Vec<&str>,
+    vec!["abc", "def", "ghij"],
+    10 + LEN_SIZE * 4
+);
+test_serialization!(serialization_vec_empty_str, Vec<&str>, Vec::new(), LEN_SIZE);
+test_serialization!(
+    serialization_vec_i16,
+    Vec<i16>,
+    vec![1234, 123, 154, -194, -4234, 432],
+    12 + LEN_SIZE
+);
+test_serialization!(serialization_vec_empty_i16, Vec<i16>, Vec::new(), LEN_SIZE);
 
 impl<'raw, K, V> SubRecord<'raw> for HashMap<K, V>
 where
@@ -147,6 +165,13 @@ where
     }
 }
 
+test_serialization!(serialization_map_str_str, HashMap<&str, &str>, collection! { "k1" => "v1", "key2" => "value2" }, 14 + LEN_SIZE * 5);
+test_serialization!(serialization_map_i16_str, HashMap<i16, &str>, collection! { 123 => "abc", -13 => "def", 843 => "ghij" }, 16 + LEN_SIZE * 4);
+test_serialization!(serialization_map_str_i16, HashMap<&str, i16>, collection! { "abc" => 123, "def" => -13, "ghij" => 843 }, 16 + LEN_SIZE * 4);
+test_serialization!(serialization_map_i16_i16, HashMap<i16, i16>, collection! { 23 => 432, -543 => 53, -43 => -12 }, 12 + LEN_SIZE);
+test_serialization!(serialization_map_i16_i16_empty, HashMap<i16, i16>, HashMap::new(), LEN_SIZE);
+test_serialization!(serialization_map_str_str_empty, HashMap<&str, &str>, HashMap::new(), LEN_SIZE);
+
 impl<'raw> SubRecord<'raw> for Guid {
     const MIN_SERIALIZED_SIZE: usize = 16;
 
@@ -169,6 +194,16 @@ impl<'raw> SubRecord<'raw> for Guid {
     }
 }
 
+test_serialization!(
+    serialization_guid,
+    Guid,
+    Guid::from_be_bytes([
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e,
+        0x0f
+    ]),
+    16
+);
+
 impl<'raw> SubRecord<'raw> for Date {
     const MIN_SERIALIZED_SIZE: usize = 8;
 
@@ -183,6 +218,8 @@ impl<'raw> SubRecord<'raw> for Date {
         Ok((read, Date::from_ticks(date)))
     }
 }
+
+test_serialization!(serialization_date, Date, Date::from_ticks(23462356), 8);
 
 impl<'de> SubRecord<'de> for bool {
     const MIN_SERIALIZED_SIZE: usize = 1;
@@ -202,6 +239,9 @@ impl<'de> SubRecord<'de> for bool {
         }
     }
 }
+
+test_serialization!(serialization_bool_true, bool, true, 1);
+test_serialization!(serialization_bool_false, bool, false, 1);
 
 impl<'raw, T> SubRecord<'raw> for SliceWrapper<'raw, T>
 where
@@ -249,6 +289,29 @@ where
             },
         ))
     }
+}
+
+test_serialization!(
+    serialization_slicewrapper_u8_cooked,
+    SliceWrapper<u8>,
+    SliceWrapper::Cooked(&[1, 2, 3, 4, 5, 6]),
+    6 + LEN_SIZE
+);
+
+#[test]
+fn serialization_slicewrapper_i16_cooked() {
+    let mut buf = Vec::new();
+    const LEN: usize = 10 + LEN_SIZE;
+    let value: SliceWrapper<i16> = SliceWrapper::Cooked(&[12, 32, 543, 652, -23]);
+    assert_eq!(value._serialize_chained(&mut buf).unwrap(), LEN);
+    assert_eq!(buf.len(), LEN);
+    buf.extend_from_slice(&[0x05, 0x01, 0x00, 0x00, 0x13, 0x42, 0x12]);
+    let (read, deserialized) = <SliceWrapper<i16>>::_deserialize_chained(&buf).unwrap();
+    assert_eq!(read, LEN);
+    assert_eq!(
+        deserialized,
+        SliceWrapper::Raw(&[12, 0, 32, 0, 31, 2, 140, 2, 233, 255])
+    );
 }
 
 macro_rules! impl_record_for_num {
@@ -299,6 +362,14 @@ pub fn read_len(raw: &[u8]) -> DeResult<usize> {
     Ok(Len::_deserialize_chained(&raw)?.1 as usize)
 }
 
+#[test]
+fn read_len_test() {
+    let buf = [23, 51, 0, 0, 2, 5];
+    assert_eq!(read_len(&buf).unwrap(), 13079);
+    assert_eq!(read_len(&buf[1..]).unwrap(), 33554483);
+    assert_eq!(read_len(&buf[2..]).unwrap(), 84017152);
+}
+
 /// Write a 4-byte length value to the writer.
 ///
 /// This should only be called from within an auto-implemented deserialize function or for byte
@@ -311,4 +382,16 @@ pub fn write_len<W: Write>(dest: &mut W, len: usize) -> SeResult<()> {
         (len as u32)._serialize_chained(dest)?;
         Ok(())
     }
+}
+
+#[test]
+fn write_len_test() {
+    let mut buf = vec![0, 12, 4];
+    write_len(&mut buf, 0).unwrap();
+    write_len(&mut buf, 123).unwrap();
+    write_len(&mut buf, 87543).unwrap();
+    assert_eq!(buf.len(), 3 + LEN_SIZE * 3);
+    assert_eq!(buf[3..7], [0, 0, 0, 0]);
+    assert_eq!(buf[7..11], [123, 0, 0, 0]);
+    assert_eq!(buf[11..], [247, 85, 1, 0]);
 }
