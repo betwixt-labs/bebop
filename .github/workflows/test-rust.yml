@@ -6,7 +6,7 @@ on:
       - test-action-new-cli
   pull_request:
 jobs:
-  test-typescript:
+  test-rust:
     runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@v2
