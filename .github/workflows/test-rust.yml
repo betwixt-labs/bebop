@@ -21,7 +21,9 @@ jobs:
         with:
           dotnet-version: '5.0.x' # SDK Version to use; x will use the latest version of the 5.0 channel
       - name: Build Compiler
-        run: dotnet build Compiler
+        run: |
+          dotnet build Compiler
+          ln -s ./bin/compiler/Debug ./bin/compiler/Linux-Debug
       - name: Generator Compiliation Tests
         run: cargo check -p auto-testing
         working-directory: ./Laboratory/Rust

@@ -73,7 +73,7 @@ pub fn build_schema(schema: impl AsRef<Path>, destination: impl AsRef<Path>) {
         .arg("--rust")
         .arg(destination.to_str().unwrap())
         .output()
-        .unwrap();
+        .expect("Could not run bebopc");
     if !(output.status.success()) {
         println!(
             "cargo:warning=Failed to build schema {}",
