@@ -679,17 +679,16 @@ namespace Core.Generators.Rust
 
         private static void WriteRecordImpl(IndentedStringBuilder builder, string name, TopLevelDefinition d)
         {
-            var opcode = d.OpcodeAttribute?.Value;
-            if (string.IsNullOrEmpty(opcode))
-            {
-                builder.AppendLine($"impl<'raw> ::bebop::Record<'raw> for {name} {{}}");
-            }
-            else
+            if (d.OpcodeAttribute is {Value: not (null or "")})
             {
                 builder.CodeBlock($"impl<'raw> ::bebop::Record<'raw> for {name}", _tab, () =>
                 {
-                    builder.AppendLine($"const OPCODE: ::core::option::Option<u32> = Some({opcode});");
+                    builder.AppendLine($"const OPCODE: ::core::option::Option<u32> = Some({d.OpcodeAttribute.Value});");
                 });
+            }
+            else
+            {
+                builder.AppendLine($"impl<'raw> ::bebop::Record<'raw> for {name} {{}}");
             }
         }
 

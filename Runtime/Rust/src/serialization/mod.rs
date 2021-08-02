@@ -5,7 +5,11 @@ use std::io::Write;
 
 pub use error::*;
 
-use crate::{collection, test_serialization, Date, Guid, SliceWrapper};
+use crate::{test_serialization, Date, Guid, SliceWrapper};
+
+// not sure why but this is "unused"
+#[allow(unused_imports)]
+use crate::collection;
 
 pub mod error;
 pub mod testing;
