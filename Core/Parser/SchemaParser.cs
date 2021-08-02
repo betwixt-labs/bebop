@@ -20,8 +20,6 @@ namespace Core.Parser
 {
     public class SchemaParser
     {
-        private List<int> _currentScopeStartIndexes = new List<int>();
-        private List<int> _currentScopeEndIndexes = new List<int>();
         private List<List<Definition>> _scopes = new List<List<Definition>>();
         private readonly Tokenizer _tokenizer;
         private readonly Dictionary<string, Definition> _definitions = new Dictionary<string, Definition>();
