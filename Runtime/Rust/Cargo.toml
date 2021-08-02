@@ -2,6 +2,14 @@
 name = "bebop"
 version = "0.1.0"
 edition = "2018"
+description = "The Rust runtime for Bebop, a schema-based binary serialization format."
+readme = "../../README.md"
+license = "Apache-2.0"
+license-file = "../../LICENSE.TXT"
+keywords = ["binary", "encode", "decode", "serialization", "schema"]
+categories = ["encoding"]
+repository = "https://github.com/RainwayApp/bebop"
+homepage = "https://github.com/RainwayApp/bebop/wiki"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
