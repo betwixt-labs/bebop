@@ -48,7 +48,6 @@ namespace Core.Generators.Rust
 
         private static readonly HashSet<string> _reservedWords = RustGenerator._reservedWordsArray.ToHashSet();
         private Dictionary<string, bool> _needsLifetime = new Dictionary<string, bool>();
-        private Dictionary<string, bool> _isFixedSizeStruct = new Dictionary<string, bool>();
 
         #endregion
 
@@ -197,7 +196,7 @@ namespace Core.Generators.Rust
             var name = MakeDefIdent(d.Name) + (needsLifetime ? "<'raw>" : "");
 
             builder.Append("#[derive(Clone, Debug, PartialEq");
-            if (IsFixedSizeStruct(d))
+            if (d.IsFixedSize(Schema))
             {
                 // this will allow us access it in a raw buffer without copying it.
                 builder
@@ -786,7 +785,7 @@ namespace Core.Generators.Rust
                     else if (ot is OwnershipType.Borrowed or OwnershipType.Constant &&
                              at.MemberType is DefinedType mdt &&
                              ((Schema.Definitions[mdt.Name] is StructDefinition msd &&
-                               IsFixedSizeStruct(msd)) ||
+                               msd.IsFixedSize(Schema)) ||
                               (Schema.Definitions[mdt.Name] is EnumDefinition)))
                     {
                         // extra special case where we have an array of primitive-like structs
@@ -852,29 +851,6 @@ namespace Core.Generators.Rust
                 _ => throw new ArgumentOutOfRangeException(d.Name)
             };
             return _needsLifetime[d.Name];
-        }
-
-        private bool IsFixedSizeStruct(StructDefinition d)
-        {
-            if (_isFixedSizeStruct.ContainsKey(d.Name))
-            {
-                return _isFixedSizeStruct[d.Name];
-            }
-
-            var isPrimitive = d.Fields.All((f) =>
-                f.Type switch
-                {
-                    DefinedType dt => Schema.Definitions[dt.Name] switch
-                    {
-                        StructDefinition sd => IsFixedSizeStruct(sd),
-                        EnumDefinition ed => true,
-                        _ => false
-                    },
-                    ScalarType st => st.IsFixedScalar(),
-                    _ => false
-                });
-
-            return _isFixedSizeStruct[d.Name] = isPrimitive;
         }
 
         #endregion

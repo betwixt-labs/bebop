@@ -23,14 +23,17 @@ namespace Core.Meta
         /// The name of the current definition.
         /// </summary>
         public string Name { get; }
+
         /// <summary>
         ///     The span where the definition was found.
         /// </summary>
         public Span Span { get; }
+
         /// <summary>
         /// The inner text of a block comment that preceded the definition.
         /// </summary>
         public string Documentation { get; set; }
+
         /// <summary>
         /// The names of types this definition depends on / refers to.
         /// </summary>
@@ -43,7 +46,8 @@ namespace Core.Meta
     /// </summary>
     public abstract class TopLevelDefinition : Definition
     {
-        protected TopLevelDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute) : base(name, span, documentation)
+        protected TopLevelDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute) :
+            base(name, span, documentation)
         {
             OpcodeAttribute = opcodeAttribute;
         }
@@ -69,14 +73,16 @@ namespace Core.Meta
     /// </summary>
     public abstract class FieldsDefinition : TopLevelDefinition
     {
-        protected FieldsDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<IField> fields) : base(name, span, documentation, opcodeAttribute)
+        protected FieldsDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute,
+            ICollection<IField> fields) : base(name, span, documentation, opcodeAttribute)
         {
             Fields = fields;
         }
 
         public ICollection<IField> Fields { get; }
 
-        public override IEnumerable<string> Dependencies() => Fields.SelectMany(field => field.Type.Dependencies()).Distinct();
+        public override IEnumerable<string> Dependencies() =>
+            Fields.SelectMany(field => field.Type.Dependencies()).Distinct();
     }
 
     /// <summary>
@@ -86,7 +92,8 @@ namespace Core.Meta
     /// </summary>
     public class StructDefinition : FieldsDefinition
     {
-        public StructDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<IField> fields, bool isReadOnly) : base(name, span, documentation, opcodeAttribute, fields)
+        public StructDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute,
+            ICollection<IField> fields, bool isReadOnly) : base(name, span, documentation, opcodeAttribute, fields)
         {
             IsReadOnly = isReadOnly;
         }
@@ -101,6 +108,26 @@ namespace Core.Meta
             // The encoding of a struct consists of a straightforward concatenation of the encodings of its fields.
             return Fields.Sum(f => f.MinimalEncodedSize(schema));
         }
+
+        /// <summary>
+        /// Checks whether this struct is always going to serilize to the exact same size. This means it must only be
+        /// composed of primitives (non-strings), enums, and other fixed-sized structs at present.
+        /// </summary>
+        /// <param name="definitions">Other definitions of defined types in the schema that need to get referenced if
+        /// this struct contains any.</param>
+        public bool IsFixedSize(Dictionary<string, Definition> definitions) => Fields.All((f) =>
+            f.Type switch
+            {
+                DefinedType dt => definitions[dt.Name] switch
+                {
+                    StructDefinition sd => sd.IsFixedSize(definitions),
+                    EnumDefinition ed => true,
+                    _ => false
+                },
+                ScalarType st => st.IsFixedScalar(),
+                _ => false
+            });
+        public bool IsFixedSize(ISchema schema) => IsFixedSize(schema.Definitions);
     }
 
     /// <summary>
@@ -110,7 +137,8 @@ namespace Core.Meta
     /// </summary>
     public class MessageDefinition : FieldsDefinition
     {
-        public MessageDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<IField> fields) : base(name, span, documentation, opcodeAttribute, fields)
+        public MessageDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute,
+            ICollection<IField> fields) : base(name, span, documentation, opcodeAttribute, fields)
         {
         }
 
@@ -126,10 +154,12 @@ namespace Core.Meta
     /// </summary>
     public class EnumDefinition : Definition
     {
-        public EnumDefinition(string name, Span span, string documentation, ICollection<IField> members) : base(name, span, documentation)
+        public EnumDefinition(string name, Span span, string documentation, ICollection<IField> members) : base(name,
+            span, documentation)
         {
             Members = members;
         }
+
         public ICollection<IField> Members { get; }
 
         public override IEnumerable<string> Dependencies() => Enumerable.Empty<string>();
@@ -149,7 +179,8 @@ namespace Core.Meta
 
     public class UnionDefinition : TopLevelDefinition
     {
-        public UnionDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<UnionBranch> branches) : base(name, span, documentation, opcodeAttribute)
+        public UnionDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute,
+            ICollection<UnionBranch> branches) : base(name, span, documentation, opcodeAttribute)
         {
             Branches = branches;
         }
@@ -167,10 +198,12 @@ namespace Core.Meta
 
     public class ConstDefinition : Definition
     {
-        public ConstDefinition(string name, Span span, string documentation, Literal value) : base(name, span, documentation)
+        public ConstDefinition(string name, Span span, string documentation, Literal value) : base(name, span,
+            documentation)
         {
             Value = value;
         }
+
         public override IEnumerable<string> Dependencies() => Enumerable.Empty<string>();
 
         public Literal Value { get; }
