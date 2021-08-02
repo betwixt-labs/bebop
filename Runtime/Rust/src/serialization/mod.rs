@@ -55,15 +55,6 @@ pub trait SubRecord<'raw>: Sized {
     fn _deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)>;
 }
 
-pub trait Buildable {
-    type Builder: Default + From<Self::Builder>;
-
-    #[inline]
-    fn builder() -> Self::Builder {
-        Self::Builder::default()
-    }
-}
-
 impl<'raw> SubRecord<'raw> for &'raw str {
     const MIN_SERIALIZED_SIZE: usize = LEN_SIZE;
 
