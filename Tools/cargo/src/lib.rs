@@ -3,7 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// Configurable compiler path. By default assumes it is in PATH.
+/// Configurable compiler path. By default assumes it is in the bebobc directory.
 pub static mut COMPILER_PATH: Option<PathBuf> = None;
 pub static mut GENERATED_PREFIX: Option<String> = None;
 
@@ -59,11 +59,7 @@ pub fn build_schema_dir(source: impl AsRef<Path>, destination: impl AsRef<Path>)
 /// **WARNING: THIS OVERWRITES THE DESTINATION FILE.**
 pub fn build_schema(schema: impl AsRef<Path>, destination: impl AsRef<Path>) {
     let (schema, destination) = (schema.as_ref(), destination.as_ref());
-    let compiler_path: &Path = unsafe {
-        COMPILER_PATH
-            .as_deref()
-            .unwrap_or_else(|| Path::new("bebopc"))
-    };
+    let compiler_path = compiler_path();
     println!("cargo:rerun-if-changed={}", compiler_path.to_str().unwrap());
     println!("cargo:rerun-if-changed={}", schema.to_str().unwrap());
     println!("cargo:rerun-if-changed={}", destination.to_str().unwrap());
@@ -129,10 +125,32 @@ fn file_stem(path: impl AsRef<Path>) -> String {
 }
 
 fn canonicalize(path: impl AsRef<Path>) -> PathBuf {
-    let p = path.as_ref().canonicalize().unwrap().to_str().unwrap().to_string();
+    let p = path
+        .as_ref()
+        .canonicalize()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
     if p.starts_with(r"\\?\") {
         p.strip_prefix(r"\\?\").unwrap()
     } else {
         &p
-    }.into()
+    }
+    .into()
+}
+
+fn compiler_path() -> PathBuf {
+    (unsafe { COMPILER_PATH.clone() }).unwrap_or_else(|| {
+        canonicalize(if cfg!(target_os = "linux") {
+            "./bebopc/linux/bebopc"
+        } else if cfg!(target_os = "windows") {
+            "./bebopc/windows/bebopc.exe"
+        } else if cfg!(target_os = "macos") {
+            "./bebopc/macos/bebopc"
+        } else {
+            // assume it is in PATH
+            "bebopc"
+        })
+    })
 }

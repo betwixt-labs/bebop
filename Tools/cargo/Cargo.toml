@@ -1,19 +1,19 @@
 [package]
-name = "bebop"
+name = "bebop-tools"
 version = "0.1.0"
 edition = "2018"
-description = "The Rust runtime for Bebop, a schema-based binary serialization format."
+description = "Cargo buildscript tools for Bebop, a schema-based binary serialization format."
 readme = "../../README.md"
 license = "Apache-2.0"
 keywords = ["binary", "encode", "decode", "serialization", "schema"]
 categories = ["encoding"]
 repository = "https://github.com/RainwayApp/bebop"
 homepage = "https://github.com/RainwayApp/bebop/wiki"
+include = ["bebopc"]
+
+[lib]
 
 [dependencies]
 
-
-[features]
-# where reasonable, skip decoding checks, this will cause random issues if invalid UTF8 is sent to
-# the program
-unchecked = []
+[build-dependencies]
+fs_extra = "1.2.0"

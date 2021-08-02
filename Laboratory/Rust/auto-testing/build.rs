@@ -1,4 +1,4 @@
-use bebop::cargo as bebop;
+use bebop_tools as bebop;
 use std::path::PathBuf;
 
 #[cfg(windows)]
