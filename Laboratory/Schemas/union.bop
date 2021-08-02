@@ -9,10 +9,12 @@ union U {
      */
     2 -> struct B { bool c; }
     3 -> struct C { }
+    /* You can't do this, nested unions are not allowed.
     4 -> union W {
         1 -> struct D { string e; }
         2 -> struct X { bool z; }
     }
+    */
 }
 
 union WeirdOrder {

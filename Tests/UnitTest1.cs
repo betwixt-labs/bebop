@@ -39,9 +39,29 @@ namespace Tests
         [ExpectedException(typeof(InvalidUnionBranchException))]
         public async Task TestInvalidNestedUnions()
         {
-            var parser = BuildParser("ShouldFail/invalid_union_reference.bop");
+            var parser = BuildParser("ShouldFail/nested_union.bop");
             var schema = await parser.Parse();
             schema.Validate();
+        }
+
+        [TestMethod]
+        public async Task TestValidSchemas()
+        {
+            var files = Directory.GetFiles(_schemaDir, "*.bop");
+            foreach (var file in files)
+            {
+                try
+                {
+                    var parser = BuildParser(file);
+                    var schema = await parser.Parse();
+                    schema.Validate();
+                }
+                catch (Exception)
+                {
+                    Console.WriteLine($"Failed on schema: {file}.");
+                    throw;
+                }
+            }
         }
     }
 }

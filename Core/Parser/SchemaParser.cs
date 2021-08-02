@@ -246,6 +246,8 @@ namespace Core.Parser
                 // You're not allowed to reference types declared within a union from elsewhere
                 // Check if reference has a union in scope but definition does not have the same union in scope
                 // Throw ReferenceScopeException if so
+
+                // It might be better for this to go inside BebopSchema.Validate but it's much simpler if I can use the typeReferences map
                 if (referenceScope is not null && referenceScope.Find((parent) => parent is UnionDefinition) is UnionDefinition union)
                 {
                     if (definitionScope is null || !definitionScope.Contains(union))
