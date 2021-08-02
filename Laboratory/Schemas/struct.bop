@@ -1,4 +1,4 @@
-﻿struct BasicTypes {
+﻿struct BasicTypes2 {
     bool a_bool;
     byte a_byte;
     int16 a_int16;
@@ -14,7 +14,7 @@
     date a_date;
 }
 
-struct BasicArrays {
+struct BasicArrays2 {
     bool[] a_bool;
     byte[] a_byte;
     int16[] a_int16;
@@ -29,24 +29,24 @@ struct BasicArrays {
     guid[] a_guid;
 }
 
-readonly struct S { int32 x; int32 y; }
+readonly struct S2 { int32 x; int32 y; }
 
-struct SomeMaps {
+struct SomeMaps2 {
     map[bool, bool] m1;
     map[string, map[string, string]] m2;
-    map[int32, map[bool, S][]][] m3;
+    map[int32, map[bool, S2][]][] m3;
     array[map[string, array[float32]]] m4;
 }
 
-struct TestInt32Array { int32[] a; }
+struct TestInt32Array2 { int32[] a; }
 
-struct ArrayOfStrings {
+struct ArrayOfStrings2 {
     string[] strings;
 }
 
 struct StructOfStructs {
-    BasicTypes basicTypes;
-    BasicArrays basicArrays;
+    BasicTypes2 basicTypes;
+    BasicArrays2 basicArrays;
 }
 
 struct EmptyStruct {}

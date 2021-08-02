@@ -1,4 +1,5 @@
-﻿enum Instrument {
+﻿/** Use a different name to prevent conflicts with jazz.bop */
+enum OtherInstrument {
     Sax = 0;
     Trumpet = 1;
     Clarinet = 2;

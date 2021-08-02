@@ -1,4 +1,4 @@
-message InnerM { 1 -> int32 x; }
+message InnerM2 { 1 -> int32 x; }
 
 /**
  * This union is so documented!
@@ -11,7 +11,7 @@ union U {
      */
     2 -> struct B { bool c; }
     3 -> struct C { }
-    4 -> struct D { InnerM msg; }
+    4 -> struct D { InnerM2 msg; }
 }
 
 union WeirdOrder {
