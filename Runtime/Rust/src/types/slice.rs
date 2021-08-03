@@ -1,6 +1,6 @@
 use std::mem::size_of;
 
-use crate::{FixedSized, SubRecord};
+use crate::{FixedSized, SubRecord, LEN_SIZE};
 use std::iter::FusedIterator;
 use std::ptr::slice_from_raw_parts;
 
@@ -29,8 +29,9 @@ impl<'a, T> SliceWrapper<'a, T>
 where
     T: FixedSized,
 {
-    /// take in a little-endian array
-    pub(crate) fn from_raw(bytes: &'a [u8]) -> Self {
+    /// Take in a little-endian array. Most not include size bytes since the slice already has that
+    /// info.
+    pub fn from_raw(bytes: &'a [u8]) -> Self {
         assert_eq!(bytes.len() % size_of::<T>(), 0);
         Self::Raw(bytes)
     }
