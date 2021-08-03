@@ -198,7 +198,7 @@ namespace Compiler
         [CommandLineFlag("files", "Parse and generate code from a list of schemas", "--files [file1] [file2] ...")]
         public List<string>? SchemaFiles { get; private set; }
 
-        [CommandLineFlag("check", "Checks that the provided schema files are valid", "--check [file.bop] [file2.bop] ...", false, false)]
+        [CommandLineFlag("check", "Checks that the provided schema files are valid, or entire project defined by bebop.json if no files provided", "--check [file.bop] [file2.bop] ...", false, false)]
         public List<string>? CheckSchemaFiles { get; private set; }
 
         [CommandLineFlag("check-schema", "Reads a schema from stdin and validates it.", "--check-schema < [schema text]")]
