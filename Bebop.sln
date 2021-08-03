@@ -9,8 +9,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Compiler", "Compiler\Compil
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repl", "Repl\Repl.csproj", "{55D1BCCA-9580-4360-8691-959860F1DDDF}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tests", "Tests\Tests.csproj", "{3A8BEDA0-89AD-419D-A0A3-9252FD1AD6A5}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Linux-Debug|x64 = Linux-Debug|x64
@@ -44,19 +42,18 @@ Global
 		{A509F5AB-5702-49EC-9B7F-09E8F24FC542}.Windows-Debug|x64.Build.0 = Windows-Debug|x64
 		{A509F5AB-5702-49EC-9B7F-09E8F24FC542}.Windows-Release|x64.ActiveCfg = Windows-Release|x64
 		{A509F5AB-5702-49EC-9B7F-09E8F24FC542}.Windows-Release|x64.Build.0 = Windows-Release|x64
-		{55D1BCCA-9580-4360-8691-959860F1DDDF}.Linux-Debug|x64.ActiveCfg = Debug|x64
-		{55D1BCCA-9580-4360-8691-959860F1DDDF}.Linux-Release|x64.ActiveCfg = Release|x64
-		{55D1BCCA-9580-4360-8691-959860F1DDDF}.macOS-Debug|x64.ActiveCfg = Debug|x64
-		{55D1BCCA-9580-4360-8691-959860F1DDDF}.macOS-Release|x64.ActiveCfg = Release|x64
-		{55D1BCCA-9580-4360-8691-959860F1DDDF}.Windows-Debug|x64.ActiveCfg = Debug|x64
-		{55D1BCCA-9580-4360-8691-959860F1DDDF}.Windows-Release|x64.ActiveCfg = Release|x64
-		{3A8BEDA0-89AD-419D-A0A3-9252FD1AD6A5}.Linux-Debug|x64.ActiveCfg = Debug|x64
-		{3A8BEDA0-89AD-419D-A0A3-9252FD1AD6A5}.Linux-Release|x64.ActiveCfg = Release|x64
-		{3A8BEDA0-89AD-419D-A0A3-9252FD1AD6A5}.macOS-Debug|x64.ActiveCfg = Debug|x64
-		{3A8BEDA0-89AD-419D-A0A3-9252FD1AD6A5}.macOS-Release|x64.ActiveCfg = Release|x64
-		{3A8BEDA0-89AD-419D-A0A3-9252FD1AD6A5}.Windows-Debug|x64.ActiveCfg = Debug|x64
-		{3A8BEDA0-89AD-419D-A0A3-9252FD1AD6A5}.Windows-Debug|x64.Build.0 = Debug|x64
-		{3A8BEDA0-89AD-419D-A0A3-9252FD1AD6A5}.Windows-Release|x64.ActiveCfg = Release|x64
+		{55D1BCCA-9580-4360-8691-959860F1DDDF}.Linux-Debug|x64.ActiveCfg = Debug|Any CPU
+		{55D1BCCA-9580-4360-8691-959860F1DDDF}.Linux-Debug|x64.Build.0 = Debug|Any CPU
+		{55D1BCCA-9580-4360-8691-959860F1DDDF}.Linux-Release|x64.ActiveCfg = Release|Any CPU
+		{55D1BCCA-9580-4360-8691-959860F1DDDF}.Linux-Release|x64.Build.0 = Release|Any CPU
+		{55D1BCCA-9580-4360-8691-959860F1DDDF}.macOS-Debug|x64.ActiveCfg = Debug|Any CPU
+		{55D1BCCA-9580-4360-8691-959860F1DDDF}.macOS-Debug|x64.Build.0 = Debug|Any CPU
+		{55D1BCCA-9580-4360-8691-959860F1DDDF}.macOS-Release|x64.ActiveCfg = Release|Any CPU
+		{55D1BCCA-9580-4360-8691-959860F1DDDF}.macOS-Release|x64.Build.0 = Release|Any CPU
+		{55D1BCCA-9580-4360-8691-959860F1DDDF}.Windows-Debug|x64.ActiveCfg = Debug|Any CPU
+		{55D1BCCA-9580-4360-8691-959860F1DDDF}.Windows-Debug|x64.Build.0 = Debug|Any CPU
+		{55D1BCCA-9580-4360-8691-959860F1DDDF}.Windows-Release|x64.ActiveCfg = Release|Any CPU
+		{55D1BCCA-9580-4360-8691-959860F1DDDF}.Windows-Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
