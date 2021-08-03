@@ -271,3 +271,5 @@ __pycache__/
 Tools/C#/.nuget
 Laboratory/C#/Benchmarks/BenchmarkDotNet.Artifacts
 Core/Meta/VersionInfo.cs
+
+.DS_Store
