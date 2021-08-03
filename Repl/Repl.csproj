@@ -3,19 +3,19 @@
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
     <LangVersion>9.0</LangVersion>
-    <Platforms>x64</Platforms>
+    <Platforms>AnyCPU</Platforms>
     <OutputPath>../bin/repl/$(Configuration)</OutputPath>
     <NativeOutputPath>../bin/repl/$(Configuration)/native/</NativeOutputPath>
     <PublishDir>../bin/repl/$(Configuration)/publish</PublishDir>
     <BlazorCacheBootResources>false</BlazorCacheBootResources>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <PlatformTarget>AnyCPU</PlatformTarget>
     <Optimize>false</Optimize>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <PlatformTarget>AnyCPU</PlatformTarget>
     <Optimize>true</Optimize>
     <BlazorWebAssemblyEnableLinking>true</BlazorWebAssemblyEnableLinking>
