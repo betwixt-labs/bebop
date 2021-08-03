@@ -12,7 +12,7 @@ namespace Tests
     [TestClass]
     public class CoreTests
     {
-        private readonly string _schemaDir = Path.GetFullPath("../../../../Laboratory/Schemas");
+        private readonly string _schemaDir = Path.GetFullPath("../../../../../Laboratory/Schemas");
         
 
         private SchemaParser BuildParser(string path)
