@@ -194,9 +194,10 @@ namespace Core.Generators.Rust
         {
             var needsLifetime = NeedsLifetime(d);
             var name = MakeDefIdent(d.Name) + (needsLifetime ? "<'raw>" : "");
+            var isFixedSize = d.IsFixedSize(Schema);
 
             builder.Append("#[derive(Clone, Debug, PartialEq");
-            if (d.IsFixedSize(Schema))
+            if (isFixedSize)
             {
                 // this will allow us access it in a raw buffer without copying it.
                 builder
@@ -211,6 +212,13 @@ namespace Core.Generators.Rust
             builder
                 .CodeBlock($"pub struct {name}", _tab, () => WriteStructDefinitionAttrs(builder, d))
                 .AppendLine();
+            
+            if (isFixedSize)
+            {
+                builder
+                    .AppendLine($"impl ::bebop::FixedSized for {name} {{}}")
+                    .AppendLine();
+            }
 
             builder
                 .CodeBlock($"impl<'raw> ::bebop::SubRecord<'raw> for {name}", _tab, () =>
@@ -679,7 +687,7 @@ namespace Core.Generators.Rust
 
         private static void WriteRecordImpl(IndentedStringBuilder builder, string name, TopLevelDefinition d)
         {
-            if (d.OpcodeAttribute is {Value: not (null or "")})
+            if (d.OpcodeAttribute is { Value: not (null or "") })
             {
                 builder.CodeBlock($"impl<'raw> ::bebop::Record<'raw> for {name}", _tab, () =>
                 {
@@ -861,9 +869,9 @@ namespace Core.Generators.Rust
             {
                 BoolLiteral bl => bl.Value ? "true" : "false",
                 IntegerLiteral il => il.Value,
-                FloatLiteral {Value: "inf"} => $"{TypeName(literal.Type)}::INFINITY",
-                FloatLiteral {Value: "-inf"} => $"{TypeName(literal.Type)}::NEG_INFINITY",
-                FloatLiteral {Value: "nan"} => $"{TypeName(literal.Type)}::NAN",
+                FloatLiteral { Value: "inf" } => $"{TypeName(literal.Type)}::INFINITY",
+                FloatLiteral { Value: "-inf" } => $"{TypeName(literal.Type)}::NEG_INFINITY",
+                FloatLiteral { Value: "nan" } => $"{TypeName(literal.Type)}::NAN",
                 FloatLiteral fl => fl.Value.Contains('.') ? fl.Value : fl.Value + '.',
                 StringLiteral sl => MakeStringLiteral(sl.Value),
                 GuidLiteral gl => MakeGuidLiteral(gl.Value),

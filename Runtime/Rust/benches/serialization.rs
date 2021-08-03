@@ -1,5 +1,5 @@
 use bebop::{SliceWrapper, SubRecord, LEN_SIZE};
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{black_box, criterion_group, Criterion};
 use std::collections::HashMap;
 use std::io::{self, Write};
 
@@ -152,9 +152,6 @@ fn slice_wrappers(c: &mut Criterion) {
     });
 }
 
-criterion_group!(serialization, strings, vecs, maps, slice_wrappers);
-criterion_main!(serialization);
-
 const SMALL_STR: &str = "Hello World!";
 const LONG_STR: &str = r#"
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus non consectetur massa.
@@ -193,3 +190,5 @@ risus, ac congue neque blandit vel. Maecenas sit amet turpis ac sapien accumsan 
 quam. Maecenas mollis interdum scelerisque. Fusce eget lorem eu lacus feugiat condimentum vitae ut
 nibh.
 "#;
+
+criterion_group!(benches, strings, vecs, maps, slice_wrappers);

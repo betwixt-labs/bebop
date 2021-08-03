@@ -1,6 +1,6 @@
 use std::mem::size_of;
 
-use crate::SubRecord;
+use crate::{FixedSized, SubRecord};
 use std::iter::FusedIterator;
 use std::ptr::slice_from_raw_parts;
 
@@ -9,13 +9,14 @@ use std::ptr::slice_from_raw_parts;
 ///
 /// **Warning:** Creating Raw arrays manually may lead to undefined behavior, use `from_raw`.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum SliceWrapper<'a, T> {
+pub enum SliceWrapper<'a, T: FixedSized> {
     Raw(&'a [u8]),
     Cooked(&'a [T]),
 }
 
 impl<'a, T, A> From<A> for SliceWrapper<'a, T>
 where
+    T: FixedSized,
     A: AsRef<&'a [T]>,
 {
     #[inline]
@@ -24,7 +25,10 @@ where
     }
 }
 
-impl<'a, T> SliceWrapper<'a, T> {
+impl<'a, T> SliceWrapper<'a, T>
+where
+    T: FixedSized,
+{
     /// take in a little-endian array
     pub(crate) fn from_raw(bytes: &'a [u8]) -> Self {
         assert_eq!(bytes.len() % size_of::<T>(), 0);
@@ -38,7 +42,7 @@ impl<'a, T> SliceWrapper<'a, T> {
 
 impl<'a, T> SliceWrapper<'a, T>
 where
-    T: Sized + Copy + SubRecord<'a>,
+    T: FixedSized + SubRecord<'a>,
 {
     /// Retrieve a value at a given index
     pub fn get(&self, i: usize) -> Option<T> {
@@ -65,7 +69,10 @@ where
     }
 }
 
-impl<'a, T> SliceWrapper<'a, T> {
+impl<'a, T> SliceWrapper<'a, T>
+where
+    T: FixedSized,
+{
     pub fn is_raw(&self) -> bool {
         matches!(self, SliceWrapper::Raw(_))
     }
@@ -73,7 +80,7 @@ impl<'a, T> SliceWrapper<'a, T> {
 
 impl<'a, T> SliceWrapper<'a, T>
 where
-    T: Sized,
+    T: FixedSized,
 {
     /// Retrieve the number of items
     pub fn len(&self) -> usize {
@@ -101,7 +108,7 @@ where
 
 impl<'a, T> IntoIterator for SliceWrapper<'a, T>
 where
-    T: Sized + Copy + SubRecord<'a>,
+    T: FixedSized + SubRecord<'a>,
 {
     type Item = T;
     type IntoIter = Iter<'a, T>;
@@ -112,11 +119,11 @@ where
     }
 }
 
-pub struct Iter<'a, T>(SliceWrapper<'a, T>, usize);
+pub struct Iter<'a, T: FixedSized>(SliceWrapper<'a, T>, usize);
 
 impl<'a, T> Iterator for Iter<'a, T>
 where
-    T: Sized + Copy + SubRecord<'a>,
+    T: FixedSized + SubRecord<'a>,
 {
     type Item = T;
 
@@ -127,10 +134,10 @@ where
     }
 }
 
-impl<'a, T> FusedIterator for Iter<'a, T> where T: Sized + Copy + SubRecord<'a> {}
+impl<'a, T> FusedIterator for Iter<'a, T> where T: FixedSized + SubRecord<'a> {}
 impl<'a, T> ExactSizeIterator for Iter<'a, T>
 where
-    T: Sized + Copy + SubRecord<'a>,
+    T: FixedSized + SubRecord<'a>,
 {
     fn len(&self) -> usize {
         debug_assert!(self.1 <= self.0.len());
@@ -140,7 +147,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{DeResult, SeResult, SliceWrapper, SubRecord};
+    use crate::{DeResult, FixedSized, SeResult, SliceWrapper, SubRecord};
     use std::convert::TryInto;
     use std::io::Write;
 
@@ -150,6 +157,8 @@ mod test {
         a: u8,
         b: u64,
     }
+
+    impl FixedSized for Fixed {}
 
     fn cooked_array() -> &'static [Fixed] {
         &[

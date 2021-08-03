@@ -4,6 +4,7 @@ use std::hash::Hash;
 use std::io::Write;
 
 pub use error::*;
+pub use fixed_sized::*;
 
 use crate::{test_serialization, Date, Guid, SliceWrapper};
 
@@ -12,6 +13,7 @@ use crate::{test_serialization, Date, Guid, SliceWrapper};
 use crate::collection;
 
 pub mod error;
+pub mod fixed_sized;
 pub mod testing;
 
 pub type Len = u32;
@@ -137,7 +139,9 @@ test_serialization!(
 test_serialization!(
     serialization_vec_layered,
     Vec<Vec<Vec<i64>>>,
-    (0..4).map(|_| (0..4).map(|i| (0..16).collect()).collect()).collect(),
+    (0..4)
+        .map(|_| (0..4).map(|i| (0..16).collect()).collect())
+        .collect(),
     8 * 4 * 4 * 16 + LEN_SIZE + LEN_SIZE * 4 + LEN_SIZE * 4 * 4
 );
 test_serialization!(serialization_vec_empty_str, Vec<&str>, Vec::new(), LEN_SIZE);
@@ -261,7 +265,7 @@ test_serialization!(serialization_bool_false, bool, false, 1);
 
 impl<'raw, T> SubRecord<'raw> for SliceWrapper<'raw, T>
 where
-    T: Sized + Copy + SubRecord<'raw>,
+    T: FixedSized + SubRecord<'raw>,
 {
     const MIN_SERIALIZED_SIZE: usize = LEN_SIZE;
 
