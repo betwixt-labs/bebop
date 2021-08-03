@@ -11,7 +11,7 @@ repository = "https://github.com/RainwayApp/bebop"
 homepage = "https://github.com/RainwayApp/bebop/wiki"
 
 [[bench]]
-name = "serialization"
+name = "main"
 harness = false
 
 [dependencies]
