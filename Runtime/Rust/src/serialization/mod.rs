@@ -82,7 +82,22 @@ impl<'raw> SubRecord<'raw> for &'raw str {
     }
 }
 
+impl<'raw> SubRecord<'raw> for String {
+    const MIN_SERIALIZED_SIZE: usize = <&str>::MIN_SERIALIZED_SIZE;
+
+    #[inline]
+    fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+        self.as_str()._serialize_chained(dest)
+    }
+
+    #[inline]
+    fn _deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
+        <&str>::_deserialize_chained(raw).map(|(c, s)| (c, s.to_owned()))
+    }
+}
+
 test_serialization!(serialization_str, &str, "some random string", 18 + LEN_SIZE);
+test_serialization!(serialization_str_long, &str, "some random string that is a bit longer because I had seem some errors that seemed exclusive to longer string values.", 117 + LEN_SIZE);
 test_serialization!(serialization_str_empty, &str, "", LEN_SIZE);
 
 impl<'raw, T> SubRecord<'raw> for Vec<T>
@@ -118,6 +133,12 @@ test_serialization!(
     Vec<&str>,
     vec!["abc", "def", "ghij"],
     10 + LEN_SIZE * 4
+);
+test_serialization!(
+    serialization_vec_layered,
+    Vec<Vec<Vec<i64>>>,
+    (0..4).map(|_| (0..4).map(|i| (0..16).collect()).collect()).collect(),
+    8 * 4 * 4 * 16 + LEN_SIZE + LEN_SIZE * 4 + LEN_SIZE * 4 * 4
 );
 test_serialization!(serialization_vec_empty_str, Vec<&str>, Vec::new(), LEN_SIZE);
 test_serialization!(

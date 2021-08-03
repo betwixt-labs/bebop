@@ -10,8 +10,14 @@ categories = ["encoding"]
 repository = "https://github.com/RainwayApp/bebop"
 homepage = "https://github.com/RainwayApp/bebop/wiki"
 
+[[bench]]
+name = "serialization"
+harness = false
+
 [dependencies]
 
+[dev-dependencies]
+criterion = "0.3"
 
 [features]
 # where reasonable, skip decoding checks, this will cause random issues if invalid UTF8 is sent to
