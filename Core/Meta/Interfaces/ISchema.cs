@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Core.Exceptions;
 
 namespace Core.Meta.Interfaces
 {
@@ -18,7 +19,7 @@ namespace Core.Meta.Interfaces
         /// <summary>
         /// Validates that the schema is made up of well-formed values.
         /// </summary>
-        public void Validate();
+        public List<SpanException> Validate();
         /// <summary>
         /// A topologically sorted list of definitions.
         /// </summary>
