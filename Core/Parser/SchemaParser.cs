@@ -20,16 +20,50 @@ namespace Core.Parser
 {
     public class SchemaParser
     {
+        private readonly Stack<List<Definition>> _scopes = new();
         private readonly Tokenizer _tokenizer;
-        private readonly Dictionary<string, Definition> _definitions = new Dictionary<string, Definition>();
+        private readonly Dictionary<string, Definition> _definitions = new();
         /// <summary>
         /// A set of references to named types found in message/struct definitions:
         /// the left token is the type name, and the right token is the definition it's used in (used to report a helpful error).
         /// </summary>
-        private readonly HashSet<(Token, Token)> _typeReferences = new HashSet<(Token, Token)>();
+        private readonly HashSet<(Token, Token)> _typeReferences = new();
         private int _index;
         private readonly string _nameSpace;
         private List<Token> _tokens => _tokenizer.Tokens;
+
+        /// <summary>
+        /// Add a definition to the current scope and the primary definitions map.
+        /// </summary>
+        /// <param name="name">Definition name.</param>
+        /// <param name="definition"></param>
+        private void AddDefinition(string name, Definition definition)
+        {
+            _definitions.Add(name, definition);
+            if (_scopes.Count > 0)
+            {
+                _scopes.Peek().Add(definition);
+            }
+        }
+
+        /// <summary>
+        /// Open a scope. All definitions added from this point will be added to the scope.
+        /// </summary>
+        private void StartScope() => _scopes.Push(new List<Definition>());
+
+        /// <summary>
+        /// Close the current scope, setting the parent of every enclosed definition to the provided Definition and adding the Definition at the end, in the next scope down.
+        /// </summary>
+        /// <param name="parent">Definition to take ownership of all enclosed definitions and push to the enclosing scope.</param>
+        private void CloseScope(string name, Definition parent)
+        {
+            var scope = _scopes.Pop();
+            foreach (var definition in scope)
+            {
+                definition.Parent = parent;
+            }
+            AddDefinition(name, parent);
+        }
 
         /// <summary>
         /// Creates a new schema parser instance from some schema files on disk.
@@ -207,7 +241,44 @@ namespace Core.Parser
                 {
                     throw new UnrecognizedTypeException(typeToken, definitionToken.Lexeme);
                 }
+                var reference = _definitions[typeToken.Lexeme];
+                var referenceScope = reference.Scope;
+                var definition = _definitions[definitionToken.Lexeme];
+                var definitionScope = definition.Scope;
+                // You're not allowed to reference types declared within a union from elsewhere
+                // Check if reference has a union in scope but definition does not have the same union in scope
+                // Throw ReferenceScopeException if so
+
+                // It might be better for this to go inside BebopSchema.Validate but it's much simpler if I can use the typeReferences map
+                if (referenceScope.Find((parent) => parent is UnionDefinition) is UnionDefinition union)
+                {
+                    if (!definitionScope.Contains(union))
+                    {
+                        throw new ReferenceScopeException(definition, reference, "union");
+                    }
+                }
             }
+            // I'm gonna keep this for now because I might need it later once I move the checking over to BebopSchema.Validate
+            // Maybe not if I bring over the type reference set, but I haven't decided yet
+            /*
+            foreach (var definition in _definitions.Values)
+            {
+                var scope = definition.Scope;
+                var dependencies = definition.Dependencies();
+
+                
+                foreach (var dependency in dependencies)
+                {
+                    var depScope = _definitions[dependency].Scope;
+                    if (depScope is not null && depScope.Find((parent) => parent is UnionDefinition) is UnionDefinition union) {
+                        if (scope is null || !scope.Contains(union))
+                        {
+                            throw new ReferenceScopeException(definition, _definitions[dependency], "union");
+                        }
+                    }
+                }
+                
+            }*/
             return new BebopSchema(_nameSpace, _definitions);
         }
 
@@ -255,7 +326,7 @@ namespace Core.Parser
             {
                throw new DuplicateConstDefinitionException(definition);
             }
-            _definitions.Add(name, definition);
+            AddDefinition(name, definition);
             return definition;
         }
 
@@ -367,6 +438,7 @@ namespace Core.Parser
             string definitionDocumentation,
             BaseAttribute? opcodeAttribute)
         {
+            StartScope();
             var fields = new List<IField>();
             var kindName = kind switch { AggregateKind.Enum => "enum", AggregateKind.Struct => "struct", _ => "message" };
             var aKindName = kind switch { AggregateKind.Enum => "an enum", AggregateKind.Struct => "a struct", _ => "a message" };
@@ -464,7 +536,7 @@ namespace Core.Parser
             {
                 throw new MultipleDefinitionsException(definition);
             }
-            _definitions.Add(name, definition);
+            CloseScope(name, definition);
             return definition;
         }
 
@@ -479,6 +551,7 @@ namespace Core.Parser
             string definitionDocumentation,
             BaseAttribute? opcodeAttribute)
         {
+            StartScope();
             var name = definitionToken.Lexeme;
             var branches = new List<UnionBranch>();
             var usedDiscriminators = new HashSet<uint>();
@@ -516,7 +589,7 @@ namespace Core.Parser
                 Expect(TokenKind.Hyphen, hint: indexHint);
                 Expect(TokenKind.CloseCaret, hint: indexHint);
                 var definition = ParseDefinition();
-                if (definition is not TopLevelDefinition td)
+                if (definition is not TopLevelDefinition td || definition is UnionDefinition)
                 {
                     throw new InvalidUnionBranchException(definition);
                 }
@@ -531,7 +604,7 @@ namespace Core.Parser
             }
             var definitionSpan = definitionToken.Span.Combine(definitionEnd);
             var unionDefinition = new UnionDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, branches);
-            _definitions.Add(name, unionDefinition);
+            CloseScope(name, unionDefinition);
             if (unionDefinition.Branches.Count == 0)
             {
                 throw new EmptyUnionException(unionDefinition);
