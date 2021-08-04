@@ -19,12 +19,12 @@ message Song {
     repeated Performer performers = 3;
 }
 
-message Library {
-    map<string, Song> songs = 1;
-}
-
 message Album {
     repeated Song tracks = 1;
     string venumeName = 2;
     uint64 concertDate = 3;
+}
+
+message Library {
+    map<string, Album> albums = 1;
 }

@@ -29,5 +29,5 @@ union Album {
 }
 
 struct Library {
-    map[string, Song] songs;
+    map[string, Album] albums;
 }

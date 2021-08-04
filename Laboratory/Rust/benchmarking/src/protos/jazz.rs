@@ -457,160 +457,6 @@ impl ::protobuf::reflect::ProtobufValue for Song {
 }
 
 #[derive(PartialEq,Clone,Default)]
-pub struct Library {
-    // message fields
-    pub songs: ::std::collections::HashMap<::std::string::String, Song>,
-    // special fields
-    pub unknown_fields: ::protobuf::UnknownFields,
-    pub cached_size: ::protobuf::CachedSize,
-}
-
-impl<'a> ::std::default::Default for &'a Library {
-    fn default() -> &'a Library {
-        <Library as ::protobuf::Message>::default_instance()
-    }
-}
-
-impl Library {
-    pub fn new() -> Library {
-        ::std::default::Default::default()
-    }
-
-    // repeated .Library.songs_MapEntry songs = 1;
-
-
-    pub fn get_songs(&self) -> &::std::collections::HashMap<::std::string::String, Song> {
-        &self.songs
-    }
-    pub fn clear_songs(&mut self) {
-        self.songs.clear();
-    }
-
-    // Param is passed by value, moved
-    pub fn set_songs(&mut self, v: ::std::collections::HashMap<::std::string::String, Song>) {
-        self.songs = v;
-    }
-
-    // Mutable pointer to the field.
-    pub fn mut_songs(&mut self) -> &mut ::std::collections::HashMap<::std::string::String, Song> {
-        &mut self.songs
-    }
-
-    // Take field
-    pub fn take_songs(&mut self) -> ::std::collections::HashMap<::std::string::String, Song> {
-        ::std::mem::replace(&mut self.songs, ::std::collections::HashMap::new())
-    }
-}
-
-impl ::protobuf::Message for Library {
-    fn is_initialized(&self) -> bool {
-        true
-    }
-
-    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::ProtobufResult<()> {
-        while !is.eof()? {
-            let (field_number, wire_type) = is.read_tag_unpack()?;
-            match field_number {
-                1 => {
-                    ::protobuf::rt::read_map_into::<::protobuf::types::ProtobufTypeString, ::protobuf::types::ProtobufTypeMessage<Song>>(wire_type, is, &mut self.songs)?;
-                },
-                _ => {
-                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
-                },
-            };
-        }
-        ::std::result::Result::Ok(())
-    }
-
-    // Compute sizes of nested messages
-    #[allow(unused_variables)]
-    fn compute_size(&self) -> u32 {
-        let mut my_size = 0;
-        my_size += ::protobuf::rt::compute_map_size::<::protobuf::types::ProtobufTypeString, ::protobuf::types::ProtobufTypeMessage<Song>>(1, &self.songs);
-        my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
-        self.cached_size.set(my_size);
-        my_size
-    }
-
-    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
-        ::protobuf::rt::write_map_with_cached_sizes::<::protobuf::types::ProtobufTypeString, ::protobuf::types::ProtobufTypeMessage<Song>>(1, &self.songs, os)?;
-        os.write_unknown_fields(self.get_unknown_fields())?;
-        ::std::result::Result::Ok(())
-    }
-
-    fn get_cached_size(&self) -> u32 {
-        self.cached_size.get()
-    }
-
-    fn get_unknown_fields(&self) -> &::protobuf::UnknownFields {
-        &self.unknown_fields
-    }
-
-    fn mut_unknown_fields(&mut self) -> &mut ::protobuf::UnknownFields {
-        &mut self.unknown_fields
-    }
-
-    fn as_any(&self) -> &dyn (::std::any::Any) {
-        self as &dyn (::std::any::Any)
-    }
-    fn as_any_mut(&mut self) -> &mut dyn (::std::any::Any) {
-        self as &mut dyn (::std::any::Any)
-    }
-    fn into_any(self: ::std::boxed::Box<Self>) -> ::std::boxed::Box<dyn (::std::any::Any)> {
-        self
-    }
-
-    fn descriptor(&self) -> &'static ::protobuf::reflect::MessageDescriptor {
-        Self::descriptor_static()
-    }
-
-    fn new() -> Library {
-        Library::new()
-    }
-
-    fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
-        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
-        descriptor.get(|| {
-            let mut fields = ::std::vec::Vec::new();
-            fields.push(::protobuf::reflect::accessor::make_map_accessor::<_, ::protobuf::types::ProtobufTypeString, ::protobuf::types::ProtobufTypeMessage<Song>>(
-                "songs",
-                |m: &Library| { &m.songs },
-                |m: &mut Library| { &mut m.songs },
-            ));
-            ::protobuf::reflect::MessageDescriptor::new_pb_name::<Library>(
-                "Library",
-                fields,
-                file_descriptor_proto()
-            )
-        })
-    }
-
-    fn default_instance() -> &'static Library {
-        static instance: ::protobuf::rt::LazyV2<Library> = ::protobuf::rt::LazyV2::INIT;
-        instance.get(Library::new)
-    }
-}
-
-impl ::protobuf::Clear for Library {
-    fn clear(&mut self) {
-        self.songs.clear();
-        self.unknown_fields.clear();
-    }
-}
-
-impl ::std::fmt::Debug for Library {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-        ::protobuf::text_format::fmt(self, f)
-    }
-}
-
-impl ::protobuf::reflect::ProtobufValue for Library {
-    fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
-        ::protobuf::reflect::ReflectValueRef::Message(self)
-    }
-}
-
-#[derive(PartialEq,Clone,Default)]
 pub struct Album {
     // message fields
     pub tracks: ::protobuf::RepeatedField<Song>,
@@ -853,6 +699,160 @@ impl ::protobuf::reflect::ProtobufValue for Album {
     }
 }
 
+#[derive(PartialEq,Clone,Default)]
+pub struct Library {
+    // message fields
+    pub albums: ::std::collections::HashMap<::std::string::String, Album>,
+    // special fields
+    pub unknown_fields: ::protobuf::UnknownFields,
+    pub cached_size: ::protobuf::CachedSize,
+}
+
+impl<'a> ::std::default::Default for &'a Library {
+    fn default() -> &'a Library {
+        <Library as ::protobuf::Message>::default_instance()
+    }
+}
+
+impl Library {
+    pub fn new() -> Library {
+        ::std::default::Default::default()
+    }
+
+    // repeated .Library.albums_MapEntry albums = 1;
+
+
+    pub fn get_albums(&self) -> &::std::collections::HashMap<::std::string::String, Album> {
+        &self.albums
+    }
+    pub fn clear_albums(&mut self) {
+        self.albums.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_albums(&mut self, v: ::std::collections::HashMap<::std::string::String, Album>) {
+        self.albums = v;
+    }
+
+    // Mutable pointer to the field.
+    pub fn mut_albums(&mut self) -> &mut ::std::collections::HashMap<::std::string::String, Album> {
+        &mut self.albums
+    }
+
+    // Take field
+    pub fn take_albums(&mut self) -> ::std::collections::HashMap<::std::string::String, Album> {
+        ::std::mem::replace(&mut self.albums, ::std::collections::HashMap::new())
+    }
+}
+
+impl ::protobuf::Message for Library {
+    fn is_initialized(&self) -> bool {
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        while !is.eof()? {
+            let (field_number, wire_type) = is.read_tag_unpack()?;
+            match field_number {
+                1 => {
+                    ::protobuf::rt::read_map_into::<::protobuf::types::ProtobufTypeString, ::protobuf::types::ProtobufTypeMessage<Album>>(wire_type, is, &mut self.albums)?;
+                },
+                _ => {
+                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u32 {
+        let mut my_size = 0;
+        my_size += ::protobuf::rt::compute_map_size::<::protobuf::types::ProtobufTypeString, ::protobuf::types::ProtobufTypeMessage<Album>>(1, &self.albums);
+        my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
+        self.cached_size.set(my_size);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        ::protobuf::rt::write_map_with_cached_sizes::<::protobuf::types::ProtobufTypeString, ::protobuf::types::ProtobufTypeMessage<Album>>(1, &self.albums, os)?;
+        os.write_unknown_fields(self.get_unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn get_cached_size(&self) -> u32 {
+        self.cached_size.get()
+    }
+
+    fn get_unknown_fields(&self) -> &::protobuf::UnknownFields {
+        &self.unknown_fields
+    }
+
+    fn mut_unknown_fields(&mut self) -> &mut ::protobuf::UnknownFields {
+        &mut self.unknown_fields
+    }
+
+    fn as_any(&self) -> &dyn (::std::any::Any) {
+        self as &dyn (::std::any::Any)
+    }
+    fn as_any_mut(&mut self) -> &mut dyn (::std::any::Any) {
+        self as &mut dyn (::std::any::Any)
+    }
+    fn into_any(self: ::std::boxed::Box<Self>) -> ::std::boxed::Box<dyn (::std::any::Any)> {
+        self
+    }
+
+    fn descriptor(&self) -> &'static ::protobuf::reflect::MessageDescriptor {
+        Self::descriptor_static()
+    }
+
+    fn new() -> Library {
+        Library::new()
+    }
+
+    fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        descriptor.get(|| {
+            let mut fields = ::std::vec::Vec::new();
+            fields.push(::protobuf::reflect::accessor::make_map_accessor::<_, ::protobuf::types::ProtobufTypeString, ::protobuf::types::ProtobufTypeMessage<Album>>(
+                "albums",
+                |m: &Library| { &m.albums },
+                |m: &mut Library| { &mut m.albums },
+            ));
+            ::protobuf::reflect::MessageDescriptor::new_pb_name::<Library>(
+                "Library",
+                fields,
+                file_descriptor_proto()
+            )
+        })
+    }
+
+    fn default_instance() -> &'static Library {
+        static instance: ::protobuf::rt::LazyV2<Library> = ::protobuf::rt::LazyV2::INIT;
+        instance.get(Library::new)
+    }
+}
+
+impl ::protobuf::Clear for Library {
+    fn clear(&mut self) {
+        self.albums.clear();
+        self.unknown_fields.clear();
+    }
+}
+
+impl ::std::fmt::Debug for Library {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for Library {
+    fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
+        ::protobuf::reflect::ReflectValueRef::Message(self)
+    }
+}
+
 #[derive(Clone,PartialEq,Eq,Debug,Hash)]
 pub enum Instrument {
     Sax = 0,
@@ -917,16 +917,16 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     nameB\0\x12#\n\x05plays\x18\x02\x20\x01(\x0e2\x0b.InstrumentR\x05playsB\
     \0:\0\"d\n\x04Song\x12\x16\n\x05title\x18\x01\x20\x01(\tR\x05titleB\0\
     \x12\x14\n\x04year\x18\x02\x20\x01(\rR\x04yearB\0\x12,\n\nperformers\x18\
-    \x03\x20\x03(\x0b2\n.PerformerR\nperformersB\0:\0\"}\n\x07Library\x12/\n\
-    \x05songs\x18\x01\x20\x03(\x0b2\x17.Library.songs_MapEntryR\x05songsB\0\
-    \x1a?\n\x0esongs_MapEntry\x12\x0e\n\x03key\x18\x01(\tR\x03key\x12\x19\n\
-    \x05value\x18\x02(\x0b2\x05.SongR\x05value:\x028\x01:\0\"p\n\x05Album\
-    \x12\x1f\n\x06tracks\x18\x01\x20\x03(\x0b2\x05.SongR\x06tracksB\0\x12\
-    \x20\n\nvenumeName\x18\x02\x20\x01(\tR\nvenumeNameB\0\x12\"\n\x0bconcert\
-    Date\x18\x03\x20\x01(\x04R\x0bconcertDateB\0:\0*H\n\nInstrument\x12\x07\
-    \n\x03Sax\x10\0\x12\x0b\n\x07Trumpet\x10\x01\x12\x0c\n\x08Clarinet\x10\
-    \x02\x12\t\n\x05Piano\x10\x03\x12\t\n\x05Cello\x10\x04\x1a\0B\0b\x06prot\
-    o3\
+    \x03\x20\x03(\x0b2\n.PerformerR\nperformersB\0:\0\"p\n\x05Album\x12\x1f\
+    \n\x06tracks\x18\x01\x20\x03(\x0b2\x05.SongR\x06tracksB\0\x12\x20\n\nven\
+    umeName\x18\x02\x20\x01(\tR\nvenumeNameB\0\x12\"\n\x0bconcertDate\x18\
+    \x03\x20\x01(\x04R\x0bconcertDateB\0:\0\"\x82\x01\n\x07Library\x122\n\
+    \x06albums\x18\x01\x20\x03(\x0b2\x18.Library.albums_MapEntryR\x06albumsB\
+    \0\x1aA\n\x0falbums_MapEntry\x12\x0e\n\x03key\x18\x01(\tR\x03key\x12\x1a\
+    \n\x05value\x18\x02(\x0b2\x06.AlbumR\x05value:\x028\x01:\0*H\n\nInstrume\
+    nt\x12\x07\n\x03Sax\x10\0\x12\x0b\n\x07Trumpet\x10\x01\x12\x0c\n\x08Clar\
+    inet\x10\x02\x12\t\n\x05Piano\x10\x03\x12\t\n\x05Cello\x10\x04\x1a\0B\0b\
+    \x06proto3\
 ";
 
 static file_descriptor_proto_lazy: ::protobuf::rt::LazyV2<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::rt::LazyV2::INIT;

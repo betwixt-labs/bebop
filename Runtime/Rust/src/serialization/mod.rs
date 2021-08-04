@@ -191,6 +191,7 @@ test_serialization!(serialization_map_str_i16, HashMap<&str, i16>, collection! {
 test_serialization!(serialization_map_i16_i16, HashMap<i16, i16>, collection! { 23 => 432, -543 => 53, -43 => -12 }, 12 + LEN_SIZE);
 test_serialization!(serialization_map_i16_i16_empty, HashMap<i16, i16>, HashMap::new(), LEN_SIZE);
 test_serialization!(serialization_map_str_str_empty, HashMap<&str, &str>, HashMap::new(), LEN_SIZE);
+test_serialization!(serialization_map_str_vec_empty_vec, HashMap<&str, Vec<i32>>, collection! {"abc" => vec![]}, LEN_SIZE * 3 + 3);
 
 impl<'raw> SubRecord<'raw> for Guid {
     const MIN_SERIALIZED_SIZE: usize = 16;

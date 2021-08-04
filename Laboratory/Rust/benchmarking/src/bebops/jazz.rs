@@ -568,16 +568,16 @@ impl<'raw> ::bebop::Record<'raw> for Album<'raw> {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Library<'raw> {
-    pub songs: ::std::collections::HashMap<&'raw str, Song<'raw>>,
+    pub albums: ::std::collections::HashMap<&'raw str, Album<'raw>>,
 }
 
 impl<'raw> ::bebop::SubRecord<'raw> for Library<'raw> {
     const MIN_SERIALIZED_SIZE: usize =
-        <::std::collections::HashMap<&'raw str, Song<'raw>>>::MIN_SERIALIZED_SIZE;
+        <::std::collections::HashMap<&'raw str, Album<'raw>>>::MIN_SERIALIZED_SIZE;
 
     fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
         Ok(
-            self.songs._serialize_chained(dest)?
+            self.albums._serialize_chained(dest)?
         )
     }
 
@@ -588,11 +588,11 @@ impl<'raw> ::bebop::SubRecord<'raw> for Library<'raw> {
             return Err(::bebop::DeserializeError::MoreDataExpected(missing));
         }
 
-        let (read, v0) = <::std::collections::HashMap<&'raw str, Song<'raw>>>::_deserialize_chained(&raw[i..])?;
+        let (read, v0) = <::std::collections::HashMap<&'raw str, Album<'raw>>>::_deserialize_chained(&raw[i..])?;
         i += read;
 
         Ok((i, Self {
-            songs: v0,
+            albums: v0,
         }))
     }
 }

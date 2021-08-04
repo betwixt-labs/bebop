@@ -29,3 +29,7 @@ union Album {
         3 -> date concertDate;
     }
 }
+
+struct Library {
+    map[string, Album] albums;
+}

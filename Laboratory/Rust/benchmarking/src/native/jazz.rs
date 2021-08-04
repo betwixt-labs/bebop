@@ -104,40 +104,8 @@ impl From<Song> for pr::Song {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct Library {
-    pub songs: HashMap<String, Song>,
-}
-
-impl<'a> From<&'a Library> for bb::Library<'a> {
-    #[inline]
-    fn from(v: &'a Library) -> Self {
-        Self {
-            songs: v
-                .songs
-                .iter()
-                .map(|(name, song)| (name.as_str(), song.into()))
-                .collect(),
-        }
-    }
-}
-
-impl From<Library> for pr::Library {
-    #[inline]
-    fn from(v: Library) -> Self {
-        let mut s = Self::new();
-        s.set_songs(
-            v.songs
-                .into_iter()
-                .map(|(name, song)| (name, song.into()))
-                .collect(),
-        );
-        s
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone)]
 pub enum Album {
-    StdioAlbum {
+    StudioAlbum {
         tracks: Vec<Song>,
     },
     LiveAlbum {
@@ -150,7 +118,7 @@ pub enum Album {
 impl<'a> From<&'a Album> for bb::Album<'a> {
     fn from(v: &'a Album) -> Self {
         match v {
-            Album::StdioAlbum { tracks } => Self::StudioAlbum {
+            Album::StudioAlbum { tracks } => Self::StudioAlbum {
                 tracks: tracks.iter().map(Into::into).collect(),
             },
             Album::LiveAlbum {
@@ -170,7 +138,7 @@ impl From<Album> for pr::Album {
     fn from(v: Album) -> Self {
         let mut s = Self::new();
         match v {
-            Album::StdioAlbum { tracks } => {
+            Album::StudioAlbum { tracks } => {
                 s.set_tracks(tracks.into_iter().map(Into::into).collect())
             }
             Album::LiveAlbum {
@@ -189,6 +157,38 @@ impl From<Album> for pr::Album {
                 }
             }
         }
+        s
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Library {
+    pub albums: HashMap<String, Album>,
+}
+
+impl<'a> From<&'a Library> for bb::Library<'a> {
+    #[inline]
+    fn from(v: &'a Library) -> Self {
+        Self {
+            albums: v
+                .albums
+                .iter()
+                .map(|(name, album)| (name.as_str(), album.into()))
+                .collect(),
+        }
+    }
+}
+
+impl From<Library> for pr::Library {
+    #[inline]
+    fn from(v: Library) -> Self {
+        let mut s = Self::new();
+        s.set_albums(
+            v.albums
+                .into_iter()
+                .map(|(name, album)| (name, album.into()))
+                .collect(),
+        );
         s
     }
 }

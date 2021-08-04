@@ -1,5 +1,5 @@
 use crate::generated::jazz::*;
-use bebop::{test_serialization, Date, Guid, Record, SubRecord, ENUM_SIZE, LEN_SIZE};
+use bebop::{test_serialization, collection, Date, Guid, Record, SubRecord, ENUM_SIZE, LEN_SIZE};
 
 fn song1() -> Song<'static> {
     Song {
@@ -114,6 +114,14 @@ test_serialization!(
     115
 );
 test_serialization!(
+    serialization_of_studio_album_empty_array,
+    Album,
+    Album::StudioAlbum {
+        tracks: vec![]
+    },
+    LEN_SIZE * 2 + 1
+);
+test_serialization!(
     serialization_of_live_album_all_fields,
     Album,
     Album::LiveAlbum {
@@ -142,6 +150,27 @@ test_serialization!(
         concert_date: None,
     },
     10
+);
+test_serialization!(
+    serialization_of_empty_library,
+    Library,
+    Library {
+        albums: collection! {}
+    },
+    LEN_SIZE
+);
+test_serialization!(
+    serialization_of_library_studio_album_empty,
+    Library,
+    Library {
+        albums: collection! {
+            "Milestones" => Album::StudioAlbum {
+                tracks: vec![]
+            }
+        }
+    },
+    // map, vec, string, and union have size
+    LEN_SIZE * 4 + 10 + 1
 );
 
 #[test]
