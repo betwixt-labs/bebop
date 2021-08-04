@@ -7,6 +7,10 @@ edition = "2018"
 name = "main"
 harness = false
 
+[[example]]
+name = "flamegraph"
+required-features = ["pprof"]
+
 [profile.bench]
 lto = true
 codegen-units = 1
@@ -16,8 +20,7 @@ codegen-units = 1
 bebop = { path = "../../../Runtime/Rust" }
 protobuf = "2.24.1"
 serde = { version = "1.0.127", features = ["derive"] }
-
-[dev-dependencies]
+pprof = { version = "0.5", features = ["criterion", "flamegraph"], optional = true}
 criterion = "0.3"
 serde_json = "1.0.66"
 rmp-serde = "0.15.5"

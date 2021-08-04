@@ -7,120 +7,6 @@ use benchmarking::*;
 use native::jazz as na;
 use protos::jazz as pr;
 
-fn make_library() -> na::Library {
-    // to whomever is reading this, yes, I was very lazy in pulling details from wikipedia.
-    na::Library {
-        albums: collection! {
-            "Giant Steps".into() => na::Album::StudioAlbum {
-                tracks: vec![
-                    na::Song {
-                        title: Some("Giant Steps".into()),
-                        year: Some(1959),
-                        performers: Some(vec![
-                            na::Performer {
-                                name: "John Coltrane".into(),
-                                plays: na::Instrument::Piano
-                            }
-                        ])
-                    },
-                    na::Song {
-                        title: Some("A Night in Tunisia".into()),
-                        year: Some(1942),
-                        performers: Some(vec![
-                            na::Performer {
-                                name: "Dizzy Gillespie".into(),
-                                plays: na::Instrument::Trumpet,
-                            },
-                            na::Performer {
-                                name: "Frank Paparelli".into(),
-                                plays: na::Instrument::Piano,
-                            },
-                            na::Performer {
-                                name: "Count Basie".into(),
-                                plays: na::Instrument::Piano,
-                            },
-                        ])
-                    },
-                    na::Song {
-                        title: Some("Groovin' High".into()),
-                        year: None,
-                        performers: None
-                    },
-                ]
-            },
-            "Adam's Apple".into() => na::Album::LiveAlbum {
-                venue_name: Some("Tunisia".into()),
-                concert_date: Some(1978),
-                tracks: None
-            },
-            "Milestones".into() => na::Album::StudioAlbum {
-                tracks: vec![]
-            },
-            "Blue Train".into() => na::Album::LiveAlbum {
-                venue_name: Some("Cape Verdean".into()),
-                concert_date: None,
-                tracks: Some(vec![
-                    na::Song {
-                        title: Some("'Round Midnight".into()),
-                        year: Some(1986),
-                        performers: Some(vec![
-                            na::Performer {
-                                name: "Freddie Hubbard".into(),
-                                plays: na::Instrument::Trumpet,
-                            },
-                            na::Performer {
-                                name: "Ron Carter".into(),
-                                plays: na::Instrument::Cello,
-                            },
-                        ])
-                    },
-                    na::Song {
-                        title: Some("Bounding with Bud".into()),
-                        year: Some(1946),
-                        performers: None
-                    },
-                ])
-            },
-            "Brilliant Corners".into() => na::Album::StudioAlbum {
-                tracks: vec![
-                    na::Song {
-                        title: Some("Song for My Father".into()),
-                        year: Some(1965),
-                        performers: Some(vec![
-                            na::Performer {
-                                name: "Horace Silver".into(),
-                                plays: na::Instrument::Piano,
-                            },
-                            na::Performer {
-                                name: "Carmell Jones".into(),
-                                plays: na::Instrument::Trumpet,
-                            },
-                            na::Performer {
-                                name: "Joe Henderson".into(),
-                                plays: na::Instrument::Sax,
-                            },
-                            na::Performer {
-                                name: "Teddy Smith".into(),
-                                plays: na::Instrument::Cello,
-                            },
-                        ])
-                    },
-                    na::Song {
-                        title: Some("Yardbird Suite".into()),
-                        year: Some(1946),
-                        performers: Some(vec![
-                            na::Performer {
-                                name: "Charlie Parker".into(),
-                                plays: na::Instrument::Sax,
-                            }
-                        ])
-                    }
-                ]
-            }
-        },
-    }
-}
-
 const ALLOC_SIZE: usize = 1024 * 1024 * 4;
 
 fn library(c: &mut Criterion) {
@@ -133,7 +19,7 @@ fn library(c: &mut Criterion) {
     // });
     //
     // don't penalize the others for the initial allocation
-    let native_struct = make_library();
+    let native_struct = na::make_library();
     // structuring_group.bench_function("Bebop", |b| {
     //     b.iter(|| {
     //         bb::Library::from(black_box(&native_struct));

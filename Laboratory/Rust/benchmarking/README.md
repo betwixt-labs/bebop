@@ -40,3 +40,17 @@ possible.
    store it as an application-specific structure.
 
 ## Results
+
+## Running the Tests
+
+Main benchmarks can be run from this directory with
+```shell
+cargo bench
+```
+The results are then published to `../target/criterion`.
+
+The flamegraphs can be generated using
+```shell
+cargo run --example flamegraph --release --features="pprof" -- --bench --profile-time 5
+```
+but will not work on Windows.

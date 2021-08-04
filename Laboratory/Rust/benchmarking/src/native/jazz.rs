@@ -6,6 +6,120 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::TryInto;
 
+pub fn make_library() -> Library {
+    // to whomever is reading this, yes, I was very lazy in pulling details from wikipedia.
+    Library {
+        albums: bebop::collection! {
+            "Giant Steps".into() => Album::StudioAlbum {
+                tracks: vec![
+                    Song {
+                        title: Some("Giant Steps".into()),
+                        year: Some(1959),
+                        performers: Some(vec![
+                            Performer {
+                                name: "John Coltrane".into(),
+                                plays: Instrument::Piano
+                            }
+                        ])
+                    },
+                    Song {
+                        title: Some("A Night in Tunisia".into()),
+                        year: Some(1942),
+                        performers: Some(vec![
+                            Performer {
+                                name: "Dizzy Gillespie".into(),
+                                plays: Instrument::Trumpet,
+                            },
+                            Performer {
+                                name: "Frank Paparelli".into(),
+                                plays: Instrument::Piano,
+                            },
+                            Performer {
+                                name: "Count Basie".into(),
+                                plays: Instrument::Piano,
+                            },
+                        ])
+                    },
+                    Song {
+                        title: Some("Groovin' High".into()),
+                        year: None,
+                        performers: None
+                    },
+                ]
+            },
+            "Adam's Apple".into() => Album::LiveAlbum {
+                venue_name: Some("Tunisia".into()),
+                concert_date: Some(1978),
+                tracks: None
+            },
+            "Milestones".into() => Album::StudioAlbum {
+                tracks: vec![]
+            },
+            "Blue Train".into() => Album::LiveAlbum {
+                venue_name: Some("Cape Verdean".into()),
+                concert_date: None,
+                tracks: Some(vec![
+                    Song {
+                        title: Some("'Round Midnight".into()),
+                        year: Some(1986),
+                        performers: Some(vec![
+                            Performer {
+                                name: "Freddie Hubbard".into(),
+                                plays: Instrument::Trumpet,
+                            },
+                            Performer {
+                                name: "Ron Carter".into(),
+                                plays: Instrument::Cello,
+                            },
+                        ])
+                    },
+                    Song {
+                        title: Some("Bounding with Bud".into()),
+                        year: Some(1946),
+                        performers: None
+                    },
+                ])
+            },
+            "Brilliant Corners".into() => Album::StudioAlbum {
+                tracks: vec![
+                    Song {
+                        title: Some("Song for My Father".into()),
+                        year: Some(1965),
+                        performers: Some(vec![
+                            Performer {
+                                name: "Horace Silver".into(),
+                                plays: Instrument::Piano,
+                            },
+                            Performer {
+                                name: "Carmell Jones".into(),
+                                plays: Instrument::Trumpet,
+                            },
+                            Performer {
+                                name: "Joe Henderson".into(),
+                                plays: Instrument::Sax,
+                            },
+                            Performer {
+                                name: "Teddy Smith".into(),
+                                plays: Instrument::Cello,
+                            },
+                        ])
+                    },
+                    Song {
+                        title: Some("Yardbird Suite".into()),
+                        year: Some(1946),
+                        performers: Some(vec![
+                            Performer {
+                                name: "Charlie Parker".into(),
+                                plays: Instrument::Sax,
+                            }
+                        ])
+                    }
+                ]
+            }
+        },
+    }
+}
+
 #[derive(Serialize, Deserialize, Copy, Clone)]
 pub enum Instrument {
     Sax = 0,
