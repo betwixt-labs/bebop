@@ -12,8 +12,9 @@ namespace Core.Meta
     /// </summary>
     public abstract class Definition
     {
-        protected Definition(string name, Span span, string documentation)
+        protected Definition(string name, Span span, string documentation, Definition? parent = null)
         {
+            Parent = parent;
             Name = name;
             Span = span;
             Documentation = documentation;
@@ -38,6 +39,29 @@ namespace Core.Meta
         /// The names of types this definition depends on / refers to.
         /// </summary>
         public abstract IEnumerable<string> Dependencies();
+
+        /// <summary>
+        /// Immediate parent of this definition, if it is enclosed in another definition.
+        /// </summary>
+        public Definition? Parent { get; set; }
+
+        /// <summary>
+        /// List of definitions enclosing this definition, from outer to inner. Empty if this is a top level definition.
+        /// </summary>
+        public List<Definition> Scope
+        {
+            get
+            {
+                var scope = new List<Definition>();
+                var currentDefinition = this;
+                while (currentDefinition.Parent is not null)
+                {
+                    scope.Insert(0, currentDefinition.Parent);
+                    currentDefinition = currentDefinition.Parent;
+                }
+                return scope;
+            }
+        }
     }
 
     /// <summary>
@@ -46,8 +70,8 @@ namespace Core.Meta
     /// </summary>
     public abstract class TopLevelDefinition : Definition
     {
-        protected TopLevelDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute) :
-            base(name, span, documentation)
+        protected TopLevelDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, Definition? parent = null) :
+            base(name, span, documentation, parent)
         {
             OpcodeAttribute = opcodeAttribute;
         }
@@ -73,8 +97,8 @@ namespace Core.Meta
     /// </summary>
     public abstract class FieldsDefinition : TopLevelDefinition
     {
-        protected FieldsDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute,
-            ICollection<IField> fields) : base(name, span, documentation, opcodeAttribute)
+        protected FieldsDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<IField> fields, Definition? parent = null) :
+            base(name, span, documentation, opcodeAttribute, parent)
         {
             Fields = fields;
         }
@@ -92,8 +116,8 @@ namespace Core.Meta
     /// </summary>
     public class StructDefinition : FieldsDefinition
     {
-        public StructDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute,
-            ICollection<IField> fields, bool isReadOnly) : base(name, span, documentation, opcodeAttribute, fields)
+        public StructDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<IField> fields, bool isReadOnly, Definition? parent = null) :
+            base(name, span, documentation, opcodeAttribute, fields, parent)
         {
             IsReadOnly = isReadOnly;
         }
@@ -137,8 +161,7 @@ namespace Core.Meta
     /// </summary>
     public class MessageDefinition : FieldsDefinition
     {
-        public MessageDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute,
-            ICollection<IField> fields) : base(name, span, documentation, opcodeAttribute, fields)
+        public MessageDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<IField> fields, Definition? parent = null) : base(name, span, documentation, opcodeAttribute, fields, parent)
         {
         }
 
@@ -154,8 +177,7 @@ namespace Core.Meta
     /// </summary>
     public class EnumDefinition : Definition
     {
-        public EnumDefinition(string name, Span span, string documentation, ICollection<IField> members) : base(name,
-            span, documentation)
+        public EnumDefinition(string name, Span span, string documentation, ICollection<IField> members, Definition? parent = null) : base(name, span, documentation, parent)
         {
             Members = members;
         }
@@ -179,8 +201,7 @@ namespace Core.Meta
 
     public class UnionDefinition : TopLevelDefinition
     {
-        public UnionDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute,
-            ICollection<UnionBranch> branches) : base(name, span, documentation, opcodeAttribute)
+        public UnionDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<UnionBranch> branches, Definition? parent = null) : base(name, span, documentation, opcodeAttribute, parent)
         {
             Branches = branches;
         }
@@ -198,8 +219,7 @@ namespace Core.Meta
 
     public class ConstDefinition : Definition
     {
-        public ConstDefinition(string name, Span span, string documentation, Literal value) : base(name, span,
-            documentation)
+        public ConstDefinition(string name, Span span, string documentation, Literal value, Definition? parent = null) : base(name, span, documentation, parent)
         {
             Value = value;
         }
