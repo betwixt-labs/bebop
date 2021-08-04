@@ -25,6 +25,6 @@ message Library {
 
 message Album {
     repeated Song tracks = 1;
-    repeated string venumeName = 2;
-    repeated uint64 concertDate = 3;
+    string venumeName = 2;
+    uint64 concertDate = 3;
 }

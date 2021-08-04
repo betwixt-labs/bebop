@@ -614,8 +614,8 @@ impl ::protobuf::reflect::ProtobufValue for Library {
 pub struct Album {
     // message fields
     pub tracks: ::protobuf::RepeatedField<Song>,
-    pub venumeName: ::protobuf::RepeatedField<::std::string::String>,
-    pub concertDate: ::std::vec::Vec<u64>,
+    pub venumeName: ::std::string::String,
+    pub concertDate: u64,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -657,10 +657,10 @@ impl Album {
         ::std::mem::replace(&mut self.tracks, ::protobuf::RepeatedField::new())
     }
 
-    // repeated string venumeName = 2;
+    // string venumeName = 2;
 
 
-    pub fn get_venumeName(&self) -> &[::std::string::String] {
+    pub fn get_venumeName(&self) -> &str {
         &self.venumeName
     }
     pub fn clear_venumeName(&mut self) {
@@ -668,43 +668,34 @@ impl Album {
     }
 
     // Param is passed by value, moved
-    pub fn set_venumeName(&mut self, v: ::protobuf::RepeatedField<::std::string::String>) {
+    pub fn set_venumeName(&mut self, v: ::std::string::String) {
         self.venumeName = v;
     }
 
     // Mutable pointer to the field.
-    pub fn mut_venumeName(&mut self) -> &mut ::protobuf::RepeatedField<::std::string::String> {
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_venumeName(&mut self) -> &mut ::std::string::String {
         &mut self.venumeName
     }
 
     // Take field
-    pub fn take_venumeName(&mut self) -> ::protobuf::RepeatedField<::std::string::String> {
-        ::std::mem::replace(&mut self.venumeName, ::protobuf::RepeatedField::new())
+    pub fn take_venumeName(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.venumeName, ::std::string::String::new())
     }
 
-    // repeated uint64 concertDate = 3;
+    // uint64 concertDate = 3;
 
 
-    pub fn get_concertDate(&self) -> &[u64] {
-        &self.concertDate
+    pub fn get_concertDate(&self) -> u64 {
+        self.concertDate
     }
     pub fn clear_concertDate(&mut self) {
-        self.concertDate.clear();
+        self.concertDate = 0;
     }
 
     // Param is passed by value, moved
-    pub fn set_concertDate(&mut self, v: ::std::vec::Vec<u64>) {
+    pub fn set_concertDate(&mut self, v: u64) {
         self.concertDate = v;
-    }
-
-    // Mutable pointer to the field.
-    pub fn mut_concertDate(&mut self) -> &mut ::std::vec::Vec<u64> {
-        &mut self.concertDate
-    }
-
-    // Take field
-    pub fn take_concertDate(&mut self) -> ::std::vec::Vec<u64> {
-        ::std::mem::replace(&mut self.concertDate, ::std::vec::Vec::new())
     }
 }
 
@@ -726,10 +717,14 @@ impl ::protobuf::Message for Album {
                     ::protobuf::rt::read_repeated_message_into(wire_type, is, &mut self.tracks)?;
                 },
                 2 => {
-                    ::protobuf::rt::read_repeated_string_into(wire_type, is, &mut self.venumeName)?;
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.venumeName)?;
                 },
                 3 => {
-                    ::protobuf::rt::read_repeated_uint64_into(wire_type, is, &mut self.concertDate)?;
+                    if wire_type != ::protobuf::wire_format::WireTypeVarint {
+                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
+                    }
+                    let tmp = is.read_uint64()?;
+                    self.concertDate = tmp;
                 },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
@@ -747,12 +742,12 @@ impl ::protobuf::Message for Album {
             let len = value.compute_size();
             my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
         };
-        for value in &self.venumeName {
-            my_size += ::protobuf::rt::string_size(2, &value);
-        };
-        for value in &self.concertDate {
-            my_size += ::protobuf::rt::value_size(3, *value, ::protobuf::wire_format::WireTypeVarint);
-        };
+        if !self.venumeName.is_empty() {
+            my_size += ::protobuf::rt::string_size(2, &self.venumeName);
+        }
+        if self.concertDate != 0 {
+            my_size += ::protobuf::rt::value_size(3, self.concertDate, ::protobuf::wire_format::WireTypeVarint);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
@@ -764,12 +759,12 @@ impl ::protobuf::Message for Album {
             os.write_raw_varint32(v.get_cached_size())?;
             v.write_to_with_cached_sizes(os)?;
         };
-        for v in &self.venumeName {
-            os.write_string(2, &v)?;
-        };
-        for v in &self.concertDate {
-            os.write_uint64(3, *v)?;
-        };
+        if !self.venumeName.is_empty() {
+            os.write_string(2, &self.venumeName)?;
+        }
+        if self.concertDate != 0 {
+            os.write_uint64(3, self.concertDate)?;
+        }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
     }
@@ -813,12 +808,12 @@ impl ::protobuf::Message for Album {
                 |m: &Album| { &m.tracks },
                 |m: &mut Album| { &mut m.tracks },
             ));
-            fields.push(::protobuf::reflect::accessor::make_repeated_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
                 "venumeName",
                 |m: &Album| { &m.venumeName },
                 |m: &mut Album| { &mut m.venumeName },
             ));
-            fields.push(::protobuf::reflect::accessor::make_vec_accessor::<_, ::protobuf::types::ProtobufTypeUint64>(
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint64>(
                 "concertDate",
                 |m: &Album| { &m.concertDate },
                 |m: &mut Album| { &mut m.concertDate },
@@ -841,7 +836,7 @@ impl ::protobuf::Clear for Album {
     fn clear(&mut self) {
         self.tracks.clear();
         self.venumeName.clear();
-        self.concertDate.clear();
+        self.concertDate = 0;
         self.unknown_fields.clear();
     }
 }
@@ -927,8 +922,8 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x1a?\n\x0esongs_MapEntry\x12\x0e\n\x03key\x18\x01(\tR\x03key\x12\x19\n\
     \x05value\x18\x02(\x0b2\x05.SongR\x05value:\x028\x01:\0\"p\n\x05Album\
     \x12\x1f\n\x06tracks\x18\x01\x20\x03(\x0b2\x05.SongR\x06tracksB\0\x12\
-    \x20\n\nvenumeName\x18\x02\x20\x03(\tR\nvenumeNameB\0\x12\"\n\x0bconcert\
-    Date\x18\x03\x20\x03(\x04R\x0bconcertDateB\0:\0*H\n\nInstrument\x12\x07\
+    \x20\n\nvenumeName\x18\x02\x20\x01(\tR\nvenumeNameB\0\x12\"\n\x0bconcert\
+    Date\x18\x03\x20\x01(\x04R\x0bconcertDateB\0:\0*H\n\nInstrument\x12\x07\
     \n\x03Sax\x10\0\x12\x0b\n\x07Trumpet\x10\x01\x12\x0c\n\x08Clarinet\x10\
     \x02\x12\t\n\x05Piano\x10\x03\x12\t\n\x05Cello\x10\x04\x1a\0B\0b\x06prot\
     o3\

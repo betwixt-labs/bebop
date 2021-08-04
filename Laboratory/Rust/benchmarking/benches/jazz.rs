@@ -1,163 +1,199 @@
-use bebop::collection;
+use bebop::{collection, Record};
 use benchmarking::*;
-use criterion::{criterion_group, Criterion};
-use protobuf::ProtobufEnum;
+use criterion::{black_box, criterion_group, Criterion};
+use protobuf::{Message, ProtobufEnum};
 
-// to whomever is reading this, yes, I was very lazy in pulling details from wikipedia.
+use bebops::jazz as bb;
+use native::jazz as na;
+use protos::jazz as pr;
+use serde::Serialize;
 
-fn bebop_library() -> bebops::jazz::Library<'static> {
-    bebops::jazz::Library {
+fn make_library() -> native::jazz::Library {
+    // to whomever is reading this, yes, I was very lazy in pulling details from wikipedia.
+    na::Library {
         songs: collection! {
-            "A Night in Tunisia" => bebops::jazz::Song {
-                title: Some("A Night in Tunisia"),
+            "A Night in Tunisia".into() => na::Song {
+                title: Some("A Night in Tunisia".into()),
                 year: Some(1942),
                 performers: Some(vec![
-                    bebops::jazz::Performer {
-                        name: "Dizzy Gillespie",
-                        plays: bebops::jazz::Instrument::Trumpet
+                    na::Performer {
+                        name: "Dizzy Gillespie".into(),
+                        plays: na::Instrument::Trumpet
                     },
-                    bebops::jazz::Performer {
-                        name: "Frank Paparelli",
-                        plays: bebops::jazz::Instrument::Piano
+                    na::Performer {
+                        name: "Frank Paparelli".into(),
+                        plays: na::Instrument::Piano
                     },
-                    bebops::jazz::Performer {
-                        name: "Count Basie",
-                        plays: bebops::jazz::Instrument::Piano
+                    na::Performer {
+                        name: "Count Basie".into(),
+                        plays: na::Instrument::Piano
                     }
                 ])
             },
-            "'Round Midnight" => bebops::jazz::Song {
-                title: Some("'Round Midnight"),
+            "'Round Midnight".into() => na::Song {
+                title: Some("'Round Midnight".into()),
                 year: Some(1986),
                 performers: Some(vec![
-                    bebops::jazz::Performer {
-                        name: "Freddie Hubbard",
-                        plays: bebops::jazz::Instrument::Trumpet
+                    na::Performer {
+                        name: "Freddie Hubbard".into(),
+                        plays: na::Instrument::Trumpet
                     },
-                    bebops::jazz::Performer {
-                        name: "Ron Carter",
-                        plays: bebops::jazz::Instrument::Cello
+                    na::Performer {
+                        name: "Ron Carter".into(),
+                        plays: na::Instrument::Cello
                     },
                 ])
             },
-            "Bouncing with Bud" => bebops::jazz::Song {
-                title: Some("Bounding with Bud"),
+            "Bouncing with Bud".into() => na::Song {
+                title: Some("Bounding with Bud".into()),
                 year: Some(1946),
                 performers: None
             },
-            "Groovin' High" => bebops::jazz::Song::default(),
-            "Song for My Father" => bebops::jazz::Song {
-                title: Some("Song for My Father"),
+            "Groovin' High".into() => na::Song {
+                title: None,
+                year: None,
+                performers: None
+            },
+            "Song for My Father".into() => na::Song {
+                title: Some("Song for My Father".into()),
                 year: Some(1965),
                 performers: Some(vec![
-                    bebops::jazz::Performer {
-                        name: "Horace Silver",
-                        plays: bebops::jazz::Instrument::Piano
+                    na::Performer {
+                        name: "Horace Silver".into(),
+                        plays: na::Instrument::Piano
                     },
-                    bebops::jazz::Performer {
-                        name: "Carmell Jones",
-                        plays: bebops::jazz::Instrument::Trumpet
+                    na::Performer {
+                        name: "Carmell Jones".into(),
+                        plays: na::Instrument::Trumpet
                     },
-                    bebops::jazz::Performer {
-                        name: "Joe Henderson",
-                        plays: bebops::jazz::Instrument::Sax
+                    na::Performer {
+                        name: "Joe Henderson".into(),
+                        plays: na::Instrument::Sax
                     },
-                    bebops::jazz::Performer {
-                        name: "Teddy Smith",
-                        plays: bebops::jazz::Instrument::Cello
+                    na::Performer {
+                        name: "Teddy Smith".into(),
+                        plays: na::Instrument::Cello
                     }
                 ])
             },
         },
     }
 }
-
-fn protobuf_library() -> protos::jazz::Library {
-    // Wow, they could not even be bothered to support chaining... This is painful.
-    // I was going to define these as literals but protobuf broke my spirit.
-    let bebop_library = bebop_library();
-
-    let mut library = protos::jazz::Library::new();
-    library.set_songs(
-        bebop_library
-            .songs
-            .into_iter()
-            .map(|(name, bsong)| {
-                let mut song = protos::jazz::Song::new();
-                if let Some(title) = bsong.title {
-                    song.set_title(title.into())
-                }
-                if let Some(year) = bsong.year {
-                    song.set_year(year as u32)
-                }
-                if let Some(performers) = bsong.performers {
-                    song.set_performers(
-                        performers
-                            .into_iter()
-                            .map(|bperformer| {
-                                let mut performer = protos::jazz::Performer::new();
-                                performer.set_name(bperformer.name.into());
-                                performer.set_plays(
-                                    protos::jazz::Instrument::from_i32(
-                                        u32::from(bperformer.plays) as i32
-                                    )
-                                    .unwrap(),
-                                );
-                                performer
-                            })
-                            .collect(),
-                    )
-                }
-                (name.into(), song)
-            })
-            .collect(),
-    );
-    library
-}
-
-fn serde_library() -> serdes::jazz::Library {
-    serdes::jazz::Library {
-        songs: bebop_library()
-            .songs
-            .into_iter()
-            .map(|(name, bsong)| {
-                (
-                    name.into(),
-                    serdes::jazz::Song {
-                        title: bsong.title.map(ToOwned::to_owned),
-                        year: bsong.year,
-                        performers: bsong.performers.map(|performers| {
-                            performers
-                                .into_iter()
-                                .map(|bperformer| serdes::jazz::Performer {
-                                    name: bperformer.name.into(),
-                                    plays: u32::from(bperformer.plays).into(),
-                                })
-                                .collect()
-                        }),
-                    },
-                )
-            })
-            .collect(),
-    }
-}
+const ALLOC_SIZE: usize = 1024 * 1024 * 4;
 
 fn library(c: &mut Criterion) {
-    let mut se_group = c.benchmark_group("Jazz Library Serialization");
+    // structuring
+    let mut structuring_group = c.benchmark_group("Jazz Library Structuring");
+    structuring_group.bench_function("Native", |b| {
+        b.iter(|| {
+            make_library();
+        })
+    });
 
-    let bebop_lib = bebop_library();
-    let protobuf_lib = protobuf_library();
-    let serde_lib = serde_library();
+    // don't penalize the others for the initial allocation
+    let native_struct = make_library();
+    structuring_group.bench_function("Bebop", |b| {
+        b.iter(|| {
+            bb::Library::from(black_box(&native_struct));
+        })
+    });
+    structuring_group.bench_function("Protobuf", |b| {
+        b.iter(|| {
+            // well protobuf requires cloning, so we might need a test with the cloning extracted, but
+            // I also suspect it is quite common in real world to need to clone the data.
+            // TODO: Figure out how to test without cloning in the performance test?
+            pr::Library::from(black_box(native_struct.clone()));
+        })
+    });
+    structuring_group.finish();
 
-    se_group.bench_function("Bebop", |b| b.iter(|| {}));
+    // serialization
+    let bebop_struct = bb::Library::from(&native_struct);
+    let proto_struct = pr::Library::from(native_struct.clone());
+    let mut buf = Vec::with_capacity(ALLOC_SIZE);
+    let mut serialization_group = c.benchmark_group("Jazz Library Serialization");
 
-    se_group.bench_function("Protobuf", |b| b.iter(|| {}));
+    // serialization_group.bench_function("Json", |b| {
+    //     b.iter(|| {
+    //         serde_json::to_writer(&mut buf, &native_struct).unwrap();
+    //         assert!(buf.len() <= ALLOC_SIZE);
+    //         buf.clear();
+    //     })
+    // });
 
-    se_group.bench_function("JSON", |b| b.iter(|| {}));
-    se_group.bench_function("MessagePack", |b| b.iter(|| {}));
-    se_group.bench_function("Bincode", |b| b.iter(|| {}));
-    se_group.bench_function("Flexbuffers", |b| b.iter(|| {}));
-    se_group.finish();
+    // serialization_group.bench_function("Bincode", |b| {
+    //     b.iter(|| {
+    //         bincode::serialize_into(&mut buf, &native_struct).unwrap();
+    //         assert!(buf.len() <= ALLOC_SIZE);
+    //         buf.clear();
+    //     })
+    // });
+
+    serialization_group.bench_function("MessagePack", |b| {
+        b.iter(|| {
+            rmp_serde::encode::write(&mut buf, &native_struct).unwrap();
+            assert!(buf.len() <= ALLOC_SIZE);
+            buf.clear();
+        })
+    });
+
+    serialization_group.bench_function("Bebop", |b| {
+        b.iter(|| {
+            bebop_struct.serialize(&mut buf).unwrap();
+            assert!(buf.len() <= ALLOC_SIZE);
+            buf.clear();
+        })
+    });
+
+    serialization_group.bench_function("Protobuf", |b| {
+        b.iter(|| {
+            proto_struct.write_to_writer(&mut buf).unwrap();
+            assert!(buf.len() <= ALLOC_SIZE);
+            buf.clear();
+        })
+    });
+
+    serialization_group.finish();
+
+    let mut deserialization_group = c.benchmark_group("Jazz Library Deserialization");
+    // serde_json::to_writer(&mut buf, &native_struct).unwrap();
+    // deserialization_group.bench_function("Json", |b| {
+    //     b.iter(|| {
+    //         serde_json::from_reader::<_, na::Library>(black_box(&*buf)).unwrap();
+    //     })
+    // });
+    // buf.clear();
+
+    // bincode::serialize_into(&mut buf, &native_struct).unwrap();
+    // deserialization_group.bench_function("Bincode", |b| {
+    //     b.iter(|| {
+    //         bincode::deserialize_from::<_, na::Library>(black_box(&*buf)).unwrap();
+    //     })
+    // });
+    // buf.clear();
+
+    rmp_serde::encode::write(&mut buf, &native_struct).unwrap();
+    deserialization_group.bench_function("MessagePack", |b| {
+        b.iter(|| {
+            rmp_serde::from_read::<_, na::Library>(black_box(&*buf)).unwrap();
+        })
+    });
+    buf.clear();
+
+    bebop_struct.serialize(&mut buf).unwrap();
+    deserialization_group.bench_function("Bebop", |b| {
+        b.iter(|| {
+            bb::Library::deserialize(black_box(&buf)).unwrap();
+        })
+    });
+    buf.clear();
+
+    proto_struct.write_to_writer(&mut buf).unwrap();
+    deserialization_group.bench_function("Protobuf", |b| {
+        b.iter(|| {
+            pr::Library::parse_from_bytes(&buf).unwrap();
+        })
+    });
 }
 
 fn album(c: &mut Criterion) {}
