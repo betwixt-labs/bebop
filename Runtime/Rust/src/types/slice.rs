@@ -1,6 +1,6 @@
 use std::mem::size_of;
 
-use crate::{FixedSized, SubRecord, LEN_SIZE};
+use crate::{FixedSized, SubRecord};
 use std::iter::FusedIterator;
 use std::ptr::slice_from_raw_parts;
 

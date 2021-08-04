@@ -97,7 +97,13 @@ fn recurse_schema_dir(dir: impl AsRef<Path>, dest: impl AsRef<Path>) -> LinkedLi
             } else {
                 list.append(&mut recurse_schema_dir(&file_path, dest.as_ref()));
             }
-        } else if file_type.is_file() {
+        } else if file_type.is_file()
+            && file_path
+                .extension()
+                .map(|s| s.to_str().unwrap())
+                .unwrap_or("")
+                == "bop"
+        {
             let fname = format!(
                 "{}{}",
                 unsafe { GENERATED_PREFIX.as_deref().unwrap_or_else(|| "".into()) },
