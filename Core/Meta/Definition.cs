@@ -45,16 +45,12 @@ namespace Core.Meta
         /// <summary>
         /// List of definitions enclosing this definition, from outer to inner. Empty if this is a top level definition.
         /// </summary>
-        public List<Definition>? Scope
+        public List<Definition> Scope
         {
             get
             {
-                if (Parent is null)
-                {
-                    return null;
-                }
                 var scope = new List<Definition>();
-                Definition currentDefinition = this;
+                var currentDefinition = this;
                 while (currentDefinition.Parent is not null)
                 {
                     scope.Insert(0, currentDefinition.Parent);

@@ -20,40 +20,44 @@ namespace Core.Parser
 {
     public class SchemaParser
     {
-        private List<List<Definition>> _scopes = new List<List<Definition>>();
+        private readonly Stack<List<Definition>> _scopes = new();
         private readonly Tokenizer _tokenizer;
-        private readonly Dictionary<string, Definition> _definitions = new Dictionary<string, Definition>();
+        private readonly Dictionary<string, Definition> _definitions = new();
         /// <summary>
         /// A set of references to named types found in message/struct definitions:
         /// the left token is the type name, and the right token is the definition it's used in (used to report a helpful error).
         /// </summary>
-        private readonly HashSet<(Token, Token)> _typeReferences = new HashSet<(Token, Token)>();
+        private readonly HashSet<(Token, Token)> _typeReferences = new();
         private int _index;
         private readonly string _nameSpace;
         private List<Token> _tokens => _tokenizer.Tokens;
 
+        /// <summary>
+        /// Add a definition to the current scope and the primary definitions map.
+        /// </summary>
+        /// <param name="name">Definition name.</param>
+        /// <param name="definition"></param>
         private void AddDefinition(string name, Definition definition)
         {
             _definitions.Add(name, definition);
             if (_scopes.Count > 0)
             {
-                _scopes.Last().Add(definition);
+                _scopes.Peek().Add(definition);
             }
         }
 
         /// <summary>
         /// Open a scope. All definitions added from this point will be added to the scope.
         /// </summary>
-        private void StartScope() => _scopes.Add(new List<Definition>());
+        private void StartScope() => _scopes.Push(new List<Definition>());
 
         /// <summary>
         /// Close the current scope, setting the parent of every enclosed definition to the provided Definition and adding the Definition at the end, in the next scope down.
         /// </summary>
-        /// <param name="parent"></param>
+        /// <param name="parent">Definition to take ownership of all enclosed definitions and push to the enclosing scope.</param>
         private void CloseScope(string name, Definition parent)
         {
-            var scope = _scopes.Last();
-            _scopes.Remove(scope);
+            var scope = _scopes.Pop();
             foreach (var definition in scope)
             {
                 definition.Parent = parent;
@@ -246,14 +250,16 @@ namespace Core.Parser
                 // Throw ReferenceScopeException if so
 
                 // It might be better for this to go inside BebopSchema.Validate but it's much simpler if I can use the typeReferences map
-                if (referenceScope is not null && referenceScope.Find((parent) => parent is UnionDefinition) is UnionDefinition union)
+                if (referenceScope.Find((parent) => parent is UnionDefinition) is UnionDefinition union)
                 {
-                    if (definitionScope is null || !definitionScope.Contains(union))
+                    if (!definitionScope.Contains(union))
                     {
                         throw new ReferenceScopeException(definition, reference, "union");
                     }
                 }
             }
+            // I'm gonna keep this for now because I might need it later once I move the checking over to BebopSchema.Validate
+            // Maybe not if I bring over the type reference set, but I haven't decided yet
             /*
             foreach (var definition in _definitions.Values)
             {
