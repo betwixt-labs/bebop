@@ -127,10 +127,10 @@ namespace Core.Exceptions
     }
 
     [Serializable]
-    class InvalidUnionBranchException : SpanException
+    public class InvalidUnionBranchException : SpanException
     {
         public InvalidUnionBranchException(Definition definition)
-            : base($"The definition '{definition.Name}' cannot be used as a union branch. Valid union branches are messages, structs, or unions.", definition.Span, 113)
+            : base($"The definition '{definition.Name}' cannot be used as a union branch. Valid union branches are messages and structs.", definition.Span, 113)
         { }
     }
 
@@ -204,6 +204,14 @@ namespace Core.Exceptions
         public DuplicateConstDefinitionException(ConstDefinition definition)
             : base($"An illegal redefinition for the constant '{definition.Name}' was found in '{Path.GetFileName(definition.Span.FileName)}'", definition.Span, 122)
         { }
+    }
+
+    [Serializable]
+    public class ReferenceScopeException : SpanException
+    {
+        public ReferenceScopeException(Definition definition, Definition reference, string scopeLabel)
+            : base($"Cannot reference {reference.Name} within {scopeLabel} from {definition.Name}.", definition.Span, 123)
+        {}
     }
 
 }
