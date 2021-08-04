@@ -6,7 +6,22 @@ const exec = promisify(child_process.exec)
 // const bebopc = path.resolve(__dirname, "../bebopc.js")
 
 
-
+/** Ensure that the bebopc executable can be executed. */
+export function ensurePermissions() {
+    const toolsDir = path.resolve(__dirname, '../tools')
+    if (process.platform === "darwin") {
+        const executable = path.resolve(toolsDir, 'macos/bebopc')
+        child_process.execSync(`chmod +x "${executable}"`, {stdio: 'ignore'})
+    }
+    else if (process.platform === "linux") {
+        const executable = path.resolve(toolsDir, 'linux/bebopc')
+        child_process.execSync(`chmod +x "${executable}"`, {stdio: 'ignore'})
+    }
+    else if (process.platform === "win32") {
+        const executable = path.resolve(toolsDir, 'windows/bebopc.exe')
+        child_process.execSync(`Unblock-File -Path "${executable}"`, {stdio: 'ignore', shell: "powershell.exe"})
+    }
+}
 
 interface BebopcCheckResponse {
     Message: string
@@ -19,6 +34,8 @@ interface BebopcCheckResponse {
     }
 }
 
+export type CheckResults = {error: true, issues: Issue[]} | {error: false}
+
 export interface Issue {
     severity: string
     startLine: number
@@ -27,6 +44,19 @@ export interface Issue {
     endColumn: number
     description: string
     fileName: string
+}
+
+function parseBebopcCheckResponse(stderr: string): Issue[] {
+    const { Message, Span }: BebopcCheckResponse = JSON.parse(stderr.trim().replace(/\\/g, "\\"))
+    return [{
+        severity: 'error',
+        description: Message,
+        startLine: Span.StartLine,
+        endLine: Span.EndLine,
+        startColumn: Span.StartColumn,
+        endColumn: Span.EndColumn,
+        fileName: Span.FileName
+    }]
 }
 
 function getBebopCompilerPath() {
@@ -45,8 +75,41 @@ function getBebopCompilerPath() {
 
 const bebopc = getBebopCompilerPath()
 
+checkProject({config: ""})
+
+/** Validate entire project, providing either a directory to search for bebop.json or a path to a config. */
+export async function checkProject(cfg: 
+    {directory: string, config?: never} | 
+    {directory?: never, config: string}
+): Promise<CheckResults> {
+    const processConfig: {cwd?: string} = {}
+    if (cfg.directory) {
+        processConfig.cwd = cfg.directory
+    }
+    let commandExtension = ""
+    if (cfg.config) {
+        commandExtension = `--config ${cfg.config}`
+    }
+    return new Promise((resolve, reject) => {
+        child_process.exec(
+            `${bebopc} --check --log-format JSON ${commandExtension}`, 
+            processConfig, 
+            (error, stdout, stderr) => {
+                if (stderr.trim().length > 0) {
+                    const issues = parseBebopcCheckResponse(stderr)
+                    resolve({
+                        error: true,
+                        issues
+                    })
+                }
+                resolve({error: false})
+            }
+        )
+    })
+}
+
 /** Validate schema file passed by path. */
-export async function check(path: string): Promise<{error: boolean, issues?: Issue[]}> {
+export async function check(path: string): Promise<CheckResults> {
     return new Promise((resolve, reject) => {
         child_process.exec(`${bebopc} --check ${path} --log-format JSON `, (error, stdout, stderr) => {
             if (stderr.trim().length > 0) {

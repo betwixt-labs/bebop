@@ -41,7 +41,8 @@ namespace Compiler
         public CommandLineFlagAttribute(string name,
             string helpText,
             string usageExample = "",
-            bool isGeneratorFlag = false)
+            bool isGeneratorFlag = false,
+            bool valuesRequired = true)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -55,7 +56,9 @@ namespace Compiler
             HelpText = helpText;
             UsageExample = usageExample;
             IsGeneratorFlag = isGeneratorFlag;
+            ValuesRequired = valuesRequired;
         }
+
 
         /// <summary>
         ///     The name command-line flag. This name is usually a single english word.
@@ -79,6 +82,11 @@ namespace Compiler
         ///     If this property is set to true the attributed command-line flag is used to instantiate a code generator.
         /// </summary>
         public bool IsGeneratorFlag { get; }
+
+        /// <summary>
+        ///     If this property is true, the flag requires values (arguments) to be set.
+        /// </summary>
+        public bool ValuesRequired { get;  }
     }
 
     #endregion
@@ -190,7 +198,7 @@ namespace Compiler
         [CommandLineFlag("files", "Parse and generate code from a list of schemas", "--files [file1] [file2] ...")]
         public List<string>? SchemaFiles { get; private set; }
 
-        [CommandLineFlag("check", "Checks that the provided schema files are valid", "--check [file.bop] [file2.bop] ...")]
+        [CommandLineFlag("check", "Checks that the provided schema files are valid, or entire project defined by bebop.json if no files provided", "--check [file.bop] [file2.bop] ...", false, false)]
         public List<string>? CheckSchemaFiles { get; private set; }
 
         [CommandLineFlag("check-schema", "Reads a schema from stdin and validates it.", "--check-schema < [schema text]")]
@@ -462,7 +470,7 @@ namespace Compiler
                     flag.Property.SetValue(flagStore, true);
                     continue;
                 }
-                if (!parsedFlag.HasValues())
+                if (flag.Attribute.ValuesRequired && !parsedFlag.HasValues())
                 {
                     errorMessage = $"command-line flag '{flag.Attribute.Name}' was not assigned any values.";
                     return false;
@@ -523,6 +531,7 @@ namespace Compiler
         /// <returns>true if the config could be parsed without error, otherwise false.</returns>
         private static bool TryParseConfig(CommandLineFlags flagStore, string? configPath)
         {
+            
             if (string.IsNullOrWhiteSpace(configPath))
             {
                 return false;
@@ -531,6 +540,8 @@ namespace Compiler
             {
                 return false;
             }
+            var configFile = new FileInfo(configPath);
+
             using var doc = JsonDocument.Parse(File.ReadAllText(configPath));
             var root = doc.RootElement;
             if (root.TryGetProperty("inputFiles", out var inputFileElement))
@@ -538,16 +549,20 @@ namespace Compiler
                 flagStore.SchemaFiles = new List<string>(inputFileElement.GetArrayLength());
                 foreach (var fileElement in inputFileElement.EnumerateArray())
                 {
-                    if (fileElement.GetString() is not { } filePath)
+                    if (fileElement.GetString() is not { } filePath || configFile.DirectoryName is null)
                     {
                         continue;
                     }
-                    flagStore.SchemaFiles.Add(filePath);
+                    flagStore.SchemaFiles.Add(Path.GetFullPath(Path.Combine(configFile.DirectoryName, filePath)));
                 }
             }
-            if (root.TryGetProperty("inputDirectory", out var inputDirectoryElement))
+            if (root.TryGetProperty("inputDirectory", out var inputDirectoryElement) && configFile.DirectoryName is not null)
             {
-                flagStore.SchemaDirectory = inputDirectoryElement.GetString();
+                var inputDirectory = inputDirectoryElement.GetString();
+                if (inputDirectory is not null)
+                {
+                    flagStore.SchemaDirectory = Path.GetFullPath(Path.Combine(configFile.DirectoryName, inputDirectory));
+                }
             }
             if (root.TryGetProperty("namespace", out var nameSpaceElement))
             {
@@ -564,7 +579,11 @@ namespace Compiler
                             .Where(flagAttribute => flagAttribute.Attribute.IsGeneratorFlag &&
                                 flagAttribute.Attribute.Name.Equals(aliasElement.GetString())))
                         {
-                            flagAttribute.Property.SetValue(flagStore, outputElement.GetString());
+                            var outputElementPath = outputElement.GetString();
+                            if (configFile.DirectoryName is not null && outputElementPath is not null)
+                            {
+                                flagAttribute.Property.SetValue(flagStore, Path.GetFullPath(Path.Combine(configFile.DirectoryName, outputElementPath)));
+                            }
                             if (generatorElement.TryGetProperty("langVersion", out var langVersion) && System.Version.TryParse(langVersion.ToString(), out var version))
                             {
 
