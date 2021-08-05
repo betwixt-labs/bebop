@@ -9,11 +9,13 @@ namespace Core.Meta
     /// <inheritdoc/>
     public struct BebopSchema : ISchema
     {
+        public List<SpanException> Errors { set; get; }
         public BebopSchema(string nameSpace, Dictionary<string, Definition> definitions)
         {
             Namespace = nameSpace;
             Definitions = definitions;
             _sortedDefinitions = null;
+            Errors = new();
         }
         /// <inheritdoc/>
         public string Namespace { get; }
@@ -87,61 +89,65 @@ namespace Core.Meta
         }
 
         /// <inheritdoc/>
-        public void Validate()
+        public List<SpanException> Validate()
         {
-
+            var errors = new List<SpanException>();
             foreach (var definition in Definitions.Values)
             {
                 if (Definitions.Values.Count(d => d.Name.Equals(definition.Name, StringComparison.OrdinalIgnoreCase)) > 1)
                 {
-                    throw new MultipleDefinitionsException(definition);
+                    errors.Add(new MultipleDefinitionsException(definition));
                 }
                 if (ReservedWords.Identifiers.Contains(definition.Name))
                 {
-                    throw new ReservedIdentifierException(definition.Name, definition.Span);
+                    errors.Add(new ReservedIdentifierException(definition.Name, definition.Span));
                 }
                 if (definition is TopLevelDefinition td && td.OpcodeAttribute != null)
                 {
                     if (!td.OpcodeAttribute.TryValidate(out var opcodeReason))
                     {
-                        throw new InvalidOpcodeAttributeValueException(td, opcodeReason);
+                        errors.Add(new InvalidOpcodeAttributeValueException(td, opcodeReason));
                     }
                     if (Definitions.Values.Count(d => d is TopLevelDefinition td2 && td2.OpcodeAttribute != null && td2.OpcodeAttribute.Value.Equals(td.OpcodeAttribute.Value)) > 1)
                     {
-                        throw new DuplicateOpcodeException(td);
+                        errors.Add(new DuplicateOpcodeException(td));
                     }
                 }
                 if (definition is FieldsDefinition fd) foreach (var field in fd.Fields)
                 {
                     if (ReservedWords.Identifiers.Contains(field.Name))
                     {
-                        throw new ReservedIdentifierException(field.Name, field.Span);
+                        errors.Add(new ReservedIdentifierException(field.Name, field.Span));
                     }
                     if (field.DeprecatedAttribute != null && fd is StructDefinition)
                     {
-                        throw new InvalidDeprecatedAttributeUsageException(field);
+                        errors.Add(new InvalidDeprecatedAttributeUsageException(field));
                     }
                     if (fd.Fields.Count(f => f.Name.Equals(field.Name, StringComparison.OrdinalIgnoreCase)) > 1)
                     {
-                        throw new DuplicateFieldException(field, fd);
+                        errors.Add(new DuplicateFieldException(field, fd));
                     }
                     switch (fd)
                     {
                         case StructDefinition when field.Type is DefinedType dt && fd.Name.Equals(dt.Name):
                         {
-                            throw new InvalidFieldException(field, "Struct contains itself");
+                            errors.Add(new InvalidFieldException(field, "Struct contains itself"));
+                            break;
                         }
                         case MessageDefinition when fd.Fields.Count(f => f.ConstantValue == field.ConstantValue) > 1:
                         {
-                            throw new InvalidFieldException(field, "Message index must be unique");
+                            errors.Add(new InvalidFieldException(field, "Message index must be unique"));
+                            break;
                         }
                         case MessageDefinition when field.ConstantValue <= 0:
                         {
-                            throw new InvalidFieldException(field, "Message member index must start at 1");
+                            errors.Add(new InvalidFieldException(field, "Message member index must start at 1"));
+                            break;
                         }
                         case MessageDefinition when field.ConstantValue > fd.Fields.Count:
                         {
-                            throw new InvalidFieldException(field, "Message index is greater than field count");
+                            errors.Add(new InvalidFieldException(field, "Message index is greater than field count"));
+                            break;
                         }
                         default:
                             break;
@@ -155,17 +161,19 @@ namespace Core.Meta
                     {
                         if (values.Contains(field.ConstantValue))
                         {
-                            throw new InvalidFieldException(field, "Enum value must be unique");
+                            errors.Add(new InvalidFieldException(field, "Enum value must be unique"));
                         }
                         if (names.Contains(field.Name))
                         {
-                            throw new DuplicateFieldException(field, ed);
+                            errors.Add(new DuplicateFieldException(field, ed));
                         }
                         values.Add(field.ConstantValue);
                         names.Add(field.Name);
                     }
                 }
             }
+            Errors = errors;
+            return errors;
         }
     }
 }

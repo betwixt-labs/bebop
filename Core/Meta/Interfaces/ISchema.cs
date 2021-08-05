@@ -7,7 +7,11 @@ namespace Core.Meta.Interfaces
     /// Represents the contents of a textual Bebop schema 
     /// </summary>
     public interface ISchema
-    { 
+    {
+        /// <summary>
+        /// Errors found while validating this schema.
+        /// </summary>
+        public List<SpanException> Errors { get; }
         /// <summary>
         /// An optional namespace that is provided to the compiler.
         /// </summary>

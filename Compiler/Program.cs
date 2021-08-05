@@ -145,6 +145,11 @@ namespace Compiler
                 var parser = new SchemaParser(textualSchema, "CheckNameSpace");
                 var schema = await parser.Parse();
                 schema.Validate();
+                if (schema.Errors.Count > 0)
+                {
+                    await Log.WriteSpanErrors(schema.Errors);
+                    return Err;
+                }
                 return Ok;
             }
             catch (Exception e)
@@ -196,7 +201,12 @@ namespace Compiler
         {
             try
             {
-                await ParseAndValidateSchemas(schemaPaths, "CheckNameSpace");
+                var schema = await ParseAndValidateSchemas(schemaPaths, "CheckNameSpace");
+                if (schema.Errors.Count > 0)
+                {
+                    await Log.WriteSpanErrors(schema.Errors);
+                    return Err;
+                }
                 return Ok;
             }
             catch (Exception e)
