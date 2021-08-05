@@ -3,7 +3,7 @@
 //!
 //!
 //!   bebopc version:
-//!       0.0.1-20210805-1621
+//!       0.0.1-20210805-2239
 //!
 //!
 //!   bebopc source:
@@ -97,6 +97,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for Performer<'raw> {
         self.name.serialized_size() +
         self.plays.serialized_size()
     }
+
     fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
         Ok(
             self.name._serialize_chained(dest)? +
@@ -473,6 +474,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for Library<'raw> {
     fn serialized_size(&self) -> usize {
         self.albums.serialized_size()
     }
+
     fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
         Ok(
             self.albums._serialize_chained(dest)?

@@ -239,7 +239,8 @@ namespace Core.Generators.Rust
                     {
                         builder
                             .AppendLine("const MIN_SERIALIZED_SIZE: usize = Self::SERIALIZED_SIZE;")
-                            .AppendLine($"const EXACT_SERIALIZED_SIZE: Option<usize> = Some(Self::SERIALIZED_SIZE);");
+                            .AppendLine("const EXACT_SERIALIZED_SIZE: Option<usize> = Some(Self::SERIALIZED_SIZE);")
+                            .AppendLine();
                     }
                     else
                     {
@@ -264,7 +265,7 @@ namespace Core.Generators.Rust
                                     (f) => $"self.{MakeAttrIdent(f.Name)}.serialized_size()"
                                 )));
                         }
-                    });
+                    }).AppendLine();
 
                     builder.CodeBlock(
                         "fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
