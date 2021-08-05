@@ -3,8 +3,8 @@ use criterion::criterion_main;
 use criterion::{black_box, criterion_group, Criterion};
 use pprof::criterion::{Output, PProfProfiler};
 
-use bebops::jazz as bb;
-use native::jazz as na;
+use benchmarking::bebops::jazz as bb;
+use benchmarking::native::jazz as na;
 
 const ALLOC_SIZE: usize = 1024 * 1024 * 4;
 
