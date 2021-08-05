@@ -1,3 +1,6 @@
+// TODO: Create an Array wrapper and a String wrapper to enable the user to use owned types or slices
+// TODO: Test "unchecked" feature
+
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::hash::Hash;
@@ -7,7 +10,6 @@ pub use error::*;
 pub use fixed_sized::*;
 
 use crate::{test_serialization, Date, Guid, SliceWrapper};
-
 // not sure why but this is "unused"
 #[allow(unused_imports)]
 use crate::collection;
@@ -37,14 +39,20 @@ pub trait Record<'raw>: SubRecord<'raw> {
     fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
         self._serialize_chained(dest)
     }
+
+    // TODO: support async serialization
+    // fn serialize_async<W: AsyncWrite>(&self, dest: &mut W) -> impl Future<Type=SeResult<usize>>;
 }
 
 /// Internal trait used to reduce the amount of code that needs to be generated.
 pub trait SubRecord<'raw>: Sized {
     const MIN_SERIALIZED_SIZE: usize;
+    const EXACT_SERIALIZED_SIZE: Option<usize> = None;
 
-    // TODO: support async serialization
-    // fn serialize_async<W: AsyncWrite>(&self, dest: &mut W) -> impl Future<Type=SeResult<usize>>;
+    /// Exact size this will be once serialized in bytes.
+    ///
+    /// *Warning*: call is recursive and costly to make if not needed.
+    fn serialized_size(&self) -> usize;
 
     // TODO: test performance of this versus a generic Write
     /// Should only be called from generated code!
@@ -59,6 +67,11 @@ pub trait SubRecord<'raw>: Sized {
 
 impl<'raw> SubRecord<'raw> for &'raw str {
     const MIN_SERIALIZED_SIZE: usize = LEN_SIZE;
+
+    #[inline]
+    fn serialized_size(&self) -> usize {
+        self.len() + LEN_SIZE
+    }
 
     fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
         let raw = self.as_bytes();
@@ -88,6 +101,11 @@ impl<'raw> SubRecord<'raw> for String {
     const MIN_SERIALIZED_SIZE: usize = <&str>::MIN_SERIALIZED_SIZE;
 
     #[inline]
+    fn serialized_size(&self) -> usize {
+        self.len() + LEN_SIZE
+    }
+
+    #[inline]
     fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
         self.as_str()._serialize_chained(dest)
     }
@@ -107,6 +125,15 @@ where
     T: SubRecord<'raw>,
 {
     const MIN_SERIALIZED_SIZE: usize = LEN_SIZE;
+
+    #[inline]
+    fn serialized_size(&self) -> usize {
+        if let Some(size) = T::EXACT_SERIALIZED_SIZE {
+            self.len() * size + LEN_SIZE
+        } else {
+            self.iter().fold(0, |acc, v| acc + v.serialized_size()) + LEN_SIZE
+        }
+    }
 
     fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
         write_len(dest, self.len())?;
@@ -140,7 +167,7 @@ test_serialization!(
     serialization_vec_layered,
     Vec<Vec<Vec<i64>>>,
     (0..4)
-        .map(|_| (0..4).map(|i| (0..16).collect()).collect())
+        .map(|_| (0..4).map(|_| (0..16).collect()).collect())
         .collect(),
     8 * 4 * 4 * 16 + LEN_SIZE + LEN_SIZE * 4 + LEN_SIZE * 4 * 4
 );
@@ -159,6 +186,28 @@ where
     V: SubRecord<'raw>,
 {
     const MIN_SERIALIZED_SIZE: usize = LEN_SIZE;
+
+    #[inline]
+    fn serialized_size(&self) -> usize {
+        match (K::EXACT_SERIALIZED_SIZE, V::EXACT_SERIALIZED_SIZE) {
+            (Some(k_size), Some(v_size)) => (k_size + v_size) * self.len() + LEN_SIZE,
+            (Some(k_size), None) => {
+                k_size * self.len()
+                    + self.values().fold(0, |acc, v| acc + v.serialized_size())
+                    + LEN_SIZE
+            }
+            (None, Some(v_size)) => {
+                self.keys().fold(0, |acc, k| acc + k.serialized_size())
+                    + v_size * self.len()
+                    + LEN_SIZE
+            }
+            (None, None) => {
+                self.keys().fold(0, |acc, k| acc + k.serialized_size())
+                    + self.values().fold(0, |acc, v| acc + v.serialized_size())
+                    + LEN_SIZE
+            }
+        }
+    }
 
     fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
         write_len(dest, self.len())?;
@@ -194,7 +243,13 @@ test_serialization!(serialization_map_str_str_empty, HashMap<&str, &str>, HashMa
 test_serialization!(serialization_map_str_vec_empty_vec, HashMap<&str, Vec<i32>>, collection! {"abc" => vec![]}, LEN_SIZE * 3 + 3);
 
 impl<'raw> SubRecord<'raw> for Guid {
-    const MIN_SERIALIZED_SIZE: usize = 16;
+    const MIN_SERIALIZED_SIZE: usize = Self::SERIALIZED_SIZE;
+    const EXACT_SERIALIZED_SIZE: Option<usize> = Some(Self::SERIALIZED_SIZE);
+
+    #[inline]
+    fn serialized_size(&self) -> usize {
+        Self::SERIALIZED_SIZE
+    }
 
     #[inline]
     fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
@@ -226,7 +281,13 @@ test_serialization!(
 );
 
 impl<'raw> SubRecord<'raw> for Date {
-    const MIN_SERIALIZED_SIZE: usize = 8;
+    const MIN_SERIALIZED_SIZE: usize = Self::SERIALIZED_SIZE;
+    const EXACT_SERIALIZED_SIZE: Option<usize> = Some(Self::SERIALIZED_SIZE);
+
+    #[inline]
+    fn serialized_size(&self) -> usize {
+        Self::SERIALIZED_SIZE
+    }
 
     #[inline]
     fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
@@ -244,6 +305,12 @@ test_serialization!(serialization_date, Date, Date::from_ticks(23462356), 8);
 
 impl<'de> SubRecord<'de> for bool {
     const MIN_SERIALIZED_SIZE: usize = 1;
+    const EXACT_SERIALIZED_SIZE: Option<usize> = Some(bool::SERIALIZED_SIZE);
+
+    #[inline]
+    fn serialized_size(&self) -> usize {
+        bool::SERIALIZED_SIZE
+    }
 
     #[inline]
     fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
@@ -269,6 +336,11 @@ where
     T: FixedSized + SubRecord<'raw>,
 {
     const MIN_SERIALIZED_SIZE: usize = LEN_SIZE;
+
+    #[inline]
+    fn serialized_size(&self) -> usize {
+        self.size() + LEN_SIZE
+    }
 
     fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
         write_len(dest, self.len())?;
@@ -302,7 +374,7 @@ where
         Ok((
             bytes,
             if std::mem::align_of::<T>() == 1 {
-                SliceWrapper::from_cooked(&unsafe {
+                SliceWrapper::from_cooked(unsafe {
                     std::slice::from_raw_parts((&raw[LEN_SIZE..bytes]).as_ptr() as *const T, len)
                 })
             } else {
@@ -338,7 +410,13 @@ fn serialization_slicewrapper_i16_cooked() {
 macro_rules! impl_record_for_num {
     ($t:ty) => {
         impl<'raw> SubRecord<'raw> for $t {
-            const MIN_SERIALIZED_SIZE: usize = core::mem::size_of::<$t>();
+            const MIN_SERIALIZED_SIZE: usize = Self::SERIALIZED_SIZE;
+            const EXACT_SERIALIZED_SIZE: Option<usize> = Some(Self::SERIALIZED_SIZE);
+
+            #[inline]
+            fn serialized_size(&self) -> usize {
+                Self::SERIALIZED_SIZE
+            }
 
             #[inline]
             fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {

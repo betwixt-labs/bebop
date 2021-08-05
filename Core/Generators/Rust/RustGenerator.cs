@@ -64,6 +64,7 @@ namespace Core.Generators.Rust
                 .AppendLine()
                 .AppendLine("use ::std::io::Write as _;")
                 .AppendLine("use ::core::convert::TryInto as _;")
+                .AppendLine("use ::bebop::FixedSized as _;")
                 .AppendLine();
 
             // TODO: do we need to do something with the namespace? Probably not since the file is itself a module.
@@ -80,9 +81,11 @@ namespace Core.Generators.Rust
                         WriteEnumDefinition(builder, ed);
                         break;
                     case MessageDefinition md:
+                        if (md.Parent is UnionDefinition) continue;
                         WriteMessageDefinition(builder, md);
                         break;
                     case StructDefinition sd:
+                        if (sd.Parent is UnionDefinition) continue;
                         WriteStructDefinition(builder, sd);
                         break;
                     case UnionDefinition ud:
@@ -169,6 +172,10 @@ namespace Core.Generators.Rust
             {
                 builder
                     .AppendLine("const MIN_SERIALIZED_SIZE: usize = ::bebop::ENUM_SIZE;")
+                    .AppendLine("const EXACT_SERIALIZED_SIZE: Option<usize> = Some(::bebop::ENUM_SIZE);")
+                    .AppendLine()
+                    .AppendLine("#[inline]")
+                    .AppendLine("fn serialized_size(&self) -> usize { ::bebop::ENUM_SIZE }")
                     .AppendLine()
                     .AppendLine("#[inline]")
                     .CodeBlock(
@@ -187,6 +194,11 @@ namespace Core.Generators.Rust
                                 .AppendLine("let (n, v) = u32::_deserialize_chained(raw)?;")
                                 .AppendLine("Ok((n, v.try_into()?))");
                         });
+            }).AppendLine();
+
+            builder.CodeBlock($"impl ::bebop::FixedSized for {name}", _tab, () =>
+            {
+                builder.AppendLine("const SERIALIZED_SIZE: usize = ::bebop::ENUM_SIZE;");
             }).AppendLine();
         }
 
@@ -212,7 +224,7 @@ namespace Core.Generators.Rust
             builder
                 .CodeBlock($"pub struct {name}", _tab, () => WriteStructDefinitionAttrs(builder, d))
                 .AppendLine();
-            
+
             if (isFixedSize)
             {
                 builder
@@ -223,10 +235,11 @@ namespace Core.Generators.Rust
             builder
                 .CodeBlock($"impl<'raw> ::bebop::SubRecord<'raw> for {name}", _tab, () =>
                 {
-                    if (d.Fields.Count == 0)
+                    if (isFixedSize)
                     {
-                        // special case
-                        builder.AppendLine("const MIN_SERIALIZED_SIZE: usize = 0;");
+                        builder
+                            .AppendLine("const MIN_SERIALIZED_SIZE: usize = Self::SERIALIZED_SIZE;")
+                            .AppendLine($"const EXACT_SERIALIZED_SIZE: Option<usize> = Some(Self::SERIALIZED_SIZE);");
                     }
                     else
                     {
@@ -237,6 +250,21 @@ namespace Core.Generators.Rust
                         builder.Indent(_tab).Append(string.Join(" +\n", parts)).AppendEnd(";").Dedent(_tab)
                             .AppendLine();
                     }
+
+                    builder.AppendLine("#[inline]").CodeBlock("fn serialized_size(&self) -> usize", _tab, () =>
+                    {
+                        if (isFixedSize)
+                        {
+                            builder.AppendLine("Self::SERIALIZED_SIZE");
+                        }
+                        else
+                        {
+                            builder.AppendLine(string.Join(" +\n",
+                                d.Fields.Select(
+                                    (f) => $"self.{MakeAttrIdent(f.Name)}.serialized_size()"
+                                )));
+                        }
+                    });
 
                     builder.CodeBlock(
                         "fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
@@ -333,12 +361,18 @@ namespace Core.Generators.Rust
                     // messages are size in bytes + null byte end
                     builder
                         .AppendLine("const MIN_SERIALIZED_SIZE: usize = ::bebop::LEN_SIZE + 1;")
+                        .AppendLine()
+                        .AppendLine("#[inline]")
+                        .CodeBlock("fn serialized_size(&self) -> usize", _tab, () =>
+                        {
+                            WriteMessageSizeBound(builder, d);
+                        })
+                        .AppendLine()
                         .CodeBlock(
                             "fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
                             _tab, () =>
                             {
-                                WriteMessageSerialization(builder, d, "buf");
-                                builder.AppendLine("Ok(buf.len() + ::bebop::LEN_SIZE)");
+                                WriteMessageSerialization(builder, d);
                             }).AppendLine();
 
                     builder.CodeBlock("fn _deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)>",
@@ -365,25 +399,45 @@ namespace Core.Generators.Rust
             }
         }
 
-        private void WriteMessageSerialization(IndentedStringBuilder builder, MessageDefinition d, string buf,
-            string dest = "dest", string obj = "self")
+        private void WriteMessageSizeBound(IndentedStringBuilder builder, MessageDefinition d, string obj = "self")
         {
             obj = string.IsNullOrEmpty(obj) ? "_" : $"{obj}.";
+            var eol = d.Fields.Count > 0 ? " +" : "";
+            builder.AppendLine($"::bebop::LEN_SIZE + 1{eol}");
+            builder.AppendLine(string.Join(" +\n",
+                d.Fields.Select(
+                    // add 1 for opcode
+                    (f) => $"{obj}{MakeAttrIdent(f.Name)}.as_ref().map(|v| v.serialized_size() + 1).unwrap_or(0)"
+                )));
+        }
+
+        private void WriteMessageSerialization(IndentedStringBuilder builder, MessageDefinition d, bool calcSize = true, string obj = "self")
+        {
+            obj = string.IsNullOrEmpty(obj) ? "_" : $"{obj}.";
+            if (calcSize)
+            {
+                builder
+                    .AppendLine($"let size = {obj}serialized_size();")
+                    // length is not part of the body, so sub
+                    .AppendLine("::bebop::write_len(dest, size - ::bebop::LEN_SIZE)?;");
+            }
+
             // message needs if let for each field to only serialize if present.
-            builder.AppendLine($"let mut {buf} = ::std::vec::Vec::new();");
             foreach (var f in d.Fields.OrderBy((f) => f.ConstantValue))
             {
                 builder.CodeBlock($"if let Some(ref v) = {obj}{MakeAttrIdent(f.Name)}", _tab, () =>
                 {
-                    builder.AppendLine($"{buf}.push({f.ConstantValue});")
-                        .AppendLine($"v._serialize_chained(&mut {buf})?;");
+                    builder
+                        .AppendLine($"{f.ConstantValue}u8._serialize_chained(dest)?;")
+                        .AppendLine("v._serialize_chained(dest)?;");
                 });
             }
 
-            builder.AppendLine($"{buf}.push(0);");
-            builder
-                .AppendLine($"::bebop::write_len({dest}, {buf}.len())?;")
-                .AppendLine($"{dest}.write_all(&{buf})?;");
+            builder.AppendLine("0u8._serialize_chained(dest)?;");
+            if (calcSize)
+            {
+                builder.AppendLine("Ok(size)");
+            }
         }
 
         private void WriteMessageDeserialization(IndentedStringBuilder builder, MessageDefinition d,
@@ -533,11 +587,73 @@ namespace Core.Generators.Rust
                     .AppendLine("const MIN_SERIALIZED_SIZE: usize = ::bebop::LEN_SIZE + 1;")
                     .AppendLine();
 
+                builder.CodeBlock("fn serialized_size(&self) -> usize", _tab, () =>
+                {
+                    builder.AppendLine("::bebop::LEN_SIZE + 1 +");
+                    builder.CodeBlock("match self", _tab, () =>
+                    {
+                        builder.CodeBlock($"{scopeName}::Unknown =>", _tab, () =>
+                        {
+                            builder.AppendLine("0");
+                        });
+                        // matching against each possible union type
+                        foreach (var b in d.Branches.OrderBy((b) => b.Discriminator))
+                        {
+                            var branchName = MakeEnumVariantIdent(b.Definition.Name);
+                            builder.CodeBlock($"{scopeName}::{branchName}", _tab, () =>
+                            {
+                                // destructuring
+                                if (b.Definition is FieldsDefinition fd)
+                                {
+                                    foreach (var field in fd.Fields)
+                                    {
+                                        var fieldName = MakeAttrIdent(field.Name);
+                                        // alias to prevent name collisions
+                                        builder.AppendLine($"{fieldName}: ref _{fieldName},");
+                                    }
+                                }
+                                else
+                                {
+                                    throw new ArgumentOutOfRangeException(b.Definition.ToString());
+                                }
+                            });
+                            builder.CodeBlock("=>", _tab, () =>
+                            {
+                                // summation
+                                switch (b.Definition)
+                                {
+                                    case StructDefinition sd:
+                                        if (sd.Fields.Count == 0)
+                                        {
+                                            builder.AppendLine("0");
+                                        }
+                                        else
+                                        {
+                                            builder.AppendLine(string.Join(" +\n",
+                                                sd.Fields.Select(
+                                                    (f) => $"_{MakeAttrIdent(f.Name)}.serialized_size()"
+                                                )));
+                                        }
+
+                                        break;
+                                    case MessageDefinition md:
+                                        WriteMessageSizeBound(builder, md, "");
+                                        break;
+                                    default:
+                                        throw new ArgumentOutOfRangeException(b.Definition.ToString());
+                                }
+                            });
+                        }
+                    });
+                }).AppendLine();
+
                 builder.CodeBlock(
                     "fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
                     _tab, () =>
                     {
-                        builder.AppendLine("let mut buf = ::std::vec::Vec::new();");
+                        builder.AppendLine("let size = self.serialized_size();")
+                            // the length and discriminators are not part of the body
+                            .AppendLine("::bebop::write_len(dest, size - ::bebop::LEN_SIZE - 1)?;");
                         builder.CodeBlock("match self", _tab, () =>
                         {
                             builder.CodeBlock($"{scopeName}::Unknown =>", _tab, () =>
@@ -568,19 +684,21 @@ namespace Core.Generators.Rust
                                 builder.CodeBlock("=>", _tab, () =>
                                 {
                                     // serialization
-                                    builder.AppendLine($"buf.push({b.Discriminator});");
+                                    builder.AppendLine($"{b.Discriminator}u8._serialize_chained(dest)?;");
                                     switch (b.Definition)
                                     {
                                         case StructDefinition sd:
                                             foreach (var sdField in sd.Fields)
                                             {
                                                 builder.AppendLine(
-                                                    $"_{MakeAttrIdent(sdField.Name)}._serialize_chained(&mut buf);");
+                                                    $"_{MakeAttrIdent(sdField.Name)}._serialize_chained(dest)?;");
                                             }
 
                                             break;
                                         case MessageDefinition md:
-                                            WriteMessageSerialization(builder, md, "msgbuf", "&mut buf", "");
+                                            // calculate size of message by taking union size and subbing union length and discriminator
+                                            builder.AppendLine("::bebop::write_len(dest, size - ::bebop::LEN_SIZE * 2 - 1)?;");
+                                            WriteMessageSerialization(builder, md, false, "");
                                             break;
                                         default:
                                             throw new ArgumentOutOfRangeException(b.Definition.ToString());
@@ -590,10 +708,7 @@ namespace Core.Generators.Rust
                         });
 
                         builder
-                            // sub 1 from length since discriminator is not part of the body
-                            .AppendLine("::bebop::write_len(dest, buf.len() - 1);")
-                            .AppendLine("dest.write_all(&buf)?;")
-                            .AppendLine("Ok(buf.len() + ::bebop::LEN_SIZE)");
+                            .AppendLine("Ok(size)");
                     }).AppendLine();
 
                 builder.CodeBlock("fn _deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)>", _tab,

@@ -84,6 +84,7 @@ where
     T: FixedSized,
 {
     /// Retrieve the number of items
+    #[inline]
     pub fn len(&self) -> usize {
         match *self {
             SliceWrapper::Raw(raw) => raw.len() / size_of::<T>(),
@@ -91,6 +92,7 @@ where
         }
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
         match *self {
             SliceWrapper::Raw(raw) => raw.is_empty(),
@@ -98,7 +100,9 @@ where
         }
     }
 
-    /// Retrieve the total size of this slice in bytes
+    /// Retrieve the total size of this slice's data in bytes. Does not include any extra bytes to
+    /// define the length of the array so it is not the same as the serialized size.
+    #[inline]
     pub fn size(&self) -> usize {
         match *self {
             SliceWrapper::Raw(raw) => raw.len(),
@@ -174,7 +178,12 @@ mod test {
     }
 
     impl<'raw> SubRecord<'raw> for Fixed {
-        const MIN_SERIALIZED_SIZE: usize = 9;
+        const MIN_SERIALIZED_SIZE: usize = Self::SERIALIZED_SIZE;
+        const EXACT_SERIALIZED_SIZE: Option<usize> = Some(Self::SERIALIZED_SIZE);
+
+        fn serialized_size(&self) -> usize {
+            Self::SERIALIZED_SIZE
+        }
 
         fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
             self.a._serialize_chained(dest)?;

@@ -17,7 +17,12 @@ struct Fixed {
 impl FixedSized for Fixed {}
 
 impl<'raw> SubRecord<'raw> for Fixed {
-    const MIN_SERIALIZED_SIZE: usize = 9;
+    const MIN_SERIALIZED_SIZE: usize = Self::SERIALIZED_SIZE;
+    const EXACT_SERIALIZED_SIZE: Option<usize> = Some(Self::SERIALIZED_SIZE);
+
+    fn serialized_size(&self) -> usize {
+        Self::SERIALIZED_SIZE
+    }
 
     fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
         self.a._serialize_chained(dest)?;
