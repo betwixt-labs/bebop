@@ -235,51 +235,7 @@ namespace Core.Parser
                     ParseDefinition();
                 }
             }
-            foreach (var (typeToken, definitionToken) in _typeReferences)
-            {
-                if (!_definitions.ContainsKey(typeToken.Lexeme))
-                {
-                    throw new UnrecognizedTypeException(typeToken, definitionToken.Lexeme);
-                }
-                var reference = _definitions[typeToken.Lexeme];
-                var referenceScope = reference.Scope;
-                var definition = _definitions[definitionToken.Lexeme];
-                var definitionScope = definition.Scope;
-                // You're not allowed to reference types declared within a union from elsewhere
-                // Check if reference has a union in scope but definition does not have the same union in scope
-                // Throw ReferenceScopeException if so
-
-                // It might be better for this to go inside BebopSchema.Validate but it's much simpler if I can use the typeReferences map
-                if (referenceScope.Find((parent) => parent is UnionDefinition) is UnionDefinition union)
-                {
-                    if (!definitionScope.Contains(union))
-                    {
-                        throw new ReferenceScopeException(definition, reference, "union");
-                    }
-                }
-            }
-            // I'm gonna keep this for now because I might need it later once I move the checking over to BebopSchema.Validate
-            // Maybe not if I bring over the type reference set, but I haven't decided yet
-            /*
-            foreach (var definition in _definitions.Values)
-            {
-                var scope = definition.Scope;
-                var dependencies = definition.Dependencies();
-
-                
-                foreach (var dependency in dependencies)
-                {
-                    var depScope = _definitions[dependency].Scope;
-                    if (depScope is not null && depScope.Find((parent) => parent is UnionDefinition) is UnionDefinition union) {
-                        if (scope is null || !scope.Contains(union))
-                        {
-                            throw new ReferenceScopeException(definition, _definitions[dependency], "union");
-                        }
-                    }
-                }
-                
-            }*/
-            return new BebopSchema(_nameSpace, _definitions);
+            return new BebopSchema(_nameSpace, _definitions, _typeReferences);
         }
 
         private Definition ParseDefinition()

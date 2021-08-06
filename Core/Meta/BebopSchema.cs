@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Core.Exceptions;
+using Core.Lexer.Tokenization.Models;
 using Core.Meta.Interfaces;
 
 namespace Core.Meta
@@ -10,12 +11,14 @@ namespace Core.Meta
     public struct BebopSchema : ISchema
     {
         public List<SpanException> Errors { set; get; }
-        public BebopSchema(string nameSpace, Dictionary<string, Definition> definitions)
+
+        public BebopSchema(string nameSpace, Dictionary<string, Definition> definitions, HashSet<(Token, Token)> typeReferences)
         {
             Namespace = nameSpace;
             Definitions = definitions;
             _sortedDefinitions = null;
             Errors = new();
+            _typeReferences = typeReferences;
         }
         /// <inheritdoc/>
         public string Namespace { get; }
@@ -26,6 +29,8 @@ namespace Core.Meta
         /// A cached result of SortedDefinitions.
         /// </summary>
         private List<Definition>? _sortedDefinitions;
+
+        private HashSet<(Token, Token)> _typeReferences;
 
         /// <inheritdoc/>
         public List<Definition> SortedDefinitions()
@@ -92,6 +97,28 @@ namespace Core.Meta
         public List<SpanException> Validate()
         {
             var errors = new List<SpanException>();
+            foreach (var (typeToken, definitionToken) in _typeReferences)
+            {
+                if (!Definitions.ContainsKey(typeToken.Lexeme))
+                {
+                    errors.Add(new UnrecognizedTypeException(typeToken, definitionToken.Lexeme));
+                }
+                var reference = Definitions[typeToken.Lexeme];
+                var referenceScope = reference.Scope;
+                var definition = Definitions[definitionToken.Lexeme];
+                var definitionScope = definition.Scope;
+
+                // You're not allowed to reference types declared within a union from elsewhere
+                // Check if reference has a union in scope but definition does not have the same union in scope
+                // Throw ReferenceScopeException if so
+                if (referenceScope.Find((parent) => parent is UnionDefinition) is UnionDefinition union)
+                {
+                    if (!definitionScope.Contains(union))
+                    {
+                        errors.Add(new ReferenceScopeException(definition, reference, "union"));
+                    }
+                }
+            }
             foreach (var definition in Definitions.Values)
             {
                 if (Definitions.Values.Count(d => d.Name.Equals(definition.Name, StringComparison.OrdinalIgnoreCase)) > 1)
