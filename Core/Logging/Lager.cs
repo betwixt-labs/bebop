@@ -70,7 +70,7 @@ namespace Core.Logging
                 };
             });
             string message;
-            if (Formatter == LogFormatter.Structured)
+            if (Formatter == LogFormatter.JSON)
             {
                 message = "[" + string.Join(", ", messages) + "]";
             }
@@ -137,7 +137,7 @@ namespace Core.Logging
             switch (ex)
             {
                 case SpanException span:
-                    await WriteSpanError(span);
+                    await WriteSpanErrors(new List<SpanException>() { span });
                     break;
                 case FileNotFoundException file:
                     await WriteFileNotFoundError(file);

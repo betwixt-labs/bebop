@@ -30,6 +30,7 @@ namespace Core.Parser
         private readonly HashSet<(Token, Token)> _typeReferences = new();
         private int _index;
         private readonly string _nameSpace;
+        private List<SpanException> _errors = new();
         private List<Token> _tokens => _tokenizer.Tokens;
 
         /// <summary>
@@ -205,6 +206,7 @@ namespace Core.Parser
         public async Task<ISchema> Parse()
         {
             _index = 0;
+            _errors.Clear();
             _definitions.Clear();
             _typeReferences.Clear();
 
@@ -235,7 +237,12 @@ namespace Core.Parser
                     ParseDefinition();
                 }
             }
-            return new BebopSchema(_nameSpace, _definitions, _typeReferences);
+            return new BebopSchema(
+                nameSpace: _nameSpace, 
+                definitions: _definitions, 
+                typeReferences: _typeReferences, 
+                parsingErrors: _errors
+            );
         }
 
         private Definition ParseDefinition()
@@ -481,11 +488,13 @@ namespace Core.Parser
 
             if (isReadOnly && definition is not StructDefinition)
             {
-                throw new InvalidReadOnlyException(definition);
+                //throw new InvalidReadOnlyException(definition);
+                _errors.Add(new InvalidReadOnlyException(definition));
             }
             if (opcodeAttribute != null && definition is not TopLevelDefinition)
             {
-                throw new InvalidOpcodeAttributeUsageException(definition);
+                //throw new InvalidOpcodeAttributeUsageException(definition);
+                _errors.Add(new InvalidOpcodeAttributeUsageException(definition));
             }
 
             if (_definitions.ContainsKey(name))
@@ -534,20 +543,25 @@ namespace Core.Parser
                 }
                 if (discriminator < 1 || discriminator > 255)
                 {
-                    throw new UnexpectedTokenException(TokenKind.Number, indexToken, "A union branch discriminator must be between 1 and 255.");
+                    _errors.Add(new UnexpectedTokenException(TokenKind.Number, indexToken, "A union branch discriminator must be between 1 and 255."));
                 }
                 if (usedDiscriminators.Contains(discriminator))
                 {
-                    throw new DuplicateUnionDiscriminatorException(indexToken, name);
+                    _errors.Add(new DuplicateUnionDiscriminatorException(indexToken, name));
                 }
                 usedDiscriminators.Add(discriminator);
                 // Parse an arrow ("->").
                 Expect(TokenKind.Hyphen, hint: indexHint);
                 Expect(TokenKind.CloseCaret, hint: indexHint);
                 var definition = ParseDefinition();
-                if (definition is not TopLevelDefinition td || definition is UnionDefinition)
+                if (definition is not TopLevelDefinition td)
                 {
                     throw new InvalidUnionBranchException(definition);
+                }
+                // Parsing can continue if it's a nested union, but the rest of this method depends on it being a top level definition
+                if (definition is UnionDefinition)
+                {
+                    _errors.Add(new InvalidUnionBranchException(definition));
                 }
                 td.DiscriminatorInParent = (byte)discriminator;
                 Eat(TokenKind.Semicolon);
@@ -563,7 +577,8 @@ namespace Core.Parser
             CloseScope(name, unionDefinition);
             if (unionDefinition.Branches.Count == 0)
             {
-                throw new EmptyUnionException(unionDefinition);
+                _errors.Add(new EmptyUnionException(unionDefinition));
+                // throw new EmptyUnionException(unionDefinition);
             }
             return unionDefinition;
         }
@@ -589,7 +604,8 @@ namespace Core.Parser
                 var keyType = ParseType(definitionToken);
                 if (!IsValidMapKeyType(keyType))
                 {
-                    throw new InvalidMapKeyTypeException(keyType);
+                    // No problem parsing past this, just add it to the errors list
+                    _errors.Add(new InvalidMapKeyTypeException(keyType));
                 }
                 Expect(TokenKind.Comma, hint: mapHint);
                 var valueType = ParseType(definitionToken);

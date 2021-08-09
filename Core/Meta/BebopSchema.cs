@@ -10,14 +10,17 @@ namespace Core.Meta
     /// <inheritdoc/>
     public struct BebopSchema : ISchema
     {
-        public List<SpanException> Errors { set; get; }
+        private List<SpanException> _parsingErrors;
+        private List<SpanException> _validationErrors;
+        public List<SpanException> Errors => _parsingErrors.Concat(_validationErrors).ToList();
 
-        public BebopSchema(string nameSpace, Dictionary<string, Definition> definitions, HashSet<(Token, Token)> typeReferences)
+        public BebopSchema(string nameSpace, Dictionary<string, Definition> definitions, HashSet<(Token, Token)> typeReferences, List<SpanException>? parsingErrors = null)
         {
             Namespace = nameSpace;
             Definitions = definitions;
             _sortedDefinitions = null;
-            Errors = new();
+            _validationErrors = new();
+            _parsingErrors = parsingErrors ?? new();
             _typeReferences = typeReferences;
         }
         /// <inheritdoc/>
@@ -199,7 +202,7 @@ namespace Core.Meta
                     }
                 }
             }
-            Errors = errors;
+            _validationErrors = errors;
             return errors;
         }
     }

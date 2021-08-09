@@ -184,6 +184,11 @@ namespace Compiler
             try
             {
                 var schema = await ParseAndValidateSchemas(schemaPaths, nameSpace);
+                if (schema.Errors.Count > 0)
+                {
+                    await Log.WriteSpanErrors(schema.Errors);
+                    return Err;
+                }
                 var generator = makeGenerator(schema);
                 generator.WriteAuxiliaryFiles(outputFile.DirectoryName ?? string.Empty);
                 var compiled = generator.Compile(langVersion);
