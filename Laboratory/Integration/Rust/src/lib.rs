@@ -39,9 +39,9 @@ pub fn make_library() -> Library<'static> {
                 ]
             },
             "Adam's Apple" => Album::LiveAlbum {
+                tracks: None,
                 venue_name: Some("Tunisia"),
-                concert_date: Some(Date::from_secs(528205479)),
-                tracks: None
+                concert_date: Some(Date::from_secs_since_unix_epoch(528205479)),
             },
             "Milestones" => Album::StudioAlbum {
                 tracks: vec![]

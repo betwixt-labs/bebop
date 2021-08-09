@@ -21,7 +21,7 @@ Library make_library() {
             {"Adam's Apple", { LiveAlbum {
                 {},
                 "Tunisia",
-                bebop::TickDuration { 528205479 * bebop::Tick::den / bebop::Tick::num }
+                bebop::TickDuration { 5282054790000000 }
             }}},
             {"Milestones", { StudioAlbum {
                 std::vector<Song>()
