@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <Reference Include="Bebop">
-      <HintPath>..\..\..\Runtime\C#\bin\Debug\net5.0\Bebop.dll</HintPath>
+      <HintPath>../../Runtime/C#/bin/Debug/net5.0/Bebop.dll</HintPath>
     </Reference>
   </ItemGroup>
 

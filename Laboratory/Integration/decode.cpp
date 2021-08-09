@@ -1,9 +1,6 @@
-#include "union1.hpp"
-#include <cstdio>
-#include <vector>
+#include "makelib.hpp"
 #include <iostream>
 #include <fstream>
-#include <variant>
 
 static std::vector<uint8_t> ReadAllBytes(char const *filename)
 {
@@ -18,11 +15,11 @@ static std::vector<uint8_t> ReadAllBytes(char const *filename)
 int main(int argc, char **argv)
 {
   const auto bytes = ReadAllBytes(argv[1]);
-  Union1 u;
-  Union1::decodeInto(bytes, u);
-  auto right = std::get_if<Right>(&u.variant);
-  if (right != nullptr && right->r == "Success")
-    return 0;
-  else
-    return 1;
+  Library lib;
+  Library::decodeInto(bytes, lib);
+
+  // because there is no default object comparison, just serialize again to make sure we got all data.
+  std::vector<uint8_t> buffer;
+  Library::encodeInto(lib, buffer);
+  return buffer != bytes;
 }
