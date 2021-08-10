@@ -6,23 +6,13 @@ const TICKS_BETWEEN_EPOCHS: u64 = 621355968000000000;
 
 /// A date is stored as a 64-bit integer amount of “ticks” since 00:00:00 UTC on January 1 of year
 /// 1 A.D. in the Gregorian calendar, where a “tick” is 100 nanoseconds.
+///
+/// The top two bits of this value are ignored by Bebop. In .NET, they are used to specify whether a
+/// date is in UTC or local to the current time zone. But in Bebop, all date-times on the wire are
+/// in UTC.
 #[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy, Debug)]
 #[repr(transparent)]
 pub struct Date(u64);
-
-impl Deref for Date {
-    type Target = u64;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for Date {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
 
 impl From<Date> for Duration {
     fn from(d: Date) -> Self {
@@ -47,12 +37,13 @@ impl Date {
 
     #[inline]
     pub const fn to_ticks(self) -> u64 {
-        self.0
+        // because .NET is weird we have to remove top bits
+        self.0 & 0x3fffffffffffffff
     }
 
     #[inline]
     pub const fn to_ticks_since_unix_epoch(self) -> u64 {
-        self.0 - TICKS_BETWEEN_EPOCHS
+        self.to_ticks() - TICKS_BETWEEN_EPOCHS
     }
 
     #[inline]
@@ -67,7 +58,7 @@ impl Date {
 
     #[inline]
     pub const fn to_micros(self) -> u64 {
-        self.0 / 10
+        self.to_ticks() / 10
     }
 
     #[inline]

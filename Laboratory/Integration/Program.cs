@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using Bebop.Runtime;
 
-namespace UnionTypes
+namespace IntegrationTesting
 {
     class Program
     {
@@ -24,7 +25,7 @@ namespace UnionTypes
                             new Song("Groovin' High", null, null)
                         }
                     ),
-                    ["Adam's Apple"] = new LiveAlbum(null, "Tunisia", DateTime.Parse("September 27, 1986 11:44:39 AM")),
+                    ["Adam's Apple"] = new LiveAlbum(null, "Tunisia", DateTime.FromFileTimeUtc(121726790790000000)),
                     ["Milestones"] = new StudioAlbum(Array.Empty<Song>()),
                     ["Brilliant Corners"] = new LiveAlbum(
                         new[]
@@ -36,7 +37,7 @@ namespace UnionTypes
                                     new Musician("Joe Henderson", Instrument.Sax),
                                     new Musician("Teddy Smith", Instrument.Clarinet)
                                 })
-                        }, "Night's Place", null)
+                        }, "Night's Palace", null)
                 });
 
         static int Main(string[] args)
