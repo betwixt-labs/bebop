@@ -25,7 +25,7 @@ export function ensurePermissions() {
 
 interface BebopcCheckResponse {
     Message: string
-    Span: {
+    Span?: {
         FileName: string
         StartLine: number
         EndLine: number
@@ -47,15 +47,30 @@ export interface Issue {
 }
 
 function parseBebopcCheckResponse(stderr: string): Issue[] {
-    const { Message, Span }: BebopcCheckResponse = JSON.parse(stderr.trim().replace(/\\/g, "\\"))
+    const response = JSON.parse(stderr.trim().replace(/\\/g, "\\"))
+    if (Array.isArray(response)) {
+        return response.map((issue) => {
+            const { Message, Span } = issue
+            return {
+                severity: 'error',
+                description: Message,
+                startLine: Span?.StartLine ?? 0,
+                endLine: Span?.EndLine ?? 0,
+                startColumn: Span?.StartColumn ?? 0,
+                endColumn: Span?.EndColumn ?? 0,
+                fileName: Span?.fileName ?? ""
+            }
+        })
+    }
+    const { Message, Span } = response
     return [{
         severity: 'error',
         description: Message,
-        startLine: Span.StartLine,
-        endLine: Span.EndLine,
-        startColumn: Span.StartColumn,
-        endColumn: Span.EndColumn,
-        fileName: Span.FileName
+        startLine: Span?.StartLine ?? 0,
+        endLine: Span?.EndLine ?? 0,
+        startColumn: Span?.StartColumn ?? 0,
+        endColumn: Span?.EndColumn ?? 0,
+        fileName: Span?.fileName ?? ""
     }]
 }
 
@@ -96,10 +111,9 @@ export async function checkProject(cfg:
             processConfig, 
             (error, stdout, stderr) => {
                 if (stderr.trim().length > 0) {
-                    const issues = parseBebopcCheckResponse(stderr)
                     resolve({
                         error: true,
-                        issues
+                        issues: parseBebopcCheckResponse(stderr)
                     })
                 }
                 resolve({error: false})
@@ -113,21 +127,7 @@ export async function check(path: string): Promise<CheckResults> {
     return new Promise((resolve, reject) => {
         child_process.exec(`${bebopc} --check ${path} --log-format JSON `, (error, stdout, stderr) => {
             if (stderr.trim().length > 0) {
-                const { Message, Span }: BebopcCheckResponse = JSON.parse(stderr.trim().replace(/\\/g, "\\"))
-                const issues: Issue[] = []
-                issues.push({
-                    severity: 'error',
-                    description: Message,
-                    startLine: Span.StartLine,
-                    endLine: Span.EndLine,
-                    startColumn: Span.StartColumn,
-                    endColumn: Span.EndColumn,
-                    fileName: Span.FileName
-                })
-                resolve({
-                    error: true,
-                    issues
-                })
+                resolve({error: true, issues: parseBebopcCheckResponse(stderr)})
             }
             else {
                 resolve({error: false})
@@ -146,21 +146,7 @@ export async function checkSchema(contents: string): Promise<{error: boolean, is
         })
         compiler.on("close", (code: number) => {
             if (stderr.trim().length > 0) {
-                const { Message, Span }: BebopcCheckResponse = JSON.parse(stderr.trim())
-                const issues: Issue[] = []
-                issues.push({
-                    severity: 'error',
-                    description: Message,
-                    startLine: Span.StartLine,
-                    endLine: Span.EndLine,
-                    startColumn: Span.StartColumn,
-                    endColumn: Span.EndColumn,
-                    fileName: ""
-                })
-                resolve({
-                    error: true,
-                    issues
-                })
+                resolve({error: true, issues: parseBebopcCheckResponse(stderr)})
             }
             else {
                 resolve({error: false})

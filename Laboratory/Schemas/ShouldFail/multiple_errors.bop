@@ -1,3 +1,7 @@
+mesage Nah {
+    
+}
+
 struct Wrong {
     map[bool[], bool] m1;
 }

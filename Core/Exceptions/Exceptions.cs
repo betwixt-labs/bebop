@@ -129,8 +129,8 @@ namespace Core.Exceptions
     [Serializable]
     public class InvalidUnionBranchException : SpanException
     {
-        public InvalidUnionBranchException(Definition definition)
-            : base($"The definition '{definition.Name}' cannot be used as a union branch. Valid union branches are messages and structs.", definition.Span, 113)
+        public InvalidUnionBranchException(Definition? definition)
+            : base($"The definition '{definition?.Name ?? "null"}' cannot be used as a union branch. Valid union branches are messages and structs.", definition?.Span ?? new Span(), 113)
         { }
     }
 

@@ -20,6 +20,7 @@ namespace Core.Parser
 {
     public class SchemaParser
     {
+        private readonly HashSet<TokenKind> _topLevelDefinitionKinds = new() { TokenKind.Enum, TokenKind.Struct, TokenKind.Message};
         private readonly Stack<List<Definition>> _scopes = new();
         private readonly Tokenizer _tokenizer;
         private readonly Dictionary<string, Definition> _definitions = new();
@@ -159,6 +160,46 @@ namespace Core.Parser
             }
         }
 
+        /// <summary>
+        /// Expect a token of a certain kind. If not present, skip until it or one of a set of additional tokens is matched. Does NOT consume the token.
+        /// </summary>
+        /// <param name="kinds"></param>
+        /// <param name="additionalTokens"></param>
+        /// <param name="hint"></param>
+        private void ExpectAndSkip(TokenKind kind, HashSet<TokenKind>? additionalTokens = null, string? hint = null)
+        {
+            additionalTokens ??= new();
+            ConsumeBlockComments();
+            if (CurrentToken.Kind != kind)
+            {
+                _errors.Add(new UnexpectedTokenException(kind, CurrentToken, hint));
+                while (_index < _tokens.Count - 1 && CurrentToken.Kind != kind && !additionalTokens.Contains(CurrentToken.Kind))
+                {
+                    _index++;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Expect a token of a certain set of kinds. If not present, skip until it or one of a set of additional tokens is matched. Does NOT consume the token.
+        /// </summary>
+        /// <param name="kinds"></param>
+        /// <param name="additionalTokens"></param>
+        /// <param name="hint"></param>
+        private void ExpectAndSkip(HashSet<TokenKind> kinds, HashSet<TokenKind>? additionalTokens = null, string? hint = null)
+        {
+            additionalTokens ??= new();
+            ConsumeBlockComments();
+            if (kinds.All(kind => kind != CurrentToken.Kind))
+            {
+                _errors.Add(new UnexpectedTokenException(kinds, CurrentToken, hint));
+                while (_index < _tokens.Count - 1 && !kinds.Contains(CurrentToken.Kind) && !additionalTokens.Contains(CurrentToken.Kind))
+                {
+                    _index++;
+                }
+            }
+        }
+
         private string ExpectLexeme(TokenKind kind, string? hint = null)
         {
             var lexeme = CurrentToken.Lexeme;
@@ -245,7 +286,7 @@ namespace Core.Parser
             );
         }
 
-        private Definition ParseDefinition()
+        private Definition? ParseDefinition()
         {
             var definitionDocumentation = ConsumeBlockComments();
 
@@ -264,6 +305,7 @@ namespace Core.Parser
             }
             else
             {
+                ExpectAndSkip(_topLevelDefinitionKinds, hint: "Expecting a top level definition.");
                 var kind = CurrentToken switch
                 {
                     _ when Eat(TokenKind.Enum) => AggregateKind.Enum,
@@ -271,6 +313,12 @@ namespace Core.Parser
                     _ when Eat(TokenKind.Message) => AggregateKind.Message,
                     _ => throw new UnexpectedTokenException(TokenKind.Message, CurrentToken)
                 };
+                ExpectAndSkip(TokenKind.Identifier, _topLevelDefinitionKinds);
+                if (CurrentToken.Kind != TokenKind.Identifier)
+                {
+                    // Uh oh we skipped ahead due to a missing identifier, get outta there
+                    return null;
+                }
                 return ParseNonUnionDefinition(CurrentToken, kind, isReadOnly, definitionDocumentation, opcodeAttribute);
             }
         }
@@ -406,8 +454,14 @@ namespace Core.Parser
             var kindName = kind switch { AggregateKind.Enum => "enum", AggregateKind.Struct => "struct", _ => "message" };
             var aKindName = kind switch { AggregateKind.Enum => "an enum", AggregateKind.Struct => "a struct", _ => "a message" };
 
-            Expect(TokenKind.Identifier, hint: $"Did you forget to specify a name for this {kindName}?");
-            Expect(TokenKind.OpenBrace);
+            ExpectAndSkip(TokenKind.Identifier, new() { TokenKind.OpenBrace });
+            Eat(TokenKind.Identifier);
+            ExpectAndSkip(TokenKind.OpenBrace, new() { TokenKind.CloseBrace });
+            Eat(TokenKind.OpenBrace);
+
+            //Expect(TokenKind.Identifier, hint: $"Did you forget to specify a name for this {kindName}?");
+            //Expect(TokenKind.OpenBrace);
+
             var definitionEnd = CurrentToken.Span;
             while (!Eat(TokenKind.CloseBrace))
             {
