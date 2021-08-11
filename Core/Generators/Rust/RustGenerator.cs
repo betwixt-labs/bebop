@@ -320,12 +320,15 @@ namespace Core.Generators.Rust
                 builder.AppendLine("let mut i = 0;");
             }
 
-            builder.CodeBlock("if raw.len() - i < Self::MIN_SERIALIZED_SIZE", _tab, () =>
+            if (selfClass == "Self")
             {
-                builder
-                    .AppendLine("let missing = Self::MIN_SERIALIZED_SIZE - (raw.len() - i);")
-                    .AppendLine("return Err(::bebop::DeserializeError::MoreDataExpected(missing));");
-            }).AppendLine();
+                builder.CodeBlock("if raw.len() - i < Self::MIN_SERIALIZED_SIZE", _tab, () =>
+                {
+                    builder
+                        .AppendLine("let missing = Self::MIN_SERIALIZED_SIZE - (raw.len() - i);")
+                        .AppendLine("return Err(::bebop::DeserializeError::MoreDataExpected(missing));");
+                }).AppendLine();
+            }
             var vars = new LinkedList<(string, string)>();
             var j = 0;
             foreach (var f in d.Fields)
@@ -718,11 +721,6 @@ namespace Core.Generators.Rust
                         builder
                             // add 1 for discriminator
                             .AppendLine("let len = ::bebop::read_len(&raw)? + ::bebop::LEN_SIZE + 1;")
-                            .CodeBlock("if raw.len() < len", _tab, () =>
-                            {
-                                builder.AppendLine(
-                                    "return Err(::bebop::DeserializeError::MoreDataExpected(len - raw.len()));");
-                            })
                             .AppendLine("let mut i = ::bebop::LEN_SIZE + 1;");
 
                         builder.CodeBlock("let de = match raw[::bebop::LEN_SIZE]", _tab, () =>

@@ -7,4 +7,4 @@ edition = "2018"
 
 [dependencies]
 # use sorted-maps to make it easier to debug, unsorted maps are still considered valid
-bebop = { path = "../../../Runtime/Rust", features = ["sorted_maps"] }
+bebop = { path = "../../../Runtime/Rust" } # , features = ["sorted_maps"]

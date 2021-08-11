@@ -13,7 +13,6 @@ use crate::{test_serialization, Date, Guid, SliceWrapper};
 // not sure why but this is "unused"
 #[allow(unused_imports)]
 use crate::collection;
-use itertools::Itertools;
 
 pub mod error;
 pub mod fixed_sized;
@@ -221,6 +220,9 @@ where
     }
 
     fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+        #[cfg(feature = "sorted_maps")]
+        use itertools::Itertools;
+
         write_len(dest, self.len())?;
         let mut i = LEN_SIZE;
 
