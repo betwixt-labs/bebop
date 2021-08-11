@@ -13,6 +13,7 @@ use crate::{test_serialization, Date, Guid, SliceWrapper};
 // not sure why but this is "unused"
 #[allow(unused_imports)]
 use crate::collection;
+use itertools::Itertools;
 
 pub mod error;
 pub mod fixed_sized;
@@ -180,9 +181,19 @@ test_serialization!(
 );
 test_serialization!(serialization_vec_empty_i16, Vec<i16>, Vec::new(), LEN_SIZE);
 
+#[cfg(feature = "sorted_maps")]
+pub trait SubRecordHashMapKey<'raw>: SubRecord<'raw> + Eq + Hash + Ord {}
+#[cfg(not(feature = "sorted_maps"))]
+pub trait SubRecordHashMapKey<'raw>: SubRecord<'raw> + Eq + Hash {}
+
+#[cfg(feature = "sorted_maps")]
+impl<'raw, T> SubRecordHashMapKey<'raw> for T where T: SubRecord<'raw> + Eq + Hash + Ord {}
+#[cfg(not(feature = "sorted_maps"))]
+impl<'raw, T> SubRecordHashMapKey<'raw> for T where T: SubRecord<'raw> + Eq + Hash {}
+
 impl<'raw, K, V> SubRecord<'raw> for HashMap<K, V>
 where
-    K: SubRecord<'raw> + Eq + Hash,
+    K: SubRecordHashMapKey<'raw>,
     V: SubRecord<'raw>,
 {
     const MIN_SERIALIZED_SIZE: usize = LEN_SIZE;
@@ -212,7 +223,15 @@ where
     fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
         write_len(dest, self.len())?;
         let mut i = LEN_SIZE;
-        for (k, v) in self.iter() {
+
+        #[cfg(feature = "sorted_maps")]
+        let iter = self
+            .iter()
+            .sorted_unstable_by(|(k1, _), (k2, _)| k1.cmp(k2));
+        #[cfg(not(feature = "sorted_maps"))]
+        let iter = self.iter();
+
+        for (k, v) in iter {
             i += k._serialize_chained(dest)?;
             i += v._serialize_chained(dest)?;
         }

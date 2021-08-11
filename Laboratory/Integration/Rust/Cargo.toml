@@ -6,4 +6,5 @@ edition = "2018"
 [lib]
 
 [dependencies]
-bebop = { path = "../../../Runtime/Rust" }
+# use sorted-maps to make it easier to debug, unsorted maps are still considered valid
+bebop = { path = "../../../Runtime/Rust", features = ["sorted_maps"] }

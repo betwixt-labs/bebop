@@ -1,5 +1,4 @@
-import { Union1, Right } from "./union1";
+import {makelib} from "./makelib"
+import {Library} from "./schema"
 
-const buffer = Union1.encode({ discriminator: Right.discriminator, value: { r: "Success" } });
-process.stdout.write(buffer);
-
+process.stdout.write(Library.encode(makelib()))

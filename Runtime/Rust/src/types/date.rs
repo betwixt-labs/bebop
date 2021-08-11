@@ -1,5 +1,6 @@
-use std::ops::{Deref, DerefMut};
 use std::time::Duration;
+use std::cmp::Ordering;
+use std::hash::{Hash, Hasher};
 
 /// The number of ticks between 1/1/0001 and 1/1/1970.
 const TICKS_BETWEEN_EPOCHS: u64 = 621355968000000000;
@@ -10,7 +11,7 @@ const TICKS_BETWEEN_EPOCHS: u64 = 621355968000000000;
 /// The top two bits of this value are ignored by Bebop. In .NET, they are used to specify whether a
 /// date is in UTC or local to the current time zone. But in Bebop, all date-times on the wire are
 /// in UTC.
-#[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug)]
 #[repr(transparent)]
 pub struct Date(u64);
 
@@ -21,6 +22,28 @@ impl From<Date> for Duration {
         let remaining_ticks = d.0 - (micros * 10);
         let nanos = remaining_ticks * 100;
         Duration::from_micros(micros) + Duration::from_nanos(nanos)
+    }
+}
+
+impl PartialEq for Date {
+    fn eq(&self, other: &Self) -> bool {
+        self.to_ticks() == other.to_ticks()
+    }
+}
+impl Eq for Date {}
+impl PartialOrd for Date {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.to_ticks().cmp(&other.to_ticks()))
+    }
+}
+impl Ord for Date {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.to_ticks().cmp(&other.to_ticks())
+    }
+}
+impl Hash for Date {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.to_ticks().hash(state)
     }
 }
 
