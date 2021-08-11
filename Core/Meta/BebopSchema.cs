@@ -105,6 +105,7 @@ namespace Core.Meta
                 if (!Definitions.ContainsKey(typeToken.Lexeme))
                 {
                     errors.Add(new UnrecognizedTypeException(typeToken, definitionToken.Lexeme));
+                    continue;
                 }
                 var reference = Definitions[typeToken.Lexeme];
                 var referenceScope = reference.Scope;

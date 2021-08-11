@@ -20,7 +20,8 @@ namespace Core.Parser
 {
     public class SchemaParser
     {
-        private readonly HashSet<TokenKind> _topLevelDefinitionKinds = new() { TokenKind.Enum, TokenKind.Struct, TokenKind.Message};
+        private readonly HashSet<TokenKind> _topLevelDefinitionKinds = new() { TokenKind.Enum, TokenKind.Struct, TokenKind.Message, TokenKind.Union };
+        private readonly HashSet<TokenKind> _universalFollowKinds = new() { TokenKind.Enum, TokenKind.Struct, TokenKind.Message, TokenKind.Union, TokenKind.EndOfFile };
         private readonly Stack<List<Definition>> _scopes = new();
         private readonly Tokenizer _tokenizer;
         private readonly Dictionary<string, Definition> _definitions = new();
@@ -41,6 +42,7 @@ namespace Core.Parser
         /// <param name="definition"></param>
         private void AddDefinition(string name, Definition definition)
         {
+            if (_definitions.ContainsKey(name)) return;
             _definitions.Add(name, definition);
             if (_scopes.Count > 0)
             {
@@ -275,7 +277,20 @@ namespace Core.Parser
                 }
                 else
                 {
-                    ParseDefinition();
+                    try
+                    {
+                        ParseDefinition();
+                    }
+                    catch (SpanException e)
+                    {
+                        // Failsafe recovery: on thrown exception, trash scope stack and skip to end of file.
+                        _errors.Add(e);
+                        _scopes.Clear();
+                        while (CurrentToken.Kind != TokenKind.EndOfFile)
+                        {
+                            _index++;
+                        }
+                    }
                 }
             }
             return new BebopSchema(
@@ -286,7 +301,7 @@ namespace Core.Parser
             );
         }
 
-        private Definition? ParseDefinition()
+        private Definition ParseDefinition()
         {
             var definitionDocumentation = ConsumeBlockComments();
 
@@ -299,13 +314,18 @@ namespace Core.Parser
 
             var isReadOnly = Eat(TokenKind.ReadOnly);
 
+            ExpectAndSkip(_topLevelDefinitionKinds, _universalFollowKinds, hint: "Expecting a top-level definition.");
+            if (CurrentToken.Kind == TokenKind.EndOfFile)
+            {
+                // We probably want to start over if we hit the end of the file.
+                return new DummyDefinition();
+            }
             if (Eat(TokenKind.Union))
             {
                 return ParseUnionDefinition(CurrentToken, definitionDocumentation, opcodeAttribute);
             }
             else
             {
-                ExpectAndSkip(_topLevelDefinitionKinds, hint: "Expecting a top level definition.");
                 var kind = CurrentToken switch
                 {
                     _ when Eat(TokenKind.Enum) => AggregateKind.Enum,
@@ -313,11 +333,11 @@ namespace Core.Parser
                     _ when Eat(TokenKind.Message) => AggregateKind.Message,
                     _ => throw new UnexpectedTokenException(TokenKind.Message, CurrentToken)
                 };
-                ExpectAndSkip(TokenKind.Identifier, _topLevelDefinitionKinds);
+                ExpectAndSkip(TokenKind.Identifier, _universalFollowKinds);
                 if (CurrentToken.Kind != TokenKind.Identifier)
                 {
                     // Uh oh we skipped ahead due to a missing identifier, get outta there
-                    return null;
+                    return new DummyDefinition();
                 }
                 return ParseNonUnionDefinition(CurrentToken, kind, isReadOnly, definitionDocumentation, opcodeAttribute);
             }
@@ -326,18 +346,33 @@ namespace Core.Parser
         private ConstDefinition ParseConstDefinition(string definitionDocumentation)
         {
             var definitionStart = CurrentToken.Span;
-            var type = ParseType(CurrentToken);
-            var name = ExpectLexeme(TokenKind.Identifier);
-            Expect(TokenKind.Eq, hint: "A constant definition looks like: const uint32 pianoKeys = 88;");
-            var value = ParseLiteral(type);
-            Expect(TokenKind.Semicolon, hint: "A constant definition must end in a semicolon: const uint32 pianoKeys = 88;");
+            
+            TypeBase type;
+            string name = "";
+            Literal? value = new IntegerLiteral(new ScalarType(BaseType.UInt32, new Span(), ""), new Span(), "") ;
+            try
+            {
+                type = ParseType(CurrentToken);
+                name = ExpectLexeme(TokenKind.Identifier);
+                Expect(TokenKind.Eq, hint: "A constant definition looks like: const uint32 pianoKeys = 88;");
+                value = ParseLiteral(type);
+            }
+            catch (SpanException e)
+            {
+                _errors.Add(e);
+            }
+            ExpectAndSkip(TokenKind.Semicolon, hint: "A constant definition must end in a semicolon: const uint32 pianoKeys = 88;");
+            Eat(TokenKind.Semicolon);
             var definitionSpan = definitionStart.Combine(CurrentToken.Span);
             var definition = new ConstDefinition(name, definitionSpan, definitionDocumentation, value);
             if (_definitions.ContainsKey(name))
             {
-               throw new DuplicateConstDefinitionException(definition);
+               _errors.Add(new DuplicateConstDefinitionException(definition));
             }
-            AddDefinition(name, definition);
+            else
+            {
+                AddDefinition(name, definition);
+            }
             return definition;
         }
 
@@ -449,20 +484,25 @@ namespace Core.Parser
             string definitionDocumentation,
             BaseAttribute? opcodeAttribute)
         {
-            StartScope();
+            
             var fields = new List<IField>();
             var kindName = kind switch { AggregateKind.Enum => "enum", AggregateKind.Struct => "struct", _ => "message" };
             var aKindName = kind switch { AggregateKind.Enum => "an enum", AggregateKind.Struct => "a struct", _ => "a message" };
 
-            ExpectAndSkip(TokenKind.Identifier, new() { TokenKind.OpenBrace });
+            ExpectAndSkip(TokenKind.Identifier, new(_universalFollowKinds.Append(TokenKind.OpenBrace)), hint: $"Did you forget to specify a name for this {kindName}?");
             Eat(TokenKind.Identifier);
-            ExpectAndSkip(TokenKind.OpenBrace, new() { TokenKind.CloseBrace });
-            Eat(TokenKind.OpenBrace);
+            ExpectAndSkip(TokenKind.OpenBrace, new(_universalFollowKinds.Append(TokenKind.CloseBrace)));
+            if (!Eat(TokenKind.OpenBrace))
+            {
+                // Now we're in trouble. There was a top level definition/EOF before the next open brace. Eject!
+                return new DummyDefinition();
+            }
 
             //Expect(TokenKind.Identifier, hint: $"Did you forget to specify a name for this {kindName}?");
             //Expect(TokenKind.OpenBrace);
 
             var definitionEnd = CurrentToken.Span;
+            StartScope();
             while (!Eat(TokenKind.CloseBrace))
             {
 

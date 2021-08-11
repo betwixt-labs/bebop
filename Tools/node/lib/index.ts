@@ -58,7 +58,7 @@ function parseBebopcCheckResponse(stderr: string): Issue[] {
                 endLine: Span?.EndLine ?? 0,
                 startColumn: Span?.StartColumn ?? 0,
                 endColumn: Span?.EndColumn ?? 0,
-                fileName: Span?.fileName ?? ""
+                fileName: Span?.FileName ?? ""
             }
         })
     }
@@ -70,7 +70,7 @@ function parseBebopcCheckResponse(stderr: string): Issue[] {
         endLine: Span?.EndLine ?? 0,
         startColumn: Span?.StartColumn ?? 0,
         endColumn: Span?.EndColumn ?? 0,
-        fileName: Span?.fileName ?? ""
+        fileName: Span?.FileName ?? ""
     }]
 }
 
