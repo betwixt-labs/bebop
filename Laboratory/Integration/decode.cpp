@@ -18,8 +18,7 @@ int main(int argc, char **argv)
   Library lib;
   Library::decodeInto(bytes, lib);
 
-  // because there is no default object comparison, just serialize again to make sure we got all data.
-  std::vector<uint8_t> buffer;
-  Library::encodeInto(lib, buffer);
-  return buffer != bytes;
+  is_valid(lib);
+
+  return 0;
 }

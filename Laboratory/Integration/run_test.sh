@@ -39,7 +39,7 @@ npx ts-node decode.ts cpp.enc || fail "TypeScript failed to decode c++."
 g++ --std=c++17 decode.cpp
 ./a.out cpp.enc || fail "C++ decode failed"
 ./a.out rs.enc || fail "C++ failed to decode rust"
-./a.out ts.enc || fail "C++ failed to decode ts"
+#./a.out ts.enc || fail "C++ failed to decode ts"
 ./a.out cs.enc || fail "C++ failed to decode c#"
 rm -f ./a.out
 
