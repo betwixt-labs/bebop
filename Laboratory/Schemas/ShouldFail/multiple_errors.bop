@@ -1,3 +1,18 @@
+union Whattheheck {
+  f - struct Sxxxx { bool xxxx; }
+  2 --> struct Syyyx { bool yy; }
+}
+
+message BadFields {
+  int32 x;
+  2 -> int32 y;
+  3 -> wtf z;
+}
+
+struct NastyStruct {
+  1 -> int24 x;
+}
+
 mesage Nah {
     
 }
