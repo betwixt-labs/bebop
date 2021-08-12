@@ -12,16 +12,16 @@
     "Multiple Errors": {
       "commandName": "Project",
       "commandLineArgs": "--log-format JSON --check ShouldFail/multiple_errors.bop",
-      "workingDirectory": "C:\\Users\\Frob\\Projects\\bebop\\Laboratory\\Schemas"
+      "workingDirectory": "..\\Laboratory\\Schemas"
     },
     "Compile Files": {
       "commandName": "Project",
-      "workingDirectory": "C:\\Users\\Frob\\Projects\\bebop\\Laboratory\\Schemas"
+      "workingDirectory": "..\\Laboratory\\Schemas"
     },
     "Oops All Failures": {
       "commandName": "Project",
       "commandLineArgs": "--check",
-      "workingDirectory": "C:\\Users\\Frob\\Projects\\bebop\\Laboratory\\Schemas\\ShouldFail"
+      "workingDirectory": "..\\Laboratory\\Schemas\\ShouldFail"
     }
   }
 }

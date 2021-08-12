@@ -319,7 +319,7 @@ namespace Core.Parser
             );
         }
 
-        private Definition ParseDefinition()
+        private Definition? ParseDefinition()
         {
             var definitionDocumentation = ConsumeBlockComments();
 
@@ -345,7 +345,7 @@ namespace Core.Parser
             if (CurrentToken.Kind == TokenKind.EndOfFile)
             {
                 // We probably want to start over if we hit the end of the file.
-                return new DummyDefinition();
+                return null;
             }
             if (Eat(TokenKind.Union))
             {
@@ -364,7 +364,7 @@ namespace Core.Parser
                 if (CurrentToken.Kind != TokenKind.Identifier)
                 {
                     // Uh oh we skipped ahead due to a missing identifier, get outta there
-                    return new DummyDefinition();
+                    return null;
                 }
                 return ParseNonUnionDefinition(CurrentToken, kind, isReadOnly, definitionDocumentation, opcodeAttribute);
             }
@@ -505,7 +505,7 @@ namespace Core.Parser
         /// <param name="definitionDocumentation"></param>
         /// <param name="opcodeAttribute"></param>
         /// <returns>The parsed definition.</returns>
-        private Definition ParseNonUnionDefinition(Token definitionToken,
+        private Definition? ParseNonUnionDefinition(Token definitionToken,
             AggregateKind kind,
             bool isReadOnly,
             string definitionDocumentation,
@@ -522,7 +522,7 @@ namespace Core.Parser
             if (!Eat(TokenKind.OpenBrace))
             {
                 // Now we're in trouble. There was a top level definition/EOF before the next open brace. Eject!
-                return new DummyDefinition();
+                return null;
             }
 
             var definitionEnd = CurrentToken.Span;
@@ -542,7 +542,7 @@ namespace Core.Parser
                 {
                     // This token could not possibly be valid in any definition, skip the whole thing.
                     CancelScope();
-                    return new DummyDefinition();
+                    return null;
                 }
                 errored = false;
                 var value = 0u;
@@ -669,7 +669,7 @@ namespace Core.Parser
         /// <param name="definitionDocumentation">The documentation above the union definition.</param>
         /// <param name="opcodeAttribute">The opcode attribute above the union definition, if any.</param>
         /// <returns>The parsed union definition.</returns>
-        private Definition ParseUnionDefinition(Token definitionToken,
+        private Definition? ParseUnionDefinition(Token definitionToken,
             string definitionDocumentation,
             BaseAttribute? opcodeAttribute)
         {
@@ -678,7 +678,7 @@ namespace Core.Parser
             ExpectAndSkip(TokenKind.OpenBrace, new(_universalFollowKinds.Append(TokenKind.CloseBrace)));
             if (!Eat(TokenKind.OpenBrace))
             {
-                return new DummyDefinition();
+                return null;
             }
             StartScope();
             var name = definitionToken.Lexeme;
@@ -694,7 +694,7 @@ namespace Core.Parser
                 if (errored && !unionFieldFollowKinds.Contains(CurrentToken.Kind))
                 {
                     CancelScope();
-                    return new DummyDefinition();
+                    return null;
                 }
                 errored = false;
                 var documentation = ConsumeBlockComments();
@@ -736,16 +736,16 @@ namespace Core.Parser
                     continue;
                 }
                 var definition = ParseDefinition();
-                if (definition is DummyDefinition)
+                if (definition is null)
                 {
                     // Just escape out of there if there's a parsing error in one of the definitions.
                     CancelScope();
-                    return new DummyDefinition();
+                    return null;
                 }
                 if (definition is not TopLevelDefinition td)
                 {
                     _errors.Add(new InvalidUnionBranchException(definition));
-                    return new DummyDefinition();
+                    return null;
                 }
                 // Parsing can continue if it's a nested union, but the rest of this method depends on it being a top level definition
                 if (definition is UnionDefinition)

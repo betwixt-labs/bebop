@@ -61,14 +61,6 @@ namespace Core.Meta
         }
     }
 
-    public class DummyDefinition : Definition
-    {
-        public DummyDefinition() : base("Dummy", new Span(), "", null)
-        { }
-
-        public override IEnumerable<string> Dependencies() => new List<string>();
-    }
-
     /// <summary>
     /// A base class for definitions that can have an opcode, and are therefore valid at the "top level" of a Bebop packet.
     /// (In other words: struct, message, union. But you can't send a raw enum over the wire.)
