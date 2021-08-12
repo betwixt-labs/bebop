@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Core.Exceptions;
@@ -49,6 +51,33 @@ namespace Core.Logging
                 LogFormatter.JSON => $@"{{""Message"": ""{ex.Message.EscapeString()}"", ""Span"": {ex.Span.ToJson()}}}",
                 _ => throw new ArgumentOutOfRangeException()
             };
+            await Console.Error.WriteLineAsync(message);
+        }
+
+        /// <summary>
+        /// Format and write a list of <see cref="SpanException"/>
+        /// </summary>
+        public async Task WriteSpanErrors(List<SpanException> exs)
+        {
+            var messages = exs.Select(ex =>
+            {
+                return Formatter switch
+                {
+                    LogFormatter.MSBuild => $"{ex.Span.FileName}({ex.Span.StartColonString(',')}) : error BOP{ex.ErrorCode}: {ex.Message}",
+                    LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] Issue located in '{ex.Span.FileName}' at {ex.Span.StartColonString()}: {ex.Message}",
+                    LogFormatter.JSON => $@"{{""Message"": ""{ex.Message.EscapeString()}"", ""Span"": {ex.Span.ToJson()}}}",
+                    _ => throw new ArgumentOutOfRangeException()
+                };
+            });
+            string message;
+            if (Formatter == LogFormatter.JSON)
+            {
+                message = "[" + string.Join(", ", messages) + "]";
+            }
+            else
+            {
+                message = string.Join("\n", messages);
+            }
             await Console.Error.WriteLineAsync(message);
         }
 
@@ -108,7 +137,7 @@ namespace Core.Logging
             switch (ex)
             {
                 case SpanException span:
-                    await WriteSpanError(span);
+                    await WriteSpanErrors(new List<SpanException>() { span });
                     break;
                 case FileNotFoundException file:
                     await WriteFileNotFoundError(file);

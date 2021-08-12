@@ -8,6 +8,20 @@
       "commandName": "Project",
       "commandLineArgs": "--lang cs --namespace Bebop.Codegen --files ..\\Laboratory\\Schemas\\lab.bop ..\\Laboratory\\Schemas\\jazz.bop --cs ..\\Laboratory\\C#\\GeneratedTestCode\\Output.g.cs",
       "workingDirectory": "C:\\Users\\Andrew\\PierogiVNext\\Compiler"
+    },
+    "Multiple Errors": {
+      "commandName": "Project",
+      "commandLineArgs": "--log-format JSON --check ShouldFail/multiple_errors.bop",
+      "workingDirectory": "..\\Laboratory\\Schemas"
+    },
+    "Compile Files": {
+      "commandName": "Project",
+      "workingDirectory": "..\\Laboratory\\Schemas"
+    },
+    "Oops All Failures": {
+      "commandName": "Project",
+      "commandLineArgs": "--check",
+      "workingDirectory": "..\\Laboratory\\Schemas\\ShouldFail"
     }
   }
 }

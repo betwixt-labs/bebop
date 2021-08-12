@@ -1,0 +1,13 @@
+{
+    "inputDirectory": "./",
+    "generators": [
+      {
+        "alias": "cs",
+        "outputFile": "csoutput/models.cs"
+      },
+      {
+        "alias": "ts",
+        "outputFile": "tsoutput/models.ts"
+      }
+    ]
+  }

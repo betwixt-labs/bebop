@@ -1,7 +1,9 @@
-union U {
-  1 -> struct S { int32 x; }
+
+union Whattheheck {
+  1 -> struct Sxxx { bool xxxx; }
+  2 -> struct Syyy { bool yy; }
 }
 
 struct O {
-  S y;
+  Sxxx y;
 }
