@@ -21,6 +21,9 @@ namespace Core.Parser
     public class SchemaParser
     {
         private readonly HashSet<TokenKind> _topLevelDefinitionKinds = new() { TokenKind.Enum, TokenKind.Struct, TokenKind.Message, TokenKind.Union };
+        /// <summary>
+        /// Tokens we can use to recover from practically anywhere.
+        /// </summary>
         private readonly HashSet<TokenKind> _universalFollowKinds = new() { TokenKind.Enum, TokenKind.Struct, TokenKind.Message, TokenKind.Union, TokenKind.EndOfFile };
         private readonly Stack<List<Definition>> _scopes = new();
         private readonly Tokenizer _tokenizer;
@@ -175,16 +178,7 @@ namespace Core.Parser
         /// <param name="hint"></param>
         private void ExpectAndSkip(TokenKind kind, HashSet<TokenKind>? additionalTokens = null, string? hint = null)
         {
-            additionalTokens ??= new();
-            ConsumeBlockComments();
-            if (CurrentToken.Kind != kind)
-            {
-                _errors.Add(new UnexpectedTokenException(kind, CurrentToken, hint));
-                while (_index < _tokens.Count - 1 && CurrentToken.Kind != kind && !additionalTokens.Contains(CurrentToken.Kind))
-                {
-                    _index++;
-                }
-            }
+            ExpectAndSkip(new HashSet<TokenKind>() { kind }, additionalTokens, hint);
         }
 
         /// <summary>
@@ -197,17 +191,15 @@ namespace Core.Parser
         {
             additionalTokens ??= new();
             ConsumeBlockComments();
-            if (kinds.All(kind => kind != CurrentToken.Kind))
+            if (kinds.Contains(CurrentToken.Kind)) return;
+            _errors.Add(new UnexpectedTokenException(kinds, CurrentToken, hint));
+            while (_index < _tokens.Count - 1 && !kinds.Contains(CurrentToken.Kind) && !additionalTokens.Contains(CurrentToken.Kind))
             {
-                _errors.Add(new UnexpectedTokenException(kinds, CurrentToken, hint));
-                while (_index < _tokens.Count - 1 && !kinds.Contains(CurrentToken.Kind) && !additionalTokens.Contains(CurrentToken.Kind))
-                {
-                    _index++;
-                }
+                _index++;
             }
         }
 
-        private void SkipUntil(HashSet<TokenKind> kinds)
+        private void SkipAndSkipUntil(HashSet<TokenKind> kinds)
         {
             // Always advance by one.
             if (_index < _tokens.Count - 1)
@@ -575,7 +567,7 @@ namespace Core.Parser
                     {
                         errored = true;
                         _errors.Add(e);
-                        SkipUntil(new(messageFieldFollowKinds.Concat(_universalFollowKinds)));
+                        SkipAndSkipUntil(new(messageFieldFollowKinds.Concat(_universalFollowKinds)));
                         continue;
                     }
                 }
@@ -625,7 +617,7 @@ namespace Core.Parser
                 {
                     errored = true;
                     _errors.Add(e);
-                    SkipUntil(new(fieldFollowKinds.Concat(_universalFollowKinds)));
+                    SkipAndSkipUntil(new(fieldFollowKinds.Concat(_universalFollowKinds)));
                     continue;
                 }
             }
@@ -732,7 +724,7 @@ namespace Core.Parser
                 {
                     _errors.Add(e);
                     errored = true;
-                    SkipUntil(new(unionFieldFollowKinds.Concat(_universalFollowKinds)));
+                    SkipAndSkipUntil(new(unionFieldFollowKinds.Concat(_universalFollowKinds)));
                     continue;
                 }
                 var definition = ParseDefinition();
