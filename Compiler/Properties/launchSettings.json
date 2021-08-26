@@ -13,6 +13,20 @@
       "commandName": "Project",
       "commandLineArgs": "--files ..\\Laboratory\\Schemas\\struct.bop --rust ..\\Laboratory\\Rust\\manual-testing\\src\\lib.rs",
       "workingDirectory": "C:\\Users\\Matthew\\workspace\\Bebop\\Compiler"
+    },
+    "Multiple Errors": {
+      "commandName": "Project",
+      "commandLineArgs": "--log-format JSON --check ShouldFail/multiple_errors.bop",
+      "workingDirectory": "..\\Laboratory\\Schemas"
+    },
+    "Compile Files": {
+      "commandName": "Project",
+      "workingDirectory": "..\\Laboratory\\Schemas"
+    },
+    "Oops All Failures": {
+      "commandName": "Project",
+      "commandLineArgs": "--check",
+      "workingDirectory": "..\\Laboratory\\Schemas\\ShouldFail"
     }
   }
 }

@@ -20,6 +20,11 @@ namespace Core.Parser
 {
     public class SchemaParser
     {
+        private readonly HashSet<TokenKind> _topLevelDefinitionKinds = new() { TokenKind.Enum, TokenKind.Struct, TokenKind.Message, TokenKind.Union };
+        /// <summary>
+        /// Tokens we can use to recover from practically anywhere.
+        /// </summary>
+        private readonly HashSet<TokenKind> _universalFollowKinds = new() { TokenKind.Enum, TokenKind.Struct, TokenKind.Message, TokenKind.Union, TokenKind.EndOfFile };
         private readonly Stack<List<Definition>> _scopes = new();
         private readonly Tokenizer _tokenizer;
         private readonly Dictionary<string, Definition> _definitions = new();
@@ -30,6 +35,7 @@ namespace Core.Parser
         private readonly HashSet<(Token, Token)> _typeReferences = new();
         private int _index;
         private readonly string _nameSpace;
+        private List<SpanException> _errors = new();
         private List<Token> _tokens => _tokenizer.Tokens;
 
         /// <summary>
@@ -39,6 +45,7 @@ namespace Core.Parser
         /// <param name="definition"></param>
         private void AddDefinition(string name, Definition definition)
         {
+            if (_definitions.ContainsKey(name)) return;
             _definitions.Add(name, definition);
             if (_scopes.Count > 0)
             {
@@ -63,6 +70,11 @@ namespace Core.Parser
                 definition.Parent = parent;
             }
             AddDefinition(name, parent);
+        }
+
+        private void CancelScope()
+        {
+            _scopes.Pop();
         }
 
         /// <summary>
@@ -158,6 +170,48 @@ namespace Core.Parser
             }
         }
 
+        /// <summary>
+        /// Expect a token of a certain kind. If not present, skip until it or one of a set of additional tokens is matched. Does NOT consume the token.
+        /// </summary>
+        /// <param name="kinds"></param>
+        /// <param name="additionalTokens"></param>
+        /// <param name="hint"></param>
+        private void ExpectAndSkip(TokenKind kind, HashSet<TokenKind>? additionalTokens = null, string? hint = null)
+        {
+            ExpectAndSkip(new HashSet<TokenKind>() { kind }, additionalTokens, hint);
+        }
+
+        /// <summary>
+        /// Expect a token of a certain set of kinds. If not present, skip until it or one of a set of additional tokens is matched. Does NOT consume the token.
+        /// </summary>
+        /// <param name="kinds"></param>
+        /// <param name="additionalTokens"></param>
+        /// <param name="hint"></param>
+        private void ExpectAndSkip(HashSet<TokenKind> kinds, HashSet<TokenKind>? additionalTokens = null, string? hint = null)
+        {
+            additionalTokens ??= new();
+            ConsumeBlockComments();
+            if (kinds.Contains(CurrentToken.Kind)) return;
+            _errors.Add(new UnexpectedTokenException(kinds, CurrentToken, hint));
+            while (_index < _tokens.Count - 1 && !kinds.Contains(CurrentToken.Kind) && !additionalTokens.Contains(CurrentToken.Kind))
+            {
+                _index++;
+            }
+        }
+
+        private void SkipAndSkipUntil(HashSet<TokenKind> kinds)
+        {
+            // Always advance by one.
+            if (_index < _tokens.Count - 1)
+            {
+                _index++;
+            }
+            while (_index < _tokens.Count - 1 && !kinds.Contains(CurrentToken.Kind))
+            {
+                _index++;
+            }
+        }
+
         private string ExpectLexeme(TokenKind kind, string? hint = null)
         {
             var lexeme = CurrentToken.Lexeme;
@@ -205,6 +259,7 @@ namespace Core.Parser
         public async Task<ISchema> Parse()
         {
             _index = 0;
+            _errors.Clear();
             _definitions.Clear();
             _typeReferences.Clear();
 
@@ -232,57 +287,31 @@ namespace Core.Parser
                 }
                 else
                 {
-                    ParseDefinition();
-                }
-            }
-            foreach (var (typeToken, definitionToken) in _typeReferences)
-            {
-                if (!_definitions.ContainsKey(typeToken.Lexeme))
-                {
-                    throw new UnrecognizedTypeException(typeToken, definitionToken.Lexeme);
-                }
-                var reference = _definitions[typeToken.Lexeme];
-                var referenceScope = reference.Scope;
-                var definition = _definitions[definitionToken.Lexeme];
-                var definitionScope = definition.Scope;
-                // You're not allowed to reference types declared within a union from elsewhere
-                // Check if reference has a union in scope but definition does not have the same union in scope
-                // Throw ReferenceScopeException if so
-
-                // It might be better for this to go inside BebopSchema.Validate but it's much simpler if I can use the typeReferences map
-                if (referenceScope.Find((parent) => parent is UnionDefinition) is UnionDefinition union)
-                {
-                    if (!definitionScope.Contains(union))
+                    try
                     {
-                        throw new ReferenceScopeException(definition, reference, "union");
+                        ParseDefinition();
                     }
-                }
-            }
-            // I'm gonna keep this for now because I might need it later once I move the checking over to BebopSchema.Validate
-            // Maybe not if I bring over the type reference set, but I haven't decided yet
-            /*
-            foreach (var definition in _definitions.Values)
-            {
-                var scope = definition.Scope;
-                var dependencies = definition.Dependencies();
-
-                
-                foreach (var dependency in dependencies)
-                {
-                    var depScope = _definitions[dependency].Scope;
-                    if (depScope is not null && depScope.Find((parent) => parent is UnionDefinition) is UnionDefinition union) {
-                        if (scope is null || !scope.Contains(union))
+                    catch (SpanException e)
+                    {
+                        // Failsafe recovery: on thrown exception, trash scope stack and skip to end of file.
+                        _errors.Add(e);
+                        _scopes.Clear();
+                        while (CurrentToken.Kind != TokenKind.EndOfFile)
                         {
-                            throw new ReferenceScopeException(definition, _definitions[dependency], "union");
+                            _index++;
                         }
                     }
                 }
-                
-            }*/
-            return new BebopSchema(_nameSpace, _definitions);
+            }
+            return new BebopSchema(
+                nameSpace: _nameSpace, 
+                definitions: _definitions, 
+                typeReferences: _typeReferences, 
+                parsingErrors: _errors
+            );
         }
 
-        private Definition ParseDefinition()
+        private Definition? ParseDefinition()
         {
             var definitionDocumentation = ConsumeBlockComments();
 
@@ -290,11 +319,26 @@ namespace Core.Parser
             {
                 return ParseConstDefinition(definitionDocumentation);
             }
+            BaseAttribute? opcodeAttribute = null;
 
-            var opcodeAttribute = EatAttribute(TokenKind.Opcode);
+            try
+            {
+                opcodeAttribute = EatAttribute(TokenKind.Opcode);
+            }
+            catch (SpanException e)
+            {
+                // If there's a syntax error in the attribute, we'll be skipping ahead to the next top level definition anyway.
+                _errors.Add(e);
+            }
 
             var isReadOnly = Eat(TokenKind.ReadOnly);
 
+            ExpectAndSkip(_topLevelDefinitionKinds, _universalFollowKinds, hint: "Expecting a top-level definition.");
+            if (CurrentToken.Kind == TokenKind.EndOfFile)
+            {
+                // We probably want to start over if we hit the end of the file.
+                return null;
+            }
             if (Eat(TokenKind.Union))
             {
                 return ParseUnionDefinition(CurrentToken, definitionDocumentation, opcodeAttribute);
@@ -308,6 +352,12 @@ namespace Core.Parser
                     _ when Eat(TokenKind.Message) => AggregateKind.Message,
                     _ => throw new UnexpectedTokenException(TokenKind.Message, CurrentToken)
                 };
+                ExpectAndSkip(TokenKind.Identifier, _universalFollowKinds);
+                if (CurrentToken.Kind != TokenKind.Identifier)
+                {
+                    // Uh oh we skipped ahead due to a missing identifier, get outta there
+                    return null;
+                }
                 return ParseNonUnionDefinition(CurrentToken, kind, isReadOnly, definitionDocumentation, opcodeAttribute);
             }
         }
@@ -315,18 +365,33 @@ namespace Core.Parser
         private ConstDefinition ParseConstDefinition(string definitionDocumentation)
         {
             var definitionStart = CurrentToken.Span;
-            var type = ParseType(CurrentToken);
-            var name = ExpectLexeme(TokenKind.Identifier);
-            Expect(TokenKind.Eq, hint: "A constant definition looks like: const uint32 pianoKeys = 88;");
-            var value = ParseLiteral(type);
-            Expect(TokenKind.Semicolon, hint: "A constant definition must end in a semicolon: const uint32 pianoKeys = 88;");
+            
+            TypeBase type;
+            string name = "";
+            Literal? value = new IntegerLiteral(new ScalarType(BaseType.UInt32, new Span(), ""), new Span(), "") ;
+            try
+            {
+                type = ParseType(CurrentToken);
+                name = ExpectLexeme(TokenKind.Identifier);
+                Expect(TokenKind.Eq, hint: "A constant definition looks like: const uint32 pianoKeys = 88;");
+                value = ParseLiteral(type);
+            }
+            catch (SpanException e)
+            {
+                _errors.Add(e);
+            }
+            ExpectAndSkip(TokenKind.Semicolon, hint: "A constant definition must end in a semicolon: const uint32 pianoKeys = 88;");
+            Eat(TokenKind.Semicolon);
             var definitionSpan = definitionStart.Combine(CurrentToken.Span);
             var definition = new ConstDefinition(name, definitionSpan, definitionDocumentation, value);
             if (_definitions.ContainsKey(name))
             {
-               throw new DuplicateConstDefinitionException(definition);
+               _errors.Add(new DuplicateConstDefinitionException(definition));
             }
-            AddDefinition(name, definition);
+            else
+            {
+                AddDefinition(name, definition);
+            }
             return definition;
         }
 
@@ -432,23 +497,46 @@ namespace Core.Parser
         /// <param name="definitionDocumentation"></param>
         /// <param name="opcodeAttribute"></param>
         /// <returns>The parsed definition.</returns>
-        private Definition ParseNonUnionDefinition(Token definitionToken,
+        private Definition? ParseNonUnionDefinition(Token definitionToken,
             AggregateKind kind,
             bool isReadOnly,
             string definitionDocumentation,
             BaseAttribute? opcodeAttribute)
         {
-            StartScope();
+            
             var fields = new List<IField>();
             var kindName = kind switch { AggregateKind.Enum => "enum", AggregateKind.Struct => "struct", _ => "message" };
             var aKindName = kind switch { AggregateKind.Enum => "an enum", AggregateKind.Struct => "a struct", _ => "a message" };
 
-            Expect(TokenKind.Identifier, hint: $"Did you forget to specify a name for this {kindName}?");
-            Expect(TokenKind.OpenBrace);
+            ExpectAndSkip(TokenKind.Identifier, new(_universalFollowKinds.Append(TokenKind.OpenBrace)), hint: $"Did you forget to specify a name for this {kindName}?");
+            Eat(TokenKind.Identifier);
+            ExpectAndSkip(TokenKind.OpenBrace, new(_universalFollowKinds.Append(TokenKind.CloseBrace)));
+            if (!Eat(TokenKind.OpenBrace))
+            {
+                // Now we're in trouble. There was a top level definition/EOF before the next open brace. Eject!
+                return null;
+            }
+
             var definitionEnd = CurrentToken.Span;
+            var messageFieldFollowKinds = new HashSet<TokenKind> { TokenKind.BlockComment, TokenKind.CloseBrace, TokenKind.OpenBracket, TokenKind.Number };
+            var fieldFollowKinds = new HashSet<TokenKind>() { TokenKind.BlockComment, TokenKind.CloseBrace, TokenKind.OpenBracket, TokenKind.Number, TokenKind.Map, TokenKind.Array };
+            // var fieldStoppingKinds = new HashSet<TokenKind>(_universalFollowKinds.Concat(fieldFollowKinds));
+            var errored = false;
+            StartScope();
             while (!Eat(TokenKind.CloseBrace))
             {
-
+                //if (kind == AggregateKind.Message)
+                //{
+                //    ExpectAndSkip(messageFieldFollowKinds, _universalFollowKinds, hint: "Invalid field.");
+                //}
+                //ExpectAndSkip(fieldFollowKinds, _universalFollowKinds, hint: "Invalid field.");
+                if (errored && !fieldFollowKinds.Contains(CurrentToken.Kind))
+                {
+                    // This token could not possibly be valid in any definition, skip the whole thing.
+                    CancelScope();
+                    return null;
+                }
+                errored = false;
                 var value = 0u;
 
                 var fieldDocumentation = ConsumeBlockComments();
@@ -462,54 +550,76 @@ namespace Core.Parser
 
                 if (kind == AggregateKind.Message)
                 {
-                    const string? indexHint = "Fields in a message must be explicitly indexed: message A { 1 -> string s; 2 -> bool b; }";
-                    var indexLexeme = CurrentToken.Lexeme;
-                    Expect(TokenKind.Number, hint: indexHint);
-                    if (!indexLexeme.TryParseUInt(out value))
+                    try
                     {
-                        throw new UnexpectedTokenException(TokenKind.Number, CurrentToken, "Field index must be an unsigned integer.");
+                        const string? indexHint = "Fields in a message must be explicitly indexed: message A { 1 -> string s; 2 -> bool b; }";
+                        var indexLexeme = CurrentToken.Lexeme;
+                        Expect(TokenKind.Number, hint: indexHint);
+                        if (!indexLexeme.TryParseUInt(out value))
+                        {
+                            throw new UnexpectedTokenException(TokenKind.Number, CurrentToken, "Field index must be an unsigned integer.");
+                        }
+                        // Parse an arrow ("->").
+                        Expect(TokenKind.Hyphen, hint: indexHint);
+                        Expect(TokenKind.CloseCaret, hint: indexHint);
                     }
-                    // Parse an arrow ("->").
-                    Expect(TokenKind.Hyphen, hint: indexHint);
-                    Expect(TokenKind.CloseCaret, hint: indexHint);
-                }
-
-                // Parse a type name, if this isn't an enum:
-                TypeBase type = kind == AggregateKind.Enum
-                    ? new ScalarType(BaseType.UInt32, definitionToken.Span, definitionToken.Lexeme)
-                    : ParseType(definitionToken);
-
-                var fieldName = CurrentToken.Lexeme;
-                if (TokenizerExtensions.GetKeywords().Contains(fieldName))
-                {
-                    throw new ReservedIdentifierException(fieldName, CurrentToken.Span);
-                }
-                if (fieldName.Equals(definitionToken.Lexeme, StringComparison.OrdinalIgnoreCase))
-                {
-                    throw new FieldNameException(CurrentToken);
-                }
-                var fieldStart = CurrentToken.Span;
-
-                Expect(TokenKind.Identifier);
-
-                if (kind == AggregateKind.Enum)
-                {
-                    Expect(TokenKind.Eq, hint: "Every constant in an enum must have an explicit literal value.");
-                    var valueLexeme = CurrentToken.Lexeme;
-                    Expect(TokenKind.Number, hint: "An enum constant must have a literal unsigned integer value.");
-                    if (!valueLexeme.TryParseUInt(out value))
+                    catch (SpanException e)
                     {
-                        throw new UnexpectedTokenException(TokenKind.Number, CurrentToken, "Enum constant must be an unsigned integer.");
+                        errored = true;
+                        _errors.Add(e);
+                        SkipAndSkipUntil(new(messageFieldFollowKinds.Concat(_universalFollowKinds)));
+                        continue;
                     }
                 }
 
+                try
+                {
 
-                var fieldEnd = CurrentToken.Span;
-                Expect(TokenKind.Semicolon, hint: CurrentToken.Kind == TokenKind.OpenBracket
-                    ? "Try 'Type[] foo' instead of 'Type foo[]'."
-                    : $"Elements in {aKindName} are delimited using semicolons.");
-                fields.Add(new Field(fieldName, type, fieldStart.Combine(fieldEnd), deprecatedAttribute, value, fieldDocumentation));
-                definitionEnd = CurrentToken.Span;
+                
+                    // Parse a type name, if this isn't an enum:
+                    TypeBase type = kind == AggregateKind.Enum
+                        ? new ScalarType(BaseType.UInt32, definitionToken.Span, definitionToken.Lexeme)
+                        : ParseType(definitionToken);
+
+                    var fieldName = CurrentToken.Lexeme;
+                    if (TokenizerExtensions.GetKeywords().Contains(fieldName))
+                    {
+                        throw new ReservedIdentifierException(fieldName, CurrentToken.Span);
+                    }
+                    if (fieldName.Equals(definitionToken.Lexeme, StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new FieldNameException(CurrentToken);
+                    }
+                    var fieldStart = CurrentToken.Span;
+
+                    Expect(TokenKind.Identifier);
+
+                    if (kind == AggregateKind.Enum)
+                    {
+                        Expect(TokenKind.Eq, hint: "Every constant in an enum must have an explicit literal value.");
+                        var valueLexeme = CurrentToken.Lexeme;
+                        Expect(TokenKind.Number, hint: "An enum constant must have a literal unsigned integer value.");
+                        if (!valueLexeme.TryParseUInt(out value))
+                        {
+                            throw new UnexpectedTokenException(TokenKind.Number, CurrentToken, "Enum constant must be an unsigned integer.");
+                        }
+                    }
+
+
+                    var fieldEnd = CurrentToken.Span;
+                    Expect(TokenKind.Semicolon, hint: CurrentToken.Kind == TokenKind.OpenBracket
+                        ? "Try 'Type[] foo' instead of 'Type foo[]'."
+                        : $"Elements in {aKindName} are delimited using semicolons.");
+                    fields.Add(new Field(fieldName, type, fieldStart.Combine(fieldEnd), deprecatedAttribute, value, fieldDocumentation));
+                    definitionEnd = CurrentToken.Span;
+                }
+                catch (SpanException e)
+                {
+                    errored = true;
+                    _errors.Add(e);
+                    SkipAndSkipUntil(new(fieldFollowKinds.Concat(_universalFollowKinds)));
+                    continue;
+                }
             }
 
             var name = definitionToken.Lexeme;
@@ -525,18 +635,22 @@ namespace Core.Parser
 
             if (isReadOnly && definition is not StructDefinition)
             {
-                throw new InvalidReadOnlyException(definition);
+                _errors.Add(new InvalidReadOnlyException(definition));
             }
             if (opcodeAttribute != null && definition is not TopLevelDefinition)
             {
-                throw new InvalidOpcodeAttributeUsageException(definition);
+                _errors.Add(new InvalidOpcodeAttributeUsageException(definition));
             }
 
             if (_definitions.ContainsKey(name))
             {
-                throw new MultipleDefinitionsException(definition);
+                _errors.Add(new MultipleDefinitionsException(definition));
+                CancelScope();
             }
-            CloseScope(name, definition);
+            else
+            {
+                CloseScope(name, definition);
+            }
             return definition;
         }
 
@@ -547,20 +661,34 @@ namespace Core.Parser
         /// <param name="definitionDocumentation">The documentation above the union definition.</param>
         /// <param name="opcodeAttribute">The opcode attribute above the union definition, if any.</param>
         /// <returns>The parsed union definition.</returns>
-        private UnionDefinition ParseUnionDefinition(Token definitionToken,
+        private Definition? ParseUnionDefinition(Token definitionToken,
             string definitionDocumentation,
             BaseAttribute? opcodeAttribute)
         {
+            ExpectAndSkip(TokenKind.Identifier, new(_universalFollowKinds.Append(TokenKind.OpenBrace)), hint: $"Did you forget to specify a name for this union?");
+            Eat(TokenKind.Identifier);
+            ExpectAndSkip(TokenKind.OpenBrace, new(_universalFollowKinds.Append(TokenKind.CloseBrace)));
+            if (!Eat(TokenKind.OpenBrace))
+            {
+                return null;
+            }
             StartScope();
             var name = definitionToken.Lexeme;
             var branches = new List<UnionBranch>();
             var usedDiscriminators = new HashSet<uint>();
 
-            Expect(TokenKind.Identifier, hint: $"Did you forget to specify a name for this union?");
-            Expect(TokenKind.OpenBrace);
+            
             var definitionEnd = CurrentToken.Span;
+            var errored = false;
+            var unionFieldFollowKinds = new HashSet<TokenKind>() { TokenKind.BlockComment, TokenKind.Number, TokenKind.CloseBrace };
             while (!Eat(TokenKind.CloseBrace))
             {
+                if (errored && !unionFieldFollowKinds.Contains(CurrentToken.Kind))
+                {
+                    CancelScope();
+                    return null;
+                }
+                errored = false;
                 var documentation = ConsumeBlockComments();
                 // if we've reached the end of the definition after parsing documentation we need to exit.
                 if (Eat(TokenKind.CloseBrace))
@@ -571,27 +699,50 @@ namespace Core.Parser
                 const string? indexHint = "Branches in a union must be explicitly indexed: union U { 1 -> struct A{}  2 -> message B{} }";
                 var indexToken = CurrentToken;
                 var indexLexeme = indexToken.Lexeme;
-                Expect(TokenKind.Number, hint: indexHint);
-                if (!indexLexeme.TryParseUInt(out uint discriminator))
+                uint discriminator;
+                try
                 {
-                    throw new UnexpectedTokenException(TokenKind.Number, indexToken, "A union branch discriminator must be an unsigned integer.");
+                    Expect(TokenKind.Number, hint: indexHint);
+                    if (!indexLexeme.TryParseUInt(out discriminator))
+                    {
+                        throw new UnexpectedTokenException(TokenKind.Number, indexToken, "A union branch discriminator must be an unsigned integer.");
+                    }
+                    if (discriminator < 1 || discriminator > 255)
+                    {
+                        _errors.Add(new UnexpectedTokenException(TokenKind.Number, indexToken, "A union branch discriminator must be between 1 and 255."));
+                    }
+                    if (usedDiscriminators.Contains(discriminator))
+                    {
+                        _errors.Add(new DuplicateUnionDiscriminatorException(indexToken, name));
+                    }
+                    usedDiscriminators.Add(discriminator);
+                    // Parse an arrow ("->").
+                    Expect(TokenKind.Hyphen, hint: indexHint);
+                    Expect(TokenKind.CloseCaret, hint: indexHint);
                 }
-                if (discriminator < 1 || discriminator > 255)
+                catch (SpanException e)
                 {
-                    throw new UnexpectedTokenException(TokenKind.Number, indexToken, "A union branch discriminator must be between 1 and 255.");
+                    _errors.Add(e);
+                    errored = true;
+                    SkipAndSkipUntil(new(unionFieldFollowKinds.Concat(_universalFollowKinds)));
+                    continue;
                 }
-                if (usedDiscriminators.Contains(discriminator))
-                {
-                    throw new DuplicateUnionDiscriminatorException(indexToken, name);
-                }
-                usedDiscriminators.Add(discriminator);
-                // Parse an arrow ("->").
-                Expect(TokenKind.Hyphen, hint: indexHint);
-                Expect(TokenKind.CloseCaret, hint: indexHint);
                 var definition = ParseDefinition();
-                if (definition is not TopLevelDefinition td || definition is UnionDefinition)
+                if (definition is null)
                 {
-                    throw new InvalidUnionBranchException(definition);
+                    // Just escape out of there if there's a parsing error in one of the definitions.
+                    CancelScope();
+                    return null;
+                }
+                if (definition is not TopLevelDefinition td)
+                {
+                    _errors.Add(new InvalidUnionBranchException(definition));
+                    return null;
+                }
+                // Parsing can continue if it's a nested union, but the rest of this method depends on it being a top level definition
+                if (definition is UnionDefinition)
+                {
+                    _errors.Add(new InvalidUnionBranchException(definition));
                 }
                 td.DiscriminatorInParent = (byte)discriminator;
                 Eat(TokenKind.Semicolon);
@@ -607,7 +758,8 @@ namespace Core.Parser
             CloseScope(name, unionDefinition);
             if (unionDefinition.Branches.Count == 0)
             {
-                throw new EmptyUnionException(unionDefinition);
+                _errors.Add(new EmptyUnionException(unionDefinition));
+                // throw new EmptyUnionException(unionDefinition);
             }
             return unionDefinition;
         }
@@ -633,7 +785,8 @@ namespace Core.Parser
                 var keyType = ParseType(definitionToken);
                 if (!IsValidMapKeyType(keyType))
                 {
-                    throw new InvalidMapKeyTypeException(keyType);
+                    // No problem parsing past this, just add it to the errors list
+                    _errors.Add(new InvalidMapKeyTypeException(keyType));
                 }
                 Expect(TokenKind.Comma, hint: mapHint);
                 var valueType = ParseType(definitionToken);
