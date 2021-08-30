@@ -183,7 +183,7 @@ jobs:
         run: |
           sed 's/^version \?= \?.*/version = "${{ steps.dotenv.outputs.version }}"/' Cargo.toml > tmp
           mv tmp Cargo.toml
-          cargo package
+          cargo package --allow-dirty
       - name: Upload Rust Runtime
         uses: actions/upload-artifact@v2
         with:
@@ -269,7 +269,7 @@ jobs:
         run: |
           sed 's/^version \?= \?.*/version = "${{ steps.dotenv.outputs.version }}"/' Cargo.toml > tmp
           mv tmp Cargo.toml
-          cargo --allow-dirty package
+          cargo package --allow-dirty
 
       - name: Upload Cargo Tools
         uses: actions/upload-artifact@v2
