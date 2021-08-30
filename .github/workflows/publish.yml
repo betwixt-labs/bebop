@@ -159,12 +159,13 @@ jobs:
       - name: Cargo Login
         run: cargo login ${{ secrets.CRATES_TOKEN  }}
       
-      - name: Download bebopc artifact
-        uses: dawidd6/action-download-artifact@v2
-        with:
-          workflow: build-bebopc
-          workflow_conclusion: success
-          name: linux-x64
+      - name: Download Compiler Artifacts
+        uses: actions/download-artifact@v2
+        
+      - name: Extract Compiler Artifacts
+        run: |
+          ls
+          unzip -j -o ./linux-x64/bebopc.zip -d ${{env.BEBOPC_PATH}}/linux
       
       # todo: depend on a different job
       - name: Test Rust Runtime
@@ -173,7 +174,7 @@ jobs:
       - name: Test Rust Labratory
         run: |
           mkdir -p ./tools/compiler/Linux-Debug
-          cp ./linux-x64/bebopc ./tools/compiler/Linux-Debug
+          cp ${{env.BEBOPC_PATH}}/linux ./tools/compiler/Linux-Debug
           cargo check -p auto-testing
           cargo test -p functionality-testing
         working-directory: ${{ env.RUST_TEST_ROOT }}
