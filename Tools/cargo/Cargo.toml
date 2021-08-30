@@ -9,7 +9,7 @@ keywords = ["binary", "encode", "decode", "serialization", "schema"]
 categories = ["encoding"]
 repository = "https://github.com/RainwayApp/bebop"
 homepage = "https://github.com/RainwayApp/bebop/wiki"
-include = ["bebopc"]
+include = ["/bebopc", "/src"]
 
 [lib]
 
