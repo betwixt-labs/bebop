@@ -1,0 +1,61 @@
+﻿struct BasicTypes2 {
+    bool a_bool;
+    byte a_byte;
+    int16 a_int16;
+    uint16 a_uint16;
+    int32 a_int32;
+    uint32 a_uint32;
+    int64 a_int64;
+    uint64 a_uint64;
+    float32 a_float32;
+    float64 a_float64;
+    string a_string;
+    guid a_guid;
+    date a_date;
+}
+
+struct BasicArrays2 {
+    bool[] a_bool;
+    byte[] a_byte;
+    int16[] a_int16;
+    uint16[] a_uint16;
+    int32[] a_int32;
+    uint32[] a_uint32;
+    int64[] a_int64;
+    uint64[] a_uint64;
+    float32[] a_float32;
+    float64[] a_float64;
+    string[] a_string;
+    guid[] a_guid;
+}
+
+readonly struct S2 { int32 x; int32 y; }
+
+struct SomeMaps2 {
+    map[bool, bool] m1;
+    map[string, map[string, string]] m2;
+    map[int32, map[bool, S2][]][] m3;
+    array[map[string, array[float32]]] m4;
+}
+
+struct TestInt32Array2 { int32[] a; }
+
+struct ArrayOfStrings2 {
+    string[] strings;
+}
+
+struct StructOfStructs {
+    BasicTypes2 basicTypes;
+    BasicArrays2 basicArrays;
+}
+
+struct EmptyStruct {}
+
+[opcode("WRLD")]
+struct OpcodeStruct {
+    int32 x;
+}
+
+struct ShouldNotHaveLifetime {
+    OpcodeStruct[] v;
+}

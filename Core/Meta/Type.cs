@@ -53,6 +53,11 @@ namespace Core.Meta
             return MemberType is ScalarType st && st.BaseType == BaseType.Float64;
         }
 
+        public bool IsOneByteUnits()
+        {
+            return MemberType is ScalarType st && (st.BaseType == BaseType.Bool || st.BaseType == BaseType.Byte);
+        }
+
         internal override IEnumerable<string> Dependencies() => MemberType.Dependencies();
     }
 

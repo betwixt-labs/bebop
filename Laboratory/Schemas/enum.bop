@@ -1,0 +1,22 @@
+﻿/** Use a different name to prevent conflicts with jazz.bop */
+enum OtherInstrument {
+    Sax = 0;
+    Trumpet = 1;
+    Clarinet = 2;
+    string_bass = 3;
+}
+
+/** Doc comment on enum */
+enum letters {
+    /** Doc comment on deprecated attr */
+    [deprecated("for fun")]
+    a = 0;
+    b = 1;
+    /** Doc comment on attribute */
+    c = 2;
+    d = 3;
+    [deprecated]
+    f = 4;
+    g = 5;
+    h = 6;
+}

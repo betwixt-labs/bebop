@@ -113,6 +113,8 @@ jobs:
       NET_RUNTIME_ROOT: ${{github.workspace}}/Runtime/C#
       TS_TEST_ROOT: ${{github.workspace}}/Laboratory/TypeScript
       TS_RUNTIME_ROOT: ${{github.workspace}}/Runtime/TypeScript
+      RUST_RUNTIME_ROOT: ${{github.workspace}}/Runtime/Rust
+      RUST_TEST_ROOT: ${{github.workspace}}/Laboratory/Rust
     runs-on: ubuntu-18.04
     needs: build-compiler
     steps:
@@ -149,6 +151,38 @@ jobs:
           name: bebop-runtime-cs-${{ steps.dotenv.outputs.version }}
           path: ${{env.NET_RUNTIME_ROOT}}/bin/Release/bebop.${{ steps.dotenv.outputs.version }}.nupkg
 
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+      - name: Cargo Login
+        run: cargo login ${{ secrets.CRATES_TOKEN  }}
+          
+      # todo: depend on a different job
+      - name: Test Rust Runtime
+        run: cargo test
+        working-directory: ${{ env.RUST_RUNTIME_ROOT }}
+      - name: Test Rust Labratory
+        run: |
+          cp ./Tools/bebopc/linux/bebopc tools/compiler/Linux-Debug
+          cargo check -p auto-testing
+          cargo test -p functionality-testing
+        working-directory: ${{ env.RUST_TEST_ROOT }}
+        
+      - name: Package Rust Runtime
+        working-directory: ${{ env.RUST_RUNTIME_ROOT }}
+        run: |
+          sed 's/^version \?= \?.*/version = "${{ steps.dotenv.outputs.version }}"/' Cargo.toml > tmp
+          mv tmp Cargo.toml
+          cargo package
+      - name: Upload Rust Runtime
+        uses: actions/upload-artifact@v2
+        with:
+          name: bebop-runtime-rust-${{steps.dotenv.outputs.version}}
+          path: ${{ env.RUST_RUNTIME_ROOT }}/target/package/bebop-${{ steps.dotenv.outputs.version }}.crate
+
+      # todo: depend on a different job
       - name: Test TypeScript Runtime
         run: |
           npm install
@@ -189,6 +223,11 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@v1
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
       - uses: actions/setup-node@v1
         with:
           node-version: "14.15.1" # LTS
@@ -206,7 +245,7 @@ jobs:
           unzip -j -o ./win-x64/bebopc.exe.zip -d ${{env.BEBOPC_PATH}}/windows
           unzip -j -o ./osx-x64/bebopc.zip -d ${{env.BEBOPC_PATH}}/macos
           unzip -j -o ./linux-x64/bebopc.zip -d ${{env.BEBOPC_PATH}}/linux
-
+          
       - name: Build NuGet Package
         run: bash build.sh ${{ steps.dotenv.outputs.version }}
         working-directory: ${{env.TOOLS_ROOT}}/vs
@@ -216,6 +255,19 @@ jobs:
         with:
           name: bebop-tools-nuget-${{ steps.dotenv.outputs.version }}
           path: ${{env.TOOLS_ROOT}}/vs/packages/bebop-tools.${{ steps.dotenv.outputs.version }}.nupkg
+
+      - name: Package Cargo Tools
+        working-directory: ${{env.TOOLS_ROOT}}/cargo
+        run: |
+          sed 's/^version \?= \?.*/version = "${{ steps.dotenv.outputs.version }}"/' Cargo.toml > tmp
+          mv tmp Cargo.toml
+          cargo package
+
+      - name: Upload Cargo Tools
+        uses: actions/upload-artifact@v2
+        with:
+          name: bebop-tools-cargo-${{ steps.dotenv.outputs.version }}
+          path: ${{ env.TOOLS_ROOT }}/cargo/target/package/bebop-tools-${{ steps.dotenv.outputs.version }}.crate
 
       - name: Copy Compiler Builds for NPM package
         run: |
@@ -235,6 +287,9 @@ jobs:
           path: ${{env.TOOLS_ROOT}}/node/bebop-tools-${{ steps.dotenv.outputs.version }}.tgz
 
   publish-packages:
+    env:
+      RUST_RUNTIME_ROOT: ${{github.workspace}}/Runtime/Rust
+      TOOLS_ROOT: ${{github.workspace}}/Tools
     runs-on: ubuntu-18.04
     needs: [build-compiler, build-runtimes, build-tools]
     steps:
@@ -252,6 +307,14 @@ jobs:
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: "5.0.x" # SDK Version to use; x will use the latest version of the 5.0 channel
+          
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+      - name: Cargo Login
+        run: cargo login ${{ secrets.CRATES_TOKEN  }}
 
       - name: Download Artifacts
         uses: actions/download-artifact@v2
@@ -261,6 +324,14 @@ jobs:
 
       - name: Publish .NET Runtime
         run: dotnet nuget push bebop-runtime-cs-${{ steps.dotenv.outputs.version }}/bebop.${{ steps.dotenv.outputs.version }}.nupkg -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json
+
+      - name: Publish Rust Tools
+        run: cargo publish
+        working-directory: ${{env.TOOLS_ROOT}}/cargo
+      
+      - name: Publish Rust Runtime
+        run: cargo publish
+        working-directory: ${{env.RUST_RUNTIME_ROOT}}
 
       - name: Publish NodeJS Tools
         run: npm publish "./bebop-tools-npm-${{ steps.dotenv.outputs.version }}/bebop-tools-${{ steps.dotenv.outputs.version }}.tgz" --access public

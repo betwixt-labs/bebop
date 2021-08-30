@@ -1,0 +1,12 @@
+[package]
+name = "auto-testing"
+version = "0.1.0"
+edition = "2018"
+
+[lib]
+
+[dependencies]
+bebop = { path = "../../../Runtime/Rust" }
+
+[build-dependencies]
+bebop-tools = { path = "../../../Tools/cargo" }

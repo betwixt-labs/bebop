@@ -1,0 +1,10 @@
+[package]
+name = "integration-testing"
+version = "0.1.0"
+edition = "2018"
+
+[lib]
+
+[dependencies]
+# use sorted-maps to make it easier to debug, unsorted maps are still considered valid
+bebop = { path = "../../../Runtime/Rust" } # , features = ["sorted_maps"]

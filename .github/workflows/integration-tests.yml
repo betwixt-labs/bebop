@@ -1,0 +1,38 @@
+name: Integration Tests
+on:
+  push:
+    branches:
+      - master
+      - test-action-new-cli
+  pull_request:
+jobs:
+  integration-tests:
+    env:
+      TEST_ROOT: ${{github.workspace}}/Laboratory/Integration
+      RUNTIME_ROOT: ${{github.workspace}}/Runtime/C#
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: "5.0.x" # SDK Version to use; x will use the latest version of the 5.0 channel
+      - name: Build Runtime
+        run: dotnet build
+        working-directory: ${{env.RUNTIME_ROOT}}
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+      - name: Setup Node
+        uses: actions/setup-node@v1
+        with:
+          node-version: '12'
+      - name: Setup C++
+        run: |
+          sudo apt update
+          sudo apt install gcc g++ zsh
+      - name: Test
+        run: zsh run_test.sh
+        working-directory: ${{env.TEST_ROOT}}

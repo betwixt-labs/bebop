@@ -1,3 +1,5 @@
+message InnerM2 { 1 -> int32 x; }
+
 /**
  * This union is so documented!
  */
@@ -9,8 +11,9 @@ union U {
      */
     2 -> struct B { bool c; }
     3 -> struct C { }
+    4 -> struct D { InnerM2 msg; }
     /* You can't do this, nested unions are not allowed.
-    4 -> union W {
+    5 -> union W {
         1 -> struct D { string e; }
         2 -> struct X { bool z; }
     }

@@ -1,0 +1,17 @@
+﻿message Msg { 1 -> float32 a; 2 -> float64 b; }
+/** other docs */
+message InnerM3 { 1 -> int32 x; }
+struct InnerS3 { bool y; }
+
+[opcode(874)]
+message OuterM3 {
+    [deprecated("reasons")]
+    1 -> InnerM3 innerM;
+    /** some docs */
+    2 -> InnerS3 innerS;
+}
+
+struct OuterS3 {
+    InnerM3 innerM;
+    InnerS3 innerS;
+}

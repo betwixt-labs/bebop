@@ -9,6 +9,11 @@
       "commandLineArgs": "--lang cs --namespace Bebop.Codegen --files ..\\Laboratory\\Schemas\\lab.bop ..\\Laboratory\\Schemas\\jazz.bop --cs ..\\Laboratory\\C#\\GeneratedTestCode\\Output.g.cs",
       "workingDirectory": "C:\\Users\\Andrew\\PierogiVNext\\Compiler"
     },
+    "Generate Test Code Rust": {
+      "commandName": "Project",
+      "commandLineArgs": "--files ..\\Laboratory\\Schemas\\struct.bop --rust ..\\Laboratory\\Rust\\manual-testing\\src\\lib.rs",
+      "workingDirectory": "C:\\Users\\Matthew\\workspace\\Bebop\\Compiler"
+    },
     "Multiple Errors": {
       "commandName": "Project",
       "commandLineArgs": "--log-format JSON --check ShouldFail/multiple_errors.bop",

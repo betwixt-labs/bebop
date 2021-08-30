@@ -9,7 +9,7 @@ namespace Core.Generators
     {
         private int Spaces { get; set; }
         private StringBuilder Builder { get; }
-       
+
 
         public IndentedStringBuilder(int spaces = 0)
         {
@@ -32,6 +32,34 @@ namespace Core.Generators
             return this;
         }
 
+        /// <summary>
+        /// Append text in the middle of the current line; includes no newline and no indent and the beginning.
+        /// </summary>
+        public IndentedStringBuilder AppendMid(string text)
+        {
+            if (text.GetLines().Length > 1)
+            {
+                throw new ArgumentException("AppendMid must not contain multiple lines");
+            }
+
+            Builder.Append(text);
+            return this;
+        }
+
+        /// <summary>
+        /// Append the last part of a line. This will add a new line but no indent at the beginning.
+        /// </summary>
+        public IndentedStringBuilder AppendEnd(string text)
+        {
+            if (text.GetLines().Length > 1)
+            {
+                throw new ArgumentException("AppendEnd must not contain multiple lines");
+            }
+
+            Builder.AppendLine(text.TrimEnd());
+            return this;
+        }
+
         public IndentedStringBuilder AppendLine(string text)
         {
             var indent = new string(' ', Spaces);
@@ -51,6 +79,30 @@ namespace Core.Generators
         public IndentedStringBuilder Dedent(int removeSpaces = 0)
         {
             Spaces = Math.Max(0, Spaces - removeSpaces);
+            return this;
+        }
+
+        /// <summary>
+        /// Write a new scope and take a lambda to write to the builder within it. This way it is easy to ensure the
+        /// scope is closed correctly.
+        /// </summary>
+        public IndentedStringBuilder CodeBlock(string openingLine, int spaces, Action fn, string open = "{",
+            string close = "}")
+        {
+            if (!string.IsNullOrEmpty(openingLine))
+            {
+                Append(openingLine);
+                AppendEnd($" {open}");
+            }
+            else
+            {
+                AppendLine(open);
+            }
+
+            Indent(spaces);
+            fn();
+            Dedent(spaces);
+            AppendLine(close);
             return this;
         }
 
