@@ -176,7 +176,7 @@ jobs:
       - name: Test Rust Labratory
         run: |
           mkdir -p ./tools/compiler/Linux-Debug
-          cp ${{env.BEBOPC_PATH}}/linux ./tools/compiler/Linux-Debug
+          cp -r ${{env.BEBOPC_PATH}}/linux ./tools/compiler/Linux-Debug
           cargo check -p auto-testing
           cargo test -p functionality-testing
         working-directory: ${{ env.RUST_TEST_ROOT }}
