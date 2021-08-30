@@ -167,7 +167,7 @@ jobs:
       - name: Extract Compiler Artifacts
         run: |
           ls
-          unzip -j -o ./linux-x64/bebopc.zip -d ${{env.BEBOPC_PATH}}/linux
+          unzip -j -o ./linux-x64/bebopc.zip -d ${{github.workspace}}/bin/compiler/Linux-Debug
       
       # todo: depend on a different job
       - name: Test Rust Runtime
