@@ -23,12 +23,12 @@ echo "Testing that all implementations can decode all encodings..."
 # rust first because it has the most useful errors
 cargo run --manifest-path Rust/Cargo.toml -q --example decode -- rs.enc || fail "Rust decode failed."
 cargo run --manifest-path Rust/Cargo.toml -q --example decode -- cs.enc || fail "Rust failed to decode decode c#."
-#cargo run --manifest-path Rust/Cargo.toml -q --example decode -- ts.enc || fail "Rust failed to decode decode ts."
+cargo run --manifest-path Rust/Cargo.toml -q --example decode -- ts.enc || fail "Rust failed to decode decode ts."
 cargo run --manifest-path Rust/Cargo.toml -q --example decode -- cpp.enc || fail "Rust failed to decode decode c++."
 
 dotnet run decode cs.enc || fail "C# decode failed."
 dotnet run decode rs.enc || fail "C# failed to decode rust."
-#dotnet run decode ts.enc || fail "C# failed to decode ts."
+dotnet run decode ts.enc || fail "C# failed to decode ts."
 dotnet run decode cpp.enc || fail "C# failed to decode c++."
 
 npx ts-node decode.ts ts.enc || fail "TypeScript decode failed."
@@ -39,7 +39,7 @@ npx ts-node decode.ts cpp.enc || fail "TypeScript failed to decode c++."
 g++ --std=c++17 decode.cpp
 ./a.out cpp.enc || fail "C++ decode failed"
 ./a.out rs.enc || fail "C++ failed to decode rust"
-#./a.out ts.enc || fail "C++ failed to decode ts"
+./a.out ts.enc || fail "C++ failed to decode ts"
 ./a.out cs.enc || fail "C++ failed to decode c#"
 rm -f ./a.out
 
