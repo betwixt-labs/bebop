@@ -166,7 +166,7 @@ jobs:
         
       - name: Extract Compiler Artifacts
         run: |
-          mkdir ${{github.workspace}}/bin/compiler/Linux-Debug
+          mkdir -p ${{github.workspace}}/bin/compiler/Linux-Debug
           unzip -j -o ./linux-x64/bebopc.zip -d ${{github.workspace}}/bin/compiler/Linux-Debug
           ls
       
