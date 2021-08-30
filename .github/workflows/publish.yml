@@ -336,11 +336,17 @@ jobs:
         run: dotnet nuget push bebop-runtime-cs-${{ steps.dotenv.outputs.version }}/bebop.${{ steps.dotenv.outputs.version }}.nupkg -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json --skip-duplicate
 
       - name: Publish Rust Tools
-        run: cargo publish
+        run: |
+          sed 's/^version \?= \?.*/version = "${{ steps.dotenv.outputs.version }}"/' Cargo.toml > tmp
+          mv tmp Cargo.toml
+          cargo publish --allow-dirty
         working-directory: ${{env.TOOLS_ROOT}}/cargo
       
       - name: Publish Rust Runtime
-        run: cargo publish
+        run: |
+          sed 's/^version \?= \?.*/version = "${{ steps.dotenv.outputs.version }}"/' Cargo.toml > tmp
+          mv tmp Cargo.toml
+          cargo publish --allow-dirty
         working-directory: ${{env.RUST_RUNTIME_ROOT}}
 
       - name: Publish NodeJS Tools
