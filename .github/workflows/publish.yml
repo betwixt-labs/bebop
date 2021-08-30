@@ -330,10 +330,10 @@ jobs:
         uses: actions/download-artifact@v2
 
       - name: Publish .NET Tools
-        run: dotnet nuget push bebop-tools-nuget-${{ steps.dotenv.outputs.version }}/bebop-tools.${{ steps.dotenv.outputs.version }}.nupkg -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json
+        run: dotnet nuget push bebop-tools-nuget-${{ steps.dotenv.outputs.version }}/bebop-tools.${{ steps.dotenv.outputs.version }}.nupkg -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json --skip-duplicate
 
       - name: Publish .NET Runtime
-        run: dotnet nuget push bebop-runtime-cs-${{ steps.dotenv.outputs.version }}/bebop.${{ steps.dotenv.outputs.version }}.nupkg -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json
+        run: dotnet nuget push bebop-runtime-cs-${{ steps.dotenv.outputs.version }}/bebop.${{ steps.dotenv.outputs.version }}.nupkg -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json --skip-duplicate
 
       - name: Publish Rust Tools
         run: cargo publish
