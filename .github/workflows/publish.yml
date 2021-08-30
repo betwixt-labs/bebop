@@ -157,7 +157,7 @@ jobs:
           toolchain: stable
           profile: minimal
       - name: Cargo Login
-        run: cargo login ${{ secrets.CRATES_IO_TOKEN }}
+        run: cargo login ${{ secrets.CRATES_TOKEN  }}
           
       # todo: depend on a different job
       - name: Test Rust Runtime
@@ -314,7 +314,7 @@ jobs:
           toolchain: stable
           profile: minimal
       - name: Cargo Login
-        run: cargo login ${{ secrets.CRATES_IO_TOKEN }}
+        run: cargo login ${{ secrets.CRATES_TOKEN  }}
 
       - name: Download Artifacts
         uses: actions/download-artifact@v2

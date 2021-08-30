@@ -3,7 +3,7 @@
 //!
 //!
 //!   bebopc version:
-//!       0.0.1-20210805-2239
+//!       0.0.1-20210811-1807
 //!
 //!
 //!   bebopc source:
@@ -344,17 +344,9 @@ impl<'raw> ::bebop::SubRecord<'raw> for Album<'raw> {
 
     fn _deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)> {
         let len = ::bebop::read_len(&raw)? + ::bebop::LEN_SIZE + 1;
-        if raw.len() < len {
-            return Err(::bebop::DeserializeError::MoreDataExpected(len - raw.len()));
-        }
         let mut i = ::bebop::LEN_SIZE + 1;
         let de = match raw[::bebop::LEN_SIZE] {
             1 => {
-                if raw.len() - i < Self::MIN_SERIALIZED_SIZE {
-                    let missing = Self::MIN_SERIALIZED_SIZE - (raw.len() - i);
-                    return Err(::bebop::DeserializeError::MoreDataExpected(missing));
-                }
-
                 let (read, v0) = <::std::vec::Vec<Song<'raw>>>::_deserialize_chained(&raw[i..])?;
                 i += read;
 
