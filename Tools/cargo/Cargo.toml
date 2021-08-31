@@ -1,3 +1,5 @@
+# Note: for packaging, make sure bebopc directory is moved into the local directory first!
+
 [package]
 name = "bebop-tools"
 version = "0.1.0"
@@ -14,6 +16,3 @@ include = ["/bebopc", "/src"]
 [lib]
 
 [dependencies]
-
-[build-dependencies]
-fs_extra = "1.2.0"
