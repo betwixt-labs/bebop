@@ -1,3 +1,4 @@
+use json::JsonValue;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 
@@ -42,10 +43,18 @@ fn download_bebopc_internal(dest: impl AsRef<Path>) -> PathBuf {
     }
     mkdir_p(&root_path);
     let zip_name = format!("bebopc-{}64.zip", OS_NAME);
-    let url = format!(
-        "https://github.com/RainwayApp/bebop/releases/download/v{}/{}",
-        BEBOPC_VERSION, zip_name
-    );
+    let release_info = get_json(format!(
+        "https://api.github.com/repos/rainwayapp/bebop/releases/tags/v{}",
+        BEBOPC_VERSION
+    ));
+    let url = release_info["assets"]
+        .members()
+        .find(|asset| asset["name"].as_str().unwrap() == zip_name)
+        .expect("Could not find expected asset")["browser_download_url"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+
     let zip_path = root_path.join(&zip_name);
     download(url, &zip_path);
     let tmp_path = &root_path.join("tmp");
@@ -94,4 +103,23 @@ fn download(uri: impl reqwest::IntoUrl, path: impl AsRef<Path>) {
     let mut res = reqwest::blocking::get(uri).expect("Failed to fetch file");
     let mut file = File::create(path).expect("Failed to create file");
     res.copy_to(&mut file).expect("Failed to write to file");
+}
+
+fn get_json(uri: impl reqwest::IntoUrl) -> JsonValue {
+    let uri = uri.into_url().unwrap();
+    let res = reqwest::blocking::Client::builder()
+        .build()
+        .unwrap()
+        .get(uri.clone())
+        .header("User-Agent", "hyper/0.5")
+        .send()
+        .expect("Failed to GET");
+    if res.status() != 200 {
+        panic!(
+            "Invalid status code from GET {}: {}",
+            uri.as_str(),
+            res.status()
+        )
+    }
+    json::parse(&res.text().unwrap()).expect("Failed to parse JSON response")
 }

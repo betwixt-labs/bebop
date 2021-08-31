@@ -10,5 +10,8 @@ fn main() {
     unsafe {
         bebop::COMPILER_PATH = Some(PathBuf::from(BEBOP_BIN));
     }
+    // bebop::download_bebopc(
+    //     PathBuf::from("../target").join("bebopc"),
+    // );
     bebop::build_schema_dir("schemas", "src/generated");
 }

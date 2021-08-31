@@ -2,7 +2,7 @@
 
 [package]
 name = "bebop-tools"
-version = "2.3.0-alpha"
+version = "0.1.0"
 edition = "2018"
 description = "Cargo buildscript tools for Bebop, a schema-based binary serialization format."
 readme = "../../README.md"
@@ -17,7 +17,8 @@ homepage = "https://github.com/RainwayApp/bebop/wiki"
 [dependencies]
 reqwest = { version = "0.11", features = ["blocking"], optional = true }
 zip = { version = "0.5", optional = true }
+json = { version = "0.12", optional = true }
 
 [features]
 default = ["downloader"]
-downloader = ["reqwest", "zip"]
+downloader = ["reqwest", "zip", "json"]
