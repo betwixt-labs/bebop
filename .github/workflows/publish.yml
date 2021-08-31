@@ -272,7 +272,7 @@ jobs:
           sed 's/^version \?= \?.*/version = "${{ steps.dotenv.outputs.version }}"/' Cargo.toml > tmp
           mv tmp Cargo.toml
           rm -rf bebopc
-          cp -R ../bebopc ./
+          cp -R ${{env.BEBOPC_PATH}} ./
           cargo package --allow-dirty
 
       - name: Upload Cargo Tools
@@ -302,6 +302,7 @@ jobs:
     env:
       RUST_RUNTIME_ROOT: ${{github.workspace}}/Runtime/Rust
       TOOLS_ROOT: ${{github.workspace}}/Tools
+      BEBOPC_PATH: ${{github.workspace}}/Tools/bebopc
     runs-on: ubuntu-18.04
     needs: [build-compiler, build-runtimes, build-tools]
     steps:
@@ -331,6 +332,13 @@ jobs:
       - name: Download Artifacts
         uses: actions/download-artifact@v2
 
+      - name: Extract Compiler Artifacts
+        run: |
+          ls
+          unzip -j -o ./win-x64/bebopc.exe.zip -d ${{env.BEBOPC_PATH}}/windows
+          unzip -j -o ./osx-x64/bebopc.zip -d ${{env.BEBOPC_PATH}}/macos
+          unzip -j -o ./linux-x64/bebopc.zip -d ${{env.BEBOPC_PATH}}/linux
+
       - name: Publish .NET Tools
         run: dotnet nuget push bebop-tools-nuget-${{ steps.dotenv.outputs.version }}/bebop-tools.${{ steps.dotenv.outputs.version }}.nupkg -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json --skip-duplicate
 
@@ -342,7 +350,7 @@ jobs:
           sed 's/^version \?= \?.*/version = "${{ steps.dotenv.outputs.version }}"/' Cargo.toml > tmp
           mv tmp Cargo.toml
           rm -rf bebopc
-          cp -R ../bebopc ./
+          cp -R ${{env.BEBOPC_PATH}} ./
           cargo publish --allow-dirty
         working-directory: ${{env.TOOLS_ROOT}}/cargo
       
