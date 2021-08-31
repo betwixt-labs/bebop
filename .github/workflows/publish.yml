@@ -115,8 +115,6 @@ jobs:
       TS_RUNTIME_ROOT: ${{github.workspace}}/Runtime/TypeScript
       RUST_RUNTIME_ROOT: ${{github.workspace}}/Runtime/Rust
       RUST_TEST_ROOT: ${{github.workspace}}/Laboratory/Rust
-      TOOLS_ROOT: ${{github.workspace}}/Tools
-      BEBOPC_PATH: ${{github.workspace}}/Tools/bebopc
     runs-on: ubuntu-18.04
     needs: build-compiler
     steps:

@@ -83,7 +83,7 @@ version = "0.1.0"
 
 [[package]]
 name = "bebop-tools"
-version = "2.3.0-alpha"
+version = "0.1.0"
 
 [[package]]
 name = "benchmarking"
