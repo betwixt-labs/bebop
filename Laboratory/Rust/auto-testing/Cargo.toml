@@ -9,4 +9,4 @@ edition = "2018"
 bebop = { path = "../../../Runtime/Rust" }
 
 [build-dependencies]
-bebop-tools = { path = "../../../Tools/cargo" }
+bebop-tools = { path = "../../../Tools/cargo", default-features = false }

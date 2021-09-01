@@ -1,11 +1,16 @@
 use std::collections::LinkedList;
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::fs;
 
-/// Configurable compiler path. By default assumes it is in the bebobc directory.
+/// Configurable compiler path. By default it will use the downloaded executeable or assume it is in PATH.
 pub static mut COMPILER_PATH: Option<PathBuf> = None;
 pub static mut GENERATED_PREFIX: Option<String> = None;
+
+#[cfg(feature = "downloader")]
+mod downloader;
+#[cfg(feature = "downloader")]
+pub use downloader::*;
 
 /// Build all schemas in a given directory and write them to the destination directory including a
 /// `mod.rs` file.
@@ -147,16 +152,5 @@ fn canonicalize(path: impl AsRef<Path>) -> PathBuf {
 }
 
 fn compiler_path() -> PathBuf {
-    (unsafe { COMPILER_PATH.clone() }).unwrap_or_else(|| {
-        canonicalize(if cfg!(target_os = "linux") {
-            "./bebopc/linux/bebopc"
-        } else if cfg!(target_os = "windows") {
-            "./bebopc/windows/bebopc.exe"
-        } else if cfg!(target_os = "macos") {
-            "./bebopc/macos/bebopc"
-        } else {
-            // assume it is in PATH
-            "bebopc"
-        })
-    })
+    (unsafe { COMPILER_PATH.clone() }).unwrap_or_else(|| canonicalize("bebopc"))
 }

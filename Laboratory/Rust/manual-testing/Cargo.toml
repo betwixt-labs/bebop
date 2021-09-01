@@ -6,4 +6,4 @@ edition = "2018"
 [lib]
 
 [dependencies]
-bebop = { path = "../../../Runtime/Rust" }
+bebop = { path = "../../../Runtime/Rust", default-features = false }

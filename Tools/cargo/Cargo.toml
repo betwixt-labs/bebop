@@ -1,3 +1,5 @@
+# Note: for packaging, make sure bebopc directory is moved into the local directory first!
+
 [package]
 name = "bebop-tools"
 version = "0.1.0"
@@ -9,11 +11,14 @@ keywords = ["binary", "encode", "decode", "serialization", "schema"]
 categories = ["encoding"]
 repository = "https://github.com/RainwayApp/bebop"
 homepage = "https://github.com/RainwayApp/bebop/wiki"
-include = ["bebopc"]
 
 [lib]
 
 [dependencies]
+reqwest = { version = "0.11", features = ["blocking"], optional = true }
+zip = { version = "0.5", optional = true }
+json = { version = "0.12", optional = true }
 
-[build-dependencies]
-fs_extra = "1.2.0"
+[features]
+default = ["downloader"]
+downloader = ["reqwest", "zip", "json"]
