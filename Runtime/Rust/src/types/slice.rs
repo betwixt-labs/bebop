@@ -4,6 +4,10 @@ use crate::{FixedSized, SubRecord};
 use std::iter::FusedIterator;
 use std::ptr::slice_from_raw_parts;
 
+use serde::ser::SerializeSeq;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
 /// This allows us to either wrap an existing &[T] slice to serialize it OR to store a raw byte
 /// slice from an encoding and access its potentially unaligned values.
 ///
@@ -12,6 +16,31 @@ use std::ptr::slice_from_raw_parts;
 pub enum SliceWrapper<'a, T: FixedSized> {
     Raw(&'a [u8]),
     Cooked(&'a [T]),
+}
+
+#[cfg(feature = "serde")]
+impl<'a, T> Deserialize<'a> for SliceWrapper<'a, T>
+where
+    T: FixedSized + Deserialize<'a>,
+{
+    fn deserialize<D: Deserializer<'a>>(de: D) -> Result<Self, D::Error> {
+        // let mut sq = de.deserialize_seq()
+        todo!()
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'a, T> Serialize for SliceWrapper<'a, T>
+where
+    T: FixedSized + SubRecord<'a> + Serialize,
+{
+    fn serialize<S: Serializer>(&self, se: S) -> Result<S::Ok, S::Error> {
+        let mut sq = se.serialize_seq(Some(self.len()))?;
+        for i in self.iter() {
+            sq.serialize_element(&i)?;
+        }
+        sq.end()
+    }
 }
 
 impl<'a, T, A> From<A> for SliceWrapper<'a, T>
