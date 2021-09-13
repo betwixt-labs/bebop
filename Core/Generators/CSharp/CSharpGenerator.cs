@@ -186,9 +186,14 @@ namespace Core.Generators.CSharp
 
                         builder.AppendLine(CompileEncodeHelper(definition, "byte[]", "Encode"));
                         builder.AppendLine();
+                        builder.AppendLine(CompileEncodeWithInitialCapacityHelper(definition, "byte[]", "Encode"));
+                        builder.AppendLine();
                         builder.AppendLine(CompileEncodeHelper(definition, ImmutableByteArrayType, "EncodeImmutably"));
                         builder.AppendLine();
-
+                        builder.AppendLine(CompileEncodeWithInitialCapacityHelper(definition, ImmutableByteArrayType, "EncodeImmutably"));
+                        builder.AppendLine();
+                        builder.AppendLine(CompileEncodeIntoHelper(definition, "EncodeIntoBuffer"));
+                        builder.AppendLine();
 
                         builder.AppendLine("#region Static Decode Methods");
                         foreach (var bufferType in DecodeBufferTypes)
@@ -213,8 +218,6 @@ namespace Core.Generators.CSharp
                         builder.Dedent(indentStep);
                         builder.AppendLine("}");
                         builder.AppendLine();
-
-
 
                         builder.AppendLine();
                         builder.AppendLine(Warning);
@@ -292,6 +295,36 @@ namespace Core.Generators.CSharp
 
         #region Message
         private string CompileEncodeMessage(MessageDefinition definition)
+        {
+            var builder = new IndentedStringBuilder();
+            builder.AppendLine("var pos = writer.ReserveRecordLength();");
+            builder.AppendLine("var start = writer.Length;");
+            foreach (var field in definition.Fields)
+            {
+                if (field.DeprecatedAttribute is not null)
+                {
+                    continue;
+                }
+                builder.AppendLine("");
+
+                var isNullableType = IsNullableType(field.Type);
+                var nullCheck = isNullableType && LanguageVersion == CSharpNine ? "is not null" : "!= null";
+                builder.AppendLine($"if (record.{field.Name.ToPascalCase()} {nullCheck}) {{");
+                builder.Indent(indentStep);
+                builder.AppendLine($"writer.WriteByte({field.ConstantValue});");
+                builder.AppendLine(isNullableType && NeedsValueAppend(field.Type)
+                    ? $"{CompileEncodeField(field.Type, $"record.{field.Name.ToPascalCase()}.Value")}"
+                    : $"{CompileEncodeField(field.Type, $"record.{field.Name.ToPascalCase()}")}");
+                builder.Dedent(indentStep);
+                builder.AppendLine("}");
+            }
+            builder.AppendLine("writer.WriteByte(0);");
+            builder.AppendLine("var end = writer.Length;");
+            builder.AppendLine("writer.FillRecordLength(pos, unchecked((uint) unchecked(end - start)));");
+            return builder.ToString();
+        }
+
+        private string CompileEncodeIntoMessage(MessageDefinition definition)
         {
             var builder = new IndentedStringBuilder();
             builder.AppendLine("var pos = writer.ReserveRecordLength();");
@@ -647,7 +680,12 @@ namespace Core.Generators.CSharp
 
                 builder.AppendLine(CompileEncodeHelper(ud, "byte[]", "Encode"));
                 builder.AppendLine();
-                builder.AppendLine(CompileEncodeHelper(ud, ImmutableByteArrayType, "EncodeImmutably")).AppendLine();
+                builder.AppendLine(CompileEncodeWithInitialCapacityHelper(ud, "byte[]", "Encode"));
+                builder.AppendLine();
+                builder.AppendLine(CompileEncodeHelper(ud, ImmutableByteArrayType, "EncodeImmutably"));
+                builder.AppendLine();
+                builder.AppendLine(CompileEncodeWithInitialCapacityHelper(ud, "byte[]", "EncodeImmutably"));
+                builder.AppendLine();
 
                 builder.AppendLine(CompileGetByteCount(ud, false)).AppendLine();
                 builder.AppendLine(CompileGetByteCount(ud, true)).AppendLine();
@@ -1099,6 +1137,74 @@ namespace Core.Generators.CSharp
             builder.Dedent(indentStep);
             builder.AppendLine("}");
             builder.AppendLine("");
+
+            return builder.ToString();
+        }
+
+        public string CompileEncodeWithInitialCapacityHelper(Definition definition, string bufferType, string methodName)
+        {
+            var returnMethod = bufferType.Equals(ImmutableByteArrayType) ? "ToImmutableArray" : "ToArray";
+            var builder = new IndentedStringBuilder();
+
+            builder.AppendLine(HotPath);
+            builder.AppendLine($"public sealed override {bufferType} {methodName}(int initialCapacity) {{");
+            builder.Indent(indentStep);
+            builder.AppendLine($"var writer = {BebopWriter}.Create(initialCapacity);");
+            builder.AppendLine("__EncodeInto(this, ref writer);");
+            builder.AppendLine($"return writer.{returnMethod}();");
+            builder.Dedent(indentStep);
+            builder.AppendLine("}");
+
+            builder.AppendLine(HotPath);
+            builder.AppendLine($"public static {bufferType} {methodName}({PrefixNamespace(definition.ClassName())} record, int initialCapacity) {{");
+            builder.Indent(indentStep);
+            builder.AppendLine($"var writer = {BebopWriter}.Create(initialCapacity);");
+            builder.AppendLine("__EncodeInto(record, ref writer);");
+            builder.AppendLine($"return writer.{returnMethod}();");
+            builder.Dedent(indentStep);
+            builder.AppendLine("}");
+            builder.AppendLine("");
+
+            return builder.ToString();
+        }
+
+        public string CompileEncodeIntoHelper(Definition definition, string methodName)
+        {
+            var builder = new IndentedStringBuilder();
+
+            builder.AppendLine(HotPath);
+            builder.AppendLine($"public sealed override global::Bebop.Runtime.BebopWriteResult {methodName}(byte[] outBuffer) {{");
+            builder.Indent(indentStep);
+            builder.AppendLine("var originalSize = outBuffer.Length;");
+            builder.AppendLine($"var writer = {BebopWriter}.Create(outBuffer);");
+            builder.AppendLine("var bytesWritten = __EncodeInto(this, ref writer);");
+            builder.AppendLine("if(bytesWritten > originalSize)");
+            builder.AppendLine("{");
+            builder.Indent(indentStep);
+            builder.AppendLine("var updatedBuffer = writer.ToArray();");
+            builder.AppendLine("return new global::Bebop.Runtime.BebopWriteResult(global::Bebop.Runtime.WriteResult.SuccessButGrewBuffer, writer.Length, updatedBuffer);");
+            builder.Dedent(indentStep);
+            builder.AppendLine("}");
+            builder.AppendLine("return new global::Bebop.Runtime.BebopWriteResult(global::Bebop.Runtime.WriteResult.Success, writer.Length, outBuffer);");
+            builder.Dedent(indentStep);
+            builder.AppendLine("}");
+
+            builder.AppendLine(HotPath);
+            builder.AppendLine($"public static global::Bebop.Runtime.BebopWriteResult {methodName}({PrefixNamespace(definition.ClassName())} record, byte[] outBuffer) {{");
+            builder.Indent(indentStep);
+            builder.AppendLine("var originalSize = outBuffer.Length;");
+            builder.AppendLine($"var writer = {BebopWriter}.Create(outBuffer);");
+            builder.AppendLine("var bytesWritten = __EncodeInto(record, ref writer);");
+            builder.AppendLine("if(bytesWritten > originalSize)");
+            builder.AppendLine("{");
+            builder.Indent(indentStep);
+            builder.AppendLine("var updatedBuffer = writer.ToArray();");
+            builder.AppendLine("return new global::Bebop.Runtime.BebopWriteResult(global::Bebop.Runtime.WriteResult.SuccessButGrewBuffer, writer.Length, updatedBuffer);");
+            builder.Dedent(indentStep);
+            builder.AppendLine("}");
+            builder.AppendLine("return new global::Bebop.Runtime.BebopWriteResult(global::Bebop.Runtime.WriteResult.Success, writer.Length, outBuffer);");
+            builder.Dedent(indentStep);
+            builder.AppendLine("}");
 
             return builder.ToString();
         }

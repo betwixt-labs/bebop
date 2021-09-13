@@ -62,7 +62,7 @@ namespace Bebop.Runtime
         /// </summary>
         /// <returns></returns>
         [MethodImpl(BebopConstants.HotPath)]
-        public static BebopWriter Create(int capacity) => new(new byte[capacity]);
+        public static BebopWriter Create(int initialCapacity) => new(new byte[initialCapacity]);
 
         /// <summary>
         ///     Allocates a new <see cref="BebopWriter"/> instance backed by the given array instance.
