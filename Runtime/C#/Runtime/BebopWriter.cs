@@ -56,6 +56,21 @@ namespace Bebop.Runtime
         /// <returns></returns>
         [MethodImpl(BebopConstants.HotPath)]
         public static BebopWriter Create() => new(Array.Empty<byte>());
+
+        /// <summary>
+        ///     Allocates a new <see cref="BebopWriter"/> instance backed by a new array of the given size.
+        /// </summary>
+        /// <returns></returns>
+        [MethodImpl(BebopConstants.HotPath)]
+        public static BebopWriter Create(int capacity) => new(new byte[capacity]);
+
+        /// <summary>
+        ///     Allocates a new <see cref="BebopWriter"/> instance backed by the given array instance.
+        /// </summary>
+        /// <returns></returns>
+        [MethodImpl(BebopConstants.HotPath)]
+        public static BebopWriter Create(byte[] buffer) => new(buffer);
+
         /// <summary>
         /// Creates a new <see cref="BebopWriter"/> instance from the specified <paramref name="buffer"/>
         /// </summary>
