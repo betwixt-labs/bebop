@@ -1173,34 +1173,18 @@ namespace Core.Generators.CSharp
             var builder = new IndentedStringBuilder();
 
             builder.AppendLine(HotPath);
-            builder.AppendLine($"public sealed override global::Bebop.Runtime.BebopEncodeResult {methodName}(byte[] outBuffer) {{");
+            builder.AppendLine($"public sealed override int {methodName}(byte[] outBuffer) {{");
             builder.Indent(indentStep);
-            builder.AppendLine("var originalSize = outBuffer.Length;");
             builder.AppendLine($"var writer = {BebopWriter}.Create(outBuffer);");
-            builder.AppendLine("var bytesWritten = __EncodeInto(this, ref writer);");
-            builder.AppendLine("if(bytesWritten > originalSize)");
-            builder.AppendLine("{");
-            builder.Indent(indentStep);
-            builder.AppendLine("return new global::Bebop.Runtime.BebopEncodeResult(global::Bebop.Runtime.EncodeResult.InputBufferTooSmall, writer.Length);");
-            builder.Dedent(indentStep);
-            builder.AppendLine("}");
-            builder.AppendLine("return new global::Bebop.Runtime.BebopEncodeResult(global::Bebop.Runtime.EncodeResult.Success, writer.Length);");
+            builder.AppendLine("return __EncodeInto(this, ref writer);");
             builder.Dedent(indentStep);
             builder.AppendLine("}");
 
             builder.AppendLine(HotPath);
-            builder.AppendLine($"public static global::Bebop.Runtime.BebopEncodeResult {methodName}({PrefixNamespace(definition.ClassName())} record, byte[] outBuffer) {{");
+            builder.AppendLine($"public static int {methodName}({PrefixNamespace(definition.ClassName())} record, byte[] outBuffer) {{");
             builder.Indent(indentStep);
-            builder.AppendLine("var originalSize = outBuffer.Length;");
             builder.AppendLine($"var writer = {BebopWriter}.Create(outBuffer);");
-            builder.AppendLine("var bytesWritten = __EncodeInto(record, ref writer);");
-            builder.AppendLine("if(bytesWritten > originalSize)");
-            builder.AppendLine("{");
-            builder.Indent(indentStep);
-            builder.AppendLine("return new global::Bebop.Runtime.BebopEncodeResult(global::Bebop.Runtime.EncodeResult.InputBufferTooSmall, writer.Length);");
-            builder.Dedent(indentStep);
-            builder.AppendLine("}");
-            builder.AppendLine("return new global::Bebop.Runtime.BebopEncodeResult(global::Bebop.Runtime.EncodeResult.Success, writer.Length);");
+            builder.AppendLine("return __EncodeInto(record, ref writer);");
             builder.Dedent(indentStep);
             builder.AppendLine("}");
 

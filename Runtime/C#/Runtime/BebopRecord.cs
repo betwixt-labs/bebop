@@ -63,7 +63,7 @@ namespace Bebop.Runtime
         /// Encodes the current record.
         /// </summary>
         /// <returns>An array of bytes which contain the encoded record.</returns>
-        public abstract BebopEncodeResult EncodeIntoBuffer(byte[] outBuffer);
+        public abstract int EncodeIntoBuffer(byte[] outBuffer);
     }
 
 
