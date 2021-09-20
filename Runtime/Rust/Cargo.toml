@@ -1,0 +1,28 @@
+[package]
+name = "bebop"
+version = "0.1.0"
+edition = "2018"
+description = "The Rust runtime for Bebop, a schema-based binary serialization format."
+readme = "../../README.md"
+license = "Apache-2.0"
+keywords = ["binary", "encode", "decode", "serialization", "schema"]
+categories = ["encoding"]
+repository = "https://github.com/RainwayApp/bebop"
+homepage = "https://github.com/RainwayApp/bebop/wiki"
+
+[[bench]]
+name = "main"
+harness = false
+
+[dependencies]
+itertools = { version = "0.10.1", optional = true }
+
+[dev-dependencies]
+criterion = "0.3"
+
+[features]
+# where reasonable, skip decoding checks, this will cause random issues if invalid UTF8 is sent to
+# the program
+unchecked = []
+# Enable to have maps sorted by their key values
+sorted_maps = ["itertools"]

@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+enum Instrument {
+    Sax = 0;
+    Trumpet = 1;
+    Clarinet = 2;
+    Piano = 3;
+    Cello = 4;
+}
+
+message Performer {
+    string name = 1;
+    Instrument plays = 2;
+}
+
+message Song {
+    string title = 1;
+    uint32 year = 2;
+    repeated Performer performers = 3;
+}
+
+message Album {
+    repeated Song tracks = 1;
+    string venumeName = 2;
+    uint64 concertDate = 3;
+}
+
+message Library {
+    map<string, Album> albums = 1;
+}

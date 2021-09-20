@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net5.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="Bebop">
+      <HintPath>../../Runtime/C#/bin/Debug/net5.0/Bebop.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Yes, a bit non-standard but seems to fix my IDE issues -->
+    <Compile Include="Program.cs" />
+    <Compile Include="schema.cs" />
+  </ItemGroup>
+</Project>

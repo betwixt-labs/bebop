@@ -1,5 +1,7 @@
 using System;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Text;
 using Core.Lexer.Extensions;
 
 namespace Core.Meta.Extensions
@@ -7,6 +9,7 @@ namespace Core.Meta.Extensions
     public static class StringExtensions
     {
         private const char SnakeSeparator = '_';
+        private const char KebabSeparator = '-';
 
         private static readonly string[] NewLines = { "\r\n", "\r", "\n" };
 
@@ -25,7 +28,7 @@ namespace Core.Meta.Extensions
         {
             foreach (var currentChar in array)
             {
-                if (!char.IsUpper(currentChar) && currentChar is not SnakeSeparator)
+                if (!char.IsUpper(currentChar) && currentChar is not (SnakeSeparator or KebabSeparator))
                 {
                     return false;
                 }
@@ -78,7 +81,7 @@ namespace Core.Meta.Extensions
                 {
                     charArray[i + 1] = char.ToUpperInvariant(nextChar);
                 }
-                else if (currentChar is SnakeSeparator)
+                else if (currentChar is SnakeSeparator or KebabSeparator)
                 {
                     if (char.IsLower(nextChar))
                     {
@@ -90,7 +93,7 @@ namespace Core.Meta.Extensions
                     }
                 }
             }
-            return new string(charArray.ToArray().Where(c => c is not SnakeSeparator).ToArray());
+            return new string(charArray.ToArray().Where(c => c is not (SnakeSeparator or KebabSeparator)).ToArray());
         }
 
         /// <summary>
@@ -98,7 +101,7 @@ namespace Core.Meta.Extensions
         /// </summary>
         private static char Peek(this Span<char> array, int index)
         {
-            return index < array.Length ? array[index] : default;
+            return index < array.Length && index >= 0 ? array[index] : default;
         }
 
         /// <summary>
@@ -128,6 +131,58 @@ namespace Core.Meta.Extensions
 
             return f.ToLowerInvariant() + r;
         }
+
+        /// <summary>
+        ///     Converts the specified <paramref name="input"/> string into snake_case.
+        /// </summary>
+        /// <param name="input">The input string that will be converted.</param>
+        /// <returns>The mutated string.</returns>
+        public static string ToSnakeCase(this string input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                return string.Empty;
+            }
+            if (input.Length == 1)
+            {
+                return input;
+            }
+            // Remove invalid characters.
+            var charArray = new Span<char>(input.ToCharArray());
+            var builder = new StringBuilder();
+
+            for (var i = 0; i < charArray.Length; i++)
+            {
+                var currentChar = charArray[i];
+                var nextChar = charArray.Peek(i + 1);
+
+                if (currentChar is SnakeSeparator or KebabSeparator)
+                {
+                    builder.Append(SnakeSeparator);
+                }
+                else if (char.IsLower(currentChar) && char.IsUpper(nextChar))
+                {
+                    builder.Append(char.ToLowerInvariant(currentChar));
+                    builder.Append('_');
+                }
+                else if (char.IsUpper(currentChar))
+                {
+                    builder.Append(char.ToLowerInvariant(currentChar));
+                }
+                else
+                {
+                    builder.Append(currentChar);
+                }
+            }
+            return builder.ToString();
+        }
+
+        /// <summary>
+        ///     Converts the specified <paramref name="input"/> string into kebab-case.
+        /// </summary>
+        /// <param name="input">The input string that will be converted.</param>
+        /// <returns>The mutated string.</returns>
+        public static string ToKebabCase(this string input) => input.ToSnakeCase().Replace(SnakeSeparator, KebabSeparator);
 
         public static bool TryParseUInt(this string str, out uint result)
         {

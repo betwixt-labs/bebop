@@ -205,7 +205,9 @@ namespace Bebop.Runtime
         /// </summary>
         /// <returns>A UTC <see cref="DateTime"/> instance.</returns>
         [MethodImpl(BebopConstants.HotPath)]
-        public DateTime ReadDate() => DateTime.FromBinary(ReadInt64());
+        public DateTime ReadDate() =>
+            // make sure it always reads it as UTC by setting the first bits to `01`.
+            DateTime.FromBinary((ReadInt64() & 0x7fffffffffffffff) | 0x4000000000000000);
 
         /// <summary>
         ///     Reads a length prefixed string from the underlying buffer and advances the current position by that many bytes.

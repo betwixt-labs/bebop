@@ -1,0 +1,61 @@
+/**
+ * Option A: put the whole thing in a union.
+ */
+union UnionPerfV {
+    1 -> message C1 { 1 -> int32 i1; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    2 -> message C2 { 1 -> int32 i2; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    3 -> message C3 { 1 -> int32 i3; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    4 -> message C4 { 1 -> int32 i4; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    5 -> message C5 { 1 -> int32 i5; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    6 -> message C6 { 1 -> int32 i6; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    7 -> message C7 { 1 -> int32 i7; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    8 -> message C8 { 1 -> int32 i8; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    9 -> message C9 { 1 -> int32 i9; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    10 -> message C10 { 1 -> int32 i10; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    11 -> message C11 { 1 -> int32 i11; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    12 -> message C12 { 1 -> int32 i12; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    13 -> message C13 { 1 -> int32 i13; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    14 -> message C14 { 1 -> int32 i14; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    15 -> message C15 { 1 -> int32 i15; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    16 -> message C16 { 1 -> int32 i16; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    17 -> message C17 { 1 -> int32 i17; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    18 -> message C18 { 1 -> int32 i18; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    19 -> message C19 { 1 -> int32 i19; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    20 -> message C20 { 1 -> int32 i20; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    21 -> message C21 { 1 -> int32 i21; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    22 -> message C22 { 1 -> int32 i22; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    23 -> message C23 { 1 -> int32 i23; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    24 -> message C24 { 1 -> int32 i24; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    25 -> message C25 { 1 -> int32 i25; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    26 -> message C26 { 1 -> int32 i26; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    27 -> message C27 { 1 -> int32 i27; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    28 -> message C28 { 1 -> int32 i28; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    29 -> message C29 { 1 -> int32 i29; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    30 -> message C30 { 1 -> int32 i30; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    31 -> message C31 { 1 -> int32 i31; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    32 -> message C32 { 1 -> int32 i32; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    33 -> message C33 { 1 -> int32 i33; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    34 -> message C34 { 1 -> int32 i34; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    35 -> message C35 { 1 -> int32 i35; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    36 -> message C36 { 1 -> int32 i36; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    37 -> message C37 { 1 -> int32 i37; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    38 -> message C38 { 1 -> int32 i38; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    39 -> message C39 { 1 -> int32 i39; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    40 -> message C40 { 1 -> int32 i40; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    41 -> message C41 { 1 -> int32 i41; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    42 -> message C42 { 1 -> int32 i42; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    43 -> message C43 { 1 -> int32 i43; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    44 -> message C44 { 1 -> int32 i44; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    45 -> message C45 { 1 -> int32 i45; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    46 -> message C46 { 1 -> int32 i46; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    47 -> message C47 { 1 -> int32 i47; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    48 -> message C48 { 1 -> int32 i48; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    49 -> message C49 { 1 -> int32 i49; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+    50 -> message C50 { 1 -> int32 i50; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
+}
+
+struct UnionPerfC {
+    uint32 containerOpcode;
+    uint32 protocolVersion;
+    UnionPerfV v;
+}
