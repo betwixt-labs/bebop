@@ -1,4 +1,0 @@
-union Union1 {
-  1 -> struct Left { uint32 l; }
-  2 -> struct Right { string r; }
-}

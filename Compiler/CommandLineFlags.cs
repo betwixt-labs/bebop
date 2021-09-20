@@ -172,21 +172,25 @@ namespace Compiler
             "--config bebop.json")]
         public string? ConfigFile { get; private set; }
 
+        [CommandLineFlag("cpp", "Generate C++ source code to the specified file",
+            "--cpp ./my/output/HelloWorld.hpp", true)]
+        public string? CPlusPlusOutput { get; private set; }
+        
         [CommandLineFlag("cs", "Generate C# source code to the specified file", "--cs ./my/output/HelloWorld.cs",
             true)]
         public string? CSharpOutput { get; private set; }
-
-        [CommandLineFlag("ts", "Generate TypeScript source code to the specified file",
-            "--ts ./my/output/HelloWorld.ts", true)]
-        public string? TypeScriptOutput { get; private set; }
-
+        
         [CommandLineFlag("dart", "Generate Dart source code to the specified file",
             "--dart ./my/output/HelloWorld.dart", true)]
         public string? DartOutput { get; private set; }
 
-        [CommandLineFlag("cpp", "Generate C++ source code to the specified file",
-            "--cpp ./my/output/HelloWorld.hpp", true)]
-        public string? CPlusPlusOutput { get; private set; }
+        [CommandLineFlag("rust", "Generate Rust source code to the specified file", "--rust ./my/output/HelloWorld.rs",
+            true)]
+        public string? RustOutput { get; private set; }
+        
+        [CommandLineFlag("ts", "Generate TypeScript source code to the specified file",
+            "--ts ./my/output/HelloWorld.ts", true)]
+        public string? TypeScriptOutput { get; private set; }
 
         [CommandLineFlag("namespace", "When this option is specified generated code will use namespaces",
             "--cs --namespace [package]")]

@@ -1,0 +1,24 @@
+# Note: for packaging, make sure bebopc directory is moved into the local directory first!
+
+[package]
+name = "bebop-tools"
+version = "0.1.0"
+edition = "2018"
+description = "Cargo buildscript tools for Bebop, a schema-based binary serialization format."
+readme = "../../README.md"
+license = "Apache-2.0"
+keywords = ["binary", "encode", "decode", "serialization", "schema"]
+categories = ["encoding"]
+repository = "https://github.com/RainwayApp/bebop"
+homepage = "https://github.com/RainwayApp/bebop/wiki"
+
+[lib]
+
+[dependencies]
+reqwest = { version = "0.11", features = ["blocking"], optional = true }
+zip = { version = "0.5", optional = true }
+json = { version = "0.12", optional = true }
+
+[features]
+default = ["downloader"]
+downloader = ["reqwest", "zip", "json"]
