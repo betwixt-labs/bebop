@@ -1173,7 +1173,7 @@ namespace Core.Generators.CSharp
             var builder = new IndentedStringBuilder();
 
             builder.AppendLine(HotPath);
-            builder.AppendLine($"public sealed override global::Bebop.Runtime.BebopWriteResult {methodName}(byte[] outBuffer) {{");
+            builder.AppendLine($"public sealed override global::Bebop.Runtime.BebopEncodeResult {methodName}(byte[] outBuffer) {{");
             builder.Indent(indentStep);
             builder.AppendLine("var originalSize = outBuffer.Length;");
             builder.AppendLine($"var writer = {BebopWriter}.Create(outBuffer);");
@@ -1181,16 +1181,15 @@ namespace Core.Generators.CSharp
             builder.AppendLine("if(bytesWritten > originalSize)");
             builder.AppendLine("{");
             builder.Indent(indentStep);
-            builder.AppendLine("var updatedBuffer = writer.ToArray();");
-            builder.AppendLine("return new global::Bebop.Runtime.BebopWriteResult(global::Bebop.Runtime.WriteResult.SuccessButGrewBuffer, writer.Length, updatedBuffer);");
+            builder.AppendLine("return new global::Bebop.Runtime.BebopEncodeResult(global::Bebop.Runtime.EncodeResult.InputBufferTooSmall, writer.Length);");
             builder.Dedent(indentStep);
             builder.AppendLine("}");
-            builder.AppendLine("return new global::Bebop.Runtime.BebopWriteResult(global::Bebop.Runtime.WriteResult.Success, writer.Length, outBuffer);");
+            builder.AppendLine("return new global::Bebop.Runtime.BebopEncodeResult(global::Bebop.Runtime.EncodeResult.Success, writer.Length);");
             builder.Dedent(indentStep);
             builder.AppendLine("}");
 
             builder.AppendLine(HotPath);
-            builder.AppendLine($"public static global::Bebop.Runtime.BebopWriteResult {methodName}({PrefixNamespace(definition.ClassName())} record, byte[] outBuffer) {{");
+            builder.AppendLine($"public static global::Bebop.Runtime.BebopEncodeResult {methodName}({PrefixNamespace(definition.ClassName())} record, byte[] outBuffer) {{");
             builder.Indent(indentStep);
             builder.AppendLine("var originalSize = outBuffer.Length;");
             builder.AppendLine($"var writer = {BebopWriter}.Create(outBuffer);");
@@ -1198,11 +1197,10 @@ namespace Core.Generators.CSharp
             builder.AppendLine("if(bytesWritten > originalSize)");
             builder.AppendLine("{");
             builder.Indent(indentStep);
-            builder.AppendLine("var updatedBuffer = writer.ToArray();");
-            builder.AppendLine("return new global::Bebop.Runtime.BebopWriteResult(global::Bebop.Runtime.WriteResult.SuccessButGrewBuffer, writer.Length, updatedBuffer);");
+            builder.AppendLine("return new global::Bebop.Runtime.BebopEncodeResult(global::Bebop.Runtime.EncodeResult.InputBufferTooSmall, writer.Length);");
             builder.Dedent(indentStep);
             builder.AppendLine("}");
-            builder.AppendLine("return new global::Bebop.Runtime.BebopWriteResult(global::Bebop.Runtime.WriteResult.Success, writer.Length, outBuffer);");
+            builder.AppendLine("return new global::Bebop.Runtime.BebopEncodeResult(global::Bebop.Runtime.EncodeResult.Success, writer.Length);");
             builder.Dedent(indentStep);
             builder.AppendLine("}");
 

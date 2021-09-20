@@ -60,14 +60,14 @@ namespace Benchmarks
         /// Benchmark passing in a buffer that will fit the serialized record and will not be grown
         /// </summary>
         [Benchmark]
-        public BebopWriteResult EncodeWithGivenArray_NotGrownDuringWrite()
+        public BebopEncodeResult EncodeWithGivenArray_NotGrownDuringWrite()
             => _library.EncodeIntoBuffer(_bufferFittingMessage);
 
         /// <summary>
         /// Benchmark passing in a buffer that will be grown by the Bebop writer (aka makes a new instance of the buffer)
         /// </summary>
         [Benchmark]
-        public BebopWriteResult EncodeWithGivenArray_GrownDuringWrite()
+        public BebopEncodeResult EncodeWithGivenArray_GrownDuringWrite()
             => _library.EncodeIntoBuffer(_bufferToGrow);
     }
 }

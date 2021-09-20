@@ -30,9 +30,17 @@ namespace Compiler
 
         private static async Task<int> Main()
         {
-            Log.Formatter = CommandLineFlags.FindLogFormatter(Environment.GetCommandLineArgs());
+            var args = new[]
+            {
+                //"--lang", "cs",
+                "--namespace", "Bebop.Codegen",
+                "--files", "C:/GitHub/ProgrammerAl/bebop/Laboratory/Schemas/Valid/jazz.bop",
+                "--cs", "C:/GitHub/ProgrammerAl/bebop/Laboratory/C#/GeneratedTestCode/Output.g.cs"
+            };
 
-            if (!CommandLineFlags.TryParse(Environment.GetCommandLineArgs(), out _flags, out var message))
+            Log.Formatter = CommandLineFlags.FindLogFormatter(args);
+
+            if (!CommandLineFlags.TryParse(args, out _flags, out var message))
             {
                 await Log.Error(new CompilerException(message));
                 return 1;

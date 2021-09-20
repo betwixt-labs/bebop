@@ -9,7 +9,7 @@ namespace Bebop.Runtime
     /// <summary>
     /// Indicates the result of writing to a buffer
     /// </summary>
-    public enum WriteResult
+    public enum EncodeResult : byte
     {
         /// <summary>
         /// Default value, unused
@@ -22,8 +22,8 @@ namespace Bebop.Runtime
         Success,
 
         /// <summary>
-        /// Writing to the buffer succeeded, but the input buffer was replaced with a new buffer instance larger than the original
+        /// Writing to the buffer did not complete because a given buffer to write into was not big enough to write to
         /// </summary>
-        SuccessButGrewBuffer
+        InputBufferTooSmall
     }
 }
