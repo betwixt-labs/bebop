@@ -324,36 +324,6 @@ namespace Core.Generators.CSharp
             return builder.ToString();
         }
 
-        private string CompileEncodeIntoMessage(MessageDefinition definition)
-        {
-            var builder = new IndentedStringBuilder();
-            builder.AppendLine("var pos = writer.ReserveRecordLength();");
-            builder.AppendLine("var start = writer.Length;");
-            foreach (var field in definition.Fields)
-            {
-                if (field.DeprecatedAttribute is not null)
-                {
-                    continue;
-                }
-                builder.AppendLine("");
-
-                var isNullableType = IsNullableType(field.Type);
-                var nullCheck = isNullableType && LanguageVersion == CSharpNine ? "is not null" : "!= null";
-                builder.AppendLine($"if (record.{field.Name.ToPascalCase()} {nullCheck}) {{");
-                builder.Indent(indentStep);
-                builder.AppendLine($"writer.WriteByte({field.ConstantValue});");
-                builder.AppendLine(isNullableType && NeedsValueAppend(field.Type)
-                    ? $"{CompileEncodeField(field.Type, $"record.{field.Name.ToPascalCase()}.Value")}"
-                    : $"{CompileEncodeField(field.Type, $"record.{field.Name.ToPascalCase()}")}");
-                builder.Dedent(indentStep);
-                builder.AppendLine("}");
-            }
-            builder.AppendLine("writer.WriteByte(0);");
-            builder.AppendLine("var end = writer.Length;");
-            builder.AppendLine("writer.FillRecordLength(pos, unchecked((uint) unchecked(end - start)));");
-            return builder.ToString();
-        }
-
         /// <summary>
         ///     Generate the body of the <c>DecodeFrom</c> function for the given <see cref="MessageDefinition"/>,
         ///     given that its "kind" is Message.
@@ -455,7 +425,6 @@ namespace Core.Generators.CSharp
             builder.AppendLine("switch (record.Discriminator) {").Indent(indentStep);
             foreach (var branch in definition.Branches)
             {
-
                 builder.AppendLine($"case {branch.Discriminator}: {PrefixNamespace(branch.Definition.Name.ToPascalCase())}.__EncodeInto(record.As{branch.Definition.ClassName()}, ref writer); break;");
             }
             builder.Dedent(indentStep).AppendLine("}");
@@ -684,7 +653,9 @@ namespace Core.Generators.CSharp
                 builder.AppendLine();
                 builder.AppendLine(CompileEncodeHelper(ud, ImmutableByteArrayType, "EncodeImmutably"));
                 builder.AppendLine();
-                builder.AppendLine(CompileEncodeWithInitialCapacityHelper(ud, "byte[]", "EncodeImmutably"));
+                builder.AppendLine(CompileEncodeWithInitialCapacityHelper(ud, ImmutableByteArrayType, "EncodeImmutably"));
+                builder.AppendLine();
+                builder.AppendLine(CompileEncodeIntoHelper(ud, "EncodeIntoBuffer"));
                 builder.AppendLine();
 
                 builder.AppendLine(CompileGetByteCount(ud, false)).AppendLine();
@@ -716,9 +687,11 @@ namespace Core.Generators.CSharp
 
                 builder.AppendLine("#region Internal Use");
                 builder.AppendLine(HotPath);
-                builder.AppendLine($"internal static void __EncodeInto({PrefixNamespace(ud.ClassName())} record, ref {BebopWriter} writer) {{");
+                builder.AppendLine($"internal static int __EncodeInto({PrefixNamespace(ud.ClassName())} record, ref {BebopWriter} writer) {{");
                 builder.Indent(indentStep);
                 builder.AppendLine(CompileEncode(ud));
+                builder.AppendLine("var after = writer.Length;");
+                builder.AppendLine("return after - start;");
                 builder.Dedent(indentStep);
                 builder.AppendLine("}").AppendLine();
 
