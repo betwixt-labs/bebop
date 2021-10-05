@@ -45,10 +45,25 @@ namespace Bebop.Runtime
         /// <returns>An array of bytes which contain the encoded record.</returns>
         public abstract byte[] Encode();
         /// <summary>
+        /// Encodes the current record.
+        /// </summary>
+        /// <returns>An array of bytes which contain the encoded record.</returns>
+        public abstract byte[] Encode(int initialCapacity);
+        /// <summary>
         /// Encodes the current record to an immutable array.
         /// </summary>
         /// <returns>An immutable array of bytes which contain the encoded record.</returns>
         public abstract ImmutableArray<byte> EncodeImmutably();
+        /// <summary>
+        /// Encodes the current record to an immutable array.
+        /// </summary>
+        /// <returns>An immutable array of bytes which contain the encoded record.</returns>
+        public abstract ImmutableArray<byte> EncodeImmutably(int initialCapacity);
+        /// <summary>
+        /// Encodes the current record.
+        /// </summary>
+        /// <returns>An array of bytes which contain the encoded record.</returns>
+        public abstract int EncodeIntoBuffer(byte[] outBuffer);
     }
 
 

@@ -186,9 +186,14 @@ namespace Core.Generators.CSharp
 
                         builder.AppendLine(CompileEncodeHelper(definition, "byte[]", "Encode"));
                         builder.AppendLine();
+                        builder.AppendLine(CompileEncodeWithInitialCapacityHelper(definition, "byte[]", "Encode"));
+                        builder.AppendLine();
                         builder.AppendLine(CompileEncodeHelper(definition, ImmutableByteArrayType, "EncodeImmutably"));
                         builder.AppendLine();
-
+                        builder.AppendLine(CompileEncodeWithInitialCapacityHelper(definition, ImmutableByteArrayType, "EncodeImmutably"));
+                        builder.AppendLine();
+                        builder.AppendLine(CompileEncodeIntoHelper(definition, "EncodeIntoBuffer"));
+                        builder.AppendLine();
 
                         builder.AppendLine("#region Static Decode Methods");
                         foreach (var bufferType in DecodeBufferTypes)
@@ -213,8 +218,6 @@ namespace Core.Generators.CSharp
                         builder.Dedent(indentStep);
                         builder.AppendLine("}");
                         builder.AppendLine();
-
-
 
                         builder.AppendLine();
                         builder.AppendLine(Warning);
@@ -422,7 +425,6 @@ namespace Core.Generators.CSharp
             builder.AppendLine("switch (record.Discriminator) {").Indent(indentStep);
             foreach (var branch in definition.Branches)
             {
-
                 builder.AppendLine($"case {branch.Discriminator}: {PrefixNamespace(branch.Definition.Name.ToPascalCase())}.__EncodeInto(record.As{branch.Definition.ClassName()}, ref writer); break;");
             }
             builder.Dedent(indentStep).AppendLine("}");
@@ -647,7 +649,14 @@ namespace Core.Generators.CSharp
 
                 builder.AppendLine(CompileEncodeHelper(ud, "byte[]", "Encode"));
                 builder.AppendLine();
-                builder.AppendLine(CompileEncodeHelper(ud, ImmutableByteArrayType, "EncodeImmutably")).AppendLine();
+                builder.AppendLine(CompileEncodeWithInitialCapacityHelper(ud, "byte[]", "Encode"));
+                builder.AppendLine();
+                builder.AppendLine(CompileEncodeHelper(ud, ImmutableByteArrayType, "EncodeImmutably"));
+                builder.AppendLine();
+                builder.AppendLine(CompileEncodeWithInitialCapacityHelper(ud, ImmutableByteArrayType, "EncodeImmutably"));
+                builder.AppendLine();
+                builder.AppendLine(CompileEncodeIntoHelper(ud, "EncodeIntoBuffer"));
+                builder.AppendLine();
 
                 builder.AppendLine(CompileGetByteCount(ud, false)).AppendLine();
                 builder.AppendLine(CompileGetByteCount(ud, true)).AppendLine();
@@ -678,9 +687,11 @@ namespace Core.Generators.CSharp
 
                 builder.AppendLine("#region Internal Use");
                 builder.AppendLine(HotPath);
-                builder.AppendLine($"internal static void __EncodeInto({PrefixNamespace(ud.ClassName())} record, ref {BebopWriter} writer) {{");
+                builder.AppendLine($"internal static int __EncodeInto({PrefixNamespace(ud.ClassName())} record, ref {BebopWriter} writer) {{");
                 builder.Indent(indentStep);
                 builder.AppendLine(CompileEncode(ud));
+                builder.AppendLine("var after = writer.Length;");
+                builder.AppendLine("return after - start;");
                 builder.Dedent(indentStep);
                 builder.AppendLine("}").AppendLine();
 
@@ -1099,6 +1110,56 @@ namespace Core.Generators.CSharp
             builder.Dedent(indentStep);
             builder.AppendLine("}");
             builder.AppendLine("");
+
+            return builder.ToString();
+        }
+
+        public string CompileEncodeWithInitialCapacityHelper(Definition definition, string bufferType, string methodName)
+        {
+            var returnMethod = bufferType.Equals(ImmutableByteArrayType) ? "ToImmutableArray" : "ToArray";
+            var builder = new IndentedStringBuilder();
+
+            builder.AppendLine(HotPath);
+            builder.AppendLine($"public sealed override {bufferType} {methodName}(int initialCapacity) {{");
+            builder.Indent(indentStep);
+            builder.AppendLine($"var writer = {BebopWriter}.Create(initialCapacity);");
+            builder.AppendLine("__EncodeInto(this, ref writer);");
+            builder.AppendLine($"return writer.{returnMethod}();");
+            builder.Dedent(indentStep);
+            builder.AppendLine("}");
+
+            builder.AppendLine(HotPath);
+            builder.AppendLine($"public static {bufferType} {methodName}({PrefixNamespace(definition.ClassName())} record, int initialCapacity) {{");
+            builder.Indent(indentStep);
+            builder.AppendLine($"var writer = {BebopWriter}.Create(initialCapacity);");
+            builder.AppendLine("__EncodeInto(record, ref writer);");
+            builder.AppendLine($"return writer.{returnMethod}();");
+            builder.Dedent(indentStep);
+            builder.AppendLine("}");
+            builder.AppendLine("");
+
+            return builder.ToString();
+        }
+
+        public string CompileEncodeIntoHelper(Definition definition, string methodName)
+        {
+            var builder = new IndentedStringBuilder();
+
+            builder.AppendLine(HotPath);
+            builder.AppendLine($"public sealed override int {methodName}(byte[] outBuffer) {{");
+            builder.Indent(indentStep);
+            builder.AppendLine($"var writer = {BebopWriter}.Create(outBuffer);");
+            builder.AppendLine("return __EncodeInto(this, ref writer);");
+            builder.Dedent(indentStep);
+            builder.AppendLine("}");
+
+            builder.AppendLine(HotPath);
+            builder.AppendLine($"public static int {methodName}({PrefixNamespace(definition.ClassName())} record, byte[] outBuffer) {{");
+            builder.Indent(indentStep);
+            builder.AppendLine($"var writer = {BebopWriter}.Create(outBuffer);");
+            builder.AppendLine("return __EncodeInto(record, ref writer);");
+            builder.Dedent(indentStep);
+            builder.AppendLine("}");
 
             return builder.ToString();
         }
