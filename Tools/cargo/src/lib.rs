@@ -17,11 +17,6 @@ pub use downloader::*;
 ///
 /// **WARNING: THIS DELETES DATA IN THE DESTINATION DIRECTORY** use something like `src/bebop` or `src/generated`.
 pub fn build_schema_dir(source: impl AsRef<Path>, destination: impl AsRef<Path>) {
-    println!(
-        "cargo:rerun-if-changed={}/mod.rs",
-        destination.as_ref().to_str().unwrap()
-    );
-
     if !destination.as_ref().exists() {
         fs::create_dir_all(destination.as_ref()).unwrap();
     }
@@ -67,7 +62,6 @@ pub fn build_schema(schema: impl AsRef<Path>, destination: impl AsRef<Path>) {
     let compiler_path = compiler_path();
     println!("cargo:rerun-if-changed={}", compiler_path.to_str().unwrap());
     println!("cargo:rerun-if-changed={}", schema.to_str().unwrap());
-    println!("cargo:rerun-if-changed={}", destination.to_str().unwrap());
     let output = Command::new(compiler_path)
         .arg("--files")
         .arg(schema)
