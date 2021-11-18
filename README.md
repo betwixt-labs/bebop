@@ -4,7 +4,7 @@ Bebop is a schema-based binary serialization technology, similar to Protocol Buf
 
 Bebop is fast! Read the [initial release blog](https://rainway.com/blog/2020/12/09/bebop-an-efficient-schema-based-binary-serialization-format/) for benchmarks and more info.
 
-![bebopc](https://github.com/RainwayApp/bebop/workflows/bebopc/badge.svg)
+[![build-bebopc](https://github.com/RainwayApp/bebop/actions/workflows/build-bebopc.yml/badge.svg)](https://github.com/RainwayApp/bebop/actions/workflows/build-bebopc.yml)
 
 ## Releases 
 To find the latest release of the Bebop compiler and its corresponding runtimes, visit the [release page](https://github.com/RainwayApp/bebop/releases).
