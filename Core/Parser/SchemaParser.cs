@@ -522,6 +522,9 @@ namespace Core.Parser
             var fieldFollowKinds = new HashSet<TokenKind>() { TokenKind.BlockComment, TokenKind.CloseBrace, TokenKind.OpenBracket, TokenKind.Number, TokenKind.Map, TokenKind.Array };
             // var fieldStoppingKinds = new HashSet<TokenKind>(_universalFollowKinds.Concat(fieldFollowKinds));
             var errored = false;
+
+            // Track enum values defined so far, so they can reference earlier ones.
+            var enumIdentifiers = new Dictionary<string, long>();
             StartScope();
             while (!Eat(TokenKind.CloseBrace))
             {
@@ -597,12 +600,16 @@ namespace Core.Parser
                     if (kind == AggregateKind.Enum)
                     {
                         Expect(TokenKind.Eq, hint: "Every constant in an enum must have an explicit literal value.");
-                        var valueLexeme = CurrentToken.Lexeme;
-                        Expect(TokenKind.Number, hint: "An enum constant must have a literal unsigned integer value.");
-                        if (!valueLexeme.TryParseUInt(out value))
-                        {
-                            throw new UnexpectedTokenException(TokenKind.Number, CurrentToken, "Enum constant must be an unsigned integer.");
-                        }
+
+                        // var valueLexeme = CurrentToken.Lexeme;
+                        // Expect(TokenKind.Number, hint: "An enum constant must have a literal unsigned integer value.");
+                        var expression = ParseExpression(enumIdentifiers);
+                        value = (uint)expression.Value();
+                        enumIdentifiers.Add(fieldName, value);
+                        // if (expression == null)
+                        // {
+                        //     throw new UnexpectedTokenException(TokenKind.Number, CurrentToken, "Enum constant must be an unsigned integer.");
+                        // }
                     }
 
 
@@ -627,7 +634,7 @@ namespace Core.Parser
 
             Definition definition = kind switch
             {
-                AggregateKind.Enum => new EnumDefinition(name, definitionSpan, definitionDocumentation, fields),
+                AggregateKind.Enum => new EnumDefinition(name, definitionSpan, definitionDocumentation, fields, false /* todo */),
                 AggregateKind.Struct => new StructDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, fields, isReadOnly),
                 AggregateKind.Message => new MessageDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, fields),
                 _ => throw new InvalidOperationException("invalid kind when making definition"),
@@ -831,6 +838,128 @@ namespace Core.Parser
         private static bool IsValidMapKeyType(TypeBase keyType)
         {
             return keyType is ScalarType;
+        }
+
+        /// <summary>
+        /// Parse an expression like <c>(1 &lt;&lt; 4) | 0x000a</c>, for bitflag enum definitions.
+        /// </summary>
+        /// <returns>The expression parsed.</returns>
+        private Expression ParseExpression(Dictionary<string, long> identifiers)
+        {
+            // This method implements the "shunting-yard algorithm".
+            var operatorStack = new Stack<Token>();
+            var output = new Stack<Expression>();
+
+            int Precedence(Token token) =>
+                token.Kind switch {
+                    TokenKind.OpenCaret => 3,
+                    TokenKind.Ampersand => 2,
+                    TokenKind.VerticalLine => 1,
+                    _ => throw new Exception("Unrecognized operator in Precedence()"),
+                };
+
+            bool EatOperator()
+            {
+                // <<
+                if (Eat(TokenKind.OpenCaret))
+                {
+                    Expect(TokenKind.OpenCaret);
+                    return true;
+                }
+                // & or |
+                return Eat(TokenKind.Ampersand) || Eat(TokenKind.VerticalLine);
+            }
+
+            void PopOperatorStack()
+            {
+                var popped = operatorStack.Pop();
+                if (popped.Kind == TokenKind.OpenParenthesis)
+                {
+                    var inner = output.Pop();
+                    output.Push(new ParenthesisExpression(popped.Span, inner));
+                }
+                else if (popped.Kind == TokenKind.OpenCaret)
+                {
+                    var right = output.Pop();
+                    var left = output.Pop();
+                    var span = left.Span.Combine(right.Span);
+                    output.Push(new ShiftLeftExpression(span, left, right));
+                }
+                else if (popped.Kind == TokenKind.Ampersand)
+                {
+                    var right = output.Pop();
+                    var left = output.Pop();
+                    var span = left.Span.Combine(right.Span);
+                    output.Push(new BitwiseAndExpression(span, left, right));
+                }
+                else if (popped.Kind == TokenKind.VerticalLine)
+                {
+                    var right = output.Pop();
+                    var left = output.Pop();
+                    var span = left.Span.Combine(right.Span);
+                    output.Push(new BitwiseOrExpression(span, left, right));
+                }
+                else
+                {
+                    throw new Exception("Unrecognized operator in PopOperatorStack()");
+                }
+            }
+
+            while (CurrentToken.Kind != TokenKind.Semicolon)
+            {
+                var token = CurrentToken;
+                if (CurrentToken.Kind == TokenKind.Number || CurrentToken.Kind == TokenKind.Hyphen)
+                {
+                    ScalarType st = new ScalarType(BaseType.Int64, new Span(), "(enum value)");
+                    var (intSpan, intLexeme) = ParseNumberLiteral();
+                    if (!_reInteger.IsMatch(intLexeme)) throw new InvalidLiteralException(token, st);
+                    var value = intLexeme.Contains('x', StringComparison.OrdinalIgnoreCase) ? Convert.ToInt64(intLexeme, 16) : Convert.ToInt64(intLexeme);
+                    output.Push(new LiteralExpression(intSpan, value));
+                }
+                else if (Eat(TokenKind.OpenParenthesis))
+                {
+                    operatorStack.Push(token);
+                }
+                else if (Eat(TokenKind.CloseParenthesis))
+                {
+                    while (operatorStack.Last().Kind != TokenKind.OpenParenthesis)
+                    {
+                        PopOperatorStack();
+                    }
+                    PopOperatorStack();
+                }
+                else if (EatOperator())
+                {
+                    while (operatorStack.Count > 0
+                        && operatorStack.Last() is Token o2
+                        && o2.Kind != TokenKind.OpenParenthesis
+                        && Precedence(o2) >= Precedence(token))
+                    {
+                        PopOperatorStack();
+                    }
+                    operatorStack.Push(token);
+                }
+                else if (Eat(TokenKind.Identifier))
+                {
+                    long value;
+                    if (!identifiers.TryGetValue(token.Lexeme, out value))
+                    {
+                        throw new UnknownIdentifierException(token);
+                    }
+                    output.Push(new LiteralExpression(token.Span, value));
+                }
+                else
+                {
+                    throw new UnexpectedTokenException(token, "This token is invalid in an expression.");
+                }
+            }
+
+            while (operatorStack.Count > 0)
+            {
+                PopOperatorStack();
+            }
+            System.Diagnostics.Debug.Assert(output.Count == 1);
+            return output.Pop();
         }
     }
 }

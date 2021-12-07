@@ -65,7 +65,12 @@ namespace Core.Exceptions
     {
         public UnexpectedTokenException(TokenKind expectedKind, Token token, string? hint = null)
             : base($"Expected {expectedKind}, but found '{token.Lexeme}' of kind {token.Kind}."
-                + (string.IsNullOrWhiteSpace(hint) ? "" : $" (Hint: {hint})"), token.Span, 104) { }
+                + (string.IsNullOrWhiteSpace(hint) ? "" : $" (Hint: {hint})"), token.Span, 104)
+        { }
+        public UnexpectedTokenException(Token token, string? hint = null)
+            : base($"Encountered unexpected token '{token.Lexeme}' of kind {token.Kind}."
+                + (string.IsNullOrWhiteSpace(hint) ? "" : $" (Hint: {hint})"), token.Span, 104)
+        { }
         public UnexpectedTokenException(IEnumerable<TokenKind> expectedKinds, Token token, string? hint = null)
             : base($"Expected {string.Join(" or ", expectedKinds)}, but found '{token.Lexeme}' of kind {token.Kind}."
                 + (string.IsNullOrWhiteSpace(hint) ? "" : $" (Hint: {hint})"), token.Span, 104)
@@ -214,4 +219,11 @@ namespace Core.Exceptions
         {}
     }
 
+    [Serializable]
+    public class UnknownIdentifierException : SpanException
+    {
+        public UnknownIdentifierException(Token identifier)
+            : base($"The identifier '{identifier.Lexeme}' is not defined at this point. (Try reordering your enum branches.)", identifier.Span, 123)
+        { }
+    }
 }
