@@ -15,6 +15,7 @@ using Core.Meta.Attributes;
 using Core.Meta.Extensions;
 using Core.Meta.Interfaces;
 using Core.Parser.Extensions;
+using FlagsAttribute = Core.Meta.Attributes.FlagsAttribute;
 
 namespace Core.Parser
 {
@@ -320,10 +321,22 @@ namespace Core.Parser
                 return ParseConstDefinition(definitionDocumentation);
             }
             BaseAttribute? opcodeAttribute = null;
+            BaseAttribute? flagsAttribute = null;
 
             try
             {
-                opcodeAttribute = EatAttribute(TokenKind.Opcode);
+                BaseAttribute? attribute;
+                while ((attribute = EatAttribute()) != null)
+                {
+                    if (attribute is OpcodeAttribute)
+                    {
+                        opcodeAttribute = attribute;
+                    }
+                    else if (attribute is FlagsAttribute)
+                    {
+                        flagsAttribute = attribute;
+                    }
+                }
             }
             catch (SpanException e)
             {
@@ -358,7 +371,7 @@ namespace Core.Parser
                     // Uh oh we skipped ahead due to a missing identifier, get outta there
                     return null;
                 }
-                return ParseNonUnionDefinition(CurrentToken, kind, isReadOnly, definitionDocumentation, opcodeAttribute);
+                return ParseNonUnionDefinition(CurrentToken, kind, isReadOnly, definitionDocumentation, opcodeAttribute, flagsAttribute);
             }
         }
 
@@ -454,19 +467,20 @@ namespace Core.Parser
         /// <summary>
         /// Consumes all the tokens belonging to an attribute
         /// </summary>
-        /// <param name="kind">The kind of attribute that will be eaten</param>
         /// <returns>An instance of the attribute.</returns>
-        private BaseAttribute? EatAttribute(TokenKind kind)
+        private BaseAttribute? EatAttribute()
         {
             if (Eat(TokenKind.OpenBracket))
             {
-                Expect(kind);
+                var kindToken = CurrentToken;
+                var kind = kindToken.Lexeme;
+                Expect(TokenKind.Identifier);
                 var value = string.Empty;
                 var isNumber = false;
                 if (Eat(TokenKind.OpenParenthesis))
                 {
                     value = CurrentToken.Lexeme;
-                    if (Eat(TokenKind.String)|| (kind == TokenKind.Opcode && Eat(TokenKind.Number)))
+                    if (Eat(TokenKind.String)|| (kind == "opcode" && Eat(TokenKind.Number)))
                     {
                         isNumber = PeekToken(_index - 1).Kind == TokenKind.Number;
                     }
@@ -479,9 +493,10 @@ namespace Core.Parser
                 Expect(TokenKind.CloseBracket);
                 return kind switch
                 {
-                    TokenKind.Deprecated => new DeprecatedAttribute(value),
-                    TokenKind.Opcode => new OpcodeAttribute(value, isNumber),
-                    _ => throw new UnexpectedTokenException(kind, CurrentToken)
+                    "deprecated" => new DeprecatedAttribute(value),
+                    "opcode" => new OpcodeAttribute(value, isNumber),
+                    "flags" => new FlagsAttribute(),
+                    _ => throw new UnknownAttributeException(kindToken),
                 };
             }
             return null;
@@ -496,12 +511,14 @@ namespace Core.Parser
         /// <param name="isReadOnly"></param>
         /// <param name="definitionDocumentation"></param>
         /// <param name="opcodeAttribute"></param>
+        /// <param name="flagsAttribute"></param>
         /// <returns>The parsed definition.</returns>
         private Definition? ParseNonUnionDefinition(Token definitionToken,
             AggregateKind kind,
             bool isReadOnly,
             string definitionDocumentation,
-            BaseAttribute? opcodeAttribute)
+            BaseAttribute? opcodeAttribute,
+            BaseAttribute? flagsAttribute)
         {
             
             var fields = new List<IField>();
@@ -549,7 +566,8 @@ namespace Core.Parser
                     break;
                 }
 
-                var deprecatedAttribute = EatAttribute(TokenKind.Deprecated);
+                var deprecatedAttribute = EatAttribute();
+                if (deprecatedAttribute is not DeprecatedAttribute) deprecatedAttribute = null;
 
                 if (kind == AggregateKind.Message)
                 {
@@ -599,7 +617,7 @@ namespace Core.Parser
 
                     if (kind == AggregateKind.Enum)
                     {
-                        Expect(TokenKind.Eq, hint: "Every constant in an enum must have an explicit literal value.");
+                        Expect(TokenKind.Eq, hint: "Every constant in an enum must have an explicit value.");
 
                         // var valueLexeme = CurrentToken.Lexeme;
                         // Expect(TokenKind.Number, hint: "An enum constant must have a literal unsigned integer value.");
@@ -634,7 +652,7 @@ namespace Core.Parser
 
             Definition definition = kind switch
             {
-                AggregateKind.Enum => new EnumDefinition(name, definitionSpan, definitionDocumentation, fields, false /* todo */),
+                AggregateKind.Enum => new EnumDefinition(name, definitionSpan, definitionDocumentation, fields, flagsAttribute != null),
                 AggregateKind.Struct => new StructDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, fields, isReadOnly),
                 AggregateKind.Message => new MessageDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, fields),
                 _ => throw new InvalidOperationException("invalid kind when making definition"),

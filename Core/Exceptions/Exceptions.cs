@@ -223,7 +223,15 @@ namespace Core.Exceptions
     public class UnknownIdentifierException : SpanException
     {
         public UnknownIdentifierException(Token identifier)
-            : base($"The identifier '{identifier.Lexeme}' is not defined at this point. (Try reordering your enum branches.)", identifier.Span, 123)
+            : base($"The identifier '{identifier.Lexeme}' is not defined at this point. (Try reordering your enum branches.)", identifier.Span, 124)
+        { }
+    }
+
+    [Serializable]
+    public class UnknownAttributeException : SpanException
+    {
+        public UnknownAttributeException(Token attribute)
+            : base($"The attribute '{attribute.Lexeme}' is recognized.", attribute.Span, 125)
         { }
     }
 }
