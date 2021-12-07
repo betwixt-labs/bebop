@@ -234,4 +234,20 @@ namespace Core.Exceptions
             : base($"The attribute '{attribute.Lexeme}' is recognized.", attribute.Span, 125)
         { }
     }
+
+    [Serializable]
+    public class UnmatchedParenthesisException : SpanException
+    {
+        public UnmatchedParenthesisException(Token parenthesis)
+            : base($"This parenthesis is unmatched.", parenthesis.Span, 126)
+        { }
+    }
+
+    [Serializable]
+    public class MalformedExpressionException : SpanException
+    {
+        public MalformedExpressionException(Token token)
+            : base($"The expression could not be parsed past this point.", token.Span, 127)
+        { }
+    }
 }

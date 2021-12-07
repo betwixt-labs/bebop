@@ -4,5 +4,5 @@ enum TestFlags {
     Read = 0x0001;
     Write = 1 << 1;
     ReadWrite = Read | Write;
-    Complex = (Read | Write) & 0xFF;
+    Complex = (Read | Write) | 0xF0 & 0x1F;
 }

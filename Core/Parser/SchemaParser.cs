@@ -881,7 +881,7 @@ namespace Core.Parser
                 // <<
                 if (Eat(TokenKind.OpenCaret))
                 {
-                    Expect(TokenKind.OpenCaret);
+                    Expect(TokenKind.OpenCaret, "I was trying to parse a bit-shift left operator (<<).");
                     return true;
                 }
                 // & or |
@@ -890,14 +890,17 @@ namespace Core.Parser
 
             void PopOperatorStack()
             {
+                if (operatorStack.Count < 1) throw new MalformedExpressionException(CurrentToken);
                 var popped = operatorStack.Pop();
                 if (popped.Kind == TokenKind.OpenParenthesis)
                 {
+                    if (output.Count < 1) throw new MalformedExpressionException(popped);
                     var inner = output.Pop();
                     output.Push(new ParenthesisExpression(popped.Span, inner));
                 }
                 else if (popped.Kind == TokenKind.OpenCaret)
                 {
+                    if (output.Count < 2) throw new MalformedExpressionException(popped);
                     var right = output.Pop();
                     var left = output.Pop();
                     var span = left.Span.Combine(right.Span);
@@ -905,6 +908,7 @@ namespace Core.Parser
                 }
                 else if (popped.Kind == TokenKind.Ampersand)
                 {
+                    if (output.Count < 2) throw new MalformedExpressionException(popped);
                     var right = output.Pop();
                     var left = output.Pop();
                     var span = left.Span.Combine(right.Span);
@@ -912,6 +916,7 @@ namespace Core.Parser
                 }
                 else if (popped.Kind == TokenKind.VerticalLine)
                 {
+                    if (output.Count < 2) throw new MalformedExpressionException(popped);
                     var right = output.Pop();
                     var left = output.Pop();
                     var span = left.Span.Combine(right.Span);
@@ -919,7 +924,7 @@ namespace Core.Parser
                 }
                 else
                 {
-                    throw new Exception("Unrecognized operator in PopOperatorStack()");
+                    throw new MalformedExpressionException(popped);
                 }
             }
 
@@ -936,20 +941,23 @@ namespace Core.Parser
                 }
                 else if (Eat(TokenKind.OpenParenthesis))
                 {
+                    System.Diagnostics.Debug.Assert(token.Kind == TokenKind.OpenParenthesis);
                     operatorStack.Push(token);
                 }
                 else if (Eat(TokenKind.CloseParenthesis))
                 {
-                    while (operatorStack.Last().Kind != TokenKind.OpenParenthesis)
+                    if (operatorStack.Count == 0) throw new UnmatchedParenthesisException(token);
+                    while (operatorStack.Peek().Kind != TokenKind.OpenParenthesis)
                     {
                         PopOperatorStack();
+                        if (operatorStack.Count == 0) throw new UnmatchedParenthesisException(token);
                     }
                     PopOperatorStack();
                 }
                 else if (EatOperator())
                 {
                     while (operatorStack.Count > 0
-                        && operatorStack.Last() is Token o2
+                        && operatorStack.Peek() is Token o2
                         && o2.Kind != TokenKind.OpenParenthesis
                         && Precedence(o2) >= Precedence(token))
                     {
@@ -974,9 +982,13 @@ namespace Core.Parser
 
             while (operatorStack.Count > 0)
             {
+                if (operatorStack.Peek().Kind == TokenKind.OpenParenthesis)
+                {
+                    throw new UnmatchedParenthesisException(operatorStack.Peek());
+                }
                 PopOperatorStack();
             }
-            System.Diagnostics.Debug.Assert(output.Count == 1);
+            if (output.Count != 1) throw new MalformedExpressionException(CurrentToken);
             return output.Pop();
         }
     }
