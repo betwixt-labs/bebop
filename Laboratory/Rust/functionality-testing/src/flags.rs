@@ -1,5 +1,5 @@
 use crate::generated::flags::MyFlags;
-use bebop::{test_serialization, collection, Date, Guid, Record, SubRecord, ENUM_SIZE, LEN_SIZE};
+use bebop::SubRecord;
 
 #[test]
 fn correct_values() {

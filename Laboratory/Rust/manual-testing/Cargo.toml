@@ -7,4 +7,3 @@ edition = "2018"
 
 [dependencies]
 bebop = { path = "../../../Runtime/Rust", default-features = false }
-bitflags = "1.3.2"
