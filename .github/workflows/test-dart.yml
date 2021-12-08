@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@v1
-      - uses: cedx/setup-dart@v2
+      - uses: dart-lang/setup-dart@v1
       - uses: actions/setup-dotnet@v1
         with:
           dotnet-version: '5.0.x' # SDK Version to use; x will use the latest version of the 5.0 channel
