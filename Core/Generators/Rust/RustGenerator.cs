@@ -77,7 +77,10 @@ namespace Core.Generators.Rust
                     case ConstDefinition cd:
                         WriteConstDefinition(builder, cd);
                         break;
-                    case EnumDefinition ed:
+                    case EnumDefinition ed when ed.IsBitFlags:
+                        WriteFlagsEnumDefinition(builder, ed);
+                        break;
+                    case EnumDefinition ed when !ed.IsBitFlags:
                         WriteEnumDefinition(builder, ed);
                         break;
                     case MessageDefinition md:
@@ -114,6 +117,58 @@ namespace Core.Generators.Rust
         {
             builder.AppendLine(
                 $"pub const {MakeConstIdent(d.Name)}: {TypeName(d.Value.Type, OwnershipType.Constant)} = {EmitLiteral(d.Value)};");
+        }
+
+        private void WriteFlagsEnumDefinition(IndentedStringBuilder builder, EnumDefinition d)
+        {
+            // main definition
+            var name = MakeDefIdent(d.Name);
+            builder.CodeBlock("::bitflags::bitflags!", _tab, () =>
+            {
+                builder.CodeBlock($"pub struct {name}: u32", _tab, () =>
+                {
+                    foreach (var m in d.Members)
+                    {
+                        WriteDocumentation(builder, m.Documentation);
+                        WriteDeprecation(builder, m.DeprecatedAttribute);
+                        builder.AppendLine($"const {MakeConstIdent(m.Name)} = {m.ConstantValue};");
+                    }
+                });
+            }).AppendLine();
+
+            // sub record
+            builder.CodeBlock($"impl<'raw> ::bebop::SubRecord<'raw> for {name}", _tab, () =>
+            {
+                builder
+                    .AppendLine("const MIN_SERIALIZED_SIZE: usize = ::bebop::ENUM_SIZE;")
+                    .AppendLine("const EXACT_SERIALIZED_SIZE: Option<usize> = Some(::bebop::ENUM_SIZE);")
+                    .AppendLine()
+                    .AppendLine("#[inline]")
+                    .AppendLine("fn serialized_size(&self) -> usize { ::bebop::ENUM_SIZE }")
+                    .AppendLine()
+                    .AppendLine("#[inline]")
+                    .CodeBlock(
+                        "fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
+                        _tab,
+                        () =>
+                        {
+                            builder.AppendLine("(*self).bits()._serialize_chained(dest)");
+                        })
+                    .AppendLine()
+                    .AppendLine("#[inline]")
+                    .CodeBlock("fn _deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)>", _tab,
+                        () =>
+                        {
+                            builder
+                                .AppendLine("let (n, v) = u32::_deserialize_chained(raw)?;")
+                                .AppendLine("Ok((n, unsafe { Self::from_bits_unchecked(v) }))");
+                        });
+            }).AppendLine();
+
+            builder.CodeBlock($"impl ::bebop::FixedSized for {name}", _tab, () =>
+            {
+                builder.AppendLine("const SERIALIZED_SIZE: usize = ::bebop::ENUM_SIZE;");
+            }).AppendLine();
         }
 
         private void WriteEnumDefinition(IndentedStringBuilder builder, EnumDefinition d)
