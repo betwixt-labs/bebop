@@ -454,7 +454,7 @@ namespace Core.Parser
                     };
                 case ScalarType st when st.BaseType == BaseType.String:
                     ExpectStringLiteral();
-                    return new StringLiteral(st, token.Span, token.Lexeme);
+                    return new StringLiteral(st, token.Span, token.Lexeme.Replace("\r\n", "\n"));
                 case ScalarType st when st.BaseType == BaseType.Guid:
                     ExpectStringLiteral();
                     if (!_reGuid.IsMatch(token.Lexeme)) throw new InvalidLiteralException(token, st);

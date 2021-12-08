@@ -1,11 +1,13 @@
-# TypeScript Pierogi test suite
+# TypeScript Bebop laboratory
 
 Try running:
 
-```ps1
+```sh
 npm install   # Install dependencies
-gulp compile  # Compile test/*.pie into test/generated/*.ts
-              # (if not on Windows, try ./compile-schemas.sh)
-              # (or make the gulpfile cross-platform in a PR <3)
+
+# Run the platform-appropriate compile script:
+sh ./compile-schemas.sh           # On Unix
+powershell .\compile-schemas.ps1  # On Windows
+
 npx jest      # Run all the test/*.ts tests
 ```
