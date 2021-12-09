@@ -34,18 +34,6 @@ namespace Core.Lexer.Tokenization
         ReadOnly,
 
         /// <summary>
-        ///     The 'deprecated' keyword which is reserved by the compiler
-        /// </summary>
-        [Keyword("deprecated")]
-        Deprecated,
-
-        /// <summary>
-        ///     The 'opcode' keyword which is reserved by the compiler
-        /// </summary>
-        [Keyword("opcode")]
-        Opcode,
-
-        /// <summary>
         ///     The 'map' keyword which is reserved by the compiler
         /// </summary>
         [Keyword("map")]
@@ -114,13 +102,13 @@ namespace Core.Lexer.Tokenization
         CloseCaret,
 
         /// <summary>
-        ///     <![CDATA[ { }]]>
+        ///     <![CDATA[ { ]]>
         /// </summary>
         [Symbol('{')]
         OpenBrace,
 
         /// <summary>
-        ///     <![CDATA[ }]]>
+        ///     <![CDATA[ } ]]>
         /// </summary>
         [Symbol('}')]
         CloseBrace,
@@ -178,6 +166,25 @@ namespace Core.Lexer.Tokenization
         /// </summary>
         [Symbol('=')]
         Eq,
+
+        /// <summary>
+        ///      <![CDATA[ & ]]>
+        /// </summary>
+        [Symbol('&')]
+        Ampersand,
+
+        /// <summary>
+        ///      <![CDATA[ | ]]>
+        /// </summary>
+        [Symbol('|')]
+        VerticalLine,
+
+        /// <summary>
+        ///      <![CDATA[ ~ ]]>
+        /// </summary>
+        [Symbol('~')]
+        Tilde,
+
         /// <summary>
         ///      <![CDATA[ - ]]>
         /// </summary>

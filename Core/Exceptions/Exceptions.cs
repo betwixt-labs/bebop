@@ -65,7 +65,12 @@ namespace Core.Exceptions
     {
         public UnexpectedTokenException(TokenKind expectedKind, Token token, string? hint = null)
             : base($"Expected {expectedKind}, but found '{token.Lexeme}' of kind {token.Kind}."
-                + (string.IsNullOrWhiteSpace(hint) ? "" : $" (Hint: {hint})"), token.Span, 104) { }
+                + (string.IsNullOrWhiteSpace(hint) ? "" : $" (Hint: {hint})"), token.Span, 104)
+        { }
+        public UnexpectedTokenException(Token token, string? hint = null)
+            : base($"Encountered unexpected token '{token.Lexeme}' of kind {token.Kind}."
+                + (string.IsNullOrWhiteSpace(hint) ? "" : $" (Hint: {hint})"), token.Span, 104)
+        { }
         public UnexpectedTokenException(IEnumerable<TokenKind> expectedKinds, Token token, string? hint = null)
             : base($"Expected {string.Join(" or ", expectedKinds)}, but found '{token.Lexeme}' of kind {token.Kind}."
                 + (string.IsNullOrWhiteSpace(hint) ? "" : $" (Hint: {hint})"), token.Span, 104)
@@ -214,4 +219,35 @@ namespace Core.Exceptions
         {}
     }
 
+    [Serializable]
+    public class UnknownIdentifierException : SpanException
+    {
+        public UnknownIdentifierException(Token identifier)
+            : base($"The identifier '{identifier.Lexeme}' is not defined at this point. (Try reordering your enum branches.)", identifier.Span, 124)
+        { }
+    }
+
+    [Serializable]
+    public class UnknownAttributeException : SpanException
+    {
+        public UnknownAttributeException(Token attribute)
+            : base($"The attribute '{attribute.Lexeme}' is recognized.", attribute.Span, 125)
+        { }
+    }
+
+    [Serializable]
+    public class UnmatchedParenthesisException : SpanException
+    {
+        public UnmatchedParenthesisException(Token parenthesis)
+            : base($"This parenthesis is unmatched.", parenthesis.Span, 126)
+        { }
+    }
+
+    [Serializable]
+    public class MalformedExpressionException : SpanException
+    {
+        public MalformedExpressionException(Token token)
+            : base($"The expression could not be parsed past this point.", token.Span, 127)
+        { }
+    }
 }

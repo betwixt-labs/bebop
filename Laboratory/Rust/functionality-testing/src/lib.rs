@@ -5,3 +5,6 @@ mod jazz;
 
 #[cfg(test)]
 mod fixedsize;
+
+#[cfg(test)]
+mod flags;

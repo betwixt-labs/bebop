@@ -15,6 +15,7 @@ using Core.Meta.Attributes;
 using Core.Meta.Extensions;
 using Core.Meta.Interfaces;
 using Core.Parser.Extensions;
+using FlagsAttribute = Core.Meta.Attributes.FlagsAttribute;
 
 namespace Core.Parser
 {
@@ -320,10 +321,22 @@ namespace Core.Parser
                 return ParseConstDefinition(definitionDocumentation);
             }
             BaseAttribute? opcodeAttribute = null;
+            BaseAttribute? flagsAttribute = null;
 
             try
             {
-                opcodeAttribute = EatAttribute(TokenKind.Opcode);
+                BaseAttribute? attribute;
+                while ((attribute = EatAttribute()) != null)
+                {
+                    if (attribute is OpcodeAttribute)
+                    {
+                        opcodeAttribute = attribute;
+                    }
+                    else if (attribute is FlagsAttribute)
+                    {
+                        flagsAttribute = attribute;
+                    }
+                }
             }
             catch (SpanException e)
             {
@@ -358,7 +371,7 @@ namespace Core.Parser
                     // Uh oh we skipped ahead due to a missing identifier, get outta there
                     return null;
                 }
-                return ParseNonUnionDefinition(CurrentToken, kind, isReadOnly, definitionDocumentation, opcodeAttribute);
+                return ParseNonUnionDefinition(CurrentToken, kind, isReadOnly, definitionDocumentation, opcodeAttribute, flagsAttribute);
             }
         }
 
@@ -441,7 +454,7 @@ namespace Core.Parser
                     };
                 case ScalarType st when st.BaseType == BaseType.String:
                     ExpectStringLiteral();
-                    return new StringLiteral(st, token.Span, token.Lexeme);
+                    return new StringLiteral(st, token.Span, token.Lexeme.Replace("\r\n", "\n"));
                 case ScalarType st when st.BaseType == BaseType.Guid:
                     ExpectStringLiteral();
                     if (!_reGuid.IsMatch(token.Lexeme)) throw new InvalidLiteralException(token, st);
@@ -454,19 +467,20 @@ namespace Core.Parser
         /// <summary>
         /// Consumes all the tokens belonging to an attribute
         /// </summary>
-        /// <param name="kind">The kind of attribute that will be eaten</param>
         /// <returns>An instance of the attribute.</returns>
-        private BaseAttribute? EatAttribute(TokenKind kind)
+        private BaseAttribute? EatAttribute()
         {
             if (Eat(TokenKind.OpenBracket))
             {
-                Expect(kind);
+                var kindToken = CurrentToken;
+                var kind = kindToken.Lexeme;
+                Expect(TokenKind.Identifier);
                 var value = string.Empty;
                 var isNumber = false;
                 if (Eat(TokenKind.OpenParenthesis))
                 {
                     value = CurrentToken.Lexeme;
-                    if (Eat(TokenKind.String)|| (kind == TokenKind.Opcode && Eat(TokenKind.Number)))
+                    if (Eat(TokenKind.String)|| (kind == "opcode" && Eat(TokenKind.Number)))
                     {
                         isNumber = PeekToken(_index - 1).Kind == TokenKind.Number;
                     }
@@ -479,9 +493,10 @@ namespace Core.Parser
                 Expect(TokenKind.CloseBracket);
                 return kind switch
                 {
-                    TokenKind.Deprecated => new DeprecatedAttribute(value),
-                    TokenKind.Opcode => new OpcodeAttribute(value, isNumber),
-                    _ => throw new UnexpectedTokenException(kind, CurrentToken)
+                    "deprecated" => new DeprecatedAttribute(value),
+                    "opcode" => new OpcodeAttribute(value, isNumber),
+                    "flags" => new FlagsAttribute(),
+                    _ => throw new UnknownAttributeException(kindToken),
                 };
             }
             return null;
@@ -496,12 +511,14 @@ namespace Core.Parser
         /// <param name="isReadOnly"></param>
         /// <param name="definitionDocumentation"></param>
         /// <param name="opcodeAttribute"></param>
+        /// <param name="flagsAttribute"></param>
         /// <returns>The parsed definition.</returns>
         private Definition? ParseNonUnionDefinition(Token definitionToken,
             AggregateKind kind,
             bool isReadOnly,
             string definitionDocumentation,
-            BaseAttribute? opcodeAttribute)
+            BaseAttribute? opcodeAttribute,
+            BaseAttribute? flagsAttribute)
         {
             
             var fields = new List<IField>();
@@ -522,6 +539,9 @@ namespace Core.Parser
             var fieldFollowKinds = new HashSet<TokenKind>() { TokenKind.BlockComment, TokenKind.CloseBrace, TokenKind.OpenBracket, TokenKind.Number, TokenKind.Map, TokenKind.Array };
             // var fieldStoppingKinds = new HashSet<TokenKind>(_universalFollowKinds.Concat(fieldFollowKinds));
             var errored = false;
+
+            // Track enum values defined so far, so they can reference earlier ones.
+            var enumIdentifiers = new Dictionary<string, long>();
             StartScope();
             while (!Eat(TokenKind.CloseBrace))
             {
@@ -546,7 +566,8 @@ namespace Core.Parser
                     break;
                 }
 
-                var deprecatedAttribute = EatAttribute(TokenKind.Deprecated);
+                var deprecatedAttribute = EatAttribute();
+                if (deprecatedAttribute is not DeprecatedAttribute) deprecatedAttribute = null;
 
                 if (kind == AggregateKind.Message)
                 {
@@ -596,13 +617,17 @@ namespace Core.Parser
 
                     if (kind == AggregateKind.Enum)
                     {
-                        Expect(TokenKind.Eq, hint: "Every constant in an enum must have an explicit literal value.");
-                        var valueLexeme = CurrentToken.Lexeme;
-                        Expect(TokenKind.Number, hint: "An enum constant must have a literal unsigned integer value.");
-                        if (!valueLexeme.TryParseUInt(out value))
-                        {
-                            throw new UnexpectedTokenException(TokenKind.Number, CurrentToken, "Enum constant must be an unsigned integer.");
-                        }
+                        Expect(TokenKind.Eq, hint: "Every constant in an enum must have an explicit value.");
+
+                        // var valueLexeme = CurrentToken.Lexeme;
+                        // Expect(TokenKind.Number, hint: "An enum constant must have a literal unsigned integer value.");
+                        var expression = ParseExpression(enumIdentifiers);
+                        value = (uint)expression.Value();
+                        enumIdentifiers.Add(fieldName, value);
+                        // if (expression == null)
+                        // {
+                        //     throw new UnexpectedTokenException(TokenKind.Number, CurrentToken, "Enum constant must be an unsigned integer.");
+                        // }
                     }
 
 
@@ -627,7 +652,7 @@ namespace Core.Parser
 
             Definition definition = kind switch
             {
-                AggregateKind.Enum => new EnumDefinition(name, definitionSpan, definitionDocumentation, fields),
+                AggregateKind.Enum => new EnumDefinition(name, definitionSpan, definitionDocumentation, fields, flagsAttribute != null),
                 AggregateKind.Struct => new StructDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, fields, isReadOnly),
                 AggregateKind.Message => new MessageDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, fields),
                 _ => throw new InvalidOperationException("invalid kind when making definition"),
@@ -831,6 +856,140 @@ namespace Core.Parser
         private static bool IsValidMapKeyType(TypeBase keyType)
         {
             return keyType is ScalarType;
+        }
+
+        /// <summary>
+        /// Parse an expression like <c>(1 &lt;&lt; 4) | 0x000a</c>, for bitflag enum definitions.
+        /// </summary>
+        /// <returns>The expression parsed.</returns>
+        private Expression ParseExpression(Dictionary<string, long> identifiers)
+        {
+            // This method implements the "shunting-yard algorithm".
+            var operatorStack = new Stack<Token>();
+            var output = new Stack<Expression>();
+
+            int Precedence(Token token) =>
+                token.Kind switch {
+                    TokenKind.OpenCaret => 3,
+                    TokenKind.Ampersand => 2,
+                    TokenKind.VerticalLine => 1,
+                    _ => throw new Exception("Unrecognized operator in Precedence()"),
+                };
+
+            bool EatOperator()
+            {
+                // <<
+                if (Eat(TokenKind.OpenCaret))
+                {
+                    Expect(TokenKind.OpenCaret, "I was trying to parse a bit-shift left operator (<<).");
+                    return true;
+                }
+                // & or |
+                return Eat(TokenKind.Ampersand) || Eat(TokenKind.VerticalLine);
+            }
+
+            void PopOperatorStack()
+            {
+                if (operatorStack.Count < 1) throw new MalformedExpressionException(CurrentToken);
+                var popped = operatorStack.Pop();
+                if (popped.Kind == TokenKind.OpenParenthesis)
+                {
+                    if (output.Count < 1) throw new MalformedExpressionException(popped);
+                    var inner = output.Pop();
+                    output.Push(new ParenthesisExpression(popped.Span, inner));
+                }
+                else if (popped.Kind == TokenKind.OpenCaret)
+                {
+                    if (output.Count < 2) throw new MalformedExpressionException(popped);
+                    var right = output.Pop();
+                    var left = output.Pop();
+                    var span = left.Span.Combine(right.Span);
+                    output.Push(new ShiftLeftExpression(span, left, right));
+                }
+                else if (popped.Kind == TokenKind.Ampersand)
+                {
+                    if (output.Count < 2) throw new MalformedExpressionException(popped);
+                    var right = output.Pop();
+                    var left = output.Pop();
+                    var span = left.Span.Combine(right.Span);
+                    output.Push(new BitwiseAndExpression(span, left, right));
+                }
+                else if (popped.Kind == TokenKind.VerticalLine)
+                {
+                    if (output.Count < 2) throw new MalformedExpressionException(popped);
+                    var right = output.Pop();
+                    var left = output.Pop();
+                    var span = left.Span.Combine(right.Span);
+                    output.Push(new BitwiseOrExpression(span, left, right));
+                }
+                else
+                {
+                    throw new MalformedExpressionException(popped);
+                }
+            }
+
+            while (CurrentToken.Kind != TokenKind.Semicolon)
+            {
+                var token = CurrentToken;
+                if (CurrentToken.Kind == TokenKind.Number || CurrentToken.Kind == TokenKind.Hyphen)
+                {
+                    ScalarType st = new ScalarType(BaseType.Int64, new Span(), "(enum value)");
+                    var (intSpan, intLexeme) = ParseNumberLiteral();
+                    if (!_reInteger.IsMatch(intLexeme)) throw new InvalidLiteralException(token, st);
+                    var value = intLexeme.Contains('x', StringComparison.OrdinalIgnoreCase) ? Convert.ToInt64(intLexeme, 16) : Convert.ToInt64(intLexeme);
+                    output.Push(new LiteralExpression(intSpan, value));
+                }
+                else if (Eat(TokenKind.OpenParenthesis))
+                {
+                    System.Diagnostics.Debug.Assert(token.Kind == TokenKind.OpenParenthesis);
+                    operatorStack.Push(token);
+                }
+                else if (Eat(TokenKind.CloseParenthesis))
+                {
+                    if (operatorStack.Count == 0) throw new UnmatchedParenthesisException(token);
+                    while (operatorStack.Peek().Kind != TokenKind.OpenParenthesis)
+                    {
+                        PopOperatorStack();
+                        if (operatorStack.Count == 0) throw new UnmatchedParenthesisException(token);
+                    }
+                    PopOperatorStack();
+                }
+                else if (EatOperator())
+                {
+                    while (operatorStack.Count > 0
+                        && operatorStack.Peek() is Token o2
+                        && o2.Kind != TokenKind.OpenParenthesis
+                        && Precedence(o2) >= Precedence(token))
+                    {
+                        PopOperatorStack();
+                    }
+                    operatorStack.Push(token);
+                }
+                else if (Eat(TokenKind.Identifier))
+                {
+                    long value;
+                    if (!identifiers.TryGetValue(token.Lexeme, out value))
+                    {
+                        throw new UnknownIdentifierException(token);
+                    }
+                    output.Push(new LiteralExpression(token.Span, value));
+                }
+                else
+                {
+                    throw new UnexpectedTokenException(token, "This token is invalid in an expression.");
+                }
+            }
+
+            while (operatorStack.Count > 0)
+            {
+                if (operatorStack.Peek().Kind == TokenKind.OpenParenthesis)
+                {
+                    throw new UnmatchedParenthesisException(operatorStack.Peek());
+                }
+                PopOperatorStack();
+            }
+            if (output.Count != 1) throw new MalformedExpressionException(CurrentToken);
+            return output.Pop();
         }
     }
 }

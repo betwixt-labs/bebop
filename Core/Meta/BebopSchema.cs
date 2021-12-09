@@ -190,7 +190,7 @@ namespace Core.Meta
                     var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                     foreach (var field in ed.Members)
                     {
-                        if (values.Contains(field.ConstantValue))
+                        if (!ed.IsBitFlags && values.Contains(field.ConstantValue))
                         {
                             errors.Add(new InvalidFieldException(field, "Enum value must be unique"));
                         }

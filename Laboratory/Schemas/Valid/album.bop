@@ -1,0 +1,12 @@
+import "jazz.bop"
+
+union Album {
+    1 -> struct StudioAlbum {
+        Song[] tracks;
+    }
+    2 -> message LiveAlbum {
+        1 -> Song[] tracks;
+        2 -> string venueName;
+        3 -> date concertDate;
+    }
+}

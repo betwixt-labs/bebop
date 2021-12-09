@@ -1,0 +1,7 @@
+[flags]
+enum MyFlags {
+    Red = 0x1;
+    Green = 0x2;
+    Blue = 0x4;
+    Yellow = Red | Green;
+}

@@ -22,10 +22,10 @@ namespace Core.Generators.Rust
 {
     enum OwnershipType
     {
-        // name used when borrowed, E.g. `&'raw [u8]` or `&'raw str`. 
+        // name used when borrowed, E.g. `&'raw [u8]` or `&'raw str`.
         Borrowed,
 
-        // name used when owned, E.g. `Vec<u8>` or `String`.  
+        // name used when owned, E.g. `Vec<u8>` or `String`.
         Owned,
 
         // name used when declared as a global constant, E.g. `&[u8]` or `&str`.
@@ -120,52 +120,71 @@ namespace Core.Generators.Rust
         {
             // main definition
             var name = MakeDefIdent(d.Name);
-            builder
-                .AppendLine("#[repr(u32)]")
-                .AppendLine("#[derive(Copy, Clone, Debug, Eq, PartialEq)]")
-                .CodeBlock($"pub enum {name}", _tab, () =>
+
+            if (d.IsBitFlags)
+            {
+                builder.CodeBlock("::bebop::bitflags!", _tab, () =>
                 {
-                    foreach (var m in d.Members)
+                    builder.CodeBlock($"pub struct {name}: u32", _tab, () =>
                     {
-                        WriteDocumentation(builder, m.Documentation);
-                        WriteDeprecation(builder, m.DeprecatedAttribute);
-                        builder.AppendLine($"{MakeEnumVariantIdent(m.Name)} = {m.ConstantValue},");
-                    }
+                        foreach (var m in d.Members)
+                        {
+                            WriteDocumentation(builder, m.Documentation);
+                            WriteDeprecation(builder, m.DeprecatedAttribute);
+                            builder.AppendLine($"const {MakeConstIdent(m.Name)} = {m.ConstantValue};");
+                        }
+                    });
+                }).AppendLine();
+            }
+            else
+            {
+                builder
+                    .AppendLine("#[repr(u32)]")
+                    .AppendLine("#[derive(Copy, Clone, Debug, Eq, PartialEq)]")
+                    .CodeBlock($"pub enum {name}", _tab, () =>
+                    {
+                        foreach (var m in d.Members)
+                        {
+                            WriteDocumentation(builder, m.Documentation);
+                            WriteDeprecation(builder, m.DeprecatedAttribute);
+                            builder.AppendLine($"{MakeEnumVariantIdent(m.Name)} = {m.ConstantValue},");
+                        }
+                    }).AppendLine();
+
+                // conversion from int
+                builder.CodeBlock($"impl ::core::convert::TryFrom<u32> for {name}", _tab, () =>
+                {
+                    builder.AppendLine("type Error = ::bebop::DeserializeError;")
+                        .AppendLine()
+                        .CodeBlock("fn try_from(value: u32) -> ::bebop::DeResult<Self>", _tab, () =>
+                        {
+                            builder.CodeBlock("match value", _tab, () =>
+                            {
+                                foreach (var m in d.Members)
+                                {
+                                    builder.AppendLine($"{m.ConstantValue} => Ok({name}::{MakeEnumVariantIdent(m.Name)}),");
+                                }
+
+                                builder.AppendLine("d => Err(::bebop::DeserializeError::InvalidEnumDiscriminator(d)),");
+                            });
+                        });
                 }).AppendLine();
 
-            // conversion from int
-            builder.CodeBlock($"impl ::core::convert::TryFrom<u32> for {name}", _tab, () =>
-            {
-                builder.AppendLine("type Error = ::bebop::DeserializeError;")
-                    .AppendLine()
-                    .CodeBlock("fn try_from(value: u32) -> ::bebop::DeResult<Self>", _tab, () =>
+                // conversion to int
+                builder.CodeBlock($"impl ::core::convert::From<{name}> for u32", _tab, () =>
+                {
+                    builder.CodeBlock($"fn from(value: {name}) -> Self", _tab, () =>
                     {
                         builder.CodeBlock("match value", _tab, () =>
                         {
                             foreach (var m in d.Members)
                             {
-                                builder.AppendLine($"{m.ConstantValue} => Ok({name}::{MakeEnumVariantIdent(m.Name)}),");
+                                builder.AppendLine($"{name}::{MakeEnumVariantIdent(m.Name)} => {m.ConstantValue},");
                             }
-
-                            builder.AppendLine("d => Err(::bebop::DeserializeError::InvalidEnumDiscriminator(d)),");
                         });
                     });
-            }).AppendLine();
-
-            // conversion to int
-            builder.CodeBlock($"impl ::core::convert::From<{name}> for u32", _tab, () =>
-            {
-                builder.CodeBlock($"fn from(value: {name}) -> Self", _tab, () =>
-                {
-                    builder.CodeBlock("match value", _tab, () =>
-                    {
-                        foreach (var m in d.Members)
-                        {
-                            builder.AppendLine($"{name}::{MakeEnumVariantIdent(m.Name)} => {m.ConstantValue},");
-                        }
-                    });
-                });
-            }).AppendLine();
+                }).AppendLine();
+            }
 
             // sub record
             builder.CodeBlock($"impl<'raw> ::bebop::SubRecord<'raw> for {name}", _tab, () =>
@@ -183,16 +202,17 @@ namespace Core.Generators.Rust
                         _tab,
                         () =>
                         {
-                            builder.AppendLine("u32::from(*self)._serialize_chained(dest)");
+                            var conv = d.IsBitFlags ? "(*self).bits()" : "u32::from(*self)";
+                            builder.AppendLine($"{conv}._serialize_chained(dest)");
                         })
                     .AppendLine()
                     .AppendLine("#[inline]")
                     .CodeBlock("fn _deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)>", _tab,
                         () =>
                         {
-                            builder
-                                .AppendLine("let (n, v) = u32::_deserialize_chained(raw)?;")
-                                .AppendLine("Ok((n, v.try_into()?))");
+                            builder.AppendLine("let (n, v) = u32::_deserialize_chained(raw)?;");
+                            var conv = d.IsBitFlags ? "unsafe { Self::from_bits_unchecked(v) }" : "v.try_into()?";
+                            builder.AppendLine($"Ok((n, {conv}))");
                         });
             }).AppendLine();
 
