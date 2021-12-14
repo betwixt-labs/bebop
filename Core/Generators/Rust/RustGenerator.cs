@@ -335,6 +335,12 @@ namespace Core.Generators.Rust
         private void WriteStructDeserialization(IndentedStringBuilder builder, StructDefinition d,
             bool externalIter = false, string selfClass = "Self", bool directReturn = false)
         {
+            if (d.Fields.Count == 0)
+            {
+                builder.AppendLine(directReturn ? $"{selfClass} {{}}" : $"Ok((0, {selfClass} {{}}))");
+                return;
+            }
+
             if (!externalIter)
             {
                 builder.AppendLine("let mut i = 0;");
