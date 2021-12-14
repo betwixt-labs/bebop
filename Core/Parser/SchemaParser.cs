@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Core.Exceptions;
@@ -522,11 +524,22 @@ namespace Core.Parser
         {
             
             var fields = new List<IField>();
+            var enumBaseType = BaseType.UInt32;
             var kindName = kind switch { AggregateKind.Enum => "enum", AggregateKind.Struct => "struct", _ => "message" };
             var aKindName = kind switch { AggregateKind.Enum => "an enum", AggregateKind.Struct => "a struct", _ => "a message" };
 
             ExpectAndSkip(TokenKind.Identifier, new(_universalFollowKinds.Append(TokenKind.OpenBrace)), hint: $"Did you forget to specify a name for this {kindName}?");
             Eat(TokenKind.Identifier);
+            if (kind == AggregateKind.Enum && Eat(TokenKind.Colon))
+            {
+
+                var t = ParseType(definitionToken);
+                if (!(t is ScalarType st && st.IsInteger))
+                {
+                    throw new InvalidEnumTypeException(t);
+                }
+                enumBaseType = st.BaseType;
+            }
             ExpectAndSkip(TokenKind.OpenBrace, new(_universalFollowKinds.Append(TokenKind.CloseBrace)));
             if (!Eat(TokenKind.OpenBrace))
             {
@@ -541,7 +554,7 @@ namespace Core.Parser
             var errored = false;
 
             // Track enum values defined so far, so they can reference earlier ones.
-            var enumIdentifiers = new Dictionary<string, long>();
+            var enumIdentifiers = new Dictionary<string, BigInteger>();
             StartScope();
             while (!Eat(TokenKind.CloseBrace))
             {
@@ -557,7 +570,7 @@ namespace Core.Parser
                     return null;
                 }
                 errored = false;
-                var value = 0u;
+                var value = BigInteger.Zero;
 
                 var fieldDocumentation = ConsumeBlockComments();
                 // if we've reached the end of the definition after parsing documentation we need to exit.
@@ -576,7 +589,11 @@ namespace Core.Parser
                         const string? indexHint = "Fields in a message must be explicitly indexed: message A { 1 -> string s; 2 -> bool b; }";
                         var indexLexeme = CurrentToken.Lexeme;
                         Expect(TokenKind.Number, hint: indexHint);
-                        if (!indexLexeme.TryParseUInt(out value))
+                        if (!BigInteger.TryParse(
+                            indexLexeme,
+                            NumberStyles.Integer | NumberStyles.AllowHexSpecifier,
+                            CultureInfo.InvariantCulture,
+                            out value))
                         {
                             throw new UnexpectedTokenException(TokenKind.Number, CurrentToken, "Field index must be an unsigned integer.");
                         }
@@ -599,7 +616,7 @@ namespace Core.Parser
                 
                     // Parse a type name, if this isn't an enum:
                     TypeBase type = kind == AggregateKind.Enum
-                        ? new ScalarType(BaseType.UInt32, definitionToken.Span, definitionToken.Lexeme)
+                        ? new ScalarType(enumBaseType, definitionToken.Span, definitionToken.Lexeme)
                         : ParseType(definitionToken);
 
                     var fieldName = CurrentToken.Lexeme;
@@ -622,7 +639,7 @@ namespace Core.Parser
                         // var valueLexeme = CurrentToken.Lexeme;
                         // Expect(TokenKind.Number, hint: "An enum constant must have a literal unsigned integer value.");
                         var expression = ParseExpression(enumIdentifiers);
-                        value = (uint)expression.Value();
+                        value = expression.Value();
                         enumIdentifiers.Add(fieldName, value);
                         // if (expression == null)
                         // {
@@ -652,7 +669,7 @@ namespace Core.Parser
 
             Definition definition = kind switch
             {
-                AggregateKind.Enum => new EnumDefinition(name, definitionSpan, definitionDocumentation, fields, flagsAttribute != null),
+                AggregateKind.Enum => new EnumDefinition(name, definitionSpan, definitionDocumentation, fields, flagsAttribute != null, enumBaseType),
                 AggregateKind.Struct => new StructDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, fields, isReadOnly),
                 AggregateKind.Message => new MessageDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, fields),
                 _ => throw new InvalidOperationException("invalid kind when making definition"),
@@ -862,7 +879,7 @@ namespace Core.Parser
         /// Parse an expression like <c>(1 &lt;&lt; 4) | 0x000a</c>, for bitflag enum definitions.
         /// </summary>
         /// <returns>The expression parsed.</returns>
-        private Expression ParseExpression(Dictionary<string, long> identifiers)
+        private Expression ParseExpression(Dictionary<string, BigInteger> identifiers)
         {
             // This method implements the "shunting-yard algorithm".
             var operatorStack = new Stack<Token>();
@@ -967,7 +984,7 @@ namespace Core.Parser
                 }
                 else if (Eat(TokenKind.Identifier))
                 {
-                    long value;
+                    BigInteger value;
                     if (!identifiers.TryGetValue(token.Lexeme, out value))
                     {
                         throw new UnknownIdentifierException(token);

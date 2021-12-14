@@ -250,4 +250,12 @@ namespace Core.Exceptions
             : base($"The expression could not be parsed past this point.", token.Span, 127)
         { }
     }
+
+    [Serializable]
+    public class InvalidEnumTypeException : SpanException
+    {
+        public InvalidEnumTypeException(TypeBase t)
+            : base($"Enums must have an integer underlying type, not {t}.", t.Span, 128)
+        { }
+    }
 }

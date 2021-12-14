@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Numerics;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta.Attributes;
 
@@ -38,7 +39,7 @@ namespace Core.Meta.Interfaces
         ///     <see cref="AggregateKind.Message"/> a unique index.
         ///     It will be zero for <see cref="AggregateKind.Struct"/>.
         /// </remarks>
-        public uint ConstantValue { get; }
+        public BigInteger ConstantValue { get; }
 
         /// <summary>
         /// The inner text of a block comment that preceded the field.

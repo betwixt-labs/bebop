@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using Core.Exceptions;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta.Interfaces;
@@ -186,7 +187,7 @@ namespace Core.Meta
                 }
                 if (definition is EnumDefinition ed)
                 {
-                    var values = new HashSet<uint>();
+                    var values = new HashSet<BigInteger>();
                     var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                     foreach (var field in ed.Members)
                     {

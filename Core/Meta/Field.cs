@@ -1,4 +1,5 @@
-﻿using Core.Lexer.Tokenization.Models;
+﻿using System.Numerics;
+using Core.Lexer.Tokenization.Models;
 using Core.Meta.Attributes;
 using Core.Meta.Interfaces;
 
@@ -10,7 +11,7 @@ namespace Core.Meta
             in TypeBase type,
             in Span span,
             in BaseAttribute? deprecatedAttribute,
-            in uint constantValue, string documentation)
+            in BigInteger constantValue, string documentation)
         {
             Name = name;
             Type = type;
@@ -27,7 +28,7 @@ namespace Core.Meta
         /// <summary>
         /// For enums, this is a constant value. For messages, this is a field index. For structs, this is unused.
         /// </summary>
-        public uint ConstantValue { get; }
+        public BigInteger ConstantValue { get; }
         public string Documentation { get; }
     }
 }
