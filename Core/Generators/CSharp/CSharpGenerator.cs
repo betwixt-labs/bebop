@@ -71,6 +71,10 @@ namespace Core.Generators.CSharp
                 builder.AppendLine(GeneratedAttribute);
                 if (definition is EnumDefinition ed)
                 {
+                    if (ed.IsBitFlags)
+                    {
+                        builder.AppendLine("[System.Flags]");
+                    }
                     builder.AppendLine("[global::Bebop.Attributes.BebopRecord(global::Bebop.Runtime.BebopKind.Enum)]");
                     builder.AppendLine($"public enum {definition.ClassName()} : uint {{");
                     builder.Indent(indentStep);

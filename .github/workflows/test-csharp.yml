@@ -1,0 +1,20 @@
+name: Test C#
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+jobs:
+  test-csharp:
+    runs-on: windows-2019
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ['4.7.2', '5.0.x'] # SDK Version to use; x will use the latest version of the 5.0 channel
+      - name: Build and run tests
+        shell: pwsh
+        run: |
+          dotnet run --project ..\..\Compiler\ --cs ".\GeneratedTestCode\Output.g.cs" --namespace Bebop.Codegen --files (gci ..\Schemas\Valid\*.bop)
+          dotnet test -nowarn:CS0618
+        working-directory: "./Laboratory/C#"
