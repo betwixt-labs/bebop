@@ -1,7 +1,7 @@
 use std::collections::LinkedList;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::fs;
 
 /// Configurable compiler path. By default it will use the downloaded executeable or assume it is in PATH.
 pub static mut COMPILER_PATH: Option<PathBuf> = None;
@@ -11,6 +11,45 @@ pub static mut GENERATED_PREFIX: Option<String> = None;
 mod downloader;
 #[cfg(feature = "downloader")]
 pub use downloader::*;
+
+/// Get the rustfmt binary path.
+#[cfg(feature = "format")]
+fn rustfmt_path() -> &'static Path {
+    // lazy static var
+    static mut PATH: Option<PathBuf> = None;
+
+    if let Some(path) = unsafe { PATH.as_ref() } {
+        return path
+    }
+
+    if let Ok(path) = std::env::var("RUSTFMT") {
+        unsafe {
+            PATH = Some(PathBuf::from(path));
+            PATH.as_ref().unwrap()
+        }
+    } else {
+        // assume it is in PATH
+        unsafe {
+            PATH = Some(which::which("rustmft").unwrap_or_else(|_| "rustfmt".into()));
+            PATH.as_ref().unwrap()
+        }
+    }
+}
+
+#[cfg(feature = "format")]
+fn fmt_file(path: impl AsRef<Path>) {
+    let pathstr = path.as_ref().to_str().unwrap();
+    if let Err(err) = Command::new(rustfmt_path()).arg(pathstr).output() {
+        println!(
+            "cargo:warning=Failed to run rustfmt for {:?}, ignoring ({})",
+            path.as_ref(),
+            err
+        );
+    }
+}
+
+#[cfg(not(feature = "format"))]
+fn fmt_file(path: impl AsRef<Path>) { /* No-op */ }
 
 /// Build all schemas in a given directory and write them to the destination directory including a
 /// `mod.rs` file.
@@ -39,8 +78,9 @@ pub fn build_schema_dir(source: impl AsRef<Path>, destination: impl AsRef<Path>)
     let files = recurse_schema_dir(source, destination.as_ref());
 
     // update the mod file
+    let mod_file_path = PathBuf::from(destination.as_ref()).join("mod.rs");
     fs::write(
-        PathBuf::from(destination.as_ref()).join("mod.rs"),
+        &mod_file_path,
         &files
             .into_iter()
             .map(|mut schema_name| {
@@ -52,6 +92,7 @@ pub fn build_schema_dir(source: impl AsRef<Path>, destination: impl AsRef<Path>)
             .collect::<String>(),
     )
     .unwrap();
+    fmt_file(mod_file_path)
 }
 
 /// Build a single schema file and write it to the destination file.
@@ -82,6 +123,7 @@ pub fn build_schema(schema: impl AsRef<Path>, destination: impl AsRef<Path>) {
         }
         panic!("Failed to build schema!");
     }
+    fmt_file(destination);
 }
 
 fn recurse_schema_dir(dir: impl AsRef<Path>, dest: impl AsRef<Path>) -> LinkedList<String> {
