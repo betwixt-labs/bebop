@@ -6,15 +6,17 @@ on:
   pull_request:
 jobs:
   test-csharp:
-    runs-on: windows-2019
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
       - uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: ['4.7.2', '5.0.x'] # SDK Version to use; x will use the latest version of the 5.0 channel
+          dotnet-version: |
+            5.0.x
+            6.0.x
       - name: Build and run tests
-        shell: pwsh
+        shell: bash
         run: |
-          dotnet run --project ..\..\Compiler\ --cs ".\GeneratedTestCode\Output.g.cs" --namespace Bebop.Codegen --files (gci ..\Schemas\Valid\*.bop)
+          dotnet run --project ../../Compiler/ --cs "./GeneratedTestCode/Output.g.cs" --namespace Bebop.Codegen --files $(ls -p ../Schemas/Valid/*.bop | tr '\n' ' ')
           dotnet test -nowarn:CS0618
         working-directory: "./Laboratory/C#"

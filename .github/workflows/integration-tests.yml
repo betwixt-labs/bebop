@@ -16,10 +16,9 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: "5.0.x" # SDK Version to use; x will use the latest version of the 5.0 channel
-      - name: Build Runtime
-        run: dotnet build
-        working-directory: ${{env.RUNTIME_ROOT}}
+          dotnet-version: |
+            5.0.x
+            6.0.x
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -28,7 +27,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v1
         with:
-          node-version: '12'
+          node-version: "12"
       - name: Setup C++
         run: |
           sudo apt update

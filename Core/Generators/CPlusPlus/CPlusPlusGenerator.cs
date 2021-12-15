@@ -525,10 +525,10 @@ namespace Core.Generators.CPlusPlus
             {
                 if (reader.ReadLine() is string line)
                 {
-                    if (_majorRegex.IsMatch(line)) line = _majorRegex.Replace(line, VersionInfo.Major.ToString());
-                    if (_minorRegex.IsMatch(line)) line = _minorRegex.Replace(line, VersionInfo.Minor.ToString());
-                    if (_patchRegex.IsMatch(line)) line = _patchRegex.Replace(line, VersionInfo.Patch.ToString());
-                    if (_informationalRegex.IsMatch(line)) line = _informationalRegex.Replace(line, $"\"{VersionInfo.Informational}\"");
+                    if (_majorRegex.IsMatch(line)) line = _majorRegex.Replace(line, DotEnv.Generated.Environment.Major.ToString());
+                    if (_minorRegex.IsMatch(line)) line = _minorRegex.Replace(line, DotEnv.Generated.Environment.Minor.ToString());
+                    if (_patchRegex.IsMatch(line)) line = _patchRegex.Replace(line, DotEnv.Generated.Environment.Patch.ToString());
+                    if (_informationalRegex.IsMatch(line)) line = _informationalRegex.Replace(line, $"\"{DotEnv.Generated.Environment.Version}\"");
                     builder.AppendLine(line);
 
                 }
