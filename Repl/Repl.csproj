@@ -2,21 +2,18 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
-    <LangVersion>9.0</LangVersion>
-    <Platforms>AnyCPU</Platforms>
+    <LangVersion>10</LangVersion>
     <OutputPath>../bin/repl/$(Configuration)</OutputPath>
     <NativeOutputPath>../bin/repl/$(Configuration)/native/</NativeOutputPath>
     <PublishDir>../bin/repl/$(Configuration)/publish</PublishDir>
     <BlazorCacheBootResources>false</BlazorCacheBootResources>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <PlatformTarget>AnyCPU</PlatformTarget>
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
     <Optimize>false</Optimize>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <PlatformTarget>AnyCPU</PlatformTarget>
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
     <Optimize>true</Optimize>
     <BlazorWebAssemblyEnableLinking>true</BlazorWebAssemblyEnableLinking>
   </PropertyGroup>

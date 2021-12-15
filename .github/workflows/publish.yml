@@ -13,22 +13,19 @@ jobs:
         os: [windows-latest, macos-latest, ubuntu-18.04]
         include:
           - os: macos-latest
-            CONFIGURATION: macOS-Release
             RUNTIME: osx-x64
             ARTIFACT: bebopc
 
           - os: windows-latest
-            CONFIGURATION: Windows-Release
             RUNTIME: win-x64
             ARTIFACT: bebopc.exe
 
           - os: ubuntu-18.04
-            CONFIGURATION: Linux-Release
             RUNTIME: linux-x64
             ARTIFACT: bebopc
 
     env:
-      BUILD_ARTIFACT: ./bin/compiler/${{matrix.CONFIGURATION}}/publish/${{matrix.ARTIFACT}}
+      BUILD_ARTIFACT: ./bin/compiler/Release/publish/${{matrix.ARTIFACT}}
     steps:
       - uses: actions/checkout@v1
 
@@ -59,7 +56,7 @@ jobs:
       - name: Build bebopc
         run: |
           dotnet restore
-          dotnet publish -c ${{matrix.CONFIGURATION}} -r ${{matrix.RUNTIME}} -p:ReleaseVersion=${{ steps.dotenv.outputs.version }}
+          dotnet publish -c Release -r ${{matrix.RUNTIME}} -p:ReleaseVersion=${{ steps.dotenv.outputs.version }}
         working-directory: ./Compiler/
 
       - if: matrix.os == 'macos-latest'

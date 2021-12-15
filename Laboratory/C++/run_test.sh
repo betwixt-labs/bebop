@@ -4,7 +4,7 @@ set -e
 
 if [ -e /proc/version ] && grep -q Microsoft /proc/version; then
   # Windows: Visual Studio + WSL to run this script
-  bebopc="../../bin/compiler/Windows-Debug/bebopc.exe"
+  bebopc="../../bin/compiler/Debug/bebopc.exe"
 else
   # Linux or Mac
   bebopc="dotnet run --project ../../Compiler"
