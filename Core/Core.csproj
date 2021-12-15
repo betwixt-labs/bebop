@@ -16,52 +16,10 @@
     <Configurations>Debug;Release</Configurations>
   </PropertyGroup>
 
-  <UsingTask TaskName="UpdateVersionInfo" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
-    <ParameterGroup>
-      <InputFilename ParameterType="System.String" Required="true" />
-      <Version ParameterType="System.String" Required="true" />
-    </ParameterGroup>
-    <Task>
-      <Using Namespace="System" />
-      <Using Namespace="System.IO" />
-      <Using Namespace="System.Text.RegularExpressions" />
-      <Code Type="Fragment" Language="cs">
-        <![CDATA[
-            const string valuePattern = "\\s=\\s)(.*)(?=;)";
-            
-            var semVerRegex = new Regex(@"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$", RegexOptions.Singleline | RegexOptions.Compiled);
-            
-            var majorRegex = new Regex($"(?<=Major{valuePattern}", RegexOptions.Singleline | RegexOptions.Compiled);
-            var minorRegex = new Regex($"(?<=Minor{valuePattern}", RegexOptions.Singleline | RegexOptions.Compiled);
-            var patchRegex = new Regex($"(?<=Patch{valuePattern}", RegexOptions.Singleline | RegexOptions.Compiled);
-            var informationalRegex = new Regex($"(?<=Informational{valuePattern}", RegexOptions.Singleline | RegexOptions.Compiled);
-            
-            var versionGroups = semVerRegex.Match(Version).Groups;
 
-            var major = versionGroups[1].Value;
-            var minor = versionGroups[2].Value;
-            var patch = versionGroups[3].Value;
-
-            var builder = new StringBuilder();
-            foreach (var l in File.ReadAllLines(InputFilename)) {
-               var line = l;
-               if (majorRegex.IsMatch(line)) line = majorRegex.Replace(line, major);
-               if (minorRegex.IsMatch(line)) line = minorRegex.Replace(line, minor);
-               if (patchRegex.IsMatch(line)) line = patchRegex.Replace(line, patch);
-               if (informationalRegex.IsMatch(line)) line = informationalRegex.Replace(line, $"\"{Version}\"");
-               builder.AppendLine(line);
-            }
-
-            File.WriteAllText(InputFilename, builder.ToString());
-          ]]>
-      </Code>
-    </Task>
-  </UsingTask>
-
-  <Target Name="UpdateVersion" BeforeTargets="CoreCompile" DependsOnTargets="PrepareForBuild">
-     <Message Text="Updating $(ProjectDir)Meta\VersionInfo.cs to $(Version)" Importance="high" />
-    <UpdateVersionInfo InputFilename="$(ProjectDir)\Meta\VersionInfo.cs" Version="$(Version)" />
-  </Target>
+   <ItemGroup>
+    <AdditionalFiles Include="../.env" />
+  </ItemGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Optimize>false</Optimize>
@@ -78,4 +36,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <Optimize>true</Optimize>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DotEnvGenerator" Version="0.1.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  
 </Project>
