@@ -113,5 +113,15 @@ namespace Test
             var decodedLibrary = Library.Decode(library.EncodeImmutably());
             Assert.AreEqual(library, decodedLibrary);
         }
+
+        [Test]
+        public void FlagsEnum()
+        {
+            Assert.AreEqual((int)TestFlags.Read, 1);
+            Assert.AreEqual((int)TestFlags.Write, 2);
+            Assert.AreEqual(TestFlags.ReadWrite, TestFlags.Read | TestFlags.Write);
+            // Check that the [Flags] attribute is doing its job:
+            Assert.AreEqual((TestFlags.Read | TestFlags.SomethingElse).ToString(), "Read, SomethingElse");
+        }
     }
 }
