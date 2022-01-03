@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Numerics;
 using System.Reflection;
 using Core.Lexer.Extensions;
 
@@ -98,6 +100,57 @@ namespace Core.Meta
         ///    This binary format is compatible with C#'s DateTime.ToBinary().
         /// </summary>
         Date,
+    }
+
+    public static class BaseTypeHelpers
+    {
+        public static BigInteger MinimumInteger(BaseType type)
+        {
+            switch (type)
+            {
+                case BaseType.Byte:
+                case BaseType.UInt16:
+                case BaseType.UInt32:
+                case BaseType.UInt64:
+                    return 0;
+                case BaseType.Int16:
+                    return -(BigInteger.One << 15);
+                case BaseType.Int32:
+                    return -(BigInteger.One << 31);
+                case BaseType.Int64:
+                    return -(BigInteger.One << 63);
+                default:
+                    throw new ArgumentException("MinimumInteger: non-integer type");
+            }
+        }
+
+        public static BigInteger MaximumInteger(BaseType type)
+        {
+            switch (type)
+            {
+                case BaseType.Byte:
+                    return (BigInteger.One << 8) - 1;
+                case BaseType.UInt16:
+                    return (BigInteger.One << 16) - 1;
+                case BaseType.UInt32:
+                    return (BigInteger.One << 32) - 1;
+                case BaseType.UInt64:
+                    return (BigInteger.One << 64) - 1;
+                case BaseType.Int16:
+                    return (BigInteger.One << 15) - 1;
+                case BaseType.Int32:
+                    return (BigInteger.One << 31) - 1;
+                case BaseType.Int64:
+                    return (BigInteger.One << 63) - 1;
+                default:
+                    throw new ArgumentException("MaximumInteger: non-integer type");
+            }
+        }
+
+        public static bool InRange(BaseType type, BigInteger value)
+        {
+            return value >= MinimumInteger(type) && value <= MaximumInteger(type);
+        }
     }
 
     /// <summary>

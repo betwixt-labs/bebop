@@ -120,12 +120,13 @@ namespace Core.Generators.Rust
         {
             // main definition
             var name = MakeDefIdent(d.Name);
+            var type = TypeName(d.ScalarType);
 
             if (d.IsBitFlags)
             {
                 builder.CodeBlock("::bebop::bitflags!", _tab, () =>
                 {
-                    builder.CodeBlock($"pub struct {name}: u32", _tab, () =>
+                    builder.CodeBlock($"pub struct {name}: {type}", _tab, () =>
                     {
                         foreach (var m in d.Members)
                         {
@@ -139,7 +140,7 @@ namespace Core.Generators.Rust
             else
             {
                 builder
-                    .AppendLine("#[repr(u32)]")
+                    .AppendLine($"#[repr({type})]")
                     .AppendLine("#[derive(Copy, Clone, Debug, Eq, PartialEq)]")
                     .CodeBlock($"pub enum {name}", _tab, () =>
                     {
@@ -152,11 +153,11 @@ namespace Core.Generators.Rust
                     }).AppendLine();
 
                 // conversion from int
-                builder.CodeBlock($"impl ::core::convert::TryFrom<u32> for {name}", _tab, () =>
+                builder.CodeBlock($"impl ::core::convert::TryFrom<{type}> for {name}", _tab, () =>
                 {
                     builder.AppendLine("type Error = ::bebop::DeserializeError;")
                         .AppendLine()
-                        .CodeBlock("fn try_from(value: u32) -> ::bebop::DeResult<Self>", _tab, () =>
+                        .CodeBlock($"fn try_from(value: {type}) -> ::bebop::DeResult<Self>", _tab, () =>
                         {
                             builder.CodeBlock("match value", _tab, () =>
                             {
@@ -171,7 +172,7 @@ namespace Core.Generators.Rust
                 }).AppendLine();
 
                 // conversion to int
-                builder.CodeBlock($"impl ::core::convert::From<{name}> for u32", _tab, () =>
+                builder.CodeBlock($"impl ::core::convert::From<{name}> for {type}", _tab, () =>
                 {
                     builder.CodeBlock($"fn from(value: {name}) -> Self", _tab, () =>
                     {
@@ -190,11 +191,11 @@ namespace Core.Generators.Rust
             builder.CodeBlock($"impl<'raw> ::bebop::SubRecord<'raw> for {name}", _tab, () =>
             {
                 builder
-                    .AppendLine("const MIN_SERIALIZED_SIZE: usize = ::bebop::ENUM_SIZE;")
-                    .AppendLine("const EXACT_SERIALIZED_SIZE: Option<usize> = Some(::bebop::ENUM_SIZE);")
+                    .AppendLine($"const MIN_SERIALIZED_SIZE: usize = ::std::mem::size_of::<{type}>();")
+                    .AppendLine("const EXACT_SERIALIZED_SIZE: Option<usize> = Some(::std::mem::size_of::<{type}>());")
                     .AppendLine()
                     .AppendLine("#[inline]")
-                    .AppendLine("fn serialized_size(&self) -> usize { ::bebop::ENUM_SIZE }")
+                    .AppendLine($"fn serialized_size(&self) -> usize {{ ::std::mem::size_of::<{type}>() }}")
                     .AppendLine()
                     .AppendLine("#[inline]")
                     .CodeBlock(
@@ -202,7 +203,7 @@ namespace Core.Generators.Rust
                         _tab,
                         () =>
                         {
-                            var conv = d.IsBitFlags ? "(*self).bits()" : "u32::from(*self)";
+                            var conv = d.IsBitFlags ? "(*self).bits()" : $"{type}::from(*self)";
                             builder.AppendLine($"{conv}._serialize_chained(dest)");
                         })
                     .AppendLine()
@@ -210,7 +211,7 @@ namespace Core.Generators.Rust
                     .CodeBlock("fn _deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)>", _tab,
                         () =>
                         {
-                            builder.AppendLine("let (n, v) = u32::_deserialize_chained(raw)?;");
+                            builder.AppendLine($"let (n, v) = {type}::_deserialize_chained(raw)?;");
                             var conv = d.IsBitFlags ? "unsafe { Self::from_bits_unchecked(v) }" : "v.try_into()?";
                             builder.AppendLine($"Ok((n, {conv}))");
                         });
@@ -218,7 +219,7 @@ namespace Core.Generators.Rust
 
             builder.CodeBlock($"impl ::bebop::FixedSized for {name}", _tab, () =>
             {
-                builder.AppendLine("const SERIALIZED_SIZE: usize = ::bebop::ENUM_SIZE;");
+                builder.AppendLine($"const SERIALIZED_SIZE: usize = ::std::mem::size_of::<{type}>();");
             }).AppendLine();
         }
 

@@ -39,19 +39,23 @@ namespace Core.Logging
             await Console.Error.WriteLineAsync(message);
         }
 
-        /// <summary>
-        /// Format and write a <see cref="SpanException"/> 
-        /// </summary>
-        private async Task WriteSpanError(SpanException ex)
+        private string FormatSpanError(SpanException ex)
         {
-            var message = Formatter switch
+            return Formatter switch
             {
                 LogFormatter.MSBuild => $"{ex.Span.FileName}({ex.Span.StartColonString(',')}) : error BOP{ex.ErrorCode}: {ex.Message}",
                 LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] Issue located in '{ex.Span.FileName}' at {ex.Span.StartColonString()}: {ex.Message}",
                 LogFormatter.JSON => $@"{{""Message"": ""{ex.Message.EscapeString()}"", ""Span"": {ex.Span.ToJson()}}}",
                 _ => throw new ArgumentOutOfRangeException()
             };
-            await Console.Error.WriteLineAsync(message);
+        }
+
+        /// <summary>
+        /// Format and write a <see cref="SpanException"/> 
+        /// </summary>
+        private async Task WriteSpanError(SpanException ex)
+        {
+            await Console.Error.WriteLineAsync(FormatSpanError(ex));
         }
 
         /// <summary>
@@ -59,16 +63,7 @@ namespace Core.Logging
         /// </summary>
         public async Task WriteSpanErrors(List<SpanException> exs)
         {
-            var messages = exs.Select(ex =>
-            {
-                return Formatter switch
-                {
-                    LogFormatter.MSBuild => $"{ex.Span.FileName}({ex.Span.StartColonString(',')}) : error BOP{ex.ErrorCode}: {ex.Message}",
-                    LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] Issue located in '{ex.Span.FileName}' at {ex.Span.StartColonString()}: {ex.Message}",
-                    LogFormatter.JSON => $@"{{""Message"": ""{ex.Message.EscapeString()}"", ""Span"": {ex.Span.ToJson()}}}",
-                    _ => throw new ArgumentOutOfRangeException()
-                };
-            });
+            var messages = exs.Select(FormatSpanError);
             string message;
             if (Formatter == LogFormatter.JSON)
             {

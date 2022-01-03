@@ -9,13 +9,17 @@ namespace Core.Meta
     /// <summary>
     /// A scalar type, like "int" or "byte". It represents *one* of its underlying base type.
     /// </summary>
-    class ScalarType : TypeBase
+    public class ScalarType : TypeBase
     {
         public BaseType BaseType { get; }
 
         public ScalarType(BaseType baseType, Span span, string asString) : base(span, asString)
         {
             BaseType = baseType;
+        }
+
+        public ScalarType(BaseType baseType) : this(baseType, new Span(), "")
+        {
         }
 
         internal override IEnumerable<string> Dependencies() => Enumerable.Empty<string>();

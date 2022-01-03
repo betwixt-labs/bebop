@@ -13,7 +13,9 @@ namespace Core.Meta
     {
         private List<SpanException> _parsingErrors;
         private List<SpanException> _validationErrors;
+        private List<SpanException> _validationWarnings;
         public List<SpanException> Errors => _parsingErrors.Concat(_validationErrors).ToList();
+        public List<SpanException> Warnings => _validationWarnings;
 
         public BebopSchema(string nameSpace, Dictionary<string, Definition> definitions, HashSet<(Token, Token)> typeReferences, List<SpanException>? parsingErrors = null)
         {
@@ -21,6 +23,7 @@ namespace Core.Meta
             Definitions = definitions;
             _sortedDefinitions = null;
             _validationErrors = new();
+            _validationWarnings = new();
             _parsingErrors = parsingErrors ?? new();
             _typeReferences = typeReferences;
         }
@@ -193,11 +196,19 @@ namespace Core.Meta
                     {
                         if (!ed.IsBitFlags && values.Contains(field.ConstantValue))
                         {
-                            errors.Add(new InvalidFieldException(field, "Enum value must be unique"));
+                            errors.Add(new InvalidFieldException(field, "Enum value must be unique if the enum is not a [flags] enum"));
                         }
                         if (names.Contains(field.Name))
                         {
                             errors.Add(new DuplicateFieldException(field, ed));
+                        }
+                        if (!BaseTypeHelpers.InRange(ed.BaseType, field.ConstantValue))
+                        {
+                            var min = BaseTypeHelpers.MinimumInteger(ed.BaseType);
+                            var max = BaseTypeHelpers.MaximumInteger(ed.BaseType);
+                            errors.Add(new InvalidFieldException(field,
+                                $"Enum value {field.ConstantValue} of {field.Name} is outside the range for underlying type {ed.BaseType}. " +
+                                $"Valid values are in the range [{min}, {max}]."));
                         }
                         values.Add(field.ConstantValue);
                         names.Add(field.Name);

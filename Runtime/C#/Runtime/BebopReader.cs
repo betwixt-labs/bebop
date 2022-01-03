@@ -183,24 +183,6 @@ namespace Bebop.Runtime
         }
 
         /// <summary>
-        /// Converts an integral constant to the specified <typeparamref name="T"/> enum.
-        /// </summary>
-        /// <typeparam name="T">The enum to convert to.</typeparam>
-        /// <param name="constant">The constant value of the desired enum member.</param>
-        /// <returns>The value of the enum representation of the specified constant.</returns>
-        [MethodImpl(BebopConstants.HotPath)]
-        private static T ConvertFrom<T>(uint constant) where T : struct, Enum =>
-            As<uint, T>(ref constant);
-
-        /// <summary>
-        /// Reads the specified <typeparamref name="T"/> enum from the underlying buffer and advances the current position by 4.
-        /// </summary>
-        /// <typeparam name="T">The type of enum to read.</typeparam>
-        /// <returns>The enum member corresponding to the underlying constant.</returns>
-        [MethodImpl(BebopConstants.HotPath)]
-        public T ReadEnum<T>() where T : struct, Enum => ConvertFrom<T>(ReadUInt32());
-
-        /// <summary>
         /// Reads a UTC <see cref="DateTime"/> from the underlying buffer and advances the current position by 8.
         /// </summary>
         /// <returns>A UTC <see cref="DateTime"/> instance.</returns>

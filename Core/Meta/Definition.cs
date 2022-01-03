@@ -199,6 +199,8 @@ namespace Core.Meta
         public BaseType BaseType { get; }
 
         public override IEnumerable<string> Dependencies() => Enumerable.Empty<string>();
+
+        public ScalarType ScalarType => new ScalarType(BaseType);
     }
 
     public readonly struct UnionBranch
