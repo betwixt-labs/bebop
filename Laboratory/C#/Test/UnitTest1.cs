@@ -123,5 +123,12 @@ namespace Test
             // Check that the [Flags] attribute is doing its job:
             Assert.AreEqual((TestFlags.Read | TestFlags.SomethingElse).ToString(), "Read, SomethingElse");
         }
+
+        [Test]
+        public void EnumSizes()
+        {
+            Assert.AreEqual(Enum.GetUnderlyingType(typeof(SmallEnum)), typeof(byte));
+            Assert.AreEqual(Enum.GetUnderlyingType(typeof(HugeEnum)), typeof(long));
+        }
     }
 }

@@ -166,7 +166,7 @@ namespace Core.Generators.Rust
                                     builder.AppendLine($"{m.ConstantValue} => Ok({name}::{MakeEnumVariantIdent(m.Name)}),");
                                 }
 
-                                builder.AppendLine("d => Err(::bebop::DeserializeError::InvalidEnumDiscriminator(d)),");
+                                builder.AppendLine("d => Err(::bebop::DeserializeError::InvalidEnumDiscriminator(d.into())),");
                             });
                         });
                 }).AppendLine();
@@ -192,7 +192,7 @@ namespace Core.Generators.Rust
             {
                 builder
                     .AppendLine($"const MIN_SERIALIZED_SIZE: usize = ::std::mem::size_of::<{type}>();")
-                    .AppendLine("const EXACT_SERIALIZED_SIZE: Option<usize> = Some(::std::mem::size_of::<{type}>());")
+                    .AppendLine($"const EXACT_SERIALIZED_SIZE: Option<usize> = Some(::std::mem::size_of::<{type}>());")
                     .AppendLine()
                     .AppendLine("#[inline]")
                     .AppendLine($"fn serialized_size(&self) -> usize {{ ::std::mem::size_of::<{type}>() }}")
