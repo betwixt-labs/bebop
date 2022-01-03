@@ -383,7 +383,18 @@ namespace Core.Generators.TypeScript
                 }
                 if (definition is EnumDefinition ed)
                 {
-                    builder.AppendLine($"export enum {ed.Name} {{");
+                    var is64Bit = ed.ScalarType.Is64Bit;
+                    if (is64Bit)
+                    {
+                        builder.AppendLine($"export type {ed.Name} = bigint;");
+                        builder.AppendLine($"export const {ed.Name} = {{");
+                    }
+                    else
+                    {
+                        builder.AppendLine($"export enum {ed.Name} {{");
+                    }
+                    var separator = is64Bit ? ": " : " = ";
+                    var afterValue = is64Bit ? "n" : "";
                     for (var i = 0; i < ed.Members.Count; i++)
                     {
                         var field = ed.Members.ElementAt(i);
@@ -395,9 +406,9 @@ namespace Core.Generators.TypeScript
                         {
                             builder.AppendLine(FormatDeprecationDoc(deprecationReason, 2));
                         }
-                        builder.AppendLine($"  {field.Name} = {field.ConstantValue},");
+                        builder.AppendLine($"  {field.Name}{separator}{field.ConstantValue}{afterValue},");
                     }
-                    builder.AppendLine("}");
+                    builder.AppendLine(is64Bit ? "};" : "}");
                     builder.AppendLine("");
                 }
                 else if (definition is TopLevelDefinition td)
