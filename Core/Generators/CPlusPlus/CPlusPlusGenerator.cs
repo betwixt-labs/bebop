@@ -232,14 +232,14 @@ namespace Core.Generators.CPlusPlus
             {
                 BaseType.Bool => "reader.readBool()",
                 BaseType.Byte => "reader.readByte()",
-                BaseType.UInt32 => "reader.readUInt32()",
+                BaseType.UInt32 => "reader.readUint32()",
                 BaseType.Int32 => "reader.readInt32()",
                 BaseType.Float32 => "reader.readFloat32()",
                 BaseType.String => "reader.readString()",
                 BaseType.Guid => "reader.readGuid()",
-                BaseType.UInt16 => "reader.readUInt16()",
+                BaseType.UInt16 => "reader.readUint16()",
                 BaseType.Int16 => "reader.readInt16()",
-                BaseType.UInt64 => "reader.readUInt64()",
+                BaseType.UInt64 => "reader.readUint64()",
                 BaseType.Int64 => "reader.readInt64()",
                 BaseType.Float64 => "reader.readFloat64()",
                 BaseType.Date => "reader.readDate()",
@@ -278,7 +278,7 @@ namespace Core.Generators.CPlusPlus
                     $"{tab}{tab}{CompileDecodeField(mt.ValueType, $"v{depth}", depth + 1, indentDepth + 2, false)}" + nl +
                     $"{tab}}}" + nl +
                     $"}}",
-                ScalarType st => $"{target} = ${ReadBaseType(st.BaseType)};",
+                ScalarType st => $"{target} = {ReadBaseType(st.BaseType)};",
                 DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition ed =>
                     $"{target} = static_cast<{dt.Name}>({ReadBaseType(ed.BaseType)});",
                 DefinedType dt when isOptional => $"{target}.emplace({dt.Name}::decode(reader));",
@@ -386,7 +386,7 @@ namespace Core.Generators.CPlusPlus
                 switch (definition)
                 {
                     case EnumDefinition ed:
-                        builder.AppendLine($"enum class {definition.Name} {{");
+                        builder.AppendLine($"enum class {definition.Name} : {TypeName(ed.ScalarType)} {{");
                         for (var i = 0; i < ed.Members.Count; i++)
                         {
                             var field = ed.Members.ElementAt(i);
