@@ -137,8 +137,8 @@ namespace Core.Generators.CPlusPlus
                     BaseType.Date => $"writer.writeDate({target});",
                     _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                 },
-                DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition =>
-                    $"writer.writeUint32(static_cast<uint32_t>({target}));",
+                DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition ed =>
+                    CompileEncodeField(ed.ScalarType, $"static_cast<{TypeName(ed.ScalarType)}>({target})", depth, indentDepth),
                 DefinedType dt => $"{dt.Name}::encodeInto({target}, writer);",
                 _ => throw new InvalidOperationException($"CompileEncodeField: {type}")
             };
@@ -226,6 +226,27 @@ namespace Core.Generators.CPlusPlus
             return builder.ToString();
         }
 
+        private string ReadBaseType(BaseType baseType)
+        {
+            return baseType switch
+            {
+                BaseType.Bool => "reader.readBool()",
+                BaseType.Byte => "reader.readByte()",
+                BaseType.UInt32 => "reader.readUInt32()",
+                BaseType.Int32 => "reader.readInt32()",
+                BaseType.Float32 => "reader.readFloat32()",
+                BaseType.String => "reader.readString()",
+                BaseType.Guid => "reader.readGuid()",
+                BaseType.UInt16 => "reader.readUInt16()",
+                BaseType.Int16 => "reader.readInt16()",
+                BaseType.UInt64 => "reader.readUInt64()",
+                BaseType.Int64 => "reader.readInt64()",
+                BaseType.Float64 => "reader.readFloat64()",
+                BaseType.Date => "reader.readDate()",
+                _ => throw new ArgumentOutOfRangeException()
+            };
+        }
+
         private string CompileDecodeField(TypeBase type, string target, int depth = 0, int indentDepth = 0, bool isOptional = false)
         {
             var tab = new string(' ', indentStep);
@@ -257,25 +278,9 @@ namespace Core.Generators.CPlusPlus
                     $"{tab}{tab}{CompileDecodeField(mt.ValueType, $"v{depth}", depth + 1, indentDepth + 2, false)}" + nl +
                     $"{tab}}}" + nl +
                     $"}}",
-                ScalarType st => st.BaseType switch
-                {
-                    BaseType.Bool => $"{target} = reader.readBool();",
-                    BaseType.Byte => $"{target} = reader.readByte();",
-                    BaseType.UInt16 => $"{target} = reader.readUint16();",
-                    BaseType.Int16 => $"{target} = reader.readInt16();",
-                    BaseType.UInt32 => $"{target} = reader.readUint32();",
-                    BaseType.Int32 => $"{target} = reader.readInt32();",
-                    BaseType.UInt64 => $"{target} = reader.readUint64();",
-                    BaseType.Int64 => $"{target} = reader.readInt64();",
-                    BaseType.Float32 => $"{target} = reader.readFloat32();",
-                    BaseType.Float64 => $"{target} = reader.readFloat64();",
-                    BaseType.String => $"{target} = reader.readString();",
-                    BaseType.Guid => $"{target} = reader.readGuid();",
-                    BaseType.Date => $"{target} = reader.readDate();",
-                    _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
-                },
-                DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition =>
-                    $"{target} = static_cast<{dt.Name}>(reader.readUint32());",
+                ScalarType st => $"{target} = ${ReadBaseType(st.BaseType)};",
+                DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition ed =>
+                    $"{target} = static_cast<{dt.Name}>({ReadBaseType(ed.BaseType)});",
                 DefinedType dt when isOptional => $"{target}.emplace({dt.Name}::decode(reader));",
                 DefinedType dt => $"{dt.Name}::decodeInto(reader, {target});",
                 _ => throw new InvalidOperationException($"CompileDecodeField: {type}")

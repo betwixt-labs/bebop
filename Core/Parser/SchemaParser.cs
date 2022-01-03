@@ -589,11 +589,7 @@ namespace Core.Parser
                         const string? indexHint = "Fields in a message must be explicitly indexed: message A { 1 -> string s; 2 -> bool b; }";
                         var indexLexeme = CurrentToken.Lexeme;
                         Expect(TokenKind.Number, hint: indexHint);
-                        if (!BigInteger.TryParse(
-                            indexLexeme,
-                            NumberStyles.Integer | NumberStyles.AllowHexSpecifier,
-                            CultureInfo.InvariantCulture,
-                            out value))
+                        if (!TryParseBigInteger(indexLexeme, out value))
                         {
                             throw new UnexpectedTokenException(TokenKind.Number, CurrentToken, "Field index must be an unsigned integer.");
                         }
@@ -953,7 +949,7 @@ namespace Core.Parser
                     ScalarType st = new ScalarType(BaseType.Int64, new Span(), "(enum value)");
                     var (intSpan, intLexeme) = ParseNumberLiteral();
                     if (!_reInteger.IsMatch(intLexeme)) throw new InvalidLiteralException(token, st);
-                    var value = intLexeme.Contains('x', StringComparison.OrdinalIgnoreCase) ? Convert.ToInt64(intLexeme, 16) : Convert.ToInt64(intLexeme);
+                    if (!TryParseBigInteger(intLexeme, out var value)) throw new InvalidLiteralException(token, st);
                     output.Push(new LiteralExpression(intSpan, value));
                 }
                 else if (Eat(TokenKind.OpenParenthesis))
@@ -1007,6 +1003,12 @@ namespace Core.Parser
             }
             if (output.Count != 1) throw new MalformedExpressionException(CurrentToken);
             return output.Pop();
+        }
+        private static bool TryParseBigInteger(string lexeme, out BigInteger value)
+        {
+            return lexeme.ToLowerInvariant().StartsWith("0x")
+                ? BigInteger.TryParse(lexeme.Substring(2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out value)
+                : BigInteger.TryParse(lexeme, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
         }
     }
 }
