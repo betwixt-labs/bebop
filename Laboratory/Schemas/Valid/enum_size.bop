@@ -8,3 +8,8 @@ enum HugeEnum : int64 {
     Neg = -1;
     MaxInt = 0x7FFFFFFFFFFFFFFF;
 }
+
+struct SmallAndHuge {
+    SmallEnum small;
+    HugeEnum huge;
+}

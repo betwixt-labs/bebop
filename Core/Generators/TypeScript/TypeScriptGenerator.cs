@@ -153,8 +153,8 @@ namespace Core.Generators.TypeScript
                     BaseType.Date => $"view.writeDate({target});",
                     _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                 },
-                DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition =>
-                    $"view.writeEnum({target});",
+                DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition ed =>
+                    CompileEncodeField(ed.ScalarType, target, depth, indentDepth),
                 DefinedType dt => $"{dt.Name}.encodeInto({target}, view)",
                 _ => throw new InvalidOperationException($"CompileEncodeField: {type}")
             };
@@ -249,6 +249,27 @@ namespace Core.Generators.TypeScript
             return builder.ToString();
         }
 
+        private string ReadBaseType(BaseType baseType)
+        {
+            return baseType switch
+            {
+                BaseType.Bool => "!!view.readByte()",
+                BaseType.Byte => "view.readByte()",
+                BaseType.UInt32 => "view.readUint32()",
+                BaseType.Int32 => "view.readInt32()",
+                BaseType.Float32 => "view.readFloat32()",
+                BaseType.String => "view.readString()",
+                BaseType.Guid => "view.readGuid()",
+                BaseType.UInt16 => "view.readUint16()",
+                BaseType.Int16 => "view.readInt16()",
+                BaseType.UInt64 => "view.readUint64()",
+                BaseType.Int64 => "view.readInt64()",
+                BaseType.Float64 => "view.readFloat64()",
+                BaseType.Date => "view.readDate()",
+                _ => throw new ArgumentOutOfRangeException()
+            };
+        }
+
         private string CompileDecodeField(TypeBase type, string target, int depth = 0)
         {
             var tab = new string(' ', indentStep);
@@ -279,25 +300,9 @@ namespace Core.Generators.TypeScript
                     $"{tab}{tab}{target}.set(k{depth}, v{depth});" + nl +
                     $"{tab}}}" + nl +
                     $"}}",
-                ScalarType st => st.BaseType switch
-                {
-                    BaseType.Bool => $"{target} = !!view.readByte();",
-                    BaseType.Byte => $"{target} = view.readByte();",
-                    BaseType.UInt16 => $"{target} = view.readUint16();",
-                    BaseType.Int16 => $"{target} = view.readInt16();",
-                    BaseType.UInt32 => $"{target} = view.readUint32();",
-                    BaseType.Int32 => $"{target} = view.readInt32();",
-                    BaseType.UInt64 => $"{target} = view.readUint64();",
-                    BaseType.Int64 => $"{target} = view.readInt64();",
-                    BaseType.Float32 => $"{target} = view.readFloat32();",
-                    BaseType.Float64 => $"{target} = view.readFloat64();",
-                    BaseType.String => $"{target} = view.readString();",
-                    BaseType.Guid => $"{target} = view.readGuid();",
-                    BaseType.Date => $"{target} = view.readDate();",
-                    _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
-                },
-                DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition =>
-                    $"{target} = view.readUint32() as {dt.Name};",
+                ScalarType st => $"{target} = {ReadBaseType(st.BaseType)};",
+                DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition ed =>
+                    $"{target} = {ReadBaseType(ed.BaseType)} as {dt.Name};",
                 DefinedType dt => $"{target} = {dt.Name}.readFrom(view);",
                 _ => throw new InvalidOperationException($"CompileDecodeField: {type}")
             };
