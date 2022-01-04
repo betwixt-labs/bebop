@@ -1,0 +1,10 @@
+enum SmallEnum : uint8 {
+    A = 1;
+    B = 255;
+    // TooBig = 256;
+}
+
+enum HugeEnum : int64 {
+    Neg = -1;
+    MaxInt = 0x7FFFFFFFFFFFFFFF;
+}

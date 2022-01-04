@@ -10,7 +10,7 @@ pub enum DeserializeError {
     CorruptFrame,
     /// There was an issue with a string encoding
     Utf8EncodingError(std::str::Utf8Error),
-    InvalidEnumDiscriminator(u32),
+    InvalidEnumDiscriminator(i128),
     /// A message type had multiple definitions for the same field
     DuplicateMessageField,
 }

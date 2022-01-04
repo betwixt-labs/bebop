@@ -24,7 +24,12 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: "5.0.x" # SDK Version to use; x will use the latest version of the 5.0 channel
+          dotnet-version: |
+            5.0.x
+            6.0.x
+      - name: Generate Output.g.cs
+        working-directory: "./Laboratory/C#"
+        run: dotnet run --project ../../Compiler/ --cs "./GeneratedTestCode/Output.g.cs" --namespace Bebop.Codegen --files $(ls -p ../Schemas/Valid/*.bop | tr '\n' ' ')
 
       - name: Run Test .NET 5
         run: dotnet test -c Release -f net5.0

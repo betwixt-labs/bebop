@@ -191,7 +191,7 @@ export class BebopView {
 
         // The number of characters in the string
         const stringLength = value.length;
-        // If the string is empty avoid unnecessary allocations by writing the zero length and returning. 
+        // If the string is empty avoid unnecessary allocations by writing the zero length and returning.
         if (stringLength === 0) {
             this.writeUint32(0);
             return;
@@ -342,12 +342,6 @@ export class BebopView {
         const high = msSince1AD / 429496.7296 | 0x40000000;
         this.writeUint32(low);
         this.writeUint32(high);
-    }
-
-    writeEnum(value: any): void {
-        var encoded = value as number;
-        if (encoded === void 0) throw new Error("Couldn't convert enum value");
-        this.writeUint32(encoded);
     }
 
     /**

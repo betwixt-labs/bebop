@@ -45,16 +45,6 @@ namespace Bebop.Runtime
         private static ImmutableArray<T> AsImmutable<T>(T[] array) => As<T[], ImmutableArray<T>>(ref array);
 
         /// <summary>
-        /// Converts the specified <paramref name="enum"/> to an unsigned integer without boxing.
-        /// </summary>
-        /// <typeparam name="T">The type of enum.</typeparam>
-        /// <param name="enum">The enum member to convert.</param>
-        /// <returns>The constant of the provided <paramref name="enum"/></returns>
-        [MethodImpl(BebopConstants.HotPath)]
-        private static uint ConvertEnum<T>(T @enum) where T : struct, Enum =>
-            As<T, uint>(ref @enum);
-
-        /// <summary>
         ///     Allocates a new <see cref="BebopWriter"/> instance backed by an empty array.
         /// </summary>
         /// <returns></returns>
@@ -183,18 +173,6 @@ namespace Bebop.Runtime
             var index = Length;
             GrowBy(size);
             _buffer[index] = value;
-        }
-
-        /// <summary>
-        ///     Writes an <see cref="Enum"/> value with an unsigned integer integral type to the current buffer and advances the
-        ///     position by four bytes.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="value"></param>
-        [MethodImpl(BebopConstants.HotPath)]
-        public void WriteEnum<T>(T value) where T : struct, Enum
-        {
-            WriteUInt32(ConvertEnum(value));
         }
 
         /// <summary>

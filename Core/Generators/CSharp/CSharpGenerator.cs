@@ -76,7 +76,7 @@ namespace Core.Generators.CSharp
                         builder.AppendLine("[System.Flags]");
                     }
                     builder.AppendLine("[global::Bebop.Attributes.BebopRecord(global::Bebop.Runtime.BebopKind.Enum)]");
-                    builder.AppendLine($"public enum {definition.ClassName()} : uint {{");
+                    builder.AppendLine($"public enum {definition.ClassName()} : {TypeName(ed.ScalarType)} {{");
                     builder.Indent(indentStep);
                     for (var i = 0; i < ed.Members.Count; i++)
                     {
@@ -972,8 +972,7 @@ namespace Core.Generators.CSharp
                     BaseType.Date => $"{outerVariable} {st.MinimalEncodedSize(Schema)};",
                     _ => throw new ArgumentOutOfRangeException()
                 },
-                DefinedType dt when dt.IsEnum(Schema) =>
-                    $"{outerVariable} sizeof(uint);",
+                DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition ed => CompileSizeAssignment(ed.ScalarType, target, isAccurate, depth, indentDepth),
                 DefinedType => $"{outerVariable} {target}.{(isAccurate ? "ByteCount" : "MaxByteCount")};",
                 _ => throw new InvalidOperationException($"CompileSizeAssignment: {type}")
             };
@@ -1020,14 +1019,34 @@ namespace Core.Generators.CSharp
                     BaseType.Date => $"writer.WriteDate({target});",
                     _ => throw new ArgumentOutOfRangeException()
                 },
-                DefinedType dt when dt.IsEnum(Schema) =>
-                    $"writer.WriteEnum<{PrefixNamespace(dt.Name.ToPascalCase())}>({target});",
+                DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition ed =>
+                    CompileEncodeField(ed.ScalarType, $"(({TypeName(ed.ScalarType)})({target}))", depth, indentDepth),
                 DefinedType dt =>
                     $"{PrefixNamespace(dt.Name.ToPascalCase())}.__EncodeInto({target}, ref writer);",
                 _ => throw new InvalidOperationException($"CompileEncodeField: {type}")
             };
         }
 
+        private string ReadBaseType(BaseType baseType)
+        {
+            return baseType switch
+                {
+                    BaseType.Bool => "reader.ReadByte() != 0",
+                    BaseType.Byte => "reader.ReadByte()",
+                    BaseType.UInt32 => "reader.ReadUInt32()",
+                    BaseType.Int32 => "reader.ReadInt32()",
+                    BaseType.Float32 => "reader.ReadFloat32()",
+                    BaseType.String => "reader.ReadString()",
+                    BaseType.Guid => "reader.ReadGuid()",
+                    BaseType.UInt16 => "reader.ReadUInt16()",
+                    BaseType.Int16 => "reader.ReadInt16()",
+                    BaseType.UInt64 => "reader.ReadUInt64()",
+                    BaseType.Int64 => "reader.ReadInt64()",
+                    BaseType.Float64 => "reader.ReadFloat64()",
+                    BaseType.Date => "reader.ReadDate()",
+                    _ => throw new ArgumentOutOfRangeException()
+                };
+        }
 
         private string CompileDecodeField(TypeBase type, string target, int depth = 0)
         {
@@ -1059,25 +1078,9 @@ namespace Core.Generators.CSharp
                     $"{tab}{tab}{target}.Add(k{depth}, v{depth});" + nl +
                     $"{tab}}}" + nl +
                     "}",
-                ScalarType st => st.BaseType switch
-                {
-                    BaseType.Bool => $"{target} = reader.ReadByte() != 0;",
-                    BaseType.Byte => $"{target} = reader.ReadByte();",
-                    BaseType.UInt32 => $"{target} = reader.ReadUInt32();",
-                    BaseType.Int32 => $"{target} = reader.ReadInt32();",
-                    BaseType.Float32 => $"{target} = reader.ReadFloat32();",
-                    BaseType.String => $"{target} = reader.ReadString();",
-                    BaseType.Guid => $"{target} = reader.ReadGuid();",
-                    BaseType.UInt16 => $"{target} = reader.ReadUInt16();",
-                    BaseType.Int16 => $"{target} = reader.ReadInt16();",
-                    BaseType.UInt64 => $"{target} = reader.ReadUInt64();",
-                    BaseType.Int64 => $"{target} = reader.ReadInt64();",
-                    BaseType.Float64 => $"{target} = reader.ReadFloat64();",
-                    BaseType.Date => $"{target} = reader.ReadDate();",
-                    _ => throw new ArgumentOutOfRangeException()
-                },
-                DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition =>
-                    $"{target} = reader.ReadEnum<{PrefixNamespace(dt.Name.ToPascalCase())}>();",
+                ScalarType st => $"{target} = {ReadBaseType(st.BaseType)};",
+                DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition ed =>
+                    $"{target} = ({PrefixNamespace(dt.Name.ToPascalCase())})({ReadBaseType(ed.BaseType)});",
                 DefinedType dt =>
                     $"{target} = {PrefixNamespace(dt.Name.ToPascalCase())}.__DecodeFrom(ref reader);",
                 _ => throw new InvalidOperationException($"CompileDecodeField: {type}")

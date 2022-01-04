@@ -177,17 +177,30 @@ namespace Core.Meta
     /// </summary>
     public class EnumDefinition : Definition
     {
-        public EnumDefinition(string name, Span span, string documentation, ICollection<IField> members, bool isBitFlags, Definition? parent = null) : base(name, span, documentation, parent)
+        public EnumDefinition(
+            string name,
+            Span span,
+            string documentation,
+            ICollection<IField> members,
+            bool isBitFlags,
+            BaseType baseType,
+            Definition? parent = null
+        ) : base(name, span, documentation, parent)
         {
             Members = members;
             IsBitFlags = isBitFlags;
+            BaseType = baseType;
         }
 
         public ICollection<IField> Members { get; }
 
         public bool IsBitFlags { get; }
 
+        public BaseType BaseType { get; }
+
         public override IEnumerable<string> Dependencies() => Enumerable.Empty<string>();
+
+        public ScalarType ScalarType => new ScalarType(BaseType);
     }
 
     public readonly struct UnionBranch
