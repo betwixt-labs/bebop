@@ -5,6 +5,7 @@ using System.Numerics;
 using Core.Exceptions;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta.Interfaces;
+using Core.Parser.Extensions;
 
 namespace Core.Meta
 {
@@ -202,13 +203,14 @@ namespace Core.Meta
                         {
                             errors.Add(new DuplicateFieldException(field, ed));
                         }
-                        if (!BaseTypeHelpers.InRange(ed.BaseType, field.ConstantValue))
+                        if (!ed.BaseType.CanRepresent(field.ConstantValue))
                         {
                             var min = BaseTypeHelpers.MinimumInteger(ed.BaseType);
                             var max = BaseTypeHelpers.MaximumInteger(ed.BaseType);
                             errors.Add(new InvalidFieldException(field,
-                                $"Enum value {field.ConstantValue} of {field.Name} is outside the range for underlying type {ed.BaseType}. " +
-                                $"Valid values are in the range [{min}, {max}]."));
+                                $"Enum member '{field.Name}' has a value ({field.ConstantValue}) that " +
+                                $"is outside the domain of underlying type '{ed.BaseType.BebopName()}'. " +
+                                $"Valid values range from {min} to {max}."));
                         }
                         values.Add(field.ConstantValue);
                         names.Add(field.Name);

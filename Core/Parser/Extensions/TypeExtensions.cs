@@ -26,6 +26,9 @@ namespace Core.Parser.Extensions
             {"guid", BaseType.Guid},
             {"date", BaseType.Date},
         };
+
+        public static string BebopName(this BaseType baseType) => BaseTypeNames.First(kv => kv.Value == baseType).Key;
+
         public static int FindToken(this Token[] tokens, Func<KeyValuePair<Token, int>, bool> predicate)
         {
             try

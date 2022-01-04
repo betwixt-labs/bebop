@@ -104,6 +104,12 @@ namespace Core.Meta
 
     public static class BaseTypeHelpers
     {
+        /// <summary>
+        /// Return the minimum integer value that can be represented by the given integral BaseType.
+        /// </summary>
+        /// <param name="type">An integral BaseType (not float, string, date...)</param>
+        /// <returns>The most negative representable integer value.</returns>
+        /// <exception cref="ArgumentException">Thrown when the given BaseType is not integral.</exception>
         public static BigInteger MinimumInteger(BaseType type)
         {
             switch (type)
@@ -124,6 +130,12 @@ namespace Core.Meta
             }
         }
 
+        /// <summary>
+        /// Return the maximum integer value that can be represented by the given integral BaseType.
+        /// </summary>
+        /// <param name="type">An integral BaseType (not float, string, date...)</param>
+        /// <returns>The most positive representable integer value.</returns>
+        /// <exception cref="ArgumentException">Thrown when the given BaseType is not integral.</exception>
         public static BigInteger MaximumInteger(BaseType type)
         {
             switch (type)
@@ -147,7 +159,13 @@ namespace Core.Meta
             }
         }
 
-        public static bool InRange(BaseType type, BigInteger value)
+        /// <summary>
+        /// Can the given integral BaseType represent the given integer value?
+        /// </summary>
+        /// <param name="type">An integral BaseType.</param>
+        /// <param name="value">Any BigInteger value.</param>
+        /// <returns>Whether the BigInteger is in the type's domain.</returns>
+        public static bool CanRepresent(this BaseType type, BigInteger value)
         {
             return value >= MinimumInteger(type) && value <= MaximumInteger(type);
         }
