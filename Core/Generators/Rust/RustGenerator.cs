@@ -16,7 +16,6 @@ using Core.Exceptions;
 using Core.Meta;
 using Core.Meta.Attributes;
 using Core.Meta.Extensions;
-using Core.Meta.Interfaces;
 
 namespace Core.Generators.Rust
 {
@@ -53,7 +52,7 @@ namespace Core.Generators.Rust
 
         #region entrypoints
 
-        public RustGenerator(ISchema schema) : base(schema) { }
+        public RustGenerator(BebopSchema schema) : base(schema) { }
 
         public override string Compile(Version? languageVersion)
         {
@@ -971,7 +970,7 @@ namespace Core.Generators.Rust
                 { } tb => TypeName(tb, ot).Contains("'raw")
             };
 
-        private bool FieldNeedsLifetime(Definition d, IField f, OwnershipType ot = OwnershipType.Borrowed)
+        private bool FieldNeedsLifetime(Definition d, Field f, OwnershipType ot = OwnershipType.Borrowed)
         {
             var key = $"{d.Name}::{f.Name}";
             if (_needsLifetime.ContainsKey(key))

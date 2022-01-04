@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Core.IO.Interfaces;
 using Core.Lexer.Extensions;
 using Core.Lexer.Tokenization.Models;
 
@@ -12,7 +11,7 @@ namespace Core.IO
     /// <summary>
     ///     SchemaReader is a read-only specialized wrapper that can look-ahead without consuming the underlying bytes, making it useful for tokenization.
     /// </summary>
-    public class SchemaReader : ISchemaReader
+    public class SchemaReader
     {
         // Name and contents of the schema files we're processing.
         private readonly List<(string, string)> _schemas;
@@ -47,12 +46,25 @@ namespace Core.IO
         private bool AtEndOfCurrentFile => !NoFilesLeft && _position >= CurrentFileLength;
 
         private string CurrentFileName => _schemas[_schemaIndex].Item1;
+
+        /// <summary>
+        ///     Returns an empty span at the current schema position.
+        /// </summary>
         public Span CurrentSpan() => NoFilesLeft ? _latestEofSpan : new Span(CurrentFileName, _currentLine, _currentColumn);
 
         private Span _latestEofSpan = new Span("(unknown file)", 0, 0);
+        /// <summary>
+        ///     Returns an empty span at the most recent end-of-file position.
+        /// </summary>
         public Span LatestEofSpan() => _latestEofSpan;
 
-        /// <inheritdoc/>
+        /// <summary>
+        ///     Returns the next available character but does not consume it.
+        /// </summary>
+        /// <returns>
+        ///     A char literal, or \0 if there are no characters left to be read.
+        ///     At the end of each individual input file, an artificial <see cref="CharExtensions.FileSeparator"/> is returned.
+        /// </returns>
         public char PeekChar()
         {
             if (NoFilesLeft) return '\0';
@@ -60,7 +72,13 @@ namespace Core.IO
             return CurrentChar;
         }
 
-        /// <inheritdoc/>
+        /// <summary>
+        ///     Reads the next character from the input stream and advances the character position by one character.
+        /// </summary>
+        /// <returns>
+        ///     A char literal, or \0 if there are no characters left to be read.
+        ///     At the end of each individual input file, an artificial <see cref="CharExtensions.FileSeparator"/> is returned.
+        /// </returns>
         public char GetChar()
         {
             if (NoFilesLeft) return '\0';
@@ -86,7 +104,10 @@ namespace Core.IO
             return ch;
         }
 
-        /// <inheritdoc/>
+        /// <summary>
+        ///     Append a file path to be read.
+        /// </summary>
+        /// <returns>True if a new file was actually added and must now be tokenized; false if this path was a duplicate.</returns>
         public async Task<bool> AddFile(string absolutePath)
         {
             var fullPath = Path.GetFullPath(absolutePath);

@@ -3,7 +3,6 @@ using System.Linq;
 using System.Runtime.Serialization;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta.Attributes;
-using Core.Meta.Interfaces;
 
 namespace Core.Meta
 {
@@ -89,7 +88,7 @@ namespace Core.Meta
         /// </summary>
         /// <param name="schema">The schema this definition belongs to, used to resolve references to other definitions.</param>
         /// <returns>The lower bound, in bytes.</returns>
-        public abstract int MinimalEncodedSize(ISchema schema);
+        public abstract int MinimalEncodedSize(BebopSchema schema);
     }
 
     /// <summary>
@@ -97,13 +96,13 @@ namespace Core.Meta
     /// </summary>
     public abstract class FieldsDefinition : TopLevelDefinition
     {
-        protected FieldsDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<IField> fields, Definition? parent = null) :
+        protected FieldsDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<Field> fields, Definition? parent = null) :
             base(name, span, documentation, opcodeAttribute, parent)
         {
             Fields = fields;
         }
 
-        public ICollection<IField> Fields { get; }
+        public ICollection<Field> Fields { get; }
 
         public override IEnumerable<string> Dependencies() =>
             Fields.SelectMany(field => field.Type.Dependencies()).Distinct();
@@ -116,7 +115,7 @@ namespace Core.Meta
     /// </summary>
     public class StructDefinition : FieldsDefinition
     {
-        public StructDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<IField> fields, bool isReadOnly, Definition? parent = null) :
+        public StructDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<Field> fields, bool isReadOnly, Definition? parent = null) :
             base(name, span, documentation, opcodeAttribute, fields, parent)
         {
             IsReadOnly = isReadOnly;
@@ -127,7 +126,7 @@ namespace Core.Meta
         /// </summary>
         public bool IsReadOnly { get; }
 
-        override public int MinimalEncodedSize(ISchema schema)
+        override public int MinimalEncodedSize(BebopSchema schema)
         {
             // The encoding of a struct consists of a straightforward concatenation of the encodings of its fields.
             return Fields.Sum(f => f.MinimalEncodedSize(schema));
@@ -151,7 +150,7 @@ namespace Core.Meta
                 ScalarType st => st.IsFixedScalar(),
                 _ => false
             });
-        public bool IsFixedSize(ISchema schema) => IsFixedSize(schema.Definitions);
+        public bool IsFixedSize(BebopSchema schema) => IsFixedSize(schema.Definitions);
     }
 
     /// <summary>
@@ -161,11 +160,11 @@ namespace Core.Meta
     /// </summary>
     public class MessageDefinition : FieldsDefinition
     {
-        public MessageDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<IField> fields, Definition? parent = null) : base(name, span, documentation, opcodeAttribute, fields, parent)
+        public MessageDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<Field> fields, Definition? parent = null) : base(name, span, documentation, opcodeAttribute, fields, parent)
         {
         }
 
-        override public int MinimalEncodedSize(ISchema schema)
+        override public int MinimalEncodedSize(BebopSchema schema)
         {
             // If all fields are absent.
             return 5;
@@ -181,7 +180,7 @@ namespace Core.Meta
             string name,
             Span span,
             string documentation,
-            ICollection<IField> members,
+            ICollection<Field> members,
             bool isBitFlags,
             BaseType baseType,
             Definition? parent = null
@@ -192,7 +191,7 @@ namespace Core.Meta
             BaseType = baseType;
         }
 
-        public ICollection<IField> Members { get; }
+        public ICollection<Field> Members { get; }
 
         public bool IsBitFlags { get; }
 
@@ -226,7 +225,7 @@ namespace Core.Meta
 
         public override IEnumerable<string> Dependencies() => Branches.Select(b => b.Definition.Name);
 
-        override public int MinimalEncodedSize(ISchema schema)
+        override public int MinimalEncodedSize(BebopSchema schema)
         {
             // Length + discriminator + shortest branch.
             return 4 + 1 + (Branches.Count == 0 ? 0 : Branches.Min(b => b.Definition.MinimalEncodedSize(schema)));

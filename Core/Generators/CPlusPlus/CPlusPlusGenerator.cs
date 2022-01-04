@@ -8,7 +8,6 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Core.Meta;
 using Core.Meta.Extensions;
-using Core.Meta.Interfaces;
 
 namespace Core.Generators.CPlusPlus
 {
@@ -16,7 +15,7 @@ namespace Core.Generators.CPlusPlus
     {
         const int indentStep = 2;
 
-        public CPlusPlusGenerator(ISchema schema) : base(schema) { }
+        public CPlusPlusGenerator(BebopSchema schema) : base(schema) { }
 
         private string FormatDocumentation(string documentation, int spaces)
         {

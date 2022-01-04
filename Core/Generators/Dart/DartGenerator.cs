@@ -7,7 +7,6 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using Core.Meta;
 using Core.Meta.Extensions;
-using Core.Meta.Interfaces;
 
 namespace Core.Generators.Dart
 {
@@ -15,7 +14,7 @@ namespace Core.Generators.Dart
     {
         const int indentStep = 2;
 
-        public DartGenerator(ISchema schema) : base(schema) { }
+        public DartGenerator(BebopSchema schema) : base(schema) { }
 
         private string FormatDocumentation(string documentation, int spaces)
         {

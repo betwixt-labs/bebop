@@ -8,7 +8,6 @@ using Core.Generators.Rust;
 using Core.Generators.TypeScript;
 using Core.Meta;
 using Core.Meta.Extensions;
-using Core.Meta.Interfaces;
 
 namespace Core.Generators
 {
@@ -94,7 +93,7 @@ namespace Core.Generators
         /// <remarks>
         /// Generators are keyed via their commandline alias.
         /// </remarks>
-        public static Dictionary<string, Func<ISchema, BaseGenerator>> ImplementedGenerators  = new()
+        public static Dictionary<string, Func<BebopSchema, BaseGenerator>> ImplementedGenerators  = new()
         {
             { "cpp", s => new CPlusPlusGenerator(s) },
             { "cs", s => new CSharpGenerator(s) },

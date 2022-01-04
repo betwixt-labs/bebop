@@ -4,7 +4,6 @@ using System.Text;
 using System.Threading.Tasks;
 using Core.Exceptions;
 using Core.IO;
-using Core.IO.Interfaces;
 using Core.Lexer.Extensions;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta.Extensions;
@@ -13,9 +12,9 @@ namespace Core.Lexer.Tokenization
 {
     public class Tokenizer
     {
-        private ISchemaReader _reader;
+        private SchemaReader _reader;
 
-        public Tokenizer(ISchemaReader reader)
+        public Tokenizer(SchemaReader reader)
         {
             _reader = reader;
         }

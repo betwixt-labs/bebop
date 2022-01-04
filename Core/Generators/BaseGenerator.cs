@@ -1,5 +1,5 @@
 using System;
-using Core.Meta.Interfaces;
+using Core.Meta;
 
 namespace Core.Generators
 {
@@ -8,10 +8,10 @@ namespace Core.Generators
         /// <summary>
         /// The schema to generate code from.
         /// </summary>
-        protected ISchema Schema;
+        protected BebopSchema Schema;
 
 
-        protected BaseGenerator(ISchema schema)
+        protected BaseGenerator(BebopSchema schema)
         {
             Schema = schema;
         }

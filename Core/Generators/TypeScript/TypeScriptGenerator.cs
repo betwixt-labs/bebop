@@ -8,7 +8,6 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using Core.Meta;
 using Core.Meta.Extensions;
-using Core.Meta.Interfaces;
 
 namespace Core.Generators.TypeScript
 {
@@ -16,7 +15,7 @@ namespace Core.Generators.TypeScript
     {
         const int indentStep = 2;
 
-        public TypeScriptGenerator(ISchema schema) : base(schema) { }
+        public TypeScriptGenerator(BebopSchema schema) : base(schema) { }
 
         private static string FormatDocumentation(string documentation, string deprecationReason, int spaces)
         {

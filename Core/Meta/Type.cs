@@ -2,10 +2,38 @@
 using System.Collections.Generic;
 using System.Linq;
 using Core.Lexer.Tokenization.Models;
-using Core.Meta.Interfaces;
 
 namespace Core.Meta
 {
+    /// <summary>
+    /// An abstract base class for Bebop schema types.
+    /// </summary>
+    public abstract class TypeBase
+    {
+        protected TypeBase(Span span, string asString)
+        {
+            Span = span;
+            AsString = asString;
+        }
+
+        /// <summary>
+        ///     The span where the type was parsed.
+        /// </summary>
+        public Span Span { get; }
+
+        /// <summary>
+        ///     A string used to display this type's name in error messages.
+        /// </summary>
+        public string AsString { get; }
+
+        public override string? ToString() => AsString;
+
+        /// <summary>
+        /// The names of types this definition depends on / refers to.
+        /// </summary>
+        internal abstract IEnumerable<string> Dependencies();
+    }
+
     /// <summary>
     /// A scalar type, like "int" or "byte". It represents *one* of its underlying base type.
     /// </summary>
@@ -103,34 +131,34 @@ namespace Core.Meta
         {
             return type is ScalarType and { BaseType: not BaseType.String };
         }
-        public static bool IsStruct(this TypeBase type, ISchema schema)
+        public static bool IsStruct(this TypeBase type, BebopSchema schema)
         {
             return type is DefinedType dt && schema.Definitions[dt.Name] is StructDefinition;
         }
 
-        public static bool IsMessage(this TypeBase type, ISchema schema)
+        public static bool IsMessage(this TypeBase type, BebopSchema schema)
         {
             return type is DefinedType dt && schema.Definitions[dt.Name] is MessageDefinition;
         }
 
-        public static bool IsUnion(this TypeBase type, ISchema schema)
+        public static bool IsUnion(this TypeBase type, BebopSchema schema)
         {
             return type is DefinedType dt && schema.Definitions[dt.Name] is UnionDefinition;
         }
 
-        public static bool IsEnum(this TypeBase type, ISchema schema)
+        public static bool IsEnum(this TypeBase type, BebopSchema schema)
         {
             return type is DefinedType dt && schema.Definitions[dt.Name] is EnumDefinition;
         }
 
-        public static int MinimalEncodedSize(this TypeBase type, ISchema schema)
+        public static int MinimalEncodedSize(this TypeBase type, BebopSchema schema)
         {
             return type switch
             {
                 ArrayType or MapType => 4,
                 ScalarType st => st.BaseType.Size(),
-                DefinedType dt when schema is not null && schema.Definitions[dt.Name] is EnumDefinition => 4,
-                DefinedType dt when schema is not null && schema.Definitions[dt.Name] is TopLevelDefinition td => td.MinimalEncodedSize(schema),
+                DefinedType dt when schema.Definitions[dt.Name] is EnumDefinition => 4,
+                DefinedType dt when schema.Definitions[dt.Name] is TopLevelDefinition td => td.MinimalEncodedSize(schema),
                 _ => throw new ArgumentOutOfRangeException(type.ToString())
             };
         }

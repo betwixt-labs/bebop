@@ -4,17 +4,21 @@ using System.Linq;
 using System.Numerics;
 using Core.Exceptions;
 using Core.Lexer.Tokenization.Models;
-using Core.Meta.Interfaces;
 using Core.Parser.Extensions;
 
 namespace Core.Meta
 {
-    /// <inheritdoc/>
-    public struct BebopSchema : ISchema
+    /// <summary>
+    /// Represents the contents of a textual Bebop schema 
+    /// </summary>
+    public struct BebopSchema
     {
         private List<SpanException> _parsingErrors;
         private List<SpanException> _validationErrors;
         private List<SpanException> _validationWarnings;
+        /// <summary>
+        /// Errors found while validating this schema.
+        /// </summary>
         public List<SpanException> Errors => _parsingErrors.Concat(_validationErrors).ToList();
         public List<SpanException> Warnings => _validationWarnings;
 
@@ -28,9 +32,13 @@ namespace Core.Meta
             _parsingErrors = parsingErrors ?? new();
             _typeReferences = typeReferences;
         }
-        /// <inheritdoc/>
+        /// <summary>
+        /// An optional namespace that is provided to the compiler.
+        /// </summary>
         public string Namespace { get; }
-        /// <inheritdoc/>
+        /// <summary>
+        /// All Bebop definitions in this schema, keyed by their name.
+        /// </summary>
         public Dictionary<string, Definition> Definitions { get; }
 
         /// <summary>
@@ -40,7 +48,9 @@ namespace Core.Meta
 
         private HashSet<(Token, Token)> _typeReferences;
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// A topologically sorted list of definitions.
+        /// </summary>
         public List<Definition> SortedDefinitions()
         {
             // Return the cached result if it exists.
@@ -101,7 +111,9 @@ namespace Core.Meta
             return _sortedDefinitions;
         }
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// Validates that the schema is made up of well-formed values.
+        /// </summary>
         public List<SpanException> Validate()
         {
             var errors = new List<SpanException>();

@@ -15,7 +15,6 @@ using Core.Lexer.Tokenization.Models;
 using Core.Meta;
 using Core.Meta.Attributes;
 using Core.Meta.Extensions;
-using Core.Meta.Interfaces;
 using Core.Parser.Extensions;
 using FlagsAttribute = Core.Meta.Attributes.FlagsAttribute;
 
@@ -113,17 +112,6 @@ namespace Core.Parser
         /// <param name="index"></param>
         /// <returns></returns>
         private Token PeekToken(int index) => _tokens[index];
-
-        /// <summary>
-        ///     Sets the current token stream position to the specified <paramref name="index"/>
-        /// </summary>
-        /// <param name="index"></param>
-        /// <returns></returns>
-        private Token Base(int index)
-        {
-            _index = index;
-            return _tokens[index];
-        }
 
         /// <summary>
         ///     If the <see cref="CurrentToken"/> matches the specified <paramref name="kind"/>, advance the token stream
@@ -256,10 +244,10 @@ namespace Core.Parser
 
 
         /// <summary>
-        ///     Parse the current input files into an <see cref="ISchema"/> object.
+        ///     Parse the current input files into an <see cref="BebopSchema"/> object.
         /// </summary>
         /// <returns></returns>
-        public async Task<ISchema> Parse()
+        public async Task<BebopSchema> Parse()
         {
             _index = 0;
             _errors.Clear();
@@ -523,7 +511,7 @@ namespace Core.Parser
             BaseAttribute? flagsAttribute)
         {
             
-            var fields = new List<IField>();
+            var fields = new List<Field>();
             var enumBaseType = BaseType.UInt32;
             var kindName = kind switch { AggregateKind.Enum => "enum", AggregateKind.Struct => "struct", _ => "message" };
             var aKindName = kind switch { AggregateKind.Enum => "an enum", AggregateKind.Struct => "a struct", _ => "a message" };
