@@ -8,8 +8,9 @@
 
 int main()
 {
+#if defined(_WIN32) || defined(WIN32) || defined(WIN64)
   _setmode(_fileno(stdout), _O_BINARY);
-
+#endif
   std::vector<uint8_t> buffer;
   Library::encodeInto(make_library(), buffer);
 
