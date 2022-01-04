@@ -22,7 +22,7 @@ namespace Core.Parser
 {
     public class SchemaParser
     {
-        private readonly HashSet<TokenKind> _topLevelDefinitionKinds = new() { TokenKind.Enum, TokenKind.Struct, TokenKind.Message, TokenKind.Union };
+        private readonly HashSet<TokenKind> _topLevelDefinitionKinds = new() { TokenKind.Enum, TokenKind.Struct, TokenKind.Message, TokenKind.Union, TokenKind.Service };
         /// <summary>
         /// Tokens we can use to recover from practically anywhere.
         /// </summary>
@@ -341,6 +341,15 @@ namespace Core.Parser
             {
                 // We probably want to start over if we hit the end of the file.
                 return null;
+            }
+            if (Eat(TokenKind.Service))
+            {
+                if (opcodeAttribute != null)
+                {
+                    throw new UnexpectedTokenException(TokenKind.Service, CurrentToken, "Did not expect service definition after opcode. (Services are not allowed opcodes).");
+                }
+
+                return ParseServiceDefinition(CurrentToken, definitionDocumentation);
             }
             if (Eat(TokenKind.Union))
             {
@@ -679,6 +688,99 @@ namespace Core.Parser
             }
             return definition;
         }
+        
+        /// <summary>
+        ///     Parses an rpc service definition and adds it to the <see cref="_definitions"/> collection.
+        /// </summary>
+        /// <param name="definitionToken">The token that names the union to define.</param>
+        /// <param name="definitionDocumentation">The documentation above the union definition.</param>
+        /// <returns>The parsed union definition.</returns>
+        private Definition? ParseServiceDefinition(Token definitionToken,
+            string definitionDocumentation)
+        {
+            ExpectAndSkip(TokenKind.Identifier, new(_universalFollowKinds.Append(TokenKind.OpenBrace)), "Did you forget to specify a name for this service?");
+            Eat(TokenKind.Identifier);
+            ExpectAndSkip(TokenKind.OpenBrace, new(_universalFollowKinds.Append(TokenKind.CloseBrace)));
+            if (!Eat(TokenKind.OpenBrace))
+            {
+                return null;
+            }
+            StartScope();
+            var name = definitionToken.Lexeme;
+            var branches = new List<ServiceBranch>();
+            var usedFunctionNames = new HashSet<string>();
+            var usedDiscriminators = new HashSet<uint>();
+
+            
+            var definitionEnd = CurrentToken.Span;
+            var errored = false;
+            var serviceFieldFollowKinds = new HashSet<TokenKind>() { TokenKind.BlockComment, TokenKind.Number, TokenKind.CloseBrace };
+            while (!Eat(TokenKind.CloseBrace))
+            {
+                if (errored && !serviceFieldFollowKinds.Contains(CurrentToken.Kind))
+                {
+                    CancelScope();
+                    return null;
+                }
+                errored = false;
+                var documentation = ConsumeBlockComments();
+                // if we've reached the end of the definition after parsing documentation we need to exit.
+                if (Eat(TokenKind.CloseBrace))
+                {
+                    break;
+                }
+
+                const string? indexHint = "Branches in a service must be explicitly indexed: service U { 1 -> void doThing(int32 myarg); 2 -> bool foo(float32 a, float32 b); }";
+                var indexToken = CurrentToken;
+                var indexLexeme = indexToken.Lexeme;
+                uint discriminator;
+                try
+                {
+                    Expect(TokenKind.Number, indexHint);
+                    if (!indexLexeme.TryParseUInt(out discriminator))
+                    {
+                        throw new UnexpectedTokenException(TokenKind.Number, indexToken, "A function id must be an unsigned integer.");
+                    }
+                    if (discriminator < 1 || discriminator > 0xffff)
+                    {
+                        _errors.Add(new UnexpectedTokenException(TokenKind.Number, indexToken, "A function id must be between 1 and 65535."));
+                    }
+                    if (usedDiscriminators.Contains(discriminator))
+                    {
+                        _errors.Add(new DuplicateServiceDiscriminatorException(indexToken, name));
+                    }
+                    usedDiscriminators.Add(discriminator);
+                    // Parse an arrow ("->").
+                    Expect(TokenKind.Hyphen, indexHint);
+                    Expect(TokenKind.CloseCaret, indexHint);
+                }
+                catch (SpanException e)
+                {
+                    _errors.Add(e);
+                    errored = true;
+                    SkipAndSkipUntil(new(serviceFieldFollowKinds.Concat(_universalFollowKinds)));
+                    continue;
+                }
+                FunctionDefinition definition = ParseFunction();
+                if (definition is null)
+                {
+                    // Just escape out of there if there's a parsing error in one of the definitions.
+                    CancelScope();
+                    return null;
+                }
+                if (!usedFunctionNames.Add(definition.Name))
+                {
+                    _errors.Add(new DuplicateServiceFunctionNameException(indexToken, name, definition.Name));
+                }
+                Eat(TokenKind.Semicolon);
+                definitionEnd = CurrentToken.Span;
+                branches.Add(new ServiceBranch((ushort)discriminator, definition));
+            }
+            var definitionSpan = definitionToken.Span.Combine(definitionEnd);
+            var serviceDefinition = new ServiceDefinition(name, definitionSpan, definitionDocumentation, branches);
+            CloseScope(name, serviceDefinition);
+            return serviceDefinition;
+        }
 
         /// <summary>
         ///     Parses a union definition and adds it to the <see cref="_definitions"/> collection.
@@ -722,7 +824,7 @@ namespace Core.Parser
                     break;
                 }
 
-                const string? indexHint = "Branches in a union must be explicitly indexed: union U { 1 -> struct A{}  2 -> message B{} }";
+                const string? indexHint = "Branches in a union must be explicitly indexed: union U { 1 -> struct A{}; 2 -> message B{} }";
                 var indexToken = CurrentToken;
                 var indexLexeme = indexToken.Lexeme;
                 uint discriminator;

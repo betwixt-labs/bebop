@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.Serialization;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta.Attributes;
 
@@ -213,6 +212,18 @@ namespace Core.Meta
             Definition = definition;
         }
     }
+    
+    public readonly struct ServiceBranch
+    {
+        public readonly ushort Discriminator;
+        public readonly FunctionDefinition Definition;
+
+        public ServiceBranch(ushort discriminator, FunctionDefinition definition)
+        {
+            Discriminator = discriminator;
+            Definition = definition;
+        }
+    }
 
     public class UnionDefinition : TopLevelDefinition
     {
@@ -230,6 +241,39 @@ namespace Core.Meta
             // Length + discriminator + shortest branch.
             return 4 + 1 + (Branches.Count == 0 ? 0 : Branches.Min(b => b.Definition.MinimalEncodedSize(schema)));
         }
+    }
+    
+    public class ServiceDefinition : Definition
+    {
+        public ServiceDefinition(string name, Span span, string documentation, ICollection<ServiceBranch> branches) : base(name, span, documentation)
+        {
+            Branches = branches;
+        }
+
+        public ICollection<ServiceBranch> Branches { get; }
+
+        public override IEnumerable<string> Dependencies() => Branches.SelectMany(f => f.Definition.Dependencies());
+    }
+
+    public class FunctionDefinition : Definition
+    {
+        public FunctionDefinition(string name, Span span, string documentation, ServiceDefinition parent, ConstDefinition signature, StructDefinition argumentStruct, StructDefinition returnStruct) : base(name, span, documentation, parent)
+        {
+            signature.Parent = this;
+            argumentStruct.Parent = this;
+            returnStruct.Parent = this;
+
+            Signature = signature;
+            ArgumentStruct = argumentStruct;
+            ReturnStruct = returnStruct;
+        }
+
+        public ConstDefinition Signature { get; }
+        public StructDefinition ArgumentStruct { get; }
+        public StructDefinition ReturnStruct { get; }
+
+        public override IEnumerable<string> Dependencies() =>
+            ArgumentStruct.Dependencies().Concat(ReturnStruct.Dependencies());
     }
 
     public class ConstDefinition : Definition

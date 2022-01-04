@@ -257,4 +257,20 @@ namespace Core.Exceptions
             : base($"Enums must have an integer underlying type, not {t}.", t.Span, 128)
         { }
     }
+    
+    [Serializable]
+    class DuplicateServiceDiscriminatorException : SpanException
+    {
+        public DuplicateServiceDiscriminatorException(Token discriminator, string serviceName)
+            : base($"The discriminator index {discriminator.Lexeme} was used more than once in service '{serviceName}'.", discriminator.Span, 129)
+        { }
+    }
+    
+    [Serializable]
+    class DuplicateServiceFunctionNameException : SpanException
+    {
+        public DuplicateServiceFunctionNameException(Token discriminator, string serviceName, string functionName)
+            : base($"Index {discriminator.Lexeme} duplicates the function name {functionName} which can only be used once in service '{serviceName}'.", discriminator.Span, 130)
+        { }
+    }
 }
