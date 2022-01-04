@@ -115,17 +115,6 @@ namespace Core.Parser
         private Token PeekToken(int index) => _tokens[index];
 
         /// <summary>
-        ///     Sets the current token stream position to the specified <paramref name="index"/>
-        /// </summary>
-        /// <param name="index"></param>
-        /// <returns></returns>
-        private Token Base(int index)
-        {
-            _index = index;
-            return _tokens[index];
-        }
-
-        /// <summary>
         ///     If the <see cref="CurrentToken"/> matches the specified <paramref name="kind"/>, advance the token stream
         ///     <see cref="_index"/> forward
         /// </summary>
