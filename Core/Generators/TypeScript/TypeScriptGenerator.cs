@@ -398,8 +398,6 @@ namespace Core.Generators.TypeScript
                     {
                         builder.AppendLine($"export enum {ed.Name} {{");
                     }
-                    var separator = is64Bit ? ": " : " = ";
-                    var afterValue = is64Bit ? "n" : "";
                     for (var i = 0; i < ed.Members.Count; i++)
                     {
                         var field = ed.Members.ElementAt(i);
@@ -411,7 +409,15 @@ namespace Core.Generators.TypeScript
                         {
                             builder.AppendLine(FormatDeprecationDoc(deprecationReason, 2));
                         }
-                        builder.AppendLine($"  {field.Name}{separator}{field.ConstantValue}{afterValue},");
+                        if (is64Bit)
+                        {
+                            builder.AppendLine($"  {field.Name}: {field.ConstantValue}n,");
+                            builder.AppendLine($"  {EscapeStringLiteral(field.ConstantValue.ToString())}: {EscapeStringLiteral(field.Name)},");
+                        }
+                        else
+                        {
+                            builder.AppendLine($"  {field.Name} = {field.ConstantValue},");
+                        }
                     }
                     builder.AppendLine(is64Bit ? "};" : "}");
                     builder.AppendLine("");
