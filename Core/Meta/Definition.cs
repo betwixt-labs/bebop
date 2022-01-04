@@ -97,13 +97,13 @@ namespace Core.Meta
     /// </summary>
     public abstract class FieldsDefinition : TopLevelDefinition
     {
-        protected FieldsDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<IField> fields, Definition? parent = null) :
+        protected FieldsDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<Field> fields, Definition? parent = null) :
             base(name, span, documentation, opcodeAttribute, parent)
         {
             Fields = fields;
         }
 
-        public ICollection<IField> Fields { get; }
+        public ICollection<Field> Fields { get; }
 
         public override IEnumerable<string> Dependencies() =>
             Fields.SelectMany(field => field.Type.Dependencies()).Distinct();
@@ -116,7 +116,7 @@ namespace Core.Meta
     /// </summary>
     public class StructDefinition : FieldsDefinition
     {
-        public StructDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<IField> fields, bool isReadOnly, Definition? parent = null) :
+        public StructDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<Field> fields, bool isReadOnly, Definition? parent = null) :
             base(name, span, documentation, opcodeAttribute, fields, parent)
         {
             IsReadOnly = isReadOnly;
@@ -161,7 +161,7 @@ namespace Core.Meta
     /// </summary>
     public class MessageDefinition : FieldsDefinition
     {
-        public MessageDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<IField> fields, Definition? parent = null) : base(name, span, documentation, opcodeAttribute, fields, parent)
+        public MessageDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<Field> fields, Definition? parent = null) : base(name, span, documentation, opcodeAttribute, fields, parent)
         {
         }
 
@@ -181,7 +181,7 @@ namespace Core.Meta
             string name,
             Span span,
             string documentation,
-            ICollection<IField> members,
+            ICollection<Field> members,
             bool isBitFlags,
             BaseType baseType,
             Definition? parent = null
@@ -192,7 +192,7 @@ namespace Core.Meta
             BaseType = baseType;
         }
 
-        public ICollection<IField> Members { get; }
+        public ICollection<Field> Members { get; }
 
         public bool IsBitFlags { get; }
 

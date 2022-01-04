@@ -512,7 +512,7 @@ namespace Core.Parser
             BaseAttribute? flagsAttribute)
         {
             
-            var fields = new List<IField>();
+            var fields = new List<Field>();
             var enumBaseType = BaseType.UInt32;
             var kindName = kind switch { AggregateKind.Enum => "enum", AggregateKind.Struct => "struct", _ => "message" };
             var aKindName = kind switch { AggregateKind.Enum => "an enum", AggregateKind.Struct => "a struct", _ => "a message" };

@@ -57,7 +57,7 @@ namespace Core.Exceptions
     [Serializable]
     class InvalidFieldException : SpanException
     {
-        public InvalidFieldException(IField field, string reason)
+        public InvalidFieldException(Field field, string reason)
             : base(reason, field.Span, 103) { }
     }
     [Serializable]
@@ -91,7 +91,7 @@ namespace Core.Exceptions
     [Serializable]
     class InvalidDeprecatedAttributeUsageException : SpanException
     {
-        public InvalidDeprecatedAttributeUsageException(IField field)
+        public InvalidDeprecatedAttributeUsageException(Field field)
             : base($"The field '{field.Name}' cannot be marked as 'deprecated' as it is not a member of a message or enum", field.Span, 107) { }
     }
     [Serializable]
@@ -127,7 +127,7 @@ namespace Core.Exceptions
     [Serializable]
     class DuplicateFieldException : SpanException
     {
-        public DuplicateFieldException(IField field, Definition definition)
+        public DuplicateFieldException(Field field, Definition definition)
             : base($"The type '{definition.Name}' already contains a definition for '{field.Name}'.", field.Span, 112) { }
     }
 

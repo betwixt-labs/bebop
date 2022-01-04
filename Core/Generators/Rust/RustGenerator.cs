@@ -971,7 +971,7 @@ namespace Core.Generators.Rust
                 { } tb => TypeName(tb, ot).Contains("'raw")
             };
 
-        private bool FieldNeedsLifetime(Definition d, IField f, OwnershipType ot = OwnershipType.Borrowed)
+        private bool FieldNeedsLifetime(Definition d, Field f, OwnershipType ot = OwnershipType.Borrowed)
         {
             var key = $"{d.Name}::{f.Name}";
             if (_needsLifetime.ContainsKey(key))
