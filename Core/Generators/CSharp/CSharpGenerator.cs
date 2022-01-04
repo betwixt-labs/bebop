@@ -5,7 +5,6 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using Core.Meta;
 using Core.Meta.Extensions;
-using Core.Meta.Interfaces;
 
 namespace Core.Generators.CSharp
 {
@@ -13,7 +12,7 @@ namespace Core.Generators.CSharp
     {
         private Version LanguageVersion = CSharpNine;
 
-        public CSharpGenerator(ISchema schema) : base(schema)
+        public CSharpGenerator(BebopSchema schema) : base(schema)
         {
         }
 

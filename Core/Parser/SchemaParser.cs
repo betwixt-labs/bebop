@@ -15,7 +15,6 @@ using Core.Lexer.Tokenization.Models;
 using Core.Meta;
 using Core.Meta.Attributes;
 using Core.Meta.Extensions;
-using Core.Meta.Interfaces;
 using Core.Parser.Extensions;
 using FlagsAttribute = Core.Meta.Attributes.FlagsAttribute;
 
@@ -245,10 +244,10 @@ namespace Core.Parser
 
 
         /// <summary>
-        ///     Parse the current input files into an <see cref="ISchema"/> object.
+        ///     Parse the current input files into an <see cref="BebopSchema"/> object.
         /// </summary>
         /// <returns></returns>
-        public async Task<ISchema> Parse()
+        public async Task<BebopSchema> Parse()
         {
             _index = 0;
             _errors.Clear();

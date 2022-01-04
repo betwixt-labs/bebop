@@ -7,7 +7,6 @@ using Core.Exceptions;
 using Core.Generators;
 using Core.Logging;
 using Core.Meta;
-using Core.Meta.Interfaces;
 using Core.Parser;
 
 namespace Compiler
@@ -159,7 +158,7 @@ namespace Compiler
             }
         }
 
-        private static async Task<ISchema> ParseAndValidateSchemas(List<string> schemaPaths, string nameSpace)
+        private static async Task<BebopSchema> ParseAndValidateSchemas(List<string> schemaPaths, string nameSpace)
         {
             var parser = new SchemaParser(schemaPaths, nameSpace);
             var schema = await parser.Parse();
@@ -167,7 +166,7 @@ namespace Compiler
             return schema;
         }
 
-        private static async Task<int> CompileSchema(Func<ISchema, BaseGenerator> makeGenerator,
+        private static async Task<int> CompileSchema(Func<BebopSchema, BaseGenerator> makeGenerator,
             List<string> schemaPaths,
             FileInfo outputFile,
             string nameSpace, Version? langVersion)

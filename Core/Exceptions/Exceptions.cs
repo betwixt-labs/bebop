@@ -4,7 +4,6 @@ using System.IO;
 using Core.Lexer.Tokenization;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta;
-using Core.Meta.Interfaces;
 
 namespace Core.Exceptions
 {

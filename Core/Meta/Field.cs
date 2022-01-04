@@ -1,7 +1,6 @@
 ﻿using System.Numerics;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta.Attributes;
-using Core.Meta.Interfaces;
 
 namespace Core.Meta
 {
@@ -53,6 +52,6 @@ namespace Core.Meta
 
         public bool IsCollection() => Type is ArrayType or MapType;
 
-        public int MinimalEncodedSize(ISchema schema) => Type.MinimalEncodedSize(schema);
+        public int MinimalEncodedSize(BebopSchema schema) => Type.MinimalEncodedSize(schema);
     }
 }
