@@ -1351,7 +1351,7 @@ namespace Core.Parser
             for (var i = 0; i < 16; ++i)
             {
                 // layer over itself with xor. Every 4th byte starts back at least significant bits.
-                d ^= (uint)s[i] << (i % 4);
+                d ^= (uint)s[i] << (i % 4 * 8);
             }
 
             return d;
