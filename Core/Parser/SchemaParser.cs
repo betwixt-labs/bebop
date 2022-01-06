@@ -721,8 +721,8 @@ namespace Core.Parser
             StartScope();
             var name = definitionToken.Lexeme;
             var branches = new List<ServiceBranch>();
-            var usedFunctionNames = new HashSet<string>();
-            var usedDiscriminators = new HashSet<uint>();
+            var usedFunctionNames = new HashSet<string>(){"name", "Name"};
+            var usedDiscriminators = new HashSet<uint>(){0};
             
             var definitionEnd = CurrentToken.Span;
             var errored = false;
@@ -786,9 +786,27 @@ namespace Core.Parser
                 }
                 Eat(TokenKind.Semicolon);
                 definitionEnd = CurrentToken.Span;
-                branches.Add(new ServiceBranch((ushort)discriminator, definition));
+                branches.Add(new((ushort)discriminator, definition));
             }
+
             var definitionSpan = definitionToken.Span.Combine(definitionEnd);
+            
+            // add the implicit "ServiceName" function
+            StartScope();
+            var opcodeZero = new OpcodeAttribute("0", true);
+            var serviceNameReturnStruct = new StructDefinition($"_{name}NameReturn", definitionSpan, "", opcodeZero, new List<Field>(){new("serviceName", new ScalarType(BaseType.String, definitionSpan, "name"), definitionSpan, null, 0, "")}, true);
+            AddDefinition(serviceNameReturnStruct);
+            var serviceNameArgsStruct = new StructDefinition($"_{name}NameArgs", definitionSpan, "",
+                opcodeZero, new List<Field>() { }, true);
+            AddDefinition(serviceNameArgsStruct);
+            var serviceNameSignature =
+                MakeFunctionSignature(name, serviceNameReturnStruct, serviceNameArgsStruct, "name", definitionSpan);
+            AddDefinition(serviceNameSignature);
+            var serviceNameDefinition = new FunctionDefinition("name", definitionSpan, "", serviceNameSignature, serviceNameArgsStruct, serviceNameReturnStruct);
+            CloseScope(serviceNameDefinition);
+            branches.Add(new(0, serviceNameDefinition));
+            
+            // make the service itself
             var serviceDefinition = new ServiceDefinition(name, definitionSpan, definitionDocumentation, branches);
             CloseScope(serviceDefinition);
             return serviceDefinition;
@@ -879,15 +897,7 @@ namespace Core.Parser
             );
             AddDefinition(argumentStruct);
             
-            var textSignature = FnSignature(returnStruct, argumentStruct);
-            var binarySignature = ShortMD5(textSignature);
-            var signature = new ConstDefinition(
-                $"_{serviceName.ToPascalCase()}{name.ToPascalCase()}Signature",
-                functionSpan,
-                $"hash('{textSignature}')",
-                new IntegerLiteral(new ScalarType(BaseType.Int32, functionSpan, "signature"), functionSpan,
-                $"0x{binarySignature:x8}")
-            );
+            var signature = MakeFunctionSignature(serviceName, returnStruct, argumentStruct, name, functionSpan);
             AddDefinition(signature);
             
             var function = new FunctionDefinition(name, functionSpan, definitionDocumentation, signature, argumentStruct, returnStruct);
@@ -1214,6 +1224,25 @@ namespace Core.Parser
                 ? BigInteger.TryParse(lexeme.Substring(2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out value)
                 : BigInteger.TryParse(lexeme, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
         }
+        
+        private ConstDefinition MakeFunctionSignature(string serviceName, StructDefinition returnStruct,
+            StructDefinition argumentStruct, string functionName, Span functionSpan)
+        {
+            var builder = new StringBuilder();
+            TypeSignature(builder, returnStruct);
+            TypeSignature(builder, argumentStruct);
+            var textSignature = builder.ToString();
+            
+            var binarySignature = ShortMD5(textSignature);
+            var signature = new ConstDefinition(
+                $"_{serviceName.ToPascalCase()}{functionName.ToPascalCase()}Signature",
+                functionSpan,
+                $"hash('{textSignature}')",
+                new IntegerLiteral(new ScalarType(BaseType.Int32, functionSpan, "signature"), functionSpan,
+                    $"0x{binarySignature:x8}")
+            );
+            return signature;
+        }
 
         /// <summary>
         /// Create a text signature of this type. It should include all details which pertain to the binary
@@ -1297,14 +1326,6 @@ namespace Core.Parser
             return builder;
         }
 
-        private string FnSignature(StructDefinition returnStruct, StructDefinition argsStruct)
-        {
-            var builder = new StringBuilder();
-            TypeSignature(builder, returnStruct);
-            TypeSignature(builder, argsStruct);
-            return builder.ToString();
-        }
-        
         /// <summary>
         /// Calculate the MD5 hash of a UTF8 string.
         /// </summary>
