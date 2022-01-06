@@ -67,9 +67,9 @@ namespace Core.Meta
     /// A base class for definitions that can have an opcode, and are therefore valid at the "top level" of a Bebop packet.
     /// (In other words: struct, message, union. But you can't send a raw enum over the wire or a service.)
     /// </summary>
-    public abstract class EncodableDefinition : Definition
+    public abstract class RecordDefinition : Definition
     {
-        protected EncodableDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, Definition? parent = null) :
+        protected RecordDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, Definition? parent = null) :
             base(name, span, documentation, parent)
         {
             OpcodeAttribute = opcodeAttribute;
@@ -94,7 +94,7 @@ namespace Core.Meta
     /// <summary>
     /// A base class for definitions that are an aggregate of fields. (struct, message)
     /// </summary>
-    public abstract class FieldsDefinition : EncodableDefinition
+    public abstract class FieldsDefinition : RecordDefinition
     {
         protected FieldsDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<Field> fields, Definition? parent = null) :
             base(name, span, documentation, opcodeAttribute, parent)
@@ -205,9 +205,9 @@ namespace Core.Meta
     public readonly struct UnionBranch
     {
         public readonly byte Discriminator;
-        public readonly EncodableDefinition Definition;
+        public readonly RecordDefinition Definition;
 
-        public UnionBranch(byte discriminator, EncodableDefinition definition)
+        public UnionBranch(byte discriminator, RecordDefinition definition)
         {
             Discriminator = discriminator;
             Definition = definition;
@@ -226,7 +226,7 @@ namespace Core.Meta
         }
     }
 
-    public class UnionDefinition : EncodableDefinition
+    public class UnionDefinition : RecordDefinition
     {
         public UnionDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<UnionBranch> branches, Definition? parent = null) : base(name, span, documentation, opcodeAttribute, parent)
         {

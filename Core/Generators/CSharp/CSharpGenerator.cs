@@ -95,7 +95,7 @@ namespace Core.Generators.CSharp
                     builder.AppendLine("}");
                     builder.AppendLine();
                 }
-                else if (definition is EncodableDefinition)
+                else if (definition is RecordDefinition)
                 {
                     if (definition is FieldsDefinition fd)
                     {
@@ -876,7 +876,7 @@ namespace Core.Generators.CSharp
             return builder.ToString();
         }
 
-        private string CompileGetByteCount(EncodableDefinition definition, bool isAccurate)
+        private string CompileGetByteCount(RecordDefinition definition, bool isAccurate)
         {
             var builder = new IndentedStringBuilder();
             var propertyName = isAccurate ? "ByteCount" : "MaxByteCount";

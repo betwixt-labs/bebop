@@ -685,7 +685,7 @@ namespace Core.Parser
             {
                 _errors.Add(new InvalidReadOnlyException(definition));
             }
-            if (opcodeAttribute != null && definition is not EncodableDefinition)
+            if (opcodeAttribute != null && definition is not RecordDefinition)
             {
                 _errors.Add(new InvalidOpcodeAttributeUsageException(definition));
             }
@@ -986,7 +986,7 @@ namespace Core.Parser
                     CancelScope();
                     return null;
                 }
-                if (definition is not EncodableDefinition td)
+                if (definition is not RecordDefinition td)
                 {
                     _errors.Add(new InvalidUnionBranchException(definition));
                     return null;

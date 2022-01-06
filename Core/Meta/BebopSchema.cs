@@ -150,13 +150,13 @@ namespace Core.Meta
                 {
                     errors.Add(new ReservedIdentifierException(definition.Name, definition.Span));
                 }
-                if (definition is EncodableDefinition td && td.OpcodeAttribute != null)
+                if (definition is RecordDefinition td && td.OpcodeAttribute != null)
                 {
                     if (!td.OpcodeAttribute.TryValidate(out var opcodeReason))
                     {
                         errors.Add(new InvalidOpcodeAttributeValueException(td, opcodeReason));
                     }
-                    if (Definitions.Values.Count(d => d is EncodableDefinition td2 && td2.OpcodeAttribute != null && td2.OpcodeAttribute.Value.Equals(td.OpcodeAttribute.Value)) > 1)
+                    if (Definitions.Values.Count(d => d is RecordDefinition td2 && td2.OpcodeAttribute != null && td2.OpcodeAttribute.Value.Equals(td.OpcodeAttribute.Value)) > 1)
                     {
                         errors.Add(new DuplicateOpcodeException(td));
                     }

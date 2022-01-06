@@ -825,7 +825,7 @@ namespace Core.Generators.Rust
             builder.AppendEnd("]");
         }
 
-        private static void WriteRecordImpl(IndentedStringBuilder builder, string name, EncodableDefinition d)
+        private static void WriteRecordImpl(IndentedStringBuilder builder, string name, RecordDefinition d)
         {
             if (d.OpcodeAttribute is { Value: not (null or "") })
             {
