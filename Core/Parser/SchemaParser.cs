@@ -50,12 +50,11 @@ namespace Core.Parser
         /// <summary>
         /// Add a definition to the current scope and the primary definitions map.
         /// </summary>
-        /// <param name="name">Definition name.</param>
         /// <param name="definition"></param>
-        private void AddDefinition(string name, Definition definition)
+        private void AddDefinition(Definition definition)
         {
-            if (_definitions.ContainsKey(name)) return;
-            _definitions.Add(name, definition);
+            if (_definitions.ContainsKey(definition.Name)) return;
+            _definitions.Add(definition.Name, definition);
             if (_scopes.Count > 0)
             {
                 _scopes.Peek().Add(definition);
@@ -71,14 +70,14 @@ namespace Core.Parser
         /// Close the current scope, setting the parent of every enclosed definition to the provided Definition and adding the Definition at the end, in the next scope down.
         /// </summary>
         /// <param name="parent">Definition to take ownership of all enclosed definitions and push to the enclosing scope.</param>
-        private void CloseScope(string name, Definition parent)
+        private void CloseScope(Definition parent)
         {
             var scope = _scopes.Pop();
             foreach (var definition in scope)
             {
                 definition.Parent = parent;
             }
-            AddDefinition(name, parent);
+            AddDefinition(parent);
         }
 
         private void CancelScope()
@@ -360,6 +359,9 @@ namespace Core.Parser
                     throw new UnexpectedTokenException(TokenKind.Service, CurrentToken, "Did not expect service definition after opcode. (Services are not allowed opcodes).");
                 }
 
+                _tokenizer.AddString("rpc_request_header", RpcSchema.RpcRequestHeader);
+                _tokenizer.AddString("rpc_response_header", RpcSchema.RpcResponseHeader);
+                _tokenizer.AddString("rpc_datagram", RpcSchema.RpcDatagram);
                 return ParseServiceDefinition(CurrentToken, definitionDocumentation);
             }
             if (Eat(TokenKind.Union))
@@ -413,7 +415,7 @@ namespace Core.Parser
             }
             else
             {
-                AddDefinition(name, definition);
+                AddDefinition(definition);
             }
             return definition;
         }
@@ -695,7 +697,7 @@ namespace Core.Parser
             }
             else
             {
-                CloseScope(name, definition);
+                CloseScope(definition);
             }
             return definition;
         }
@@ -788,7 +790,7 @@ namespace Core.Parser
             }
             var definitionSpan = definitionToken.Span.Combine(definitionEnd);
             var serviceDefinition = new ServiceDefinition(name, definitionSpan, definitionDocumentation, branches);
-            CloseScope(name, serviceDefinition);
+            CloseScope(serviceDefinition);
             return serviceDefinition;
         }
 
@@ -865,7 +867,7 @@ namespace Core.Parser
                     : new List<Field> {new("value", returnType, returnTypeSpan, null, 0, "")},
                 isReadonly
             );
-            AddDefinition(returnStruct.Name, returnStruct);
+            AddDefinition(returnStruct);
 
             var argumentStruct = new StructDefinition(
                 $"_{serviceName.ToPascalCase()}{name.ToPascalCase()}Args",
@@ -875,7 +877,7 @@ namespace Core.Parser
                 argList,
                 isReadonly
             );
-            AddDefinition(argumentStruct.Name, argumentStruct);
+            AddDefinition(argumentStruct);
             
             var textSignature = FnSignature(returnStruct, argumentStruct);
             var binarySignature = ShortMD5(textSignature);
@@ -886,10 +888,10 @@ namespace Core.Parser
                 new IntegerLiteral(new ScalarType(BaseType.Int32, functionSpan, "signature"), functionSpan,
                 $"0x{binarySignature:x8}")
             );
-            AddDefinition(signature.Name, signature);
+            AddDefinition(signature);
             
             var function = new FunctionDefinition(name, functionSpan, definitionDocumentation, signature, argumentStruct, returnStruct);
-            CloseScope(name, function);
+            CloseScope(function);
             
             return function;
         }
@@ -995,7 +997,7 @@ namespace Core.Parser
             }
             var definitionSpan = definitionToken.Span.Combine(definitionEnd);
             var unionDefinition = new UnionDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, branches);
-            CloseScope(name, unionDefinition);
+            CloseScope(unionDefinition);
             if (unionDefinition.Branches.Count == 0)
             {
                 _errors.Add(new EmptyUnionException(unionDefinition));
