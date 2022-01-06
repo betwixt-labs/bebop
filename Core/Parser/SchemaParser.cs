@@ -721,7 +721,6 @@ namespace Core.Parser
             StartScope();
             var name = definitionToken.Lexeme;
             var branches = new List<ServiceBranch>();
-            var usedFunctionNames = new HashSet<string>(){"name", "Name"};
             var usedDiscriminators = new HashSet<uint>(){0};
             
             var definitionEnd = CurrentToken.Span;
@@ -780,10 +779,6 @@ namespace Core.Parser
                     CancelScope();
                     return null;
                 }
-                if (!usedFunctionNames.Add(definition.Name))
-                {
-                    _errors.Add(new DuplicateServiceFunctionNameException(indexToken, name, definition.Name));
-                }
                 Eat(TokenKind.Semicolon);
                 definitionEnd = CurrentToken.Span;
                 branches.Add(new((ushort)discriminator, definition));
@@ -792,18 +787,15 @@ namespace Core.Parser
             var definitionSpan = definitionToken.Span.Combine(definitionEnd);
             
             // add the implicit "ServiceName" function
-            StartScope();
-            var opcodeZero = new OpcodeAttribute("0", true);
-            var serviceNameReturnStruct = new StructDefinition($"_{name}NameReturn", definitionSpan, "", opcodeZero, new List<Field>(){new("serviceName", new ScalarType(BaseType.String, definitionSpan, "name"), definitionSpan, null, 0, "")}, true);
+            var serviceNameReturnStruct = new StructDefinition($"_{name}NameReturn", definitionSpan, "", null, new List<Field>(){new("serviceName", new ScalarType(BaseType.String, definitionSpan, "name"), definitionSpan, null, 0, "")}, true);
             AddDefinition(serviceNameReturnStruct);
             var serviceNameArgsStruct = new StructDefinition($"_{name}NameArgs", definitionSpan, "",
-                opcodeZero, new List<Field>() { }, true);
+                null, new List<Field>() { }, true);
             AddDefinition(serviceNameArgsStruct);
             var serviceNameSignature =
                 MakeFunctionSignature(name, serviceNameReturnStruct, serviceNameArgsStruct, "name", definitionSpan);
             AddDefinition(serviceNameSignature);
             var serviceNameDefinition = new FunctionDefinition("name", definitionSpan, "", serviceNameSignature, serviceNameArgsStruct, serviceNameReturnStruct);
-            CloseScope(serviceNameDefinition);
             branches.Add(new(0, serviceNameDefinition));
             
             // make the service itself
@@ -813,7 +805,7 @@ namespace Core.Parser
         }
 
         /// <summary>
-        ///     Parses an rpc function definition and adds it to the <see cref="_definitions"/> collection.
+        ///     Parses an rpc function definition and adds its types to the <see cref="_definitions"/> collection.
         /// </summary>
         /// <param name="serviceName">Name of the service this function is part of.</param>
         /// <para name="serviceIndex">Index of this function within the service.</para>
@@ -873,13 +865,11 @@ namespace Core.Parser
 
             var functionSpan = functionStart.Combine(CurrentToken.Span);
             
-            StartScope();
-            var indexAsOpcode = new OpcodeAttribute(serviceIndex, true);
             var returnStruct = new StructDefinition(
                 $"_{serviceName.ToPascalCase()}{name.ToPascalCase()}Return",
                 returnTypeSpan,
                 $"Wrapped return type of '{name}' in rpc service '{serviceName}'.",
-                indexAsOpcode,
+                null,
                 returnType is null
                     ? new List<Field> {}
                     : new List<Field> {new("value", returnType, returnTypeSpan, null, 0, "")},
@@ -891,7 +881,7 @@ namespace Core.Parser
                 $"_{serviceName.ToPascalCase()}{name.ToPascalCase()}Args",
                 argsSpan,
                 $"Wrapped arguments type of '{name}' in rpc service '{serviceName}'.",
-                indexAsOpcode,
+                null,
                 argList,
                 isReadonly
             );
@@ -901,8 +891,6 @@ namespace Core.Parser
             AddDefinition(signature);
             
             var function = new FunctionDefinition(name, functionSpan, definitionDocumentation, signature, argumentStruct, returnStruct);
-            CloseScope(function);
-            
             return function;
         }
 

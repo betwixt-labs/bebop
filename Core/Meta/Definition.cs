@@ -248,6 +248,11 @@ namespace Core.Meta
     {
         public ServiceDefinition(string name, Span span, string documentation, ICollection<ServiceBranch> branches) : base(name, span, documentation)
         {
+            foreach (var b in branches)
+            {
+                b.Definition.Parent = this;
+            }
+
             Branches = branches;
         }
 
@@ -256,6 +261,9 @@ namespace Core.Meta
         public override IEnumerable<string> Dependencies() => Branches.SelectMany(f => f.Definition.Dependencies());
     }
 
+    /// <summary>
+    /// Functions at this time are only stored within service branches and not globally.
+    /// </summary>
     public class FunctionDefinition : Definition
     {
         public FunctionDefinition(string name, Span span, string documentation, ConstDefinition signature, StructDefinition argumentStruct, StructDefinition returnStruct, Definition? parent = null)

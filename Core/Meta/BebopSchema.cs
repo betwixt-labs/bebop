@@ -4,6 +4,7 @@ using System.Linq;
 using System.Numerics;
 using Core.Exceptions;
 using Core.Lexer.Tokenization.Models;
+using Core.Meta.Extensions;
 using Core.Parser.Extensions;
 
 namespace Core.Meta
@@ -199,6 +200,23 @@ namespace Core.Meta
                         }
                         default:
                             break;
+                    }
+                }
+                if (definition is ServiceDefinition sd)
+                {
+                    var usedFunctionNames = new HashSet<string>();
+                    
+                    foreach (var b in sd.Branches)
+                    {
+                        var fnd = b.Definition;
+                        if (!usedFunctionNames.Add(fnd.Name.ToSnakeCase()))
+                        {
+                            errors.Add(new DuplicateServiceFunctionNameException(b.Discriminator, sd.Name, fnd.Name, fnd.Span));
+                        }
+                        if (fnd.Parent != sd)
+                        {
+                            throw new Exception("A function was registered to multiple services, this is an error in bebop core.");
+                        }
                     }
                 }
                 if (definition is EnumDefinition ed)

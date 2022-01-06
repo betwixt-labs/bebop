@@ -269,8 +269,8 @@ namespace Core.Exceptions
     [Serializable]
     class DuplicateServiceFunctionNameException : SpanException
     {
-        public DuplicateServiceFunctionNameException(Token discriminator, string serviceName, string functionName)
-            : base($"Index {discriminator.Lexeme} duplicates the function name '{functionName}' which can only be used once in service '{serviceName}'.", discriminator.Span, 130)
+        public DuplicateServiceFunctionNameException(ushort discriminator, string serviceName, string functionName, Span span)
+            : base($"Index {discriminator} duplicates the function name '{functionName}' which can only be used once in service '{serviceName}'.", span, 130)
         { }
     }
 
