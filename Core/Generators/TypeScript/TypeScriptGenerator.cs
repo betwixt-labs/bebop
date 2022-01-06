@@ -421,7 +421,7 @@ namespace Core.Generators.TypeScript
                     builder.AppendLine(is64Bit ? "};" : "}");
                     builder.AppendLine("");
                 }
-                else if (definition is TopLevelDefinition td)
+                else if (definition is EncodableDefinition td)
                 {
                     if (definition is FieldsDefinition fd)
                     {

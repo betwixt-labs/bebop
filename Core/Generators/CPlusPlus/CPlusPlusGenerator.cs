@@ -29,11 +29,11 @@ namespace Core.Generators.CPlusPlus
         }
 
         /// <summary>
-        /// Generate the body of the <c>encode</c> function for the given <see cref="TopLevelDefinition"/>.
+        /// Generate the body of the <c>encode</c> function for the given <see cref="EncodableDefinition"/>.
         /// </summary>
         /// <param name="definition">The definition to generate code for.</param>
         /// <returns>The generated CPlusPlus <c>encode</c> function body.</returns>
-        public string CompileEncode(TopLevelDefinition definition)
+        public string CompileEncode(EncodableDefinition definition)
         {
             return definition switch
             {
@@ -144,11 +144,11 @@ namespace Core.Generators.CPlusPlus
         }
 
         /// <summary>
-        /// Generate the body of the <c>decode</c> function for the given <see cref="TopLevelDefinition"/>.
+        /// Generate the body of the <c>decode</c> function for the given <see cref="EncodableDefinition"/>.
         /// </summary>
         /// <param name="definition">The definition to generate code for.</param>
         /// <returns>The generated CPlusPlus <c>decode</c> function body.</returns>
-        public string CompileDecode(TopLevelDefinition definition)
+        public string CompileDecode(EncodableDefinition definition)
         {
             return definition switch
             {
@@ -402,7 +402,7 @@ namespace Core.Generators.CPlusPlus
                         builder.AppendLine("};");
                         builder.AppendLine("");
                         break;
-                    case TopLevelDefinition td:
+                    case EncodableDefinition td:
                         builder.AppendLine($"struct {td.Name} {{");
                         builder.AppendLine($"  static const size_t minimalEncodedSize = {td.MinimalEncodedSize(Schema)};");
                         if (td.OpcodeAttribute != null)

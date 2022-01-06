@@ -112,7 +112,7 @@ namespace Core.Exceptions
     [Serializable]
     class DuplicateOpcodeException : SpanException
     {
-        public DuplicateOpcodeException(TopLevelDefinition definition)
+        public DuplicateOpcodeException(EncodableDefinition definition)
             : base($"Multiple definitions for opcode '{definition.OpcodeAttribute?.Value}'", definition.Span, 110) { }
     }
 
@@ -270,7 +270,15 @@ namespace Core.Exceptions
     class DuplicateServiceFunctionNameException : SpanException
     {
         public DuplicateServiceFunctionNameException(Token discriminator, string serviceName, string functionName)
-            : base($"Index {discriminator.Lexeme} duplicates the function name {functionName} which can only be used once in service '{serviceName}'.", discriminator.Span, 130)
+            : base($"Index {discriminator.Lexeme} duplicates the function name '{functionName}' which can only be used once in service '{serviceName}'.", discriminator.Span, 130)
+        { }
+    }
+
+    [Serializable]
+    class DuplicateArgumentName : SpanException
+    {
+        public DuplicateArgumentName(Span span, string serviceName, string serviceIndex, string argumentName)
+            : base($"Index {serviceIndex} in service '{serviceName}' has duplicated argument name {argumentName}.", span, 130)
         { }
     }
 }

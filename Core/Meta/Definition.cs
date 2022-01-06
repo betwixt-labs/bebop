@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta.Attributes;
 
@@ -64,11 +65,11 @@ namespace Core.Meta
 
     /// <summary>
     /// A base class for definitions that can have an opcode, and are therefore valid at the "top level" of a Bebop packet.
-    /// (In other words: struct, message, union. But you can't send a raw enum over the wire.)
+    /// (In other words: struct, message, union. But you can't send a raw enum over the wire or a service.)
     /// </summary>
-    public abstract class TopLevelDefinition : Definition
+    public abstract class EncodableDefinition : Definition
     {
-        protected TopLevelDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, Definition? parent = null) :
+        protected EncodableDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, Definition? parent = null) :
             base(name, span, documentation, parent)
         {
             OpcodeAttribute = opcodeAttribute;
@@ -93,7 +94,7 @@ namespace Core.Meta
     /// <summary>
     /// A base class for definitions that are an aggregate of fields. (struct, message)
     /// </summary>
-    public abstract class FieldsDefinition : TopLevelDefinition
+    public abstract class FieldsDefinition : EncodableDefinition
     {
         protected FieldsDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<Field> fields, Definition? parent = null) :
             base(name, span, documentation, opcodeAttribute, parent)
@@ -204,9 +205,9 @@ namespace Core.Meta
     public readonly struct UnionBranch
     {
         public readonly byte Discriminator;
-        public readonly TopLevelDefinition Definition;
+        public readonly EncodableDefinition Definition;
 
-        public UnionBranch(byte discriminator, TopLevelDefinition definition)
+        public UnionBranch(byte discriminator, EncodableDefinition definition)
         {
             Discriminator = discriminator;
             Definition = definition;
@@ -225,7 +226,7 @@ namespace Core.Meta
         }
     }
 
-    public class UnionDefinition : TopLevelDefinition
+    public class UnionDefinition : EncodableDefinition
     {
         public UnionDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<UnionBranch> branches, Definition? parent = null) : base(name, span, documentation, opcodeAttribute, parent)
         {
@@ -257,12 +258,9 @@ namespace Core.Meta
 
     public class FunctionDefinition : Definition
     {
-        public FunctionDefinition(string name, Span span, string documentation, ServiceDefinition parent, ConstDefinition signature, StructDefinition argumentStruct, StructDefinition returnStruct) : base(name, span, documentation, parent)
+        public FunctionDefinition(string name, Span span, string documentation, ConstDefinition signature, StructDefinition argumentStruct, StructDefinition returnStruct, Definition? parent = null)
+            : base(name, span, documentation, parent)
         {
-            signature.Parent = this;
-            argumentStruct.Parent = this;
-            returnStruct.Parent = this;
-
             Signature = signature;
             ArgumentStruct = argumentStruct;
             ReturnStruct = returnStruct;

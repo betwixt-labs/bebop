@@ -4,11 +4,11 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Core.Exceptions;
 using Core.IO;
-using Core.Lexer;
 using Core.Lexer.Extensions;
 using Core.Lexer.Tokenization;
 using Core.Lexer.Tokenization.Models;
@@ -22,14 +22,21 @@ namespace Core.Parser
 {
     public class SchemaParser
     {
+        /// <summary>
+        /// Definitions which are allowed to appear at the top level of a bebop file.
+        /// </summary>
         private readonly HashSet<TokenKind> _topLevelDefinitionKinds = new() { TokenKind.Enum, TokenKind.Struct, TokenKind.Message, TokenKind.Union, TokenKind.Service };
         /// <summary>
         /// Tokens we can use to recover from practically anywhere.
         /// </summary>
-        private readonly HashSet<TokenKind> _universalFollowKinds = new() { TokenKind.Enum, TokenKind.Struct, TokenKind.Message, TokenKind.Union, TokenKind.EndOfFile };
+        private readonly HashSet<TokenKind> _universalFollowKinds = new() { TokenKind.Enum, TokenKind.Struct, TokenKind.Message, TokenKind.Union, TokenKind.Service, TokenKind.EndOfFile };
         private readonly Stack<List<Definition>> _scopes = new();
         private readonly Tokenizer _tokenizer;
         private readonly Dictionary<string, Definition> _definitions = new();
+        /// <summary>
+        /// Whether the RPC boilerplate has already been generated.
+        /// </summary>
+        private bool _rpcBoilerplateGenerated = false;
         /// <summary>
         /// A set of references to named types found in message/struct definitions:
         /// the left token is the type name, and the right token is the definition it's used in (used to report a helpful error).
@@ -344,6 +351,10 @@ namespace Core.Parser
             }
             if (Eat(TokenKind.Service))
             {
+                if (isReadOnly)
+                {
+                    throw new UnexpectedTokenException(TokenKind.Service, CurrentToken, "Did not expect service definition after readonly. (Services are not allowed to be readonly).");
+                }
                 if (opcodeAttribute != null)
                 {
                     throw new UnexpectedTokenException(TokenKind.Service, CurrentToken, "Did not expect service definition after opcode. (Services are not allowed opcodes).");
@@ -672,7 +683,7 @@ namespace Core.Parser
             {
                 _errors.Add(new InvalidReadOnlyException(definition));
             }
-            if (opcodeAttribute != null && definition is not TopLevelDefinition)
+            if (opcodeAttribute != null && definition is not EncodableDefinition)
             {
                 _errors.Add(new InvalidOpcodeAttributeUsageException(definition));
             }
@@ -693,8 +704,8 @@ namespace Core.Parser
         ///     Parses an rpc service definition and adds it to the <see cref="_definitions"/> collection.
         /// </summary>
         /// <param name="definitionToken">The token that names the union to define.</param>
-        /// <param name="definitionDocumentation">The documentation above the union definition.</param>
-        /// <returns>The parsed union definition.</returns>
+        /// <param name="definitionDocumentation">The documentation above the service definition.</param>
+        /// <returns>The parsed rpc service definition.</returns>
         private Definition? ParseServiceDefinition(Token definitionToken,
             string definitionDocumentation)
         {
@@ -710,7 +721,6 @@ namespace Core.Parser
             var branches = new List<ServiceBranch>();
             var usedFunctionNames = new HashSet<string>();
             var usedDiscriminators = new HashSet<uint>();
-
             
             var definitionEnd = CurrentToken.Span;
             var errored = false;
@@ -730,7 +740,7 @@ namespace Core.Parser
                     break;
                 }
 
-                const string? indexHint = "Branches in a service must be explicitly indexed: service U { 1 -> void doThing(int32 myarg); 2 -> bool foo(float32 a, float32 b); }";
+                const string indexHint = "Branches in a service must be explicitly indexed: service U { 1 -> void doThing(int32 myarg); 2 -> bool foo(float32 a, float32 b); }";
                 var indexToken = CurrentToken;
                 var indexLexeme = indexToken.Lexeme;
                 uint discriminator;
@@ -758,10 +768,10 @@ namespace Core.Parser
                 {
                     _errors.Add(e);
                     errored = true;
-                    SkipAndSkipUntil(new(serviceFieldFollowKinds.Concat(_universalFollowKinds)));
+                    SkipAndSkipUntil(new HashSet<TokenKind>(serviceFieldFollowKinds.Concat(_universalFollowKinds)));
                     continue;
                 }
-                FunctionDefinition definition = ParseFunction();
+                var definition = ParseFunctionDefinition(name, indexLexeme);
                 if (definition is null)
                 {
                     // Just escape out of there if there's a parsing error in one of the definitions.
@@ -780,6 +790,108 @@ namespace Core.Parser
             var serviceDefinition = new ServiceDefinition(name, definitionSpan, definitionDocumentation, branches);
             CloseScope(name, serviceDefinition);
             return serviceDefinition;
+        }
+
+        /// <summary>
+        ///     Parses an rpc function definition and adds it to the <see cref="_definitions"/> collection.
+        /// </summary>
+        /// <param name="serviceName">Name of the service this function is part of.</param>
+        /// <para name="serviceIndex">Index of this function within the service.</para>
+        /// <returns>The parsed rpc function definition.</returns>
+        private FunctionDefinition? ParseFunctionDefinition(string serviceName, string serviceIndex)
+        {
+            var definitionDocumentation = ConsumeBlockComments();
+            
+            // The start of the function is the definition token of the function
+            var definitionToken = CurrentToken;
+            var functionStart = CurrentToken.Span;
+
+            var isReadonly = Eat(TokenKind.ReadOnly);
+            var returnType = EatPseudoKeyword("void") ? null : ParseType(definitionToken);
+            var returnTypeSpan = functionStart.Combine(CurrentToken.Span);
+
+            const string hint = "A function must be defined with a return type, name, and arguments such as 'RetType myFunction(ArgType arg1, OtherArg arg2);' or 'void emptyFn(void);'";
+            var name = ExpectLexeme(TokenKind.Identifier, hint);
+            
+            Expect(TokenKind.OpenParenthesis, hint);
+
+            var argList = new List<Field>();
+            var argsStart = CurrentToken.Span;
+            if (EatPseudoKeyword("void"))
+            {
+                Expect(TokenKind.CloseParenthesis, hint);
+            }
+            else
+            {
+                // read parameter list
+                while (true)
+                {
+                    var paramStart = CurrentToken.Span;
+                    var paramType = ParseType(definitionToken);
+                    var paramName = ExpectLexeme(TokenKind.Identifier, hint);
+                    var paramSpan = paramStart.Combine(CurrentToken.Span);
+                    
+                    if (argList.Any(t => t.Name.Equals(paramName)))
+                    {
+                        _errors.Add(new DuplicateArgumentName(definitionToken.Span.Combine(CurrentToken.Span), serviceName, serviceIndex, paramName));
+                    }
+                    else
+                    {
+                        argList.Add(new Field(paramName, paramType, paramSpan, null, 0, ""));
+                    }
+                    
+                    if (Eat(TokenKind.CloseParenthesis))
+                    {
+                        break;
+                    }
+                    Expect(TokenKind.Comma, "Function arguments must be separated by commas");
+                }
+            }
+            var argsSpan = argsStart.Combine(CurrentToken.Span);
+            
+            Expect(TokenKind.Semicolon, "Function definition must end with a ';' semicolon");
+
+            var functionSpan = functionStart.Combine(CurrentToken.Span);
+            
+            StartScope();
+            var indexAsOpcode = new OpcodeAttribute(serviceIndex, true);
+            var returnStruct = new StructDefinition(
+                $"_{serviceName.ToPascalCase()}{name.ToPascalCase()}Return",
+                returnTypeSpan,
+                $"Wrapped return type of '{name}' in rpc service '{serviceName}'.",
+                indexAsOpcode,
+                returnType is null
+                    ? new List<Field> {}
+                    : new List<Field> {new("value", returnType, returnTypeSpan, null, 0, "")},
+                isReadonly
+            );
+            AddDefinition(returnStruct.Name, returnStruct);
+
+            var argumentStruct = new StructDefinition(
+                $"_{serviceName.ToPascalCase()}{name.ToPascalCase()}Args",
+                argsSpan,
+                $"Wrapped arguments type of '{name}' in rpc service '{serviceName}'.",
+                indexAsOpcode,
+                argList,
+                isReadonly
+            );
+            AddDefinition(argumentStruct.Name, argumentStruct);
+            
+            var textSignature = FnSignature(returnStruct, argumentStruct);
+            var binarySignature = ShortMD5(textSignature);
+            var signature = new ConstDefinition(
+                $"_{serviceName.ToPascalCase()}{name.ToPascalCase()}Signature",
+                functionSpan,
+                $"hash('{textSignature}')",
+                new IntegerLiteral(new ScalarType(BaseType.Int32, functionSpan, "signature"), functionSpan,
+                $"0x{binarySignature:x8}")
+            );
+            AddDefinition(signature.Name, signature);
+            
+            var function = new FunctionDefinition(name, functionSpan, definitionDocumentation, signature, argumentStruct, returnStruct);
+            CloseScope(name, function);
+            
+            return function;
         }
 
         /// <summary>
@@ -862,7 +974,7 @@ namespace Core.Parser
                     CancelScope();
                     return null;
                 }
-                if (definition is not TopLevelDefinition td)
+                if (definition is not EncodableDefinition td)
                 {
                     _errors.Add(new InvalidUnionBranchException(definition));
                     return null;
@@ -1099,6 +1211,127 @@ namespace Core.Parser
             return lexeme.ToLowerInvariant().StartsWith("0x")
                 ? BigInteger.TryParse(lexeme.Substring(2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out value)
                 : BigInteger.TryParse(lexeme, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
+        }
+
+        /// <summary>
+        /// Create a text signature of this type. It should include all details which pertain to the binary
+        /// representation and no information which does not. It MUST always be the same for two definitions of the
+        /// same arrangement (i.e. names should not be included) and it MUST be unique for all definitions of different
+        /// arrangements (e.g. a message and a struct with the same fields MUST be different signatures).
+        /// </summary>
+        /// <param name="builder">A string builder for recursive building efficiency.</param>
+        /// <param name="type">The type whose signature should be generated.</param>
+        /// <returns></returns>
+        private StringBuilder TypeSignature(StringBuilder builder, TypeBase type)
+        {
+            switch (type)
+            {
+                // use the type name, e.g. "Float64"
+                case ScalarType st:
+                    builder.Append(st.BaseType.ToString());
+                    break;
+                case ArrayType at:
+                    builder.Append('[');
+                    TypeSignature(builder, at.MemberType);
+                    builder.Append(']');
+                    break;
+                case MapType mt:
+                    builder.Append('{');
+                    TypeSignature(builder, mt.KeyType);
+                    builder.Append(':');
+                    TypeSignature(builder, mt.ValueType);
+                    builder.Append('}');
+                    break;
+                case DefinedType dt:
+                    TypeSignature(builder, _definitions[dt.Name]);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(type.ToString());
+            }
+
+            return builder;
+        }
+
+        private StringBuilder TypeSignature(StringBuilder builder, Definition type)
+        {
+            switch (type)
+            {
+                case StructDefinition sd:
+                    builder.Append('{');
+                    foreach (var f in sd.Fields)
+                    {
+                        TypeSignature(builder, f.Type);
+                    }
+                    builder.Append('}');
+                    break;
+                case MessageDefinition md:
+                    builder.Append('{');
+                    foreach (var f in md.Fields)
+                    {
+                        builder.Append(f.ConstantValue);
+                        builder.Append(':');
+                        TypeSignature(builder, f.Type);
+                    }
+                    builder.Append('}');
+                    break;
+                case EnumDefinition ed:
+                    // TODO: Do we want to be more precise here?
+                    TypeSignature(builder, ed.ScalarType);
+                    break;
+                case UnionDefinition ud:
+                    builder.Append('<');
+                    foreach (var b in ud.Branches)
+                    {
+                        builder.Append(b.Discriminator);
+                        builder.Append(':');
+                        TypeSignature(builder, b.Definition);
+                    }
+                    builder.Append('>');
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(type.ToString());
+            }
+
+            return builder;
+        }
+
+        private string FnSignature(StructDefinition returnStruct, StructDefinition argsStruct)
+        {
+            var builder = new StringBuilder();
+            TypeSignature(builder, returnStruct);
+            TypeSignature(builder, argsStruct);
+            return builder.ToString();
+        }
+        
+        /// <summary>
+        /// Calculate the MD5 hash of a UTF8 string.
+        /// </summary>
+        /// <param name="input">String to hash.</param>
+        /// <returns>Hash bytes.</returns>
+        private static byte[] MD5(string input)
+        {
+            // Use input string to calculate MD5 hash
+            using var md5 = System.Security.Cryptography.MD5.Create();
+            var inputBytes = Encoding.UTF8.GetBytes(input);
+            return md5.ComputeHash(inputBytes);
+        }
+
+        /// <summary>
+        /// Calculate the shortened MD5 hash of a UTF8 string for function signatures.
+        /// </summary>
+        /// <param name="input">String to hash.</param>
+        /// <returns>The hash as 32 bits.</returns>
+        private static uint ShortMD5(string input)
+        {
+            var s = MD5(input);
+            uint d = 0;
+            for (var i = 0; i < 16; ++i)
+            {
+                // layer over itself with xor. Every 4th byte starts back at least significant bits.
+                d ^= (uint)s[i] << (i % 4);
+            }
+
+            return d;
         }
     }
 }
