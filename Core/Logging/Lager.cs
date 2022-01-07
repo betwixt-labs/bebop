@@ -45,7 +45,7 @@ namespace Core.Logging
             {
                 LogFormatter.MSBuild => $"{ex.Span.FileName}({ex.Span.StartColonString(',')}) : error BOP{ex.ErrorCode}: {ex.Message}",
                 LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] Issue located in '{ex.Span.FileName}' at {ex.Span.StartColonString()}: {ex.Message}",
-                LogFormatter.JSON => $@"{{""Message"": ""{ex.Message.EscapeString()}"", ""Span"": {ex.Span.ToJson()}}}",
+                LogFormatter.JSON => $@"{{""Message"": ""{ex.Message.EscapeString()}"", ""Severity"": ""error"", ""Span"": {ex.Span.ToJson()}}}",
                 _ => throw new ArgumentOutOfRangeException()
             };
         }
@@ -86,7 +86,7 @@ namespace Core.Logging
             {
                 LogFormatter.MSBuild => $"{ReservedWords.CompilerName} : fatal error BOP{msBuildErrorCode}: cannot open file '{ex.FileName}'",
                 LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] Unable to open file '{ex.FileName}'",
-                LogFormatter.JSON => $@"{{""Message"": ""{ex.Message.EscapeString()}"", ""FileName"": {ex?.FileName?.EscapeString()}}}",
+                LogFormatter.JSON => $@"{{""Message"": ""{ex.Message.EscapeString()}"", ""Severity"": ""error"", ""FileName"": {ex?.FileName?.EscapeString()}}}",
                 _ => throw new ArgumentOutOfRangeException()
             };
             await Console.Error.WriteLineAsync(message);
@@ -101,7 +101,7 @@ namespace Core.Logging
             {
                 LogFormatter.MSBuild => $"{ReservedWords.CompilerName} : fatal error BOP{ex.ErrorCode}: {ex.Message}",
                 LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] {ex.Message}",
-                LogFormatter.JSON => $@"{{""Message"": ""{ex.Message.EscapeString()}""}}",
+                LogFormatter.JSON => $@"{{""Message"": ""{ex.Message.EscapeString()}"", ""Severity"": ""error""}}",
                 _ => throw new ArgumentOutOfRangeException()
             };
             await Console.Error.WriteLineAsync(message);
@@ -118,7 +118,7 @@ namespace Core.Logging
             {
                 LogFormatter.MSBuild => $"{ReservedWords.CompilerName} : fatal error BOP{msBuildErrorCode}: {ex.Message}",
                 LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] {ex.Message}",
-                LogFormatter.JSON => $@"{{""Message"": ""{ex.Message.EscapeString()}""}}",
+                LogFormatter.JSON => $@"{{""Message"": ""{ex.Message.EscapeString()}"", ""Severity"": ""error""}}",
                 _ => throw new ArgumentOutOfRangeException()
             };
             await Console.Error.WriteLineAsync(message);
