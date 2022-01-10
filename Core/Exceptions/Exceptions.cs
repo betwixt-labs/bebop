@@ -7,6 +7,12 @@ using Core.Meta;
 
 namespace Core.Exceptions
 {
+    public enum Severity
+    {
+        Warning,
+        Error,
+    }
+
     [Serializable]
     public class CompilerException : Exception
     {
@@ -27,11 +33,13 @@ namespace Core.Exceptions
         /// A unique error code identifying the type of exception
         /// </summary>
         public int ErrorCode { get; }
+        public Severity Severity { get; }
 
-        public SpanException(string message, Span span, int errorCode) : base(message)
+        public SpanException(string message, Span span, int errorCode, Severity severity = Severity.Error) : base(message)
         {
             Span = span;
             ErrorCode = errorCode;
+            Severity = severity;
         }
     }
     [Serializable]
@@ -255,6 +263,14 @@ namespace Core.Exceptions
     {
         public InvalidEnumTypeException(TypeBase t)
             : base($"Enums must have an integer underlying type, not {t}.", t.Span, 128)
+        { }
+    }
+
+    [Serializable]
+    public class EnumZeroWarning : SpanException
+    {
+        public EnumZeroWarning(Field field)
+            : base($"Bebop recommends that 0 in an enum be reserved for a value named 'Unknown', 'Default', or similar.", field.Span, 200, Severity.Warning)
         { }
     }
 }

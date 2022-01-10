@@ -3,13 +3,16 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Core.Exceptions;
+using Core.Lexer.Tokenization.Models;
 using Core.Meta;
 using Core.Meta.Extensions;
 
 namespace Core.Logging
 {
+    public record Diagnostic(Severity Severity, string Message, [property: JsonIgnore] int ErrorCode, Span? Span) { }
 
     /// <summary>
     /// A central logging factory
@@ -39,24 +42,26 @@ namespace Core.Logging
             await Console.Error.WriteLineAsync(message);
         }
 
-        private string FormatSpanError(SpanException ex)
+        private string FormatDiagnostic(Diagnostic diagnostic)
         {
-            return Formatter switch
+            var span = diagnostic.Span;
+            switch (Formatter)
             {
-                LogFormatter.MSBuild => $"{ex.Span.FileName}({ex.Span.StartColonString(',')}) : error BOP{ex.ErrorCode}: {ex.Message}",
-                LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] Issue located in '{ex.Span.FileName}' at {ex.Span.StartColonString()}: {ex.Message}",
-                LogFormatter.JSON => $@"{{""Message"": ""{ex.Message.EscapeString()}"", ""Severity"": ""error"", ""Span"": {ex.Span.ToJson()}}}",
-                _ => throw new ArgumentOutOfRangeException()
-            };
+                case LogFormatter.MSBuild:
+                    var where = span == null ? ReservedWords.CompilerName : $"{span?.FileName}({span?.StartColonString(',')})";
+                    return $"{where} : {diagnostic.Severity.ToString().ToLowerInvariant()} BOP{diagnostic.ErrorCode}: {diagnostic.Message}";
+                case LogFormatter.Structured:
+                    where = span == null ? "" : $"Issue located in '{span?.FileName}' at {span?.StartColonString()}: ";
+                    return $"[{DateTime.Now}][Compiler][{diagnostic.Severity}] {where}{diagnostic.Message}";
+                case LogFormatter.JSON:
+                    return JsonSerializer.Serialize(diagnostic);
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
         }
 
-        /// <summary>
-        /// Format and write a <see cref="SpanException"/> 
-        /// </summary>
-        private async Task WriteSpanError(SpanException ex)
-        {
-            await Console.Error.WriteLineAsync(FormatSpanError(ex));
-        }
+        private string FormatSpanError(SpanException ex) =>
+            FormatDiagnostic(new Diagnostic(ex.Severity, ex.Message, ex.ErrorCode, ex.Span));
 
         /// <summary>
         /// Format and write a list of <see cref="SpanException"/>
@@ -64,65 +69,30 @@ namespace Core.Logging
         public async Task WriteSpanErrors(List<SpanException> exs)
         {
             var messages = exs.Select(FormatSpanError);
-            string message;
-            if (Formatter == LogFormatter.JSON)
-            {
-                message = "[" + string.Join(", ", messages) + "]";
-            }
-            else
-            {
-                message = string.Join("\n", messages);
-            }
-            await Console.Error.WriteLineAsync(message);
+            var joined = Formatter switch {
+                LogFormatter.JSON => "[" + string.Join(", ", messages) + "]",
+                _ => string.Join("\n", messages),
+            };
+            await Console.Error.WriteLineAsync(joined);
         }
 
         /// <summary>
         /// Format and write a <see cref="FileNotFoundException"/> 
         /// </summary>
-        private async Task WriteFileNotFoundError(FileNotFoundException ex)
-        {
-            const int msBuildErrorCode = 404;
-            var message = Formatter switch
-            {
-                LogFormatter.MSBuild => $"{ReservedWords.CompilerName} : fatal error BOP{msBuildErrorCode}: cannot open file '{ex.FileName}'",
-                LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] Unable to open file '{ex.FileName}'",
-                LogFormatter.JSON => $@"{{""Message"": ""{ex.Message.EscapeString()}"", ""Severity"": ""error"", ""FileName"": {ex?.FileName?.EscapeString()}}}",
-                _ => throw new ArgumentOutOfRangeException()
-            };
-            await Console.Error.WriteLineAsync(message);
-        }
+        private async Task WriteFileNotFoundError(FileNotFoundException ex) =>
+            await Console.Error.WriteLineAsync(FormatDiagnostic(new(Severity.Error, "Unable to open file: " + ex?.FileName, 404, null)));
 
         /// <summary>
         /// Format and write a <see cref="CompilerException"/> 
         /// </summary>
-        private async Task WriteCompilerException(CompilerException ex)
-        {
-            var message = Formatter switch
-            {
-                LogFormatter.MSBuild => $"{ReservedWords.CompilerName} : fatal error BOP{ex.ErrorCode}: {ex.Message}",
-                LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] {ex.Message}",
-                LogFormatter.JSON => $@"{{""Message"": ""{ex.Message.EscapeString()}"", ""Severity"": ""error""}}",
-                _ => throw new ArgumentOutOfRangeException()
-            };
-            await Console.Error.WriteLineAsync(message);
-        }
+        private async Task WriteCompilerException(CompilerException ex) =>
+            await Console.Error.WriteLineAsync(FormatDiagnostic(new(Severity.Error, ex.Message, ex.ErrorCode, null)));
 
         /// <summary>
         /// Writes an exception with no dedicated formatting method.
         /// </summary>
-        private async Task WriteBaseError(Exception ex)
-        {
-            // for when we don't know the actual error.
-            const int msBuildErrorCode = 1000;
-            var message = Formatter switch
-            {
-                LogFormatter.MSBuild => $"{ReservedWords.CompilerName} : fatal error BOP{msBuildErrorCode}: {ex.Message}",
-                LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] {ex.Message}",
-                LogFormatter.JSON => $@"{{""Message"": ""{ex.Message.EscapeString()}"", ""Severity"": ""error""}}",
-                _ => throw new ArgumentOutOfRangeException()
-            };
-            await Console.Error.WriteLineAsync(message);
-        }
+        private async Task WriteBaseError(Exception ex) =>
+            await Console.Error.WriteLineAsync(FormatDiagnostic(new(Severity.Error, ex.Message, 1000, null)));
 
         /// <summary>
         /// Writes an exception to standard error.
