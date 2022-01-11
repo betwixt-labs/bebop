@@ -12,7 +12,7 @@ using Core.Meta.Extensions;
 
 namespace Core.Logging
 {
-    public record Diagnostic(Severity Severity, string Message, [property: JsonIgnore] int ErrorCode, Span? Span) { }
+    public record Diagnostic(Severity Severity, string Message, int ErrorCode, Span? Span) { }
 
     /// <summary>
     /// A central logging factory
@@ -45,14 +45,19 @@ namespace Core.Logging
         private string FormatDiagnostic(Diagnostic diagnostic)
         {
             var span = diagnostic.Span;
+            var message = diagnostic.Message;
+            if (diagnostic.Severity == Severity.Warning)
+            {
+                message += $" (To disable this warning, run bebopc with `--no-warn {diagnostic.ErrorCode}`)";
+            }
             switch (Formatter)
             {
                 case LogFormatter.MSBuild:
                     var where = span == null ? ReservedWords.CompilerName : $"{span?.FileName}({span?.StartColonString(',')})";
-                    return $"{where} : {diagnostic.Severity.ToString().ToLowerInvariant()} BOP{diagnostic.ErrorCode}: {diagnostic.Message}";
+                    return $"{where} : {diagnostic.Severity.ToString().ToLowerInvariant()} BOP{diagnostic.ErrorCode}: {message}";
                 case LogFormatter.Structured:
                     where = span == null ? "" : $"Issue located in '{span?.FileName}' at {span?.StartColonString()}: ";
-                    return $"[{DateTime.Now}][Compiler][{diagnostic.Severity}] {where}{diagnostic.Message}";
+                    return $"[{DateTime.Now}][Compiler][{diagnostic.Severity}] {where}{message}";
                 case LogFormatter.JSON:
                     var options = new JsonSerializerOptions { Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) } };
                     return JsonSerializer.Serialize(diagnostic, options);
@@ -75,6 +80,12 @@ namespace Core.Logging
                 LogFormatter.JSON => "[" + string.Join(",\n", messages) + "]",
                 _ => string.Join("\n", messages),
             };
+
+            if (string.IsNullOrWhiteSpace(joined))
+            {
+                // Don't print a single blank line.
+                return;
+            }
             await Console.Error.WriteLineAsync(joined);
         }
 

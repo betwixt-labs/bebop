@@ -167,11 +167,8 @@ namespace Compiler
             }
 
             var schema = await ParseAndValidateSchema(schemaPaths, nameSpace);
-            if (schema.Errors.Count > 0)
-            {
-                await Log.WriteSpanErrors(schema.Warnings.Concat(schema.Errors).ToList());
-                return Err;
-            }
+            var result = await ReportSchemaDiagnostics(schema);
+            if (result == Err) return Err;
             var generator = makeGenerator(schema);
             generator.WriteAuxiliaryFiles(outputFile.DirectoryName ?? string.Empty);
             var compiled = generator.Compile(langVersion);
@@ -195,13 +192,11 @@ namespace Compiler
 
         private static async Task<int> ReportSchemaDiagnostics(BebopSchema schema)
         {
-            if (schema.Errors.Count > 0)
-            {
-                await Log.WriteSpanErrors(schema.Warnings.Concat(schema.Errors).ToList());
-                return Err;
-            }
-            await Log.WriteSpanErrors(schema.Warnings);
-            return Ok;
+            var noWarn = _flags?.NoWarn ?? new List<string>();
+            var loudWarnings = schema.Warnings.Where(x => !noWarn.Contains(x.ErrorCode.ToString()));
+            var errors = loudWarnings.Concat(schema.Errors).ToList();
+            await Log.WriteSpanErrors(errors);
+            return schema.Errors.Count > 0 ? Err : Ok;
         }
     }
 }
