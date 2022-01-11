@@ -8,11 +8,16 @@ using System.Threading.Tasks;
 using Core.Exceptions;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta;
-using Core.Meta.Extensions;
 
 namespace Core.Logging
 {
-    public record Diagnostic(Severity Severity, string Message, int ErrorCode, Span? Span) { }
+    public class MiscErrorCodes
+    {
+        public const int FileNotFound = 404;
+        public const int Unknown = 1000;
+    }
+
+    public record Diagnostic(Severity Severity, string Message, int ErrorCode, Span? Span) {}
 
     /// <summary>
     /// A central logging factory
@@ -67,7 +72,7 @@ namespace Core.Logging
         }
 
         private string FormatSpanError(SpanException ex) =>
-            FormatDiagnostic(new Diagnostic(ex.Severity, ex.Message, ex.ErrorCode, ex.Span));
+            FormatDiagnostic(new(ex.Severity, ex.Message, ex.ErrorCode, ex.Span));
 
         /// <summary>
         /// Format and write a list of <see cref="SpanException"/>
@@ -93,19 +98,22 @@ namespace Core.Logging
         /// Format and write a <see cref="FileNotFoundException"/> 
         /// </summary>
         private async Task WriteFileNotFoundError(FileNotFoundException ex) =>
-            await Console.Error.WriteLineAsync(FormatDiagnostic(new(Severity.Error, "Unable to open file: " + ex?.FileName, 404, null)));
+            await Console.Error.WriteLineAsync(FormatDiagnostic(new(
+                Severity.Error, "Unable to open file: " + ex?.FileName, MiscErrorCodes.FileNotFound, null)));
 
         /// <summary>
         /// Format and write a <see cref="CompilerException"/> 
         /// </summary>
         private async Task WriteCompilerException(CompilerException ex) =>
-            await Console.Error.WriteLineAsync(FormatDiagnostic(new(Severity.Error, ex.Message, ex.ErrorCode, null)));
+            await Console.Error.WriteLineAsync(FormatDiagnostic(new(
+                Severity.Error, ex.Message, ex.ErrorCode, null)));
 
         /// <summary>
         /// Writes an exception with no dedicated formatting method.
         /// </summary>
         private async Task WriteBaseError(Exception ex) =>
-            await Console.Error.WriteLineAsync(FormatDiagnostic(new(Severity.Error, ex.Message, 1000, null)));
+            await Console.Error.WriteLineAsync(FormatDiagnostic(new(
+                Severity.Error, ex.Message, MiscErrorCodes.Unknown, null)));
 
         /// <summary>
         /// Writes an exception to standard error.
