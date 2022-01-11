@@ -54,7 +54,8 @@ namespace Core.Logging
                     where = span == null ? "" : $"Issue located in '{span?.FileName}' at {span?.StartColonString()}: ";
                     return $"[{DateTime.Now}][Compiler][{diagnostic.Severity}] {where}{diagnostic.Message}";
                 case LogFormatter.JSON:
-                    return JsonSerializer.Serialize(diagnostic);
+                    var options = new JsonSerializerOptions { Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) } };
+                    return JsonSerializer.Serialize(diagnostic, options);
                 default:
                     throw new ArgumentOutOfRangeException();
             }
@@ -69,8 +70,9 @@ namespace Core.Logging
         public async Task WriteSpanErrors(List<SpanException> exs)
         {
             var messages = exs.Select(FormatSpanError);
-            var joined = Formatter switch {
-                LogFormatter.JSON => "[" + string.Join(", ", messages) + "]",
+            var joined = Formatter switch
+            {
+                LogFormatter.JSON => "[" + string.Join(",\n", messages) + "]",
                 _ => string.Join("\n", messages),
             };
             await Console.Error.WriteLineAsync(joined);
