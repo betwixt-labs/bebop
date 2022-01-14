@@ -32,7 +32,7 @@ export class BebopRuntimeError extends Error {
 }
 
 export class BebopView {
-    private static textDecoder = new TextDecoder;
+    private static textDecoder = new TextDecoder();
     private static writeBuffer: Uint8Array = new Uint8Array(256);
     private static writeBufferView: DataView = new DataView(BebopView.writeBuffer.buffer);
     private static instance: BebopView;
