@@ -1,3 +1,0 @@
-﻿service Hello {
-    1 -> void hello(void);
-}
