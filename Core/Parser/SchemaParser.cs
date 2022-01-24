@@ -822,43 +822,33 @@ namespace Core.Parser
             var returnType = EatPseudoKeyword("void") ? null : ParseType(definitionToken);
             var returnTypeSpan = functionStart.Combine(CurrentToken.Span);
 
-            const string hint = "A function must be defined with a return type, name, and arguments such as 'RetType myFunction(ArgType arg1, OtherArg arg2);' or 'void emptyFn(void);'";
+            const string hint = "A function must be defined with a return type, name, and arguments such as 'RetType myFunction(ArgType arg1, OtherArg arg2);' or 'void emptyFn();'";
             var name = ExpectLexeme(TokenKind.Identifier, hint);
             
             Expect(TokenKind.OpenParenthesis, hint);
 
             var argList = new List<Field>();
             var argsStart = CurrentToken.Span;
-            if (EatPseudoKeyword("void"))
+            
+            // read parameter list
+            while (!Eat(TokenKind.CloseParenthesis))
             {
-                Expect(TokenKind.CloseParenthesis, hint);
-            }
-            else
-            {
-                // read parameter list
-                while (true)
+                var paramStart = CurrentToken.Span;
+                var paramType = ParseType(definitionToken);
+                var paramName = ExpectLexeme(TokenKind.Identifier, hint);
+                var paramSpan = paramStart.Combine(CurrentToken.Span);
+                
+                if (argList.Any(t => t.Name.Equals(paramName)))
                 {
-                    var paramStart = CurrentToken.Span;
-                    var paramType = ParseType(definitionToken);
-                    var paramName = ExpectLexeme(TokenKind.Identifier, hint);
-                    var paramSpan = paramStart.Combine(CurrentToken.Span);
-                    
-                    if (argList.Any(t => t.Name.Equals(paramName)))
-                    {
-                        _errors.Add(new DuplicateArgumentName(definitionToken.Span.Combine(CurrentToken.Span), serviceName, serviceIndex, paramName));
-                    }
-                    else
-                    {
-                        argList.Add(new Field(paramName, paramType, paramSpan, null, 0, ""));
-                    }
-                    
-                    if (Eat(TokenKind.CloseParenthesis))
-                    {
-                        break;
-                    }
-                    Expect(TokenKind.Comma, "Function arguments must be separated by commas");
+                    _errors.Add(new DuplicateArgumentName(definitionToken.Span.Combine(CurrentToken.Span), serviceName, serviceIndex, paramName));
                 }
+                else
+                {
+                    argList.Add(new Field(paramName, paramType, paramSpan, null, 0, ""));
+                }
+                Expect(TokenKind.Comma, "Function arguments must be separated by commas");
             }
+            
             var argsSpan = argsStart.Combine(CurrentToken.Span);
             
             Expect(TokenKind.Semicolon, "Function definition must end with a ';' semicolon");
