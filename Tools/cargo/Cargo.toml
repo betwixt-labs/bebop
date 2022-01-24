@@ -3,7 +3,7 @@
 [package]
 name = "bebop-tools"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
 description = "Cargo buildscript tools for Bebop, a schema-based binary serialization format."
 readme = "../../README.md"
 license = "Apache-2.0"

@@ -3,59 +3,50 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+#[cfg(feature = "downloader")]
+pub use downloader::*;
+#[cfg(feature = "format")]
+use format::*;
+
 /// Configurable compiler path. By default it will use the downloaded executeable or assume it is in PATH.
 pub static mut COMPILER_PATH: Option<PathBuf> = None;
 pub static mut GENERATED_PREFIX: Option<String> = None;
 
 #[cfg(feature = "downloader")]
 mod downloader;
-#[cfg(feature = "downloader")]
-pub use downloader::*;
-
-/// Get the rustfmt binary path.
 #[cfg(feature = "format")]
-fn rustfmt_path() -> &'static Path {
-    // lazy static var
-    static mut PATH: Option<PathBuf> = None;
+mod format;
 
-    if let Some(path) = unsafe { PATH.as_ref() } {
-        return path
-    }
+#[derive(Debug)]
+pub struct BuildConfig {
+    /// Whether to skip generating the autogen module doc header in the files. Default: `false`.
+    pub skip_generated_notice: bool,
+    /// Whether to generate a `mod.rs` file of all the source. Default: `true`.
+    pub generate_module_file: bool,
+    /// Whether files should be automatically formatted after being generated.
+    /// Does nothing if feature `format` is not enabled. Default: `true`.
+    pub format_files: bool,
+}
 
-    if let Ok(path) = std::env::var("RUSTFMT") {
-        unsafe {
-            PATH = Some(PathBuf::from(path));
-            PATH.as_ref().unwrap()
-        }
-    } else {
-        // assume it is in PATH
-        unsafe {
-            PATH = Some(which::which("rustmft").unwrap_or_else(|_| "rustfmt".into()));
-            PATH.as_ref().unwrap()
+impl Default for BuildConfig {
+    fn default() -> Self {
+        Self {
+            skip_generated_notice: false,
+            generate_module_file: true,
+            format_files: true,
         }
     }
 }
-
-#[cfg(feature = "format")]
-fn fmt_file(path: impl AsRef<Path>) {
-    let pathstr = path.as_ref().to_str().unwrap();
-    if let Err(err) = Command::new(rustfmt_path()).arg(pathstr).output() {
-        println!(
-            "cargo:warning=Failed to run rustfmt for {:?}, ignoring ({})",
-            path.as_ref(),
-            err
-        );
-    }
-}
-
-#[cfg(not(feature = "format"))]
-fn fmt_file(path: impl AsRef<Path>) { /* No-op */ }
 
 /// Build all schemas in a given directory and write them to the destination directory including a
 /// `mod.rs` file.
 ///
 /// **WARNING: THIS DELETES DATA IN THE DESTINATION DIRECTORY** use something like `src/bebop` or `src/generated`.
-pub fn build_schema_dir(source: impl AsRef<Path>, destination: impl AsRef<Path>) {
+pub fn build_schema_dir(
+    source: impl AsRef<Path>,
+    destination: impl AsRef<Path>,
+    config: &BuildConfig,
+) {
     if !destination.as_ref().exists() {
         fs::create_dir_all(destination.as_ref()).unwrap();
     }
@@ -75,41 +66,53 @@ pub fn build_schema_dir(source: impl AsRef<Path>, destination: impl AsRef<Path>)
         .for_each(|file| fs::remove_file(PathBuf::from(destination.as_ref()).join(file)).unwrap());
 
     // build all files and update lib.rs
-    let files = recurse_schema_dir(source, destination.as_ref());
+    let files = recurse_schema_dir(source, destination.as_ref(), config);
 
     // update the mod file
-    let mod_file_path = PathBuf::from(destination.as_ref()).join("mod.rs");
-    fs::write(
-        &mod_file_path,
-        &files
-            .into_iter()
-            .map(|mut schema_name| {
-                schema_name.insert_str(0, "pub mod ");
-                schema_name.push(';');
-                schema_name.push('\n');
-                schema_name
-            })
-            .collect::<String>(),
-    )
-    .unwrap();
-    fmt_file(mod_file_path)
+    if config.generate_module_file {
+        let mod_file_path = PathBuf::from(destination.as_ref()).join("mod.rs");
+        fs::write(
+            &mod_file_path,
+            &files
+                .into_iter()
+                .map(|mut schema_name| {
+                    schema_name.insert_str(0, "pub mod ");
+                    schema_name.push(';');
+                    schema_name.push('\n');
+                    schema_name
+                })
+                .collect::<String>(),
+        )
+        .unwrap();
+
+        #[cfg(feature = "format")]
+        if config.format_files {
+            fmt_file(mod_file_path);
+        }
+    }
 }
 
 /// Build a single schema file and write it to the destination file.
 ///
 /// **WARNING: THIS OVERWRITES THE DESTINATION FILE.**
-pub fn build_schema(schema: impl AsRef<Path>, destination: impl AsRef<Path>) {
+pub fn build_schema(schema: impl AsRef<Path>, destination: impl AsRef<Path>, config: &BuildConfig) {
     let (schema, destination) = (schema.as_ref(), destination.as_ref());
     let compiler_path = compiler_path();
     println!("cargo:rerun-if-changed={}", compiler_path.to_str().unwrap());
     println!("cargo:rerun-if-changed={}", schema.to_str().unwrap());
-    let output = Command::new(compiler_path)
+
+    let mut cmd = Command::new(compiler_path);
+    if config.skip_generated_notice {
+        cmd.arg("--skip-generated-notice");
+    }
+    let output = cmd
         .arg("--files")
         .arg(schema)
         .arg("--rust")
         .arg(destination.to_str().unwrap())
         .output()
         .expect("Could not run bebopc");
+
     if !(output.status.success()) {
         println!(
             "cargo:warning=Failed to build schema {}",
@@ -123,10 +126,18 @@ pub fn build_schema(schema: impl AsRef<Path>, destination: impl AsRef<Path>) {
         }
         panic!("Failed to build schema!");
     }
-    fmt_file(destination);
+
+    #[cfg(feature = "format")]
+    if config.format_files {
+        fmt_file(destination);
+    }
 }
 
-fn recurse_schema_dir(dir: impl AsRef<Path>, dest: impl AsRef<Path>) -> LinkedList<String> {
+fn recurse_schema_dir(
+    dir: impl AsRef<Path>,
+    dest: impl AsRef<Path>,
+    config: &BuildConfig,
+) -> LinkedList<String> {
     let mut list = LinkedList::new();
     for dir_entry in fs::read_dir(&dir).unwrap() {
         let dir_entry = dir_entry.unwrap();
@@ -136,7 +147,7 @@ fn recurse_schema_dir(dir: impl AsRef<Path>, dest: impl AsRef<Path>) -> LinkedLi
             if dir_entry.file_name() == "ShouldFail" {
                 // do nothing
             } else {
-                list.append(&mut recurse_schema_dir(&file_path, dest.as_ref()));
+                list.append(&mut recurse_schema_dir(&file_path, dest.as_ref(), config));
             }
         } else if file_type.is_file()
             && file_path
@@ -153,6 +164,7 @@ fn recurse_schema_dir(dir: impl AsRef<Path>, dest: impl AsRef<Path>) -> LinkedLi
             build_schema(
                 canonicalize(file_path.to_str().unwrap()),
                 canonicalize(&dest).join(fname.clone() + ".rs"),
+                config,
             );
             list.push_back(fname);
         } else {
