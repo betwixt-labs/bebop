@@ -22,8 +22,9 @@ To find the latest release of the Bebop compiler and its corresponding runtimes,
 Bebop is documented on [this repository's wiki](https://github.com/RainwayApp/bebop/wiki). Here are some quick links to get you started:
 
 - [Writing Bops: The Bebop Schema Language](https://github.com/RainwayApp/bebop/wiki/Writing-Bops:-The-Bebop-Schema-Language)
-- [Getting Started with .NET](https://github.com/RainwayApp/bebop/wiki/Getting-Started-with-.NET)
 - [Getting Started with TypeScript](https://github.com/RainwayApp/bebop/wiki/Getting-Started-with-TypeScript)
+- [Getting Started with Rust](https://github.com/RainwayApp/bebop/wiki/Getting-Started-with-Rust)
+- [Getting Started with .NET](https://github.com/RainwayApp/bebop/wiki/Getting-Started-with-.NET)
 
 ## Web REPL
 If you want to get familiar with the schema language and see what the generated code looks like, try out the [web REPL](https://bebop.sh/repl/).
