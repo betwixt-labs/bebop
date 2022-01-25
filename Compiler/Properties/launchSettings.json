@@ -21,7 +21,8 @@
     },
     "Compile Files": {
       "commandName": "Project",
-      "workingDirectory": "..\\Laboratory\\Schemas"
+      "commandLineArgs": "--files ..\\Laboratory\\Schemas\\rpc.bop --check",
+      "workingDirectory": "C:\\Users\\Matthew\\workspace\\Bebop\\Compiler"
     },
     "Oops All Failures": {
       "commandName": "Project",

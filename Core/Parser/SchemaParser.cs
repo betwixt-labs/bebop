@@ -833,6 +833,10 @@ namespace Core.Parser
             // read parameter list
             while (!Eat(TokenKind.CloseParenthesis))
             {
+                if (argList.Count > 0)
+                {
+                    Expect(TokenKind.Comma, "Function arguments must be separated by commas");
+                }
                 var paramStart = CurrentToken.Span;
                 var paramType = ParseType(definitionToken);
                 var paramName = ExpectLexeme(TokenKind.Identifier, hint);
@@ -846,7 +850,6 @@ namespace Core.Parser
                 {
                     argList.Add(new Field(paramName, paramType, paramSpan, null, 0, ""));
                 }
-                Expect(TokenKind.Comma, "Function arguments must be separated by commas");
             }
             
             var argsSpan = argsStart.Combine(CurrentToken.Span);
