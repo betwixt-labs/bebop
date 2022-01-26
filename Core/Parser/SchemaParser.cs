@@ -1218,7 +1218,7 @@ namespace Core.Parser
             var signature = new ConstDefinition(
                 $"_{serviceName.ToPascalCase()}{functionName.ToPascalCase()}Signature",
                 functionSpan,
-                $"hash('{textSignature}')",
+                $"hash(\"{textSignature}\")",
                 new IntegerLiteral(new ScalarType(BaseType.Int32, functionSpan, "signature"), functionSpan,
                     $"0x{binarySignature:x8}")
             );
@@ -1240,7 +1240,7 @@ namespace Core.Parser
             {
                 // use the type name, e.g. "Float64"
                 case ScalarType st:
-                    builder.Append(st.BaseType.ToString());
+                    builder.Append(st.BaseType.ToString().ToLower());
                     break;
                 case ArrayType at:
                     builder.Append('[');
@@ -1270,16 +1270,25 @@ namespace Core.Parser
             {
                 case StructDefinition sd:
                     builder.Append('{');
-                    foreach (var f in sd.Fields)
+                    
+                    foreach (var (f, i) in sd.Fields.Enumerated())
                     {
+                        if (i > 0)
+                        {
+                            builder.Append(',');
+                        }
                         TypeSignature(builder, f.Type);
                     }
                     builder.Append('}');
                     break;
                 case MessageDefinition md:
                     builder.Append('{');
-                    foreach (var f in md.Fields)
+                    foreach (var (f, i) in md.Fields.Enumerated())
                     {
+                        if (i > 0)
+                        {
+                            builder.Append(',');
+                        }
                         builder.Append(f.ConstantValue);
                         builder.Append(':');
                         TypeSignature(builder, f.Type);
@@ -1292,8 +1301,12 @@ namespace Core.Parser
                     break;
                 case UnionDefinition ud:
                     builder.Append('<');
-                    foreach (var b in ud.Branches)
+                    foreach (var (b, i) in ud.Branches.Enumerated())
                     {
+                        if (i > 0)
+                        {
+                            builder.Append(',');
+                        }
                         builder.Append(b.Discriminator);
                         builder.Append(':');
                         TypeSignature(builder, b.Definition);
