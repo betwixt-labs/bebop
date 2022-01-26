@@ -12,7 +12,7 @@ fn main() {
     unsafe {
         bebop::COMPILER_PATH = Some(PathBuf::from(BEBOP_BIN));
     }
-    bebop::build_schema_dir("schemas", "src/bebops");
+    bebop::build_schema_dir("schemas", "src/bebops", &Default::default());
 
     proto::Codegen::new()
         .out_dir("src/protos")

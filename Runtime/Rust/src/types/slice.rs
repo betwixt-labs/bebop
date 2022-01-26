@@ -2,6 +2,7 @@ use std::mem::size_of;
 
 use crate::{FixedSized, SubRecord};
 use std::iter::FusedIterator;
+use std::ops::Deref;
 use std::ptr::slice_from_raw_parts;
 
 /// This allows us to either wrap an existing &[T] slice to serialize it OR to store a raw byte
@@ -22,6 +23,25 @@ where
     #[inline]
     fn from(array: A) -> Self {
         SliceWrapper::from_cooked(array.as_ref())
+    }
+}
+
+impl<'a> Deref for SliceWrapper<'a, u8> {
+    type Target = &'a [u8];
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        match self {
+            SliceWrapper::Raw(d) => d,
+            SliceWrapper::Cooked(d) => d
+        }
+    }
+}
+
+impl<'a> AsRef<[u8]> for SliceWrapper<'a, u8> {
+    #[inline]
+    fn as_ref(&self) -> &'a [u8] {
+        **self
     }
 }
 
@@ -298,5 +318,25 @@ mod test {
         let s = <SliceWrapper<u16>>::Raw(&[0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
         assert_eq!(s.len(), 3);
         assert_eq!(s.size(), 6);
+    }
+
+    #[test]
+    fn deref_u8_raw() {
+        let s = <SliceWrapper<u8>>::Raw(&[0x00, 0x01, 0x04, 0x06]);
+        let s2: &[u8] = *s;
+        assert_eq!(s2[0], 0);
+        assert_eq!(s2[1], 1);
+        assert_eq!(s2[2], 4);
+        assert_eq!(s2[3], 6);
+    }
+
+    #[test]
+    fn deref_u8_cooked() {
+        let s = <SliceWrapper<u8>>::Cooked(&[0x00, 0x01, 0x04, 0x06]);
+        let s2: &[u8] = *s;
+        assert_eq!(s2[0], 0);
+        assert_eq!(s2[1], 1);
+        assert_eq!(s2[2], 4);
+        assert_eq!(s2[3], 6);
     }
 }

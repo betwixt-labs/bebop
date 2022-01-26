@@ -190,7 +190,10 @@ namespace Compiler
                 }
                 var generator = makeGenerator(schema);
                 generator.WriteAuxiliaryFiles(outputFile.DirectoryName ?? string.Empty);
-                var compiled = generator.Compile(langVersion);
+                var compiled = generator.Compile(
+                    langVersion,
+                    !(_flags?.SkipGeneratedNotice ?? false)
+                );
                 await File.WriteAllTextAsync(outputFile.FullName, compiled);
                 return Ok;
             }

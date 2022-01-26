@@ -13,5 +13,5 @@ fn main() {
     // bebop::download_bebopc(
     //     PathBuf::from("../target").join("bebopc"),
     // );
-    bebop::build_schema_dir("schemas", "src/generated");
+    bebop::build_schema_dir("schemas", "src/generated", &Default::default());
 }
