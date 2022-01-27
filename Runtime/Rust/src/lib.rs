@@ -1,5 +1,7 @@
 mod serialization;
 mod types;
+#[cfg(feature = "rpc")]
+mod rpc;
 
 pub use bitflags::bitflags;
 pub use serialization::*;
