@@ -1,6 +1,5 @@
 use crate::generated::enum_size::SmallEnum;
 use crate::generated::enum_size::HugeEnum;
-use bebop::SubRecord;
 use std::mem::size_of;
 
 #[test]

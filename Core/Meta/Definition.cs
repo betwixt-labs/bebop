@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.Serialization;
+using System.Text;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta.Attributes;
 
@@ -65,11 +65,11 @@ namespace Core.Meta
 
     /// <summary>
     /// A base class for definitions that can have an opcode, and are therefore valid at the "top level" of a Bebop packet.
-    /// (In other words: struct, message, union. But you can't send a raw enum over the wire.)
+    /// (In other words: struct, message, union. But you can't send a raw enum over the wire or a service.)
     /// </summary>
-    public abstract class TopLevelDefinition : Definition
+    public abstract class RecordDefinition : Definition
     {
-        protected TopLevelDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, Definition? parent = null) :
+        protected RecordDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, Definition? parent = null) :
             base(name, span, documentation, parent)
         {
             OpcodeAttribute = opcodeAttribute;
@@ -94,7 +94,7 @@ namespace Core.Meta
     /// <summary>
     /// A base class for definitions that are an aggregate of fields. (struct, message)
     /// </summary>
-    public abstract class FieldsDefinition : TopLevelDefinition
+    public abstract class FieldsDefinition : RecordDefinition
     {
         protected FieldsDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<Field> fields, Definition? parent = null) :
             base(name, span, documentation, opcodeAttribute, parent)
@@ -205,16 +205,28 @@ namespace Core.Meta
     public readonly struct UnionBranch
     {
         public readonly byte Discriminator;
-        public readonly TopLevelDefinition Definition;
+        public readonly RecordDefinition Definition;
 
-        public UnionBranch(byte discriminator, TopLevelDefinition definition)
+        public UnionBranch(byte discriminator, RecordDefinition definition)
+        {
+            Discriminator = discriminator;
+            Definition = definition;
+        }
+    }
+    
+    public readonly struct ServiceBranch
+    {
+        public readonly ushort Discriminator;
+        public readonly FunctionDefinition Definition;
+
+        public ServiceBranch(ushort discriminator, FunctionDefinition definition)
         {
             Discriminator = discriminator;
             Definition = definition;
         }
     }
 
-    public class UnionDefinition : TopLevelDefinition
+    public class UnionDefinition : RecordDefinition
     {
         public UnionDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<UnionBranch> branches, Definition? parent = null) : base(name, span, documentation, opcodeAttribute, parent)
         {
@@ -230,6 +242,44 @@ namespace Core.Meta
             // Length + discriminator + shortest branch.
             return 4 + 1 + (Branches.Count == 0 ? 0 : Branches.Min(b => b.Definition.MinimalEncodedSize(schema)));
         }
+    }
+    
+    public class ServiceDefinition : Definition
+    {
+        public ServiceDefinition(string name, Span span, string documentation, ICollection<ServiceBranch> branches) : base(name, span, documentation)
+        {
+            foreach (var b in branches)
+            {
+                b.Definition.Parent = this;
+            }
+
+            Branches = branches;
+        }
+
+        public ICollection<ServiceBranch> Branches { get; }
+
+        public override IEnumerable<string> Dependencies() => Branches.SelectMany(f => f.Definition.Dependencies());
+    }
+
+    /// <summary>
+    /// Functions at this time are only stored within service branches and not globally.
+    /// </summary>
+    public class FunctionDefinition : Definition
+    {
+        public FunctionDefinition(string name, Span span, string documentation, ConstDefinition signature, StructDefinition argumentStruct, StructDefinition returnStruct, Definition? parent = null)
+            : base(name, span, documentation, parent)
+        {
+            Signature = signature;
+            ArgumentStruct = argumentStruct;
+            ReturnStruct = returnStruct;
+        }
+
+        public ConstDefinition Signature { get; }
+        public StructDefinition ArgumentStruct { get; }
+        public StructDefinition ReturnStruct { get; }
+
+        public override IEnumerable<string> Dependencies() =>
+            ArgumentStruct.Dependencies().Concat(ReturnStruct.Dependencies());
     }
 
     public class ConstDefinition : Definition

@@ -21,7 +21,8 @@
     },
     "Compile Files": {
       "commandName": "Project",
-      "workingDirectory": "..\\Laboratory\\Schemas"
+      "commandLineArgs": "--files ..\\Laboratory\\Schemas\\ShouldFail\\rpc.bop --rust ..\\Laboratory\\Rust\\manual-testing\\src\\lib.rs",
+      "workingDirectory": "C:\\Users\\Matthew\\workspace\\Bebop\\Compiler"
     },
     "Oops All Failures": {
       "commandName": "Project",

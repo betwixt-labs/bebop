@@ -296,7 +296,7 @@ namespace Core.Generators.Dart
         /// Generate code for a Bebop schema.
         /// </summary>
         /// <returns>The generated code.</returns>
-        public override string Compile(Version? languageVersion)
+        public override string Compile(Version? languageVersion, bool writeGeneratedNotice = true)
         {
             var builder = new StringBuilder();
             builder.AppendLine("import 'dart:typed_data';");

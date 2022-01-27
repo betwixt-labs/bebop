@@ -48,6 +48,19 @@ namespace Core.Lexer.Tokenization
                 _newFilesToTokenize = true;
             }
         }
+        
+        /// <summary>
+        /// Add an arbitrary bebop string to the token stream.
+        /// </summary>
+        /// <param name="uniqueName">The unique name for this schema string. Duplicates will not be added. This takes the place of the "path".</param>
+        /// <param name="str">Arbitrary bebop string to append to the token stream.</param>
+        public void AddString(string uniqueName, string str)
+        {
+            if (_reader.AddString(uniqueName, str))
+            {
+                _newFilesToTokenize = true;
+            }
+        }
 
 
         /// <summary>
