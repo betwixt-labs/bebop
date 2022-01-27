@@ -4,6 +4,7 @@ using System.Linq;
 using System.Numerics;
 using Core.Exceptions;
 using Core.Lexer.Tokenization.Models;
+using Core.Meta.Extensions;
 using Core.Parser.Extensions;
 
 namespace Core.Meta
@@ -150,13 +151,13 @@ namespace Core.Meta
                 {
                     errors.Add(new ReservedIdentifierException(definition.Name, definition.Span));
                 }
-                if (definition is TopLevelDefinition td && td.OpcodeAttribute != null)
+                if (definition is RecordDefinition td && td.OpcodeAttribute != null)
                 {
                     if (!td.OpcodeAttribute.TryValidate(out var opcodeReason))
                     {
                         errors.Add(new InvalidOpcodeAttributeValueException(td, opcodeReason));
                     }
-                    if (Definitions.Values.Count(d => d is TopLevelDefinition td2 && td2.OpcodeAttribute != null && td2.OpcodeAttribute.Value.Equals(td.OpcodeAttribute.Value)) > 1)
+                    if (Definitions.Values.Count(d => d is RecordDefinition td2 && td2.OpcodeAttribute != null && td2.OpcodeAttribute.Value.Equals(td.OpcodeAttribute.Value)) > 1)
                     {
                         errors.Add(new DuplicateOpcodeException(td));
                     }
@@ -199,6 +200,23 @@ namespace Core.Meta
                         }
                         default:
                             break;
+                    }
+                }
+                if (definition is ServiceDefinition sd)
+                {
+                    var usedFunctionNames = new HashSet<string>();
+                    
+                    foreach (var b in sd.Branches)
+                    {
+                        var fnd = b.Definition;
+                        if (!usedFunctionNames.Add(fnd.Name.ToSnakeCase()))
+                        {
+                            errors.Add(new DuplicateServiceFunctionNameException(b.Discriminator, sd.Name, fnd.Name, fnd.Span));
+                        }
+                        if (fnd.Parent != sd)
+                        {
+                            throw new Exception("A function was registered to multiple services, this is an error in bebop core.");
+                        }
                     }
                 }
                 if (definition is EnumDefinition ed)

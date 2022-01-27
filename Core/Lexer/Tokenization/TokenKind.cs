@@ -50,6 +50,12 @@ namespace Core.Lexer.Tokenization
         /// </summary>
         [Keyword("union")]
         Union,
+        
+        /// <summary>
+        ///     The 'service' keyword which is reserved by the compiler
+        /// </summary>
+        [Keyword("service")]
+        Service,
 
     #endregion
 

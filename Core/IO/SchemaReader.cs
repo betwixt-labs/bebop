@@ -119,5 +119,22 @@ namespace Core.IO
             }
             return false;
         }
+
+        /// <summary>
+        /// Add an arbitrary bebop string to the parser.
+        /// </summary>
+        /// <param name="uniqueName">The unique name for this schema string. Duplicates will not be added. This takes the place of the "path".</param>
+        /// <param name="str">Arbitrary bebop string to append to the parser.</param>
+        /// <returns>True if the string was added and now must be tokenized; false if it had already been added.</returns>
+        public bool AddString(string uniqueName, string str)
+        {
+            if (_schemas.Any(t => t.Item1 == uniqueName))
+            {
+                return false;
+            }
+
+            _schemas.Add((uniqueName, str));
+            return true;
+        }
     }
 }

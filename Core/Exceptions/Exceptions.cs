@@ -112,7 +112,7 @@ namespace Core.Exceptions
     [Serializable]
     class DuplicateOpcodeException : SpanException
     {
-        public DuplicateOpcodeException(TopLevelDefinition definition)
+        public DuplicateOpcodeException(RecordDefinition definition)
             : base($"Multiple definitions for opcode '{definition.OpcodeAttribute?.Value}'", definition.Span, 110) { }
     }
 
@@ -255,6 +255,30 @@ namespace Core.Exceptions
     {
         public InvalidEnumTypeException(TypeBase t)
             : base($"Enums must have an integer underlying type, not {t}.", t.Span, 128)
+        { }
+    }
+    
+    [Serializable]
+    class DuplicateServiceDiscriminatorException : SpanException
+    {
+        public DuplicateServiceDiscriminatorException(Token discriminator, string serviceName)
+            : base($"The discriminator index {discriminator.Lexeme} was used more than once in service '{serviceName}'.", discriminator.Span, 129)
+        { }
+    }
+    
+    [Serializable]
+    class DuplicateServiceFunctionNameException : SpanException
+    {
+        public DuplicateServiceFunctionNameException(ushort discriminator, string serviceName, string functionName, Span span)
+            : base($"Index {discriminator} duplicates the function name '{functionName}' which can only be used once in service '{serviceName}'.", span, 130)
+        { }
+    }
+
+    [Serializable]
+    class DuplicateArgumentName : SpanException
+    {
+        public DuplicateArgumentName(Span span, string serviceName, string serviceIndex, string argumentName)
+            : base($"Index {serviceIndex} in service '{serviceName}' has duplicated argument name {argumentName}.", span, 131)
         { }
     }
 }

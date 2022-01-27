@@ -1,7 +1,7 @@
 [workspace]
 
 members = [
-    "manual-testing",
+#    "manual-testing",
     "auto-testing",
     "functionality-testing",
     "benchmarking"
