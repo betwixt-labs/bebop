@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 bebop = { path = "../../../Runtime/Rust", default-features = false }
+static_assertions = "1.1.0"
 
 [features]
 default = ["bebop-owned-all"]

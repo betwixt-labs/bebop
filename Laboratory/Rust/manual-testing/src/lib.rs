@@ -59,7 +59,7 @@ impl ::core::convert::From<Instrument> for u32 {
     }
 }
 
-impl ::bebop::SubRecord<'_> for Instrument {
+impl<'raw> ::bebop::SubRecord<'raw> for Instrument {
     const MIN_SERIALIZED_SIZE: usize = ::std::mem::size_of::<u32>();
     const EXACT_SERIALIZED_SIZE: Option<usize> = Some(::std::mem::size_of::<u32>());
 
@@ -72,7 +72,7 @@ impl ::bebop::SubRecord<'_> for Instrument {
     }
 
     #[inline]
-    fn _deserialize_chained(raw: &[u8]) -> ::bebop::DeResult<(usize, Self)> {
+    fn _deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)> {
         let (n, v) = u32::_deserialize_chained(raw)?;
         Ok((n, v.try_into()?))
     }

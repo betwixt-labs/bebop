@@ -1,6 +1,7 @@
-use bebop::{Date, DeResult, Record, SeResult, SubRecord};
+use bebop::{Date, DeResult, OwnedRecord, OwnedSubRecord, Record, SeResult, SubRecord};
 use std::collections::HashMap;
 use std::io::Write;
+use static_assertions::assert_impl_all;
 
 // if it is a fixed-sized type, use same definition, skip defining the other parts as well
 pub type Instrument = super::Instrument;
@@ -131,11 +132,19 @@ impl<'raw> From<super::Library<'raw>> for Library {
     }
 }
 
+assert_impl_all!(Instrument: OwnedSubRecord);
+assert_impl_all!(Performer: OwnedRecord, OwnedSubRecord);
+// not writing duplicate code for now, but should work
+// assert_impl_all!(Album: OwnedRecord, OwnedSubRecord);
+// assert_impl_all!(Song: OwnedRecord, OwnedSubRecord);
+// assert_impl_all!(Library: OwnedRecord, OwnedSubRecord);
+
 #[test]
 fn ensure_ownership_works() {
     let p = {
         let v = vec![21,31,2,4,52];
         Performer::deserialize(v.as_ref())
     };
+
     drop(p)
 }
