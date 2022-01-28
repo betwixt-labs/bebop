@@ -26,6 +26,7 @@ namespace Core.Generators.Rust
     {
         // The main code region, home to constants and the main (borrowed of fixed-sized) type definitions
         Main,
+
         // The owned code region, home to owned type definitions (no lifetimes) and re-exports of main which conform. 
         Owned
     }
@@ -61,7 +62,7 @@ namespace Core.Generators.Rust
             // thw owned space which goes after the borrowed space in its own module, it should refer to `super` to
             // access the main scope.
             var ownedBuilder = new IndentedStringBuilder();
-            
+
             if (writeGeneratedNotice)
             {
                 mainBuilder
@@ -73,7 +74,7 @@ namespace Core.Generators.Rust
             {
                 mainBuilder.AppendLine($"#![cfg(feature = \"{Schema.Namespace.ToKebabCase()}\")]");
             }
-            
+
             WriteStandardImportsForModule(mainBuilder);
             WriteStandardImportsForModule(ownedBuilder);
 
@@ -94,11 +95,13 @@ namespace Core.Generators.Rust
                         break;
                     case MessageDefinition md:
                         if (md.Parent is UnionDefinition) continue;
-                        WriteMessageDefinition(mainBuilder, md);
+                        WriteMessageDefinition(mainBuilder, md, CodeRegion.Main);
+                        WriteMessageDefinition(mainBuilder, md, CodeRegion.Owned);
                         break;
                     case StructDefinition sd:
                         if (sd.Parent is UnionDefinition) continue;
-                        WriteStructDefinition(mainBuilder, sd);
+                        WriteStructDefinition(mainBuilder, sd, CodeRegion.Main);
+                        WriteStructDefinition(mainBuilder, sd, CodeRegion.Owned);
                         break;
                     case UnionDefinition ud:
                         WriteUnionDefinition(mainBuilder, ud);
@@ -111,12 +114,14 @@ namespace Core.Generators.Rust
             }
 
             mainBuilder
-                .AppendLine(string.IsNullOrWhiteSpace(Schema.Namespace) ? "#[cfg(feature = \"bebop-owned-all\")]" : $"#[cfg(any(feature = \"beboop-owned-all\", feature = \"{Schema.Namespace.ToKebabCase()}-owned\"))]")
+                .AppendLine(string.IsNullOrWhiteSpace(Schema.Namespace)
+                    ? "#[cfg(feature = \"bebop-owned-all\")]"
+                    : $"#[cfg(any(feature = \"beboop-owned-all\", feature = \"{Schema.Namespace.ToKebabCase()}-owned\"))]")
                 .CodeBlock("pub mod owned", _tab, () =>
-            {
-                mainBuilder.Append(ownedBuilder.ToString());
-            });
-            
+                {
+                    mainBuilder.Append(ownedBuilder.ToString());
+                });
+
             return mainBuilder.ToString();
         }
 
@@ -144,7 +149,8 @@ namespace Core.Generators.Rust
             switch (region)
             {
                 case CodeRegion.Main:
-                    builder.AppendLine($"pub const {ident}: {TypeName(d.Value.Type, OwnershipType.Constant)} = {EmitLiteral(d.Value)};");
+                    builder.AppendLine(
+                        $"pub const {ident}: {TypeName(d.Value.Type, OwnershipType.Constant)} = {EmitLiteral(d.Value)};");
                     break;
                 case CodeRegion.Owned:
                     builder.AppendLine($"pub use super::{ident};");
@@ -158,7 +164,7 @@ namespace Core.Generators.Rust
         {
             // main definition
             var name = MakeDefIdent(d.Name);
-            var type = TypeName(d.ScalarType);
+            var type = TypeName(d.ScalarType, OwnershipType.Constant);
 
             switch (region)
             {
@@ -213,10 +219,12 @@ namespace Core.Generators.Rust
                             {
                                 foreach (var m in d.Members)
                                 {
-                                    builder.AppendLine($"{m.ConstantValue} => Ok({name}::{MakeEnumVariantIdent(m.Name)}),");
+                                    builder.AppendLine(
+                                        $"{m.ConstantValue} => Ok({name}::{MakeEnumVariantIdent(m.Name)}),");
                                 }
 
-                                builder.AppendLine("d => Err(::bebop::DeserializeError::InvalidEnumDiscriminator(d.into())),");
+                                builder.AppendLine(
+                                    "d => Err(::bebop::DeserializeError::InvalidEnumDiscriminator(d.into())),");
                             });
                         });
                 }).AppendLine();
@@ -273,11 +281,27 @@ namespace Core.Generators.Rust
             }).AppendLine();
         }
 
-        private void WriteStructDefinition(IndentedStringBuilder builder, StructDefinition d)
+        private void WriteStructDefinition(IndentedStringBuilder builder, StructDefinition d, CodeRegion region)
         {
             var needsLifetime = NeedsLifetime(d);
-            var name = MakeDefIdent(d.Name) + (needsLifetime ? "<'raw>" : "");
+            var ident = MakeDefIdent(d.Name);
             var isFixedSize = d.IsFixedSize(Schema);
+
+            if (!needsLifetime && region == CodeRegion.Owned)
+            {
+                builder.Append($"pub use super::{ident};");
+                return;
+            }
+
+            var ot = region switch
+            {
+                CodeRegion.Main => OwnershipType.Borrowed,
+                CodeRegion.Owned => OwnershipType.Owned,
+                _ => throw new ArgumentOutOfRangeException(nameof(region), region, null)
+            };
+
+            // if it is the owned region, skip lifetime
+            var name = ident + (needsLifetime && region != CodeRegion.Owned ? "<'raw>" : "");
 
             builder.Append("#[derive(Clone, Debug, PartialEq");
             if (isFixedSize)
@@ -293,7 +317,7 @@ namespace Core.Generators.Rust
             }
 
             builder
-                .CodeBlock($"pub struct {name}", _tab, () => WriteStructDefinitionAttrs(builder, d))
+                .CodeBlock($"pub struct {name}", _tab, () => WriteStructDefinitionAttrs(builder, d, ot))
                 .AppendLine();
 
             if (isFixedSize)
@@ -301,6 +325,11 @@ namespace Core.Generators.Rust
                 builder
                     .AppendLine($"impl ::bebop::FixedSized for {name} {{}}")
                     .AppendLine();
+            }
+
+            if (region == CodeRegion.Owned)
+            {
+                WriteFromBorrowedToOwnedForFields(builder, name, d.Fields);
             }
 
             builder
@@ -318,7 +347,7 @@ namespace Core.Generators.Rust
                         // sum size of all fields at compile time
                         builder.AppendLine("const MIN_SERIALIZED_SIZE: usize =");
                         var parts = d.Fields.Select(f =>
-                            $"<{TypeName(f.Type)}>::MIN_SERIALIZED_SIZE");
+                            $"<{TypeName(f.Type, ot)}>::MIN_SERIALIZED_SIZE");
                         builder.Indent(_tab).Append(string.Join(" +\n", parts)).AppendEnd(";").Dedent(_tab)
                             .AppendLine();
                     }
@@ -372,14 +401,15 @@ namespace Core.Generators.Rust
         /// <summary>
         /// Write the part within the `pub struct` definition. This will just write the attributes.
         /// </summary>
-        private void WriteStructDefinitionAttrs(IndentedStringBuilder builder, StructDefinition d, bool makePub = true)
+        private void WriteStructDefinitionAttrs(IndentedStringBuilder builder, StructDefinition d, OwnershipType ot,
+            bool makePub = true)
         {
             foreach (var f in d.Fields)
             {
                 WriteDocumentation(builder, f.Documentation);
                 WriteDeprecation(builder, f.DeprecatedAttribute);
                 var pub = makePub ? "pub " : "";
-                builder.AppendLine($"{pub}{MakeAttrIdent(f.Name)}: {TypeName(f.Type)},");
+                builder.AppendLine($"{pub}{MakeAttrIdent(f.Name)}: {TypeName(f.Type, ot)},");
             }
         }
 
@@ -406,6 +436,7 @@ namespace Core.Generators.Rust
                         .AppendLine("return Err(::bebop::DeserializeError::MoreDataExpected(missing));");
                 }).AppendLine();
             }
+
             var vars = new LinkedList<(string, string)>();
             var j = 0;
             foreach (var f in d.Fields)
@@ -492,7 +523,8 @@ namespace Core.Generators.Rust
                 )));
         }
 
-        private void WriteMessageSerialization(IndentedStringBuilder builder, MessageDefinition d, bool calcSize = true, string obj = "self")
+        private void WriteMessageSerialization(IndentedStringBuilder builder, MessageDefinition d, bool calcSize = true,
+            string obj = "self")
         {
             obj = string.IsNullOrEmpty(obj) ? "_" : $"{obj}.";
             if (calcSize)
@@ -778,7 +810,8 @@ namespace Core.Generators.Rust
                                             break;
                                         case MessageDefinition md:
                                             // calculate size of message by taking union size and subbing union length and discriminator
-                                            builder.AppendLine("::bebop::write_len(dest, size - ::bebop::LEN_SIZE * 2 - 1)?;");
+                                            builder.AppendLine(
+                                                "::bebop::write_len(dest, size - ::bebop::LEN_SIZE * 2 - 1)?;");
                                             WriteMessageSerialization(builder, md, false, "");
                                             break;
                                         default:
@@ -891,6 +924,72 @@ namespace Core.Generators.Rust
             }
         }
 
+        private void WriteFromBorrowedToOwnedForFields(IndentedStringBuilder builder, string implFor,
+            IEnumerable<Field> fields, bool optionalFields = false) =>
+            // generate the From<Borrowed> for Owned impl
+            builder.CodeBlock($"impl<'raw> ::core::convert::From<super::{implFor}<'raw>> for {implFor}", _tab, () =>
+                builder.CodeBlock($"fn from(value: super::{implFor}) -> Self", _tab, () =>
+                    builder.CodeBlock("Self", _tab, () =>
+                    {
+                        foreach (var f in fields)
+                        {
+                            var atrName = MakeAttrIdent(f.Name);
+                            var intoMethod = BorrowedIntoOwnedMethod(f.Type);
+                            if (optionalFields && intoMethod != "")
+                            {
+                                // we have to map because it is an optional and we can't just move
+                                builder.AppendLine($"{atrName}: value.{atrName}.map(|value| value{intoMethod}),");
+                            }
+                            else
+                            {
+                                // we don't need to map, but we do need to convert
+                                builder.AppendLine($"{atrName}: value.{atrName}{intoMethod},");
+                            }
+                        }
+                    })
+                )
+            ).AppendLine();
+
+        /// <summary>
+        /// Generate the `.into()` or equivalent for converting from a borrowed type to an owned type.
+        /// </summary>
+        private string BorrowedIntoOwnedMethod(TypeBase type)
+        {
+            switch (type)
+            {
+                // when it is a slice
+                case ArrayType at when !ArrayTypeIsVec(at):
+                    return $".iter().map(|value| value{BorrowedIntoOwnedMethod(at.MemberType)}).collect()";
+                // When it is a vec of borrowed types, convert the inner type
+                case ArrayType { MemberType: DefinedType dt } at when NeedsLifetime(Schema.Definitions[dt.Name]):
+                    return $".into_iter().map(|value| value{BorrowedIntoOwnedMethod(at.MemberType)}).collect()";
+                // when no conversion is needed, take ownership of the vec
+                case ArrayType:
+                    return "";
+
+                case DefinedType dt when NeedsLifetime(Schema.Definitions[dt.Name]):
+                    return ".into()";
+                case DefinedType:
+                    return "";
+
+                case MapType mt:
+                    var keyInto = BorrowedIntoOwnedMethod(mt.KeyType);
+                    var valueInto = BorrowedIntoOwnedMethod(mt.ValueType);
+                    return keyInto != "" || valueInto != ""
+                        // When the key OR the value need to be mapped
+                        ? $".into_iter(|(key, value)| (key{BorrowedIntoOwnedMethod(mt.KeyType)}, value{BorrowedIntoOwnedMethod(mt.ValueType)})).collect()"
+                        // When neither the key nor the value need to be mapped, just take ownership
+                        : "";
+
+                case ScalarType { BaseType: BaseType.String }:
+                    return ".into()";
+                case ScalarType:
+                    return "";
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+
         #endregion
 
         #region types_and_identifiers
@@ -927,7 +1026,7 @@ namespace Core.Generators.Rust
         /// <param name="type">The field type to generate code for.</param>
         /// <param name="ot">Ownership type, e.g. <c>&'raw str</c> versus <c>String</c>.</param>
         /// <returns>The Rust type name.</returns>
-        private string TypeName(in TypeBase type, OwnershipType ot = OwnershipType.Borrowed)
+        private string TypeName(TypeBase type, OwnershipType ot)
         {
             switch (type)
             {
@@ -960,7 +1059,7 @@ namespace Core.Generators.Rust
                     {
                         // TODO: expand this to make better use of the slice wrapper
                         var lifetime = ot is OwnershipType.Borrowed ? "'raw" : "'static";
-                        var wrappedSlice = $"::bebop::SliceWrapper<{lifetime}, {TypeName(at.MemberType)}>";
+                        var wrappedSlice = $"::bebop::SliceWrapper<{lifetime}, {TypeName(at.MemberType, ot)}>";
                         return mst.BaseType switch
                         {
                             BaseType.Bool => wrappedSlice,
@@ -973,7 +1072,9 @@ namespace Core.Generators.Rust
                             BaseType.Int64 => wrappedSlice,
                             BaseType.Float32 => wrappedSlice,
                             BaseType.Float64 => wrappedSlice,
-                            BaseType.String => $"::std::vec::Vec<{TypeName(at.MemberType)}>",
+                            BaseType.String when ot is OwnershipType.Borrowed =>
+                                $"::std::vec::Vec<{TypeName(at.MemberType, OwnershipType.Borrowed)}>",
+                            BaseType.String => wrappedSlice,
                             // this one does not care what endian the system is
                             BaseType.Guid => wrappedSlice, //$"&{lifetime} [::bebop::Guid]",
                             BaseType.Date => wrappedSlice,
@@ -988,14 +1089,14 @@ namespace Core.Generators.Rust
                     {
                         // extra special case where we have an array of primitive-like structs
                         var lifetime = ot is OwnershipType.Borrowed ? "'raw" : "'static";
-                        return $"::bebop::SliceWrapper<{lifetime}, {TypeName(at.MemberType)}>";
+                        return $"::bebop::SliceWrapper<{lifetime}, {TypeName(at.MemberType, OwnershipType.Borrowed)}>";
                     }
                     else
                     {
-                        return $"::std::vec::Vec<{TypeName(at.MemberType)}>";
+                        return $"::std::vec::Vec<{TypeName(at.MemberType, ot)}>";
                     }
                 case MapType mt:
-                    return $"::std::collections::HashMap<{TypeName(mt.KeyType)}, {TypeName(mt.ValueType)}>";
+                    return $"::std::collections::HashMap<{TypeName(mt.KeyType, ot)}, {TypeName(mt.ValueType, ot)}>";
                 case DefinedType dt:
                     return ot switch
                     {
@@ -1020,6 +1121,9 @@ namespace Core.Generators.Rust
                 MapType mt => TypeNeedsLifetime(mt.KeyType) || TypeNeedsLifetime(mt.ValueType),
                 { } tb => TypeName(tb, ot).Contains("'raw")
             };
+
+        private bool ArrayTypeIsVec(ArrayType type, OwnershipType ot = OwnershipType.Borrowed) =>
+            TypeName(type.MemberType, ot).StartsWith("::std::vec::Vec");
 
         private bool FieldNeedsLifetime(Definition d, Field f, OwnershipType ot = OwnershipType.Borrowed)
         {
@@ -1060,9 +1164,9 @@ namespace Core.Generators.Rust
             {
                 BoolLiteral bl => bl.Value ? "true" : "false",
                 IntegerLiteral il => il.Value,
-                FloatLiteral { Value: "inf" } => $"{TypeName(literal.Type)}::INFINITY",
-                FloatLiteral { Value: "-inf" } => $"{TypeName(literal.Type)}::NEG_INFINITY",
-                FloatLiteral { Value: "nan" } => $"{TypeName(literal.Type)}::NAN",
+                FloatLiteral { Value: "inf" } => $"{TypeName(literal.Type, OwnershipType.Constant)}::INFINITY",
+                FloatLiteral { Value: "-inf" } => $"{TypeName(literal.Type, OwnershipType.Constant)}::NEG_INFINITY",
+                FloatLiteral { Value: "nan" } => $"{TypeName(literal.Type, OwnershipType.Constant)}::NAN",
                 FloatLiteral fl => fl.Value.Contains('.') ? fl.Value : fl.Value + '.',
                 StringLiteral sl => MakeStringLiteral(sl.Value),
                 GuidLiteral gl => MakeGuidLiteral(gl.Value),
