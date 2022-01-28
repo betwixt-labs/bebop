@@ -295,4 +295,6 @@ namespace Core.Exceptions
     {
         public EnumZeroWarning(Field field)
             : base($"Bebop recommends that 0 in an enum be reserved for a value named 'Unknown', 'Default', or similar.", field.Span, 200, Severity.Warning)
+        { }
+    }
 }
