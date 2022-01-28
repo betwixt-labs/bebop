@@ -14,6 +14,7 @@ namespace Core.Meta
     /// </summary>
     public struct BebopSchema
     {
+        private static string[] _enumZeroNames = new[] { "Default", "Unknown", "Invalid", "Null", "None", "Zero", "False" };
         private List<SpanException> _parsingErrors;
         private List<SpanException> _validationErrors;
         private List<SpanException> _validationWarnings;
@@ -241,6 +242,10 @@ namespace Core.Meta
                                 $"Enum member '{field.Name}' has a value ({field.ConstantValue}) that " +
                                 $"is outside the domain of underlying type '{ed.BaseType.BebopName()}'. " +
                                 $"Valid values range from {min} to {max}."));
+                        }
+                        if (field.ConstantValue == 0 && !_enumZeroNames.Any(x => x.Equals(field.Name, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            Warnings.Add(new EnumZeroWarning(field));
                         }
                         values.Add(field.ConstantValue);
                         names.Add(field.Name);

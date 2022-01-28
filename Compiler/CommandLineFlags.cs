@@ -237,6 +237,9 @@ namespace Compiler
             "--cs ./my/output/HelloWorld.cs --cs-version (9.0|8.0)")]
         public Version? CSharpVersion { get; private set; }
 
+        [CommandLineFlag("no-warn", "Disable a list of warning codes", "--no-warn 200 201 202")]
+        public List<string>? NoWarn { get; private set; }
+
         public string HelpText { get; }
 
         /// <summary>

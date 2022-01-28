@@ -25,6 +25,7 @@ export function ensurePermissions() {
 
 interface BebopcCheckResponse {
     Message: string
+    Severity: "warning" | "error"
     Span?: {
         FileName: string
         StartLine: number
@@ -48,30 +49,19 @@ export interface Issue {
 
 function parseBebopcCheckResponse(stderr: string): Issue[] {
     const response = JSON.parse(stderr.trim().replace(/\\/g, "\\"))
-    if (Array.isArray(response)) {
-        return response.map((issue) => {
-            const { Message, Span } = issue
-            return {
-                severity: 'error',
-                description: Message,
-                startLine: Span?.StartLine ?? 0,
-                endLine: Span?.EndLine ?? 0,
-                startColumn: Span?.StartColumn ?? 0,
-                endColumn: Span?.EndColumn ?? 0,
-                fileName: Span?.FileName ?? ""
-            }
-        })
-    }
-    const { Message, Span } = response
-    return [{
-        severity: 'error',
-        description: Message,
-        startLine: Span?.StartLine ?? 0,
-        endLine: Span?.EndLine ?? 0,
-        startColumn: Span?.StartColumn ?? 0,
-        endColumn: Span?.EndColumn ?? 0,
-        fileName: Span?.FileName ?? ""
-    }]
+    const issues = Array.isArray(response) ? response as BebopcCheckResponse[] : [response as BebopcCheckResponse];
+    return issues.map((issue) => {
+        const { Message, Severity, Span } = issue
+        return {
+            severity: Severity,
+            description: Message,
+            startLine: Span?.StartLine ?? 0,
+            endLine: Span?.EndLine ?? 0,
+            startColumn: Span?.StartColumn ?? 0,
+            endColumn: Span?.EndColumn ?? 0,
+            fileName: Span?.FileName ?? ""
+        }
+    })
 }
 
 function getBebopCompilerPath() {
@@ -93,8 +83,8 @@ const bebopc = getBebopCompilerPath()
 checkProject({config: ""})
 
 /** Validate entire project, providing either a directory to search for bebop.json or a path to a config. */
-export async function checkProject(cfg: 
-    {directory: string, config?: never} | 
+export async function checkProject(cfg:
+    {directory: string, config?: never} |
     {directory?: never, config: string}
 ): Promise<CheckResults> {
     const processConfig: {cwd?: string} = {}
@@ -107,8 +97,8 @@ export async function checkProject(cfg:
     }
     return new Promise((resolve, reject) => {
         child_process.exec(
-            `${bebopc} --check --log-format JSON ${commandExtension}`, 
-            processConfig, 
+            `${bebopc} --check --log-format JSON ${commandExtension}`,
+            processConfig,
             (error, stdout, stderr) => {
                 if (stderr.trim().length > 0) {
                     resolve({
