@@ -14,11 +14,13 @@
 // the code is regenerated.
 //
 
-#![allow(warnings)]
-
 use ::std::io::Write as _;
 use ::core::convert::TryInto as _;
 use ::bebop::FixedSized as _;
+
+// this should be done inline in the real version
+#[cfg(any(feature = "bebop-owned-jazz", feature = "bebop-owned-all"))]
+pub mod owned;
 
 #[repr(u32)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -57,7 +59,7 @@ impl ::core::convert::From<Instrument> for u32 {
     }
 }
 
-impl<'raw> ::bebop::SubRecord<'raw> for Instrument {
+impl ::bebop::SubRecord<'_> for Instrument {
     const MIN_SERIALIZED_SIZE: usize = ::std::mem::size_of::<u32>();
     const EXACT_SERIALIZED_SIZE: Option<usize> = Some(::std::mem::size_of::<u32>());
 
@@ -70,7 +72,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for Instrument {
     }
 
     #[inline]
-    fn _deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)> {
+    fn _deserialize_chained(raw: &[u8]) -> ::bebop::DeResult<(usize, Self)> {
         let (n, v) = u32::_deserialize_chained(raw)?;
         Ok((n, v.try_into()?))
     }

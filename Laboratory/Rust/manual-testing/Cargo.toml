@@ -7,3 +7,7 @@ edition = "2021"
 
 [dependencies]
 bebop = { path = "../../../Runtime/Rust", default-features = false }
+
+[features]
+default = ["bebop-owned-all"]
+bebop-owned-all = []
