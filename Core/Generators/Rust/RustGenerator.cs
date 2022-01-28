@@ -184,7 +184,7 @@ namespace Core.Generators.Rust
             }
 
             // sub record
-            builder.CodeBlock($"impl<'raw> ::bebop::SubRecord<'raw> for {name}", _tab, () =>
+            builder.CodeBlock($"impl ::bebop::SubRecord<'_> for {name}", _tab, () =>
             {
                 builder
                     .AppendLine($"const MIN_SERIALIZED_SIZE: usize = ::std::mem::size_of::<{type}>();")
@@ -204,7 +204,7 @@ namespace Core.Generators.Rust
                         })
                     .AppendLine()
                     .AppendLine("#[inline]")
-                    .CodeBlock("fn _deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)>", _tab,
+                    .CodeBlock("fn _deserialize_chained(raw: &[u8]) -> ::bebop::DeResult<(usize, Self)>", _tab,
                         () =>
                         {
                             builder.AppendLine($"let (n, v) = {type}::_deserialize_chained(raw)?;");
