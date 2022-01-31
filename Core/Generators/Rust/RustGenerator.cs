@@ -87,24 +87,25 @@ namespace Core.Generators.Rust
                 {
                     case ConstDefinition cd:
                         WriteConstDefinition(mainBuilder, cd, CodeRegion.Main);
-                        WriteConstDefinition(mainBuilder, cd, CodeRegion.Owned);
+                        WriteConstDefinition(ownedBuilder, cd, CodeRegion.Owned);
                         break;
                     case EnumDefinition ed:
                         WriteEnumDefinition(mainBuilder, ed, CodeRegion.Main);
-                        WriteEnumDefinition(mainBuilder, ed, CodeRegion.Owned);
+                        WriteEnumDefinition(ownedBuilder, ed, CodeRegion.Owned);
                         break;
                     case MessageDefinition md:
                         if (md.Parent is UnionDefinition) continue;
                         WriteMessageDefinition(mainBuilder, md, CodeRegion.Main);
-                        WriteMessageDefinition(mainBuilder, md, CodeRegion.Owned);
+                        WriteMessageDefinition(ownedBuilder, md, CodeRegion.Owned);
                         break;
                     case StructDefinition sd:
                         if (sd.Parent is UnionDefinition) continue;
                         WriteStructDefinition(mainBuilder, sd, CodeRegion.Main);
-                        WriteStructDefinition(mainBuilder, sd, CodeRegion.Owned);
+                        WriteStructDefinition(ownedBuilder, sd, CodeRegion.Owned);
                         break;
                     case UnionDefinition ud:
-                        WriteUnionDefinition(mainBuilder, ud);
+                        WriteUnionDefinition(mainBuilder, ud, CodeRegion.Main);
+                        WriteUnionDefinition(ownedBuilder, ud, CodeRegion.Owned);
                         break;
                     default:
                         throw new InvalidOperationException($"unsupported definition {definition.GetType()}");
@@ -329,7 +330,13 @@ namespace Core.Generators.Rust
 
             if (region == CodeRegion.Owned)
             {
-                WriteFromBorrowedToOwnedForFields(builder, name, d.Fields);
+                builder.CodeBlock($"impl<'raw> ::core::convert::From<super::{ident}<'raw>> for {ident}", _tab, () =>
+                {
+                    builder.CodeBlock($"fn from(value: super::{ident}) -> Self", _tab, () =>
+                    {
+                        WriteFromBorrowedToOwnedForFields(builder, d.Fields);
+                    });
+                }).AppendLine();
             }
 
             builder
@@ -443,7 +450,7 @@ namespace Core.Generators.Rust
             {
                 builder
                     .AppendLine(
-                        $"let (read, v{j}) = <{TypeName(f.Type)}>::_deserialize_chained(&raw[i..])?;")
+                        $"let (read, v{j}) = ::bebop::SubRecord::_deserialize_chained(&raw[i..])?;")
                     .AppendLine("i += read;");
                 vars.AddLast((MakeAttrIdent(f.Name), $"v{j++}"));
             }
@@ -457,15 +464,40 @@ namespace Core.Generators.Rust
             }, "{", directReturn ? "}" : "}))");
         }
 
-        private void WriteMessageDefinition(IndentedStringBuilder builder, MessageDefinition d)
+        private void WriteMessageDefinition(IndentedStringBuilder builder, MessageDefinition d, CodeRegion region)
         {
             var needsLifetime = NeedsLifetime(d);
-            var name = MakeDefIdent(d.Name) + (needsLifetime ? "<'raw>" : "");
+            var ident = MakeDefIdent(d.Name);
+
+            if (!needsLifetime && region == CodeRegion.Owned)
+            {
+                builder.Append($"pub use super::{ident};");
+                return;
+            }
+
+            var ot = region switch
+            {
+                CodeRegion.Main => OwnershipType.Borrowed,
+                CodeRegion.Owned => OwnershipType.Owned,
+                _ => throw new ArgumentOutOfRangeException(nameof(region), region, null)
+            };
+            var name = ot == OwnershipType.Borrowed && needsLifetime ? ident + "<'raw>" : "";
 
             builder
                 .AppendLine("#[derive(Clone, Debug, PartialEq, Default)]")
-                .CodeBlock($"pub struct {name}", _tab, () => WriteMessageDefinitionAttrs(builder, d))
+                .CodeBlock($"pub struct {name}", _tab, () => WriteMessageDefinitionAttrs(builder, d, ot))
                 .AppendLine();
+
+            if (region == CodeRegion.Owned)
+            {
+                builder.CodeBlock($"impl<'raw> ::core::convert::From<super::{ident}<'raw>> for {ident}", _tab, () =>
+                {
+                    builder.CodeBlock($"fn from(value: super::{ident}) -> Self", _tab, () =>
+                    {
+                        WriteFromBorrowedToOwnedForFields(builder, d.Fields, true);
+                    });
+                }).AppendLine();
+            }
 
             builder
                 .CodeBlock($"impl<'raw> ::bebop::SubRecord<'raw> for {name}", _tab, () =>
@@ -498,7 +530,7 @@ namespace Core.Generators.Rust
         /// <summary>
         /// Write the part within the `pub struct` definition. This will just write the attributes.
         /// </summary>
-        private void WriteMessageDefinitionAttrs(IndentedStringBuilder builder, MessageDefinition d,
+        private void WriteMessageDefinitionAttrs(IndentedStringBuilder builder, MessageDefinition d, OwnershipType ot,
             bool makePub = true)
         {
             foreach (var f in d.Fields.OrderBy((f) => f.ConstantValue))
@@ -507,7 +539,7 @@ namespace Core.Generators.Rust
                 WriteDocumentation(builder, $"Field {f.ConstantValue}");
                 WriteDeprecation(builder, f.DeprecatedAttribute);
                 var pub = makePub ? "pub " : "";
-                builder.AppendLine($"{pub}{MakeAttrIdent(f.Name)}: ::core::option::Option<{TypeName(f.Type)}>,");
+                builder.AppendLine($"{pub}{MakeAttrIdent(f.Name)}: ::core::option::Option<{TypeName(f.Type, ot)}>,");
             }
         }
 
@@ -523,8 +555,8 @@ namespace Core.Generators.Rust
                 )));
         }
 
-        private void WriteMessageSerialization(IndentedStringBuilder builder, MessageDefinition d, bool calcSize = true,
-            string obj = "self")
+        private void WriteMessageSerialization(IndentedStringBuilder builder, MessageDefinition d,
+            bool calcSize = true, string obj = "self")
         {
             obj = string.IsNullOrEmpty(obj) ? "_" : $"{obj}.";
             if (calcSize)
@@ -625,7 +657,7 @@ namespace Core.Generators.Rust
                             });
                             builder
                                 .AppendLine(
-                                    $"let (read, value) = <{TypeName(f.Type)}>::_deserialize_chained(&raw[i..])?;")
+                                    $"let (read, value) = ::bebop::SubRecord::_deserialize_chained(&raw[i..])?;")
                                 .AppendLine("i += read;")
                                 .AppendLine($"_{fname} = Some(value)");
                         });
@@ -656,14 +688,28 @@ namespace Core.Generators.Rust
             }, "{", directReturn ? "}" : "}))");
         }
 
-        private void WriteUnionDefinition(IndentedStringBuilder builder, UnionDefinition d)
+        private void WriteUnionDefinition(IndentedStringBuilder builder, UnionDefinition d, CodeRegion region)
         {
-            var scopeName = MakeDefIdent(d.Name);
-            var name = scopeName + (NeedsLifetime(d) ? "<'raw>" : "");
+            var ident = MakeDefIdent(d.Name);
+            var needsLifetime = NeedsLifetime(d);
+            if (!needsLifetime && region == CodeRegion.Owned)
+            {
+                builder.Append($"pub use super::{ident};");
+                return;
+            }
+
+            var ot = region switch
+            {
+                CodeRegion.Main => OwnershipType.Borrowed,
+                CodeRegion.Owned => OwnershipType.Owned,
+                _ => throw new ArgumentOutOfRangeException(nameof(region), region, null)
+            };
+            var name = ot == OwnershipType.Borrowed && needsLifetime ? ident + "<'raw>" : "";
+
             builder.AppendLine("#[derive(Clone, Debug, PartialEq)]");
             builder.CodeBlock($"pub enum {name}", _tab, () =>
             {
-                if (d.Branches.Any((b) => b.Definition.Name == "Unknown"))
+                if (d.Branches.Any(b => b.Definition.Name == "Unknown"))
                 {
                     throw new Exception("Unknown is a reserved Union branch name");
                 }
@@ -682,10 +728,10 @@ namespace Core.Generators.Rust
                         switch (b.Definition)
                         {
                             case StructDefinition sd:
-                                WriteStructDefinitionAttrs(builder, sd, false);
+                                WriteStructDefinitionAttrs(builder, sd, ot, false);
                                 break;
                             case MessageDefinition md:
-                                WriteMessageDefinitionAttrs(builder, md, false);
+                                WriteMessageDefinitionAttrs(builder, md, ot, false);
                                 break;
                             default:
                                 throw new ArgumentOutOfRangeException(b.Definition.ToString());
@@ -693,6 +739,44 @@ namespace Core.Generators.Rust
                     }, "{", "},");
                 }
             }).AppendLine();
+
+            if (region == CodeRegion.Owned)
+            {
+                builder.CodeBlock($"impl<'raw> ::core::convert::From<super::{ident}<'raw>> for {ident}", _tab, () =>
+                {
+                    builder.CodeBlock($"fn from(value: super::{ident}) -> Self", _tab, () =>
+                    {
+                        builder.CodeBlock("match self", _tab, () =>
+                        {
+                            builder.CodeBlock($"{ident}::Unknown =>", _tab, () =>
+                            {
+                                builder.AppendLine("Self::Unknown");
+                            });
+                            // matching against each possible union type
+                            foreach (var b in d.Branches.OrderBy(b => b.Discriminator))
+                            {
+                                WriteUnionDestructuringForBranch(builder, b, $"super::{ident}", false);
+                                var variantIdent = MakeEnumVariantIdent(b.Definition.Name);
+                                var obj = $"Self::{variantIdent}";
+                                builder.CodeBlock("=>", _tab, () =>
+                                {
+                                    switch (b.Definition)
+                                    {
+                                        case StructDefinition sd:
+                                            WriteFromBorrowedToOwnedForFields(builder, sd.Fields, false, obj);
+                                            break;
+                                        case MessageDefinition md:
+                                            WriteFromBorrowedToOwnedForFields(builder, md.Fields, true, obj);
+                                            break;
+                                        default:
+                                            throw new ArgumentOutOfRangeException(b.Definition.ToString());
+                                    }
+                                });
+                            }
+                        });
+                    }).AppendLine();
+                });
+            }
 
             builder.CodeBlock($"impl<'raw> ::bebop::SubRecord<'raw> for {name}", _tab, () =>
             {
@@ -705,31 +789,14 @@ namespace Core.Generators.Rust
                     builder.AppendLine("::bebop::LEN_SIZE + 1 +");
                     builder.CodeBlock("match self", _tab, () =>
                     {
-                        builder.CodeBlock($"{scopeName}::Unknown =>", _tab, () =>
+                        builder.CodeBlock($"{ident}::Unknown =>", _tab, () =>
                         {
                             builder.AppendLine("0");
                         });
                         // matching against each possible union type
-                        foreach (var b in d.Branches.OrderBy((b) => b.Discriminator))
+                        foreach (var b in d.Branches.OrderBy(b => b.Discriminator))
                         {
-                            var branchName = MakeEnumVariantIdent(b.Definition.Name);
-                            builder.CodeBlock($"{scopeName}::{branchName}", _tab, () =>
-                            {
-                                // destructuring
-                                if (b.Definition is FieldsDefinition fd)
-                                {
-                                    foreach (var field in fd.Fields)
-                                    {
-                                        var fieldName = MakeAttrIdent(field.Name);
-                                        // alias to prevent name collisions
-                                        builder.AppendLine($"{fieldName}: ref _{fieldName},");
-                                    }
-                                }
-                                else
-                                {
-                                    throw new ArgumentOutOfRangeException(b.Definition.ToString());
-                                }
-                            });
+                            WriteUnionDestructuringForBranch(builder, b);
                             builder.CodeBlock("=>", _tab, () =>
                             {
                                 // summation
@@ -769,31 +836,15 @@ namespace Core.Generators.Rust
                             .AppendLine("::bebop::write_len(dest, size - ::bebop::LEN_SIZE - 1)?;");
                         builder.CodeBlock("match self", _tab, () =>
                         {
-                            builder.CodeBlock($"{scopeName}::Unknown =>", _tab, () =>
+                            builder.CodeBlock($"{ident}::Unknown =>", _tab, () =>
                             {
-                                builder.AppendLine("return Err(::bebop::SerializeError::CannotSerializeUnknownUnion);");
+                                builder.AppendLine(
+                                    "return Err(::bebop::SerializeError::CannotSerializeUnknownUnion);");
                             });
                             // matching against each possible union type
                             foreach (var b in d.Branches.OrderBy((b) => b.Discriminator))
                             {
-                                var branchName = MakeEnumVariantIdent(b.Definition.Name);
-                                builder.CodeBlock($"{scopeName}::{branchName}", _tab, () =>
-                                {
-                                    // destructuring
-                                    if (b.Definition is FieldsDefinition fd)
-                                    {
-                                        foreach (var field in fd.Fields)
-                                        {
-                                            var fieldName = MakeAttrIdent(field.Name);
-                                            // alias to prevent name collisions
-                                            builder.AppendLine($"{fieldName}: ref _{fieldName},");
-                                        }
-                                    }
-                                    else
-                                    {
-                                        throw new ArgumentOutOfRangeException(b.Definition.ToString());
-                                    }
-                                });
+                                WriteUnionDestructuringForBranch(builder, b);
                                 builder.CodeBlock("=>", _tab, () =>
                                 {
                                     // serialization
@@ -825,7 +876,8 @@ namespace Core.Generators.Rust
                             .AppendLine("Ok(size)");
                     }).AppendLine();
 
-                builder.CodeBlock("fn _deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)>", _tab,
+                builder.CodeBlock("fn _deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)>",
+                    _tab,
                     () =>
                     {
                         builder
@@ -844,11 +896,11 @@ namespace Core.Generators.Rust
                                     switch (b.Definition)
                                     {
                                         case StructDefinition sd:
-                                            WriteStructDeserialization(builder, sd, true, $"{scopeName}::{branchName}",
+                                            WriteStructDeserialization(builder, sd, true, $"{ident}::{branchName}",
                                                 true);
                                             break;
                                         case MessageDefinition md:
-                                            WriteMessageDeserialization(builder, md, true, $"{scopeName}::{branchName}",
+                                            WriteMessageDeserialization(builder, md, true, $"{ident}::{branchName}",
                                                 true);
                                             break;
                                         default:
@@ -861,7 +913,7 @@ namespace Core.Generators.Rust
                             {
                                 builder
                                     .AppendLine("i = len;")
-                                    .AppendLine($"{scopeName}::Unknown");
+                                    .AppendLine($"{ident}::Unknown");
                             });
                         }, "{", "};");
                         builder.CodeBlock("if !cfg!(feature = \"unchecked\") && i != len", _tab,
@@ -879,6 +931,32 @@ namespace Core.Generators.Rust
             }).AppendLine();
 
             WriteRecordImpl(builder, name, d);
+        }
+
+        /// <summary>
+        /// Write the destructuring for a given union branch. Names all attributes with a `_` prefix to avoid
+        /// collisions. This does not write the "=>" opening.
+        /// </summary>
+        private void WriteUnionDestructuringForBranch(IndentedStringBuilder builder, UnionBranch b, string obj = "Self",
+            bool byRef = true)
+        {
+            var branchName = MakeEnumVariantIdent(b.Definition.Name);
+            var refStr = byRef ? " ref" : "";
+            builder.CodeBlock($"{obj}::{branchName}", _tab, () =>
+            {
+                if (b.Definition is FieldsDefinition fd)
+                {
+                    foreach (var field in fd.Fields)
+                    {
+                        var fieldName = MakeAttrIdent(field.Name);
+                        builder.AppendLine($"{fieldName}:{refStr} _{fieldName},");
+                    }
+                }
+                else
+                {
+                    throw new ArgumentOutOfRangeException(b.Definition.ToString());
+                }
+            });
         }
 
         #endregion
@@ -915,7 +993,8 @@ namespace Core.Generators.Rust
             {
                 builder.CodeBlock($"impl<'raw> ::bebop::Record<'raw> for {name}", _tab, () =>
                 {
-                    builder.AppendLine($"const OPCODE: ::core::option::Option<u32> = Some({d.OpcodeAttribute.Value});");
+                    builder.AppendLine(
+                        $"const OPCODE: ::core::option::Option<u32> = Some({d.OpcodeAttribute.Value});");
                 });
             }
             else
@@ -924,31 +1003,27 @@ namespace Core.Generators.Rust
             }
         }
 
-        private void WriteFromBorrowedToOwnedForFields(IndentedStringBuilder builder, string implFor,
-            IEnumerable<Field> fields, bool optionalFields = false) =>
-            // generate the From<Borrowed> for Owned impl
-            builder.CodeBlock($"impl<'raw> ::core::convert::From<super::{implFor}<'raw>> for {implFor}", _tab, () =>
-                builder.CodeBlock($"fn from(value: super::{implFor}) -> Self", _tab, () =>
-                    builder.CodeBlock("Self", _tab, () =>
+
+        private void WriteFromBorrowedToOwnedForFields(IndentedStringBuilder builder, IEnumerable<Field> fields,
+            bool optionalFields = false, string obj = "Self") =>
+            builder.CodeBlock(obj, _tab, () =>
+            {
+                foreach (var f in fields)
+                {
+                    var atrName = MakeAttrIdent(f.Name);
+                    var intoMethod = BorrowedIntoOwnedMethod(f.Type);
+                    if (optionalFields && intoMethod != "")
                     {
-                        foreach (var f in fields)
-                        {
-                            var atrName = MakeAttrIdent(f.Name);
-                            var intoMethod = BorrowedIntoOwnedMethod(f.Type);
-                            if (optionalFields && intoMethod != "")
-                            {
-                                // we have to map because it is an optional and we can't just move
-                                builder.AppendLine($"{atrName}: value.{atrName}.map(|value| value{intoMethod}),");
-                            }
-                            else
-                            {
-                                // we don't need to map, but we do need to convert
-                                builder.AppendLine($"{atrName}: value.{atrName}{intoMethod},");
-                            }
-                        }
-                    })
-                )
-            ).AppendLine();
+                        // we have to map because it is an optional and we can't just move
+                        builder.AppendLine($"{atrName}: value.{atrName}.map(|value| value{intoMethod}),");
+                    }
+                    else
+                    {
+                        // we don't need to map, but we do need to convert
+                        builder.AppendLine($"{atrName}: value.{atrName}{intoMethod},");
+                    }
+                }
+            });
 
         /// <summary>
         /// Generate the `.into()` or equivalent for converting from a borrowed type to an owned type.
@@ -1089,7 +1164,8 @@ namespace Core.Generators.Rust
                     {
                         // extra special case where we have an array of primitive-like structs
                         var lifetime = ot is OwnershipType.Borrowed ? "'raw" : "'static";
-                        return $"::bebop::SliceWrapper<{lifetime}, {TypeName(at.MemberType, OwnershipType.Borrowed)}>";
+                        return
+                            $"::bebop::SliceWrapper<{lifetime}, {TypeName(at.MemberType, OwnershipType.Borrowed)}>";
                     }
                     else
                     {
@@ -1106,7 +1182,8 @@ namespace Core.Generators.Rust
                         OwnershipType.Owned => NeedsLifetime(Schema.Definitions[dt.Name])
                             ? $"{dt.Name}<'raw>"
                             : dt.Name,
-                        OwnershipType.Constant => throw new NotSupportedException("Cannot have a const defined type"),
+                        OwnershipType.Constant => throw new NotSupportedException(
+                            "Cannot have a const defined type"),
                         _ => throw new ArgumentOutOfRangeException(nameof(ot), ot, null)
                     };
             }
