@@ -1035,13 +1035,15 @@ namespace Core.Generators.Rust
             {
                 // when it is a slice
                 case ArrayType at when !ArrayTypeIsVec(at):
-                    return $".iter().cloned().map(|value| value{BorrowedIntoOwnedMethod(at.MemberType)}).collect()";
-                // When it is a vec of borrowed types, convert the inner type
-                case ArrayType { MemberType: DefinedType dt } at when NeedsLifetime(Schema.Definitions[dt.Name]):
-                    return $".into_iter().map(|value| value{BorrowedIntoOwnedMethod(at.MemberType)}).collect()";
-                // when no conversion is needed, take ownership of the vec
-                case ArrayType:
-                    return "";
+                    var cloned = (at.MemberType is ScalarType ast && ast.BaseType == BaseType.String)
+                        ? ".cloned()"
+                        : "";
+                    return $".iter(){cloned}.map(|value| value{BorrowedIntoOwnedMethod(at.MemberType)}).collect()";
+                // when it is a vec
+                case ArrayType at:
+                    // when no conversion is needed, take ownership of the vec, else map
+                    var arrayInner = BorrowedIntoOwnedMethod(at.MemberType);
+                    return string.IsNullOrEmpty(arrayInner) ? "" : $".into_iter().map(|value| value{arrayInner}).collect()";
 
                 case DefinedType dt when NeedsLifetime(Schema.Definitions[dt.Name]):
                     return ".into()";
@@ -1051,7 +1053,7 @@ namespace Core.Generators.Rust
                 case MapType mt:
                     var keyInto = BorrowedIntoOwnedMethod(mt.KeyType);
                     var valueInto = BorrowedIntoOwnedMethod(mt.ValueType);
-                    return keyInto != "" || valueInto != ""
+                    return !string.IsNullOrEmpty(keyInto) || !string.IsNullOrEmpty(valueInto)
                         // When the key OR the value need to be mapped
                         ? $".into_iter().map(|(key, value)| (key{BorrowedIntoOwnedMethod(mt.KeyType)}, value{BorrowedIntoOwnedMethod(mt.ValueType)})).collect()"
                         // When neither the key nor the value need to be mapped, just take ownership
@@ -1199,7 +1201,7 @@ namespace Core.Generators.Rust
             };
 
         private bool ArrayTypeIsVec(ArrayType type, OwnershipType ot = OwnershipType.Borrowed) =>
-            TypeName(type.MemberType, ot).StartsWith("::std::vec::Vec");
+            TypeName(type, ot).StartsWith("::std::vec::Vec");
 
         private bool FieldNeedsLifetime(Definition d, Field f, OwnershipType ot = OwnershipType.Borrowed)
         {
