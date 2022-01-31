@@ -1043,7 +1043,9 @@ namespace Core.Generators.Rust
                 case ArrayType at:
                     // when no conversion is needed, take ownership of the vec, else map
                     var arrayInner = BorrowedIntoOwnedMethod(at.MemberType);
-                    return string.IsNullOrEmpty(arrayInner) ? "" : $".into_iter().map(|value| value{arrayInner}).collect()";
+                    return string.IsNullOrEmpty(arrayInner)
+                        ? ""
+                        : $".into_iter().map(|value| value{arrayInner}).collect()";
 
                 case DefinedType dt when NeedsLifetime(Schema.Definitions[dt.Name]):
                     return ".into()";
