@@ -112,12 +112,13 @@ namespace Core.Generators.Rust
                 }
 
                 mainBuilder.AppendLine();
+                ownedBuilder.AppendLine();
             }
 
             mainBuilder
                 .AppendLine(string.IsNullOrWhiteSpace(Schema.Namespace)
                     ? "#[cfg(feature = \"bebop-owned-all\")]"
-                    : $"#[cfg(any(feature = \"beboop-owned-all\", feature = \"{Schema.Namespace.ToKebabCase()}-owned\"))]")
+                    : $"#[cfg(any(feature = \"bebop-owned-all\", feature = \"{Schema.Namespace.ToKebabCase()}-owned\"))]")
                 .CodeBlock("pub mod owned", _tab, () =>
                 {
                     mainBuilder.Append(ownedBuilder.ToString());
@@ -173,7 +174,7 @@ namespace Core.Generators.Rust
                     // run code after this switch
                     break;
                 case CodeRegion.Owned:
-                    builder.Append($"pub use super::{name};");
+                    builder.AppendLine($"pub use super::{name};");
                     return;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(region), region, null);
@@ -290,7 +291,7 @@ namespace Core.Generators.Rust
 
             if (!needsLifetime && region == CodeRegion.Owned)
             {
-                builder.Append($"pub use super::{ident};");
+                builder.AppendLine($"pub use super::{ident};");
                 return;
             }
 
@@ -302,7 +303,7 @@ namespace Core.Generators.Rust
             };
 
             // if it is the owned region, skip lifetime
-            var name = ident + (needsLifetime && region != CodeRegion.Owned ? "<'raw>" : "");
+            var name = needsLifetime && region != CodeRegion.Owned ? $"{ident}<'raw>" : ident;
 
             builder.Append("#[derive(Clone, Debug, PartialEq");
             if (isFixedSize)
@@ -471,7 +472,7 @@ namespace Core.Generators.Rust
 
             if (!needsLifetime && region == CodeRegion.Owned)
             {
-                builder.Append($"pub use super::{ident};");
+                builder.AppendLine($"pub use super::{ident};");
                 return;
             }
 
@@ -481,7 +482,7 @@ namespace Core.Generators.Rust
                 CodeRegion.Owned => OwnershipType.Owned,
                 _ => throw new ArgumentOutOfRangeException(nameof(region), region, null)
             };
-            var name = ot == OwnershipType.Borrowed && needsLifetime ? ident + "<'raw>" : "";
+            var name = ot == OwnershipType.Borrowed && needsLifetime ? $"{ident}<'raw>" : ident;
 
             builder
                 .AppendLine("#[derive(Clone, Debug, PartialEq, Default)]")
@@ -694,7 +695,7 @@ namespace Core.Generators.Rust
             var needsLifetime = NeedsLifetime(d);
             if (!needsLifetime && region == CodeRegion.Owned)
             {
-                builder.Append($"pub use super::{ident};");
+                builder.AppendLine($"pub use super::{ident};");
                 return;
             }
 
@@ -704,7 +705,7 @@ namespace Core.Generators.Rust
                 CodeRegion.Owned => OwnershipType.Owned,
                 _ => throw new ArgumentOutOfRangeException(nameof(region), region, null)
             };
-            var name = ot == OwnershipType.Borrowed && needsLifetime ? ident + "<'raw>" : "";
+            var name = ot == OwnershipType.Borrowed && needsLifetime ? $"{ident}<'raw>" : ident;
 
             builder.AppendLine("#[derive(Clone, Debug, PartialEq)]");
             builder.CodeBlock($"pub enum {name}", _tab, () =>
@@ -746,9 +747,9 @@ namespace Core.Generators.Rust
                 {
                     builder.CodeBlock($"fn from(value: super::{ident}) -> Self", _tab, () =>
                     {
-                        builder.CodeBlock("match self", _tab, () =>
+                        builder.CodeBlock("match value", _tab, () =>
                         {
-                            builder.CodeBlock($"{ident}::Unknown =>", _tab, () =>
+                            builder.CodeBlock($"super::{ident}::Unknown =>", _tab, () =>
                             {
                                 builder.AppendLine("Self::Unknown");
                             });
@@ -763,10 +764,10 @@ namespace Core.Generators.Rust
                                     switch (b.Definition)
                                     {
                                         case StructDefinition sd:
-                                            WriteFromBorrowedToOwnedForFields(builder, sd.Fields, false, obj);
+                                            WriteFromBorrowedToOwnedForFields(builder, sd.Fields, false, obj, "_");
                                             break;
                                         case MessageDefinition md:
-                                            WriteFromBorrowedToOwnedForFields(builder, md.Fields, true, obj);
+                                            WriteFromBorrowedToOwnedForFields(builder, md.Fields, true, obj, "_");
                                             break;
                                         default:
                                             throw new ArgumentOutOfRangeException(b.Definition.ToString());
@@ -1005,7 +1006,7 @@ namespace Core.Generators.Rust
 
 
         private void WriteFromBorrowedToOwnedForFields(IndentedStringBuilder builder, IEnumerable<Field> fields,
-            bool optionalFields = false, string obj = "Self") =>
+            bool optionalFields = false, string obj = "Self", string attrPrefix = "value.") =>
             builder.CodeBlock(obj, _tab, () =>
             {
                 foreach (var f in fields)
@@ -1015,12 +1016,12 @@ namespace Core.Generators.Rust
                     if (optionalFields && intoMethod != "")
                     {
                         // we have to map because it is an optional and we can't just move
-                        builder.AppendLine($"{atrName}: value.{atrName}.map(|value| value{intoMethod}),");
+                        builder.AppendLine($"{atrName}: {attrPrefix}{atrName}.map(|value| value{intoMethod}),");
                     }
                     else
                     {
                         // we don't need to map, but we do need to convert
-                        builder.AppendLine($"{atrName}: value.{atrName}{intoMethod},");
+                        builder.AppendLine($"{atrName}: {attrPrefix}{atrName}{intoMethod},");
                     }
                 }
             });
@@ -1034,7 +1035,7 @@ namespace Core.Generators.Rust
             {
                 // when it is a slice
                 case ArrayType at when !ArrayTypeIsVec(at):
-                    return $".iter().map(|value| value{BorrowedIntoOwnedMethod(at.MemberType)}).collect()";
+                    return $".iter().cloned().map(|value| value{BorrowedIntoOwnedMethod(at.MemberType)}).collect()";
                 // When it is a vec of borrowed types, convert the inner type
                 case ArrayType { MemberType: DefinedType dt } at when NeedsLifetime(Schema.Definitions[dt.Name]):
                     return $".into_iter().map(|value| value{BorrowedIntoOwnedMethod(at.MemberType)}).collect()";
@@ -1052,7 +1053,7 @@ namespace Core.Generators.Rust
                     var valueInto = BorrowedIntoOwnedMethod(mt.ValueType);
                     return keyInto != "" || valueInto != ""
                         // When the key OR the value need to be mapped
-                        ? $".into_iter(|(key, value)| (key{BorrowedIntoOwnedMethod(mt.KeyType)}, value{BorrowedIntoOwnedMethod(mt.ValueType)})).collect()"
+                        ? $".into_iter().map(|(key, value)| (key{BorrowedIntoOwnedMethod(mt.KeyType)}, value{BorrowedIntoOwnedMethod(mt.ValueType)})).collect()"
                         // When neither the key nor the value need to be mapped, just take ownership
                         : "";
 
@@ -1148,7 +1149,7 @@ namespace Core.Generators.Rust
                             BaseType.Float32 => wrappedSlice,
                             BaseType.Float64 => wrappedSlice,
                             BaseType.String when ot is OwnershipType.Borrowed =>
-                                $"::std::vec::Vec<{TypeName(at.MemberType, OwnershipType.Borrowed)}>",
+                                $"::std::vec::Vec<{TypeName(at.MemberType, ot)}>",
                             BaseType.String => wrappedSlice,
                             // this one does not care what endian the system is
                             BaseType.Guid => wrappedSlice, //$"&{lifetime} [::bebop::Guid]",
@@ -1165,7 +1166,7 @@ namespace Core.Generators.Rust
                         // extra special case where we have an array of primitive-like structs
                         var lifetime = ot is OwnershipType.Borrowed ? "'raw" : "'static";
                         return
-                            $"::bebop::SliceWrapper<{lifetime}, {TypeName(at.MemberType, OwnershipType.Borrowed)}>";
+                            $"::bebop::SliceWrapper<{lifetime}, {TypeName(at.MemberType, ot)}>";
                     }
                     else
                     {
@@ -1179,9 +1180,7 @@ namespace Core.Generators.Rust
                         OwnershipType.Borrowed => NeedsLifetime(Schema.Definitions[dt.Name])
                             ? $"{dt.Name}<'raw>"
                             : dt.Name,
-                        OwnershipType.Owned => NeedsLifetime(Schema.Definitions[dt.Name])
-                            ? $"{dt.Name}<'raw>"
-                            : dt.Name,
+                        OwnershipType.Owned => dt.Name,
                         OwnershipType.Constant => throw new NotSupportedException(
                             "Cannot have a const defined type"),
                         _ => throw new ArgumentOutOfRangeException(nameof(ot), ot, null)
