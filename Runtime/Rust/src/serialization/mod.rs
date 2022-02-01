@@ -24,6 +24,12 @@ pub const LEN_SIZE: usize = core::mem::size_of::<Len>();
 /// Size of an enum
 pub const ENUM_SIZE: usize = 4;
 
+pub trait OwnedRecord: for<'raw> Record<'raw> {}
+impl<T> OwnedRecord for T where T: for<'raw> Record<'raw> {}
+
+pub trait OwnedSubRecord: for<'raw> SubRecord<'raw> {}
+impl<T> OwnedSubRecord for T where T: for<'raw> SubRecord<'raw> {}
+
 /// Bebop message type which can be serialized and deserialized.
 pub trait Record<'raw>: SubRecord<'raw> {
     const OPCODE: Option<u32> = None;
