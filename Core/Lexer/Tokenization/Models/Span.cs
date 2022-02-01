@@ -101,12 +101,6 @@ namespace Core.Lexer.Tokenization.Models
             return c;
         }
 
-
-        public string ToJson()
-        {
-            return $"{{\"FileName\":\"{FileName.EscapeString()}\",\"StartLine\":{StartLine},\"EndLine\":{EndLine},\"StartColumn\":{StartColumn},\"EndColumn\":{EndColumn},\"Lines\":{Lines}}}";
-        }
-
         public override bool Equals(object? obj) => obj is Span span && Equals(span);
 
         public override int GetHashCode() => HashCode.Combine(StartLine, EndLine, StartColumn, EndColumn);

@@ -16,9 +16,9 @@
 
 #![allow(warnings)]
 
-use bebop::FixedSized as _;
-use core::convert::TryInto as _;
-use std::io::Write as _;
+use ::std::io::Write as _;
+use ::core::convert::TryInto as _;
+use ::bebop::FixedSized as _;
 
 #[repr(u32)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -40,9 +40,7 @@ impl ::core::convert::TryFrom<u32> for Instrument {
             2 => Ok(Instrument::Clarinet),
             3 => Ok(Instrument::Piano),
             4 => Ok(Instrument::Cello),
-            d => Err(::bebop::DeserializeError::InvalidEnumDiscriminator(
-                d.into(),
-            )),
+            d => Err(::bebop::DeserializeError::InvalidEnumDiscriminator(d.into())),
         }
     }
 }
@@ -64,9 +62,7 @@ impl ::bebop::SubRecord<'_> for Instrument {
     const EXACT_SERIALIZED_SIZE: Option<usize> = Some(::std::mem::size_of::<u32>());
 
     #[inline]
-    fn serialized_size(&self) -> usize {
-        ::std::mem::size_of::<u32>()
-    }
+    fn serialized_size(&self) -> usize { ::std::mem::size_of::<u32>() }
 
     #[inline]
     fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
@@ -84,6 +80,7 @@ impl ::bebop::FixedSized for Instrument {
     const SERIALIZED_SIZE: usize = ::std::mem::size_of::<u32>();
 }
 
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Performer<'raw> {
     pub name: &'raw str,
@@ -92,15 +89,20 @@ pub struct Performer<'raw> {
 
 impl<'raw> ::bebop::SubRecord<'raw> for Performer<'raw> {
     const MIN_SERIALIZED_SIZE: usize =
-        <&'raw str>::MIN_SERIALIZED_SIZE + <Instrument>::MIN_SERIALIZED_SIZE;
+        <&'raw str>::MIN_SERIALIZED_SIZE +
+        <Instrument>::MIN_SERIALIZED_SIZE;
 
     #[inline]
     fn serialized_size(&self) -> usize {
-        self.name.serialized_size() + self.plays.serialized_size()
+        self.name.serialized_size() +
+        self.plays.serialized_size()
     }
 
     fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
-        Ok(self.name._serialize_chained(dest)? + self.plays._serialize_chained(dest)?)
+        Ok(
+            self.name._serialize_chained(dest)? +
+            self.plays._serialize_chained(dest)?
+        )
     }
 
     fn _deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)> {
@@ -115,13 +117,10 @@ impl<'raw> ::bebop::SubRecord<'raw> for Performer<'raw> {
         let (read, v1) = ::bebop::SubRecord::_deserialize_chained(&raw[i..])?;
         i += read;
 
-        Ok((
-            i,
-            Self {
-                name: v0,
-                plays: v1,
-            },
-        ))
+        Ok((i, Self {
+            name: v0,
+            plays: v1,
+        }))
     }
 }
 
@@ -142,23 +141,10 @@ impl<'raw> ::bebop::SubRecord<'raw> for Song<'raw> {
 
     #[inline]
     fn serialized_size(&self) -> usize {
-        ::bebop::LEN_SIZE
-            + 1
-            + self
-                .title
-                .as_ref()
-                .map(|v| v.serialized_size() + 1)
-                .unwrap_or(0)
-            + self
-                .year
-                .as_ref()
-                .map(|v| v.serialized_size() + 1)
-                .unwrap_or(0)
-            + self
-                .performers
-                .as_ref()
-                .map(|v| v.serialized_size() + 1)
-                .unwrap_or(0)
+        ::bebop::LEN_SIZE + 1 +
+        self.title.as_ref().map(|v| v.serialized_size() + 1).unwrap_or(0) +
+        self.year.as_ref().map(|v| v.serialized_size() + 1).unwrap_or(0) +
+        self.performers.as_ref().map(|v| v.serialized_size() + 1).unwrap_or(0)
     }
 
     fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
@@ -253,17 +239,14 @@ impl<'raw> ::bebop::SubRecord<'raw> for Song<'raw> {
 
         if i != len {
             debug_assert!(i > len);
-            return Err(::bebop::DeserializeError::CorruptFrame);
+            return Err(::bebop::DeserializeError::CorruptFrame)
         }
 
-        Ok((
-            i,
-            Self {
-                title: _title,
-                year: _year,
-                performers: _performers,
-            },
-        ))
+        Ok((i, Self {
+            title: _title,
+            year: _year,
+            performers: _performers,
+        }))
     }
 }
 
@@ -275,7 +258,9 @@ pub enum Album<'raw> {
     Unknown,
 
     /// Discriminator 1
-    StudioAlbum { tracks: ::std::vec::Vec<Song<'raw>> },
+    StudioAlbum {
+        tracks: ::std::vec::Vec<Song<'raw>>,
+    },
 
     /// Discriminator 2
     LiveAlbum {
@@ -292,34 +277,29 @@ impl<'raw> ::bebop::SubRecord<'raw> for Album<'raw> {
     const MIN_SERIALIZED_SIZE: usize = ::bebop::LEN_SIZE + 1;
 
     fn serialized_size(&self) -> usize {
-        ::bebop::LEN_SIZE
-            + 1
-            + match self {
-                Album::Unknown => 0,
-                Self::StudioAlbum {
-                    tracks: ref _tracks,
-                } => _tracks.serialized_size(),
-                Self::LiveAlbum {
-                    tracks: ref _tracks,
-                    venue_name: ref _venue_name,
-                    concert_date: ref _concert_date,
-                } => {
-                    ::bebop::LEN_SIZE
-                        + 1
-                        + _tracks
-                            .as_ref()
-                            .map(|v| v.serialized_size() + 1)
-                            .unwrap_or(0)
-                        + _venue_name
-                            .as_ref()
-                            .map(|v| v.serialized_size() + 1)
-                            .unwrap_or(0)
-                        + _concert_date
-                            .as_ref()
-                            .map(|v| v.serialized_size() + 1)
-                            .unwrap_or(0)
-                }
+        ::bebop::LEN_SIZE + 1 +
+        match self {
+            Album::Unknown => {
+                0
             }
+            Self::StudioAlbum {
+                tracks: ref _tracks,
+            }
+            => {
+                _tracks.serialized_size()
+            }
+            Self::LiveAlbum {
+                tracks: ref _tracks,
+                venue_name: ref _venue_name,
+                concert_date: ref _concert_date,
+            }
+            => {
+                ::bebop::LEN_SIZE + 1 +
+                _tracks.as_ref().map(|v| v.serialized_size() + 1).unwrap_or(0) +
+                _venue_name.as_ref().map(|v| v.serialized_size() + 1).unwrap_or(0) +
+                _concert_date.as_ref().map(|v| v.serialized_size() + 1).unwrap_or(0)
+            }
+        }
     }
 
     fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
@@ -331,7 +311,8 @@ impl<'raw> ::bebop::SubRecord<'raw> for Album<'raw> {
             }
             Self::StudioAlbum {
                 tracks: ref _tracks,
-            } => {
+            }
+            => {
                 1u8._serialize_chained(dest)?;
                 _tracks._serialize_chained(dest)?;
             }
@@ -339,7 +320,8 @@ impl<'raw> ::bebop::SubRecord<'raw> for Album<'raw> {
                 tracks: ref _tracks,
                 venue_name: ref _venue_name,
                 concert_date: ref _concert_date,
-            } => {
+            }
+            => {
                 2u8._serialize_chained(dest)?;
                 ::bebop::write_len(dest, size - ::bebop::LEN_SIZE * 2 - 1)?;
                 if let Some(ref v) = _tracks {
@@ -368,7 +350,9 @@ impl<'raw> ::bebop::SubRecord<'raw> for Album<'raw> {
                 let (read, v0) = ::bebop::SubRecord::_deserialize_chained(&raw[i..])?;
                 i += read;
 
-                Album::StudioAlbum { tracks: v0 }
+                Album::StudioAlbum {
+                    tracks: v0,
+                }
             }
             2 => {
                 let len = ::bebop::read_len(&raw[i..])? + i + ::bebop::LEN_SIZE;
@@ -411,8 +395,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for Album<'raw> {
                             if _tracks.is_some() {
                                 return Err(::bebop::DeserializeError::DuplicateMessageField);
                             }
-                            let (read, value) =
-                                ::bebop::SubRecord::_deserialize_chained(&raw[i..])?;
+                            let (read, value) = ::bebop::SubRecord::_deserialize_chained(&raw[i..])?;
                             i += read;
                             _tracks = Some(value)
                         }
@@ -421,8 +404,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for Album<'raw> {
                             if _venue_name.is_some() {
                                 return Err(::bebop::DeserializeError::DuplicateMessageField);
                             }
-                            let (read, value) =
-                                ::bebop::SubRecord::_deserialize_chained(&raw[i..])?;
+                            let (read, value) = ::bebop::SubRecord::_deserialize_chained(&raw[i..])?;
                             i += read;
                             _venue_name = Some(value)
                         }
@@ -431,8 +413,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for Album<'raw> {
                             if _concert_date.is_some() {
                                 return Err(::bebop::DeserializeError::DuplicateMessageField);
                             }
-                            let (read, value) =
-                                ::bebop::SubRecord::_deserialize_chained(&raw[i..])?;
+                            let (read, value) = ::bebop::SubRecord::_deserialize_chained(&raw[i..])?;
                             i += read;
                             _concert_date = Some(value)
                         }
@@ -445,7 +426,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for Album<'raw> {
 
                 if i != len {
                     debug_assert!(i > len);
-                    return Err(::bebop::DeserializeError::CorruptFrame);
+                    return Err(::bebop::DeserializeError::CorruptFrame)
                 }
 
                 Album::LiveAlbum {
@@ -462,10 +443,12 @@ impl<'raw> ::bebop::SubRecord<'raw> for Album<'raw> {
         if !cfg!(feature = "unchecked") && i != len {
             debug_assert!(i > len);
             Err(::bebop::DeserializeError::CorruptFrame)
-        } else {
+        }
+        else {
             Ok((i, de))
         }
     }
+
 }
 
 impl<'raw> ::bebop::Record<'raw> for Album<'raw> {}
@@ -485,7 +468,9 @@ impl<'raw> ::bebop::SubRecord<'raw> for Library<'raw> {
     }
 
     fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
-        Ok(self.albums._serialize_chained(dest)?)
+        Ok(
+            self.albums._serialize_chained(dest)?
+        )
     }
 
     fn _deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)> {
@@ -498,7 +483,9 @@ impl<'raw> ::bebop::SubRecord<'raw> for Library<'raw> {
         let (read, v0) = ::bebop::SubRecord::_deserialize_chained(&raw[i..])?;
         i += read;
 
-        Ok((i, Self { albums: v0 }))
+        Ok((i, Self {
+            albums: v0,
+        }))
     }
 }
 
@@ -508,9 +495,9 @@ impl<'raw> ::bebop::Record<'raw> for Library<'raw> {}
 pub mod owned {
     #![allow(warnings)]
 
-    use bebop::FixedSized as _;
-    use core::convert::TryInto as _;
-    use std::io::Write as _;
+    use ::std::io::Write as _;
+    use ::core::convert::TryInto as _;
+    use ::bebop::FixedSized as _;
 
     pub use super::Instrument;
 
@@ -531,18 +518,20 @@ pub mod owned {
 
     impl<'raw> ::bebop::SubRecord<'raw> for Performer {
         const MIN_SERIALIZED_SIZE: usize =
-            <String>::MIN_SERIALIZED_SIZE + <Instrument>::MIN_SERIALIZED_SIZE;
+            <String>::MIN_SERIALIZED_SIZE +
+            <Instrument>::MIN_SERIALIZED_SIZE;
 
         #[inline]
         fn serialized_size(&self) -> usize {
-            self.name.serialized_size() + self.plays.serialized_size()
+            self.name.serialized_size() +
+            self.plays.serialized_size()
         }
 
-        fn _serialize_chained<W: ::std::io::Write>(
-            &self,
-            dest: &mut W,
-        ) -> ::bebop::SeResult<usize> {
-            Ok(self.name._serialize_chained(dest)? + self.plays._serialize_chained(dest)?)
+        fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+            Ok(
+                self.name._serialize_chained(dest)? +
+                self.plays._serialize_chained(dest)?
+            )
         }
 
         fn _deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)> {
@@ -557,13 +546,10 @@ pub mod owned {
             let (read, v1) = ::bebop::SubRecord::_deserialize_chained(&raw[i..])?;
             i += read;
 
-            Ok((
-                i,
-                Self {
-                    name: v0,
-                    plays: v1,
-                },
-            ))
+            Ok((i, Self {
+                name: v0,
+                plays: v1,
+            }))
         }
     }
 
@@ -584,9 +570,7 @@ pub mod owned {
             Self {
                 title: value.title.map(|value| value.into()),
                 year: value.year,
-                performers: value
-                    .performers
-                    .map(|value| value.into_iter().map(|value| value.into()).collect()),
+                performers: value.performers.map(|value| value.into_iter().map(|value| value.into()).collect()),
             }
         }
     }
@@ -596,29 +580,13 @@ pub mod owned {
 
         #[inline]
         fn serialized_size(&self) -> usize {
-            ::bebop::LEN_SIZE
-                + 1
-                + self
-                    .title
-                    .as_ref()
-                    .map(|v| v.serialized_size() + 1)
-                    .unwrap_or(0)
-                + self
-                    .year
-                    .as_ref()
-                    .map(|v| v.serialized_size() + 1)
-                    .unwrap_or(0)
-                + self
-                    .performers
-                    .as_ref()
-                    .map(|v| v.serialized_size() + 1)
-                    .unwrap_or(0)
+            ::bebop::LEN_SIZE + 1 +
+            self.title.as_ref().map(|v| v.serialized_size() + 1).unwrap_or(0) +
+            self.year.as_ref().map(|v| v.serialized_size() + 1).unwrap_or(0) +
+            self.performers.as_ref().map(|v| v.serialized_size() + 1).unwrap_or(0)
         }
 
-        fn _serialize_chained<W: ::std::io::Write>(
-            &self,
-            dest: &mut W,
-        ) -> ::bebop::SeResult<usize> {
+        fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
             let size = self.serialized_size();
             ::bebop::write_len(dest, size - ::bebop::LEN_SIZE)?;
             if let Some(ref v) = self.title {
@@ -710,17 +678,14 @@ pub mod owned {
 
             if i != len {
                 debug_assert!(i > len);
-                return Err(::bebop::DeserializeError::CorruptFrame);
+                return Err(::bebop::DeserializeError::CorruptFrame)
             }
 
-            Ok((
-                i,
-                Self {
-                    title: _title,
-                    year: _year,
-                    performers: _performers,
-                },
-            ))
+            Ok((i, Self {
+                title: _title,
+                year: _year,
+                performers: _performers,
+            }))
         }
     }
 
@@ -732,7 +697,9 @@ pub mod owned {
         Unknown,
 
         /// Discriminator 1
-        StudioAlbum { tracks: ::std::vec::Vec<Song> },
+        StudioAlbum {
+            tracks: ::std::vec::Vec<Song>,
+        },
 
         /// Discriminator 2
         LiveAlbum {
@@ -748,61 +715,63 @@ pub mod owned {
     impl<'raw> ::core::convert::From<super::Album<'raw>> for Album {
         fn from(value: super::Album) -> Self {
             match value {
-                super::Album::Unknown => Self::Unknown,
-                super::Album::StudioAlbum { tracks: _tracks } => Self::StudioAlbum {
-                    tracks: _tracks.into_iter().map(|value| value.into()).collect(),
-                },
+                super::Album::Unknown => {
+                    Self::Unknown
+                }
+                super::Album::StudioAlbum {
+                    tracks: _tracks,
+                }
+                => {
+                    Self::StudioAlbum {
+                        tracks: _tracks.into_iter().map(|value| value.into()).collect(),
+                    }
+                }
                 super::Album::LiveAlbum {
                     tracks: _tracks,
                     venue_name: _venue_name,
                     concert_date: _concert_date,
-                } => Self::LiveAlbum {
-                    tracks: _tracks
-                        .map(|value| value.into_iter().map(|value| value.into()).collect()),
-                    venue_name: _venue_name.map(|value| value.into()),
-                    concert_date: _concert_date,
-                },
+                }
+                => {
+                    Self::LiveAlbum {
+                        tracks: _tracks.map(|value| value.into_iter().map(|value| value.into()).collect()),
+                        venue_name: _venue_name.map(|value| value.into()),
+                        concert_date: _concert_date,
+                    }
+                }
             }
         }
+
     }
     impl<'raw> ::bebop::SubRecord<'raw> for Album {
         const MIN_SERIALIZED_SIZE: usize = ::bebop::LEN_SIZE + 1;
 
         fn serialized_size(&self) -> usize {
-            ::bebop::LEN_SIZE
-                + 1
-                + match self {
-                    Album::Unknown => 0,
-                    Self::StudioAlbum {
-                        tracks: ref _tracks,
-                    } => _tracks.serialized_size(),
-                    Self::LiveAlbum {
-                        tracks: ref _tracks,
-                        venue_name: ref _venue_name,
-                        concert_date: ref _concert_date,
-                    } => {
-                        ::bebop::LEN_SIZE
-                            + 1
-                            + _tracks
-                                .as_ref()
-                                .map(|v| v.serialized_size() + 1)
-                                .unwrap_or(0)
-                            + _venue_name
-                                .as_ref()
-                                .map(|v| v.serialized_size() + 1)
-                                .unwrap_or(0)
-                            + _concert_date
-                                .as_ref()
-                                .map(|v| v.serialized_size() + 1)
-                                .unwrap_or(0)
-                    }
+            ::bebop::LEN_SIZE + 1 +
+            match self {
+                Album::Unknown => {
+                    0
                 }
+                Self::StudioAlbum {
+                    tracks: ref _tracks,
+                }
+                => {
+                    _tracks.serialized_size()
+                }
+                Self::LiveAlbum {
+                    tracks: ref _tracks,
+                    venue_name: ref _venue_name,
+                    concert_date: ref _concert_date,
+                }
+                => {
+                    ::bebop::LEN_SIZE + 1 +
+                    _tracks.as_ref().map(|v| v.serialized_size() + 1).unwrap_or(0) +
+                    _venue_name.as_ref().map(|v| v.serialized_size() + 1).unwrap_or(0) +
+                    _concert_date.as_ref().map(|v| v.serialized_size() + 1).unwrap_or(0)
+                }
+            }
         }
 
-        fn _serialize_chained<W: ::std::io::Write>(
-            &self,
-            dest: &mut W,
-        ) -> ::bebop::SeResult<usize> {
+        fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
             let size = self.serialized_size();
             ::bebop::write_len(dest, size - ::bebop::LEN_SIZE - 1)?;
             match self {
@@ -811,7 +780,8 @@ pub mod owned {
                 }
                 Self::StudioAlbum {
                     tracks: ref _tracks,
-                } => {
+                }
+                => {
                     1u8._serialize_chained(dest)?;
                     _tracks._serialize_chained(dest)?;
                 }
@@ -819,7 +789,8 @@ pub mod owned {
                     tracks: ref _tracks,
                     venue_name: ref _venue_name,
                     concert_date: ref _concert_date,
-                } => {
+                }
+                => {
                     2u8._serialize_chained(dest)?;
                     ::bebop::write_len(dest, size - ::bebop::LEN_SIZE * 2 - 1)?;
                     if let Some(ref v) = _tracks {
@@ -848,7 +819,9 @@ pub mod owned {
                     let (read, v0) = ::bebop::SubRecord::_deserialize_chained(&raw[i..])?;
                     i += read;
 
-                    Album::StudioAlbum { tracks: v0 }
+                    Album::StudioAlbum {
+                        tracks: v0,
+                    }
                 }
                 2 => {
                     let len = ::bebop::read_len(&raw[i..])? + i + ::bebop::LEN_SIZE;
@@ -891,8 +864,7 @@ pub mod owned {
                                 if _tracks.is_some() {
                                     return Err(::bebop::DeserializeError::DuplicateMessageField);
                                 }
-                                let (read, value) =
-                                    ::bebop::SubRecord::_deserialize_chained(&raw[i..])?;
+                                let (read, value) = ::bebop::SubRecord::_deserialize_chained(&raw[i..])?;
                                 i += read;
                                 _tracks = Some(value)
                             }
@@ -901,8 +873,7 @@ pub mod owned {
                                 if _venue_name.is_some() {
                                     return Err(::bebop::DeserializeError::DuplicateMessageField);
                                 }
-                                let (read, value) =
-                                    ::bebop::SubRecord::_deserialize_chained(&raw[i..])?;
+                                let (read, value) = ::bebop::SubRecord::_deserialize_chained(&raw[i..])?;
                                 i += read;
                                 _venue_name = Some(value)
                             }
@@ -911,8 +882,7 @@ pub mod owned {
                                 if _concert_date.is_some() {
                                     return Err(::bebop::DeserializeError::DuplicateMessageField);
                                 }
-                                let (read, value) =
-                                    ::bebop::SubRecord::_deserialize_chained(&raw[i..])?;
+                                let (read, value) = ::bebop::SubRecord::_deserialize_chained(&raw[i..])?;
                                 i += read;
                                 _concert_date = Some(value)
                             }
@@ -925,7 +895,7 @@ pub mod owned {
 
                     if i != len {
                         debug_assert!(i > len);
-                        return Err(::bebop::DeserializeError::CorruptFrame);
+                        return Err(::bebop::DeserializeError::CorruptFrame)
                     }
 
                     Album::LiveAlbum {
@@ -942,10 +912,12 @@ pub mod owned {
             if !cfg!(feature = "unchecked") && i != len {
                 debug_assert!(i > len);
                 Err(::bebop::DeserializeError::CorruptFrame)
-            } else {
+            }
+            else {
                 Ok((i, de))
             }
         }
+
     }
 
     impl<'raw> ::bebop::Record<'raw> for Album {}
@@ -958,11 +930,7 @@ pub mod owned {
     impl<'raw> ::core::convert::From<super::Library<'raw>> for Library {
         fn from(value: super::Library) -> Self {
             Self {
-                albums: value
-                    .albums
-                    .into_iter()
-                    .map(|(key, value)| (key.into(), value.into()))
-                    .collect(),
+                albums: value.albums.into_iter().map(|(key, value)| (key.into(), value.into())).collect(),
             }
         }
     }
@@ -976,11 +944,10 @@ pub mod owned {
             self.albums.serialized_size()
         }
 
-        fn _serialize_chained<W: ::std::io::Write>(
-            &self,
-            dest: &mut W,
-        ) -> ::bebop::SeResult<usize> {
-            Ok(self.albums._serialize_chained(dest)?)
+        fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+            Ok(
+                self.albums._serialize_chained(dest)?
+            )
         }
 
         fn _deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)> {
@@ -993,9 +960,10 @@ pub mod owned {
             let (read, v0) = ::bebop::SubRecord::_deserialize_chained(&raw[i..])?;
             i += read;
 
-            Ok((i, Self { albums: v0 }))
+            Ok((i, Self {
+                albums: v0,
+            }))
         }
     }
 
-    impl<'raw> ::bebop::Record<'raw> for Library {}
-}
+    impl<'raw> ::bebop::Record<'raw> for Library {}}

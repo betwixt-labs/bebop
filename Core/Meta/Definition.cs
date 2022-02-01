@@ -133,7 +133,7 @@ namespace Core.Meta
         }
 
         /// <summary>
-        /// Checks whether this struct is always going to serilize to the exact same size. This means it must only be
+        /// Checks whether this struct is always going to serialize to the exact same size. This means it must only be
         /// composed of primitives (non-strings), enums, and other fixed-sized structs at present.
         /// </summary>
         /// <param name="definitions">Other definitions of defined types in the schema that need to get referenced if
