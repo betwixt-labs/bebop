@@ -45,7 +45,7 @@ namespace Core.Generators.Rust
             "true", "try", "type", "typeof", "unsafe", "unsized", "use", "virtual", "where", "while", "yield",
         };
 
-        private static readonly HashSet<string> _reservedWords = RustGenerator._reservedWordsArray.ToHashSet();
+        private static readonly HashSet<string> _reservedWords = _reservedWordsArray.ToHashSet();
         private Dictionary<string, bool> _needsLifetime = new Dictionary<string, bool>();
 
         #endregion
@@ -168,7 +168,8 @@ namespace Core.Generators.Rust
             var name = MakeDefIdent(d.Name);
             var type = TypeName(d.ScalarType, OwnershipType.Constant);
 
-            if (region == CodeRegion.Owned) {
+            if (region == CodeRegion.Owned)
+            {
                 builder.AppendLine($"pub use super::{name};");
                 return;
             }
