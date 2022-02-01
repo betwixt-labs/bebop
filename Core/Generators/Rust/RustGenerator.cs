@@ -168,16 +168,9 @@ namespace Core.Generators.Rust
             var name = MakeDefIdent(d.Name);
             var type = TypeName(d.ScalarType, OwnershipType.Constant);
 
-            switch (region)
-            {
-                case CodeRegion.Main:
-                    // run code after this switch
-                    break;
-                case CodeRegion.Owned:
-                    builder.AppendLine($"pub use super::{name};");
-                    return;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(region), region, null);
+            if (region == CodeRegion.Owned) {
+                builder.AppendLine($"pub use super::{name};");
+                return;
             }
 
             if (d.IsBitFlags)
