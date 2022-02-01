@@ -1,3 +1,4 @@
+use std::marker::PhantomData;
 use std::ops::Deref;
 
 use async_trait::async_trait;
@@ -30,17 +31,19 @@ pub trait ServiceRequests {
 /// This is the main structure which represents information about both ends of the connection and
 /// maintains the needed state to make and receive calls. This is the only struct of which an
 /// instance should need to be maintained by the user.
-pub struct Router<Transport, Local, Remote> {
+pub struct Router<Datagram, Transport, Local, Remote> {
     /// Underlying transport
     transport: Transport,
     /// Local service handles requests from the remote.
     local_service: Local,
     /// Remote service converts requests from us, so this also provides the callable RPC functions.
     remote_service: Remote,
+    /// Hold my datagram
+    _phantom: PhantomData<Datagram>,
 }
 
 /// Allows passthrough of function calls to the remote
-impl<T, L, R> Deref for Router<T, L, R>
+impl<D, T, L, R> Deref for Router<D, T, L, R>
 where
     R: ServiceRequests,
 {
@@ -51,10 +54,10 @@ where
     }
 }
 
-impl<'dgram, Datagram, Transport, Local, Remote> Router<Transport, Local, Remote>
+impl<Datagram, Transport, Local, Remote> Router<Datagram, Transport, Local, Remote>
 where
-    Datagram: Record<'dgram>,
-    Transport: TransportProtocol<'dgram, Datagram=Datagram>,
+    for<'dgram> Datagram: Record<'dgram>,
+    Transport: TransportProtocol<Datagram>,
     Local: ServiceHandlers,
     Remote: ServiceRequests,
 {
@@ -62,15 +65,16 @@ where
         Self {
             transport,
             local_service,
-            remote_service
+            remote_service,
+            _phantom: Default::default(),
         }
     }
 
-    // /// Receive a datagram and routes it
-    // pub async fn _recv(&self, datagram: Datagram) {
-    //     self.local_service._recv_call(...).await
-    // }
-    //
+    /// Receive a datagram and routes it
+    pub async fn _recv(&self, datagram: Datagram) {
+        self.local_service._recv_call(...).await
+    }
+
     // /// Send a request
     // pub async fn _send_request(&self, call_id: u16, buf: &[u8]) -> TransportResult {}
     //
