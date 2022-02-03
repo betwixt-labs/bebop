@@ -16,6 +16,7 @@ using Core.Meta;
 using Core.Meta.Attributes;
 using Core.Meta.Extensions;
 using Core.Parser.Extensions;
+using Core.Schemas;
 using FlagsAttribute = Core.Meta.Attributes.FlagsAttribute;
 
 namespace Core.Parser
@@ -359,9 +360,9 @@ namespace Core.Parser
                     throw new UnexpectedTokenException(TokenKind.Service, CurrentToken, "Did not expect service definition after opcode. (Services are not allowed opcodes).");
                 }
 
-                _tokenizer.AddString("rpc_request_header", RpcSchema.RpcRequestHeader);
-                _tokenizer.AddString("rpc_response_header", RpcSchema.RpcResponseHeader);
-                _tokenizer.AddString("rpc_datagram", RpcSchema.RpcDatagram);
+                _tokenizer.AddString("rpc_request_header", SchemaRepo.RpcRequestHeader);
+                _tokenizer.AddString("rpc_response_header", SchemaRepo.RpcResponseHeader);
+                _tokenizer.AddString("rpc_datagram", SchemaRepo.RpcDatagram);
                 return ParseServiceDefinition(CurrentToken, definitionDocumentation);
             }
             if (Eat(TokenKind.Union))

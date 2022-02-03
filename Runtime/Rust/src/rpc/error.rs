@@ -6,10 +6,11 @@ pub enum TransportError {
     DatagramTooLarge,
     SerializationError(SerializeError),
     NotConnected,
+    Timeout,
     Other(String),
 }
 
-pub type TransportResult = Result<(), TransportError>;
+pub type TransportResult<T> = Result<T, TransportError>;
 
 /// Errors that the local may return when sending or responding to a request.
 pub enum LocalRpcError {

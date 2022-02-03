@@ -45,12 +45,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="Parser\RpcRequestHeader.bop" />
-    <EmbeddedResource Include="Parser\RpcRequestHeader.bop" />
-    <None Remove="Parser\RpcResponseHeader.bop" />
-    <EmbeddedResource Include="Parser\RpcResponseHeader.bop" />
-    <None Remove="Parser\RpcDatagram.bop" />
-    <EmbeddedResource Include="Parser\RpcDatagram.bop" />
+    <None Remove="Schemas\RpcRequestHeader.bop" />
+    <EmbeddedResource Include="Schemas\RpcRequestHeader.bop" />
+    <None Remove="Schemas\RpcResponseHeader.bop" />
+    <EmbeddedResource Include="Schemas\RpcResponseHeader.bop" />
+    <None Remove="Schemas\RpcDatagram.bop" />
+    <EmbeddedResource Include="Schemas\RpcDatagram.bop" />
   </ItemGroup>
 
   
