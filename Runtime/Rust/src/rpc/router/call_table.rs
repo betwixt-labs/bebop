@@ -1,10 +1,7 @@
 use std::collections::HashMap;
-use std::future::Pending;
 use std::num::NonZeroU16;
-use std::time::Duration;
 #[cfg(feature = "rpc-timeouts")]
 use std::{collections::BinaryHeap, time::Instant};
-use tokio::sync::oneshot;
 
 use crate::rpc::datagram::Datagram;
 use crate::rpc::router::pending_response::{new_pending_response, PendingResponse, ResponseHandle};
