@@ -1,7 +1,7 @@
-mod serialization;
-mod types;
 #[cfg(feature = "rpc")]
 mod rpc;
+mod serialization;
+mod types;
 
 pub use bitflags::bitflags;
 pub use serialization::*;
@@ -12,6 +12,3 @@ pub mod prelude {
     pub use crate::types::{Date, Guid};
     pub use crate::SliceWrapper;
 }
-
-#[cfg(feature = "cargo")]
-pub mod cargo;

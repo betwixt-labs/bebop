@@ -7,7 +7,9 @@ use std::time::Duration;
 use parking_lot::Mutex;
 
 use crate::rpc::datagram::Datagram;
+use crate::rpc::error::TransportResult;
 use crate::rpc::router::call_table::RouterCallTable;
+use crate::rpc::router::pending_response::PendingResponse;
 use crate::rpc::router::ServiceHandlers;
 use crate::rpc::transport::TransportProtocol;
 
@@ -80,16 +82,27 @@ where
         })
     }
 
-    /// Get the ID which should be used for the next call that gets made.
-    fn next_call_id(&self) -> NonZeroU16 {
-        self.call_table.lock().next_call_id()
-    }
-
     /// Send a datagram to the remote. Can be either a request or response.
     /// This is used by the generated code.
-    pub async fn send(&self, datagram: &mut D) {
-        datagram.set_call_id(self.next_call_id());
-        todo!()
+    ///
+    /// TODO: should we expose the PendingCall structure instead? Means this will be a future that
+    ///  returns a future which might be a little unnecessary, but it will expose more info about
+    ///  the underlying data.
+    async fn request(&self, datagram: &mut D) -> TransportResult<D> {
+        debug_assert!(
+            datagram.is_request(),
+            "This function requires a request datagram."
+        );
+        let pending = self.call_table.lock().register(datagram);
+        self.transport.send(datagram).await;
+        pending.await
+    }
+
+    pub fn respond(&self, datagram: &D) {
+        debug_assert!(
+            datagram.is_response(),
+            "This function requires a response datagram."
+        );
     }
 
     /// Receive a datagram and routes it. This is used by the handler for the TransportProtocol.

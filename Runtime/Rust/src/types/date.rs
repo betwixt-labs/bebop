@@ -1,6 +1,6 @@
-use std::time::Duration;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
+use std::time::Duration;
 
 /// The number of ticks between 1/1/0001 and 1/1/1970.
 const TICKS_BETWEEN_EPOCHS: u64 = 621355968000000000;

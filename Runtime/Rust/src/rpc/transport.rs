@@ -1,5 +1,5 @@
 use crate::rpc::error::TransportResult;
-use crate::{OwnedRecord};
+use crate::OwnedRecord;
 use async_trait::async_trait;
 use std::future::Future;
 use std::pin::Pin;

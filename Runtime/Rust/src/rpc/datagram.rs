@@ -1,11 +1,18 @@
 use crate::OwnedRecord;
 use std::num::NonZeroU16;
+use std::time::Duration;
 
 /// An abstraction around the datagram. The implementation for this will be generated automatically.
 pub trait Datagram: OwnedRecord {
     /// Set the call_id for this Datagram. This will always be set by the Router before passing
     /// the datagram on to the transport.
     fn set_call_id(&mut self, id: NonZeroU16);
+
+    /// How long this datagram is allowed to take. Any time past this and the requester will likely
+    /// ignore a response to it.
+    ///
+    /// Response datagrams will never have a timeout, and it is optional for Request datagrams.
+    fn timeout(&self) -> Option<Duration>;
 
     /// Get the unique call ID assigned by us, the caller.
     fn call_id(&self) -> Option<NonZeroU16>;

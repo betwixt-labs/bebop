@@ -74,7 +74,7 @@ fn vecs(c: &mut Criterion) {
     });
 
     let vec: Vec<Vec<Vec<i64>>> = (0..4)
-        .map(|_| (0..4).map(|i| (0..16).collect()).collect())
+        .map(|_| (0..4).map(|_| (0..16).collect()).collect())
         .collect();
     c.bench_function("se i64 layered vec", |b| {
         b.iter(|| SubRecord::_serialize_chained(black_box(&vec), black_box(&mut buf)).unwrap())

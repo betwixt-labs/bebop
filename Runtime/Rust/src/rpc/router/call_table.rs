@@ -1,15 +1,19 @@
 use std::collections::HashMap;
+use std::future::Pending;
 use std::num::NonZeroU16;
+use std::time::Duration;
 #[cfg(feature = "rpc-timeouts")]
 use std::{collections::BinaryHeap, time::Instant};
+use tokio::sync::oneshot;
 
 use crate::rpc::datagram::Datagram;
-use crate::rpc::router::{PendingCall, ServiceHandlers};
+use crate::rpc::router::pending_response::{new_pending_response, PendingResponse, ResponseHandle};
+use crate::rpc::router::ServiceHandlers;
 
 /// The call table which can be kept private and needs to get locked all together.
 pub(super) struct RouterCallTable<Datagram> {
     /// Table of calls which have yet to be resolved.
-    call_table: HashMap<NonZeroU16, PendingCall<Datagram>>,
+    call_table: HashMap<NonZeroU16, ResponseHandle<Datagram>>,
 
     /// Min heap with next timeout as the next item
     #[cfg(feature = "rpc-timeouts")]
@@ -35,13 +39,14 @@ where
             }
             self.call_timeouts.pop();
             if let Some(v) = self.call_table.remove(&call_expiration.id) {
-                if v.timeout.is_some() && (now - v.since) >= v.timeout.unwrap() {
+                // avoiding v.is_expired to reduce calls to OS for time
+                if v.timeout().is_some() && (now - v.since()) >= v.timeout().unwrap() {
                     // Removed an expired value
                     removed += 1;
                     self.call_timeouts.pop();
                 } else {
                     // Oops, removed this when we should not have. This should be a rare case.
-                    self.call_table.insert(v.call_id, v);
+                    self.call_table.insert(v.call_id(), v);
                 }
             } else {
                 // it no longer exists, we can move on
@@ -74,6 +79,21 @@ where
         let id = unsafe { NonZeroU16::new_unchecked(self.next_id) };
         self.next_id = self.next_id.wrapping_add(1);
         id
+    }
+
+    /// Register a datagram before we send it.
+    pub fn register(&mut self, datagram: &mut D) -> PendingResponse<D> {
+        debug_assert!(datagram.is_request(), "Only requests should be registered.");
+        debug_assert!(
+            datagram.call_id().is_none(),
+            "Datagram call ids must be set by the router."
+        );
+
+        let call_id = self.next_call_id();
+        datagram.set_call_id(call_id);
+        let (handle, pending) = new_pending_response(call_id, datagram.timeout());
+        self.call_table.insert(call_id, handle);
+        pending
     }
 
     /// Receive a datagram and routes it. This is used by the handler for the TransportProtocol.

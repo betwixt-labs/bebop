@@ -33,7 +33,7 @@ impl<'a> Deref for SliceWrapper<'a, u8> {
     fn deref(&self) -> &Self::Target {
         match self {
             SliceWrapper::Raw(d) => d,
-            SliceWrapper::Cooked(d) => d
+            SliceWrapper::Cooked(d) => d,
         }
     }
 }

@@ -12,6 +12,19 @@ readonly struct RpcRequestHeader {
     uint16 id;
 
     /*
+        How long in seconds this request is allowed to be processed for. A value of 0 indicates no limit.
+        
+        This allows for potentially long queries to be cancelled if the requester will no longer be interested and more
+        importantly allows unreliable transports to establish an agreed upon point at which the requester is going to
+        assume the packet was lost even if it just had yet to be sent.
+        
+        By using a max-time to compute rather than an expiration time, we reduce the risk of different system times
+        causing confusion. Though there will be some overlap where a response may be sent and ignored as the requester
+        already considers it to be expired. 
+    */
+    uint16 timeout;
+    
+    /*
         Function signature includes information about the args to ensure the caller and
         callee are referencing precisely the same thing. There is a non-zero risk of
         accidental signature collisions, but 32-bits is probably sufficient for peace of

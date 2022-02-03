@@ -1,4 +1,4 @@
-use crate::{Guid, Date, LEN_SIZE};
+use crate::{Date, Guid, LEN_SIZE};
 
 /// A trait which should be given to any type which will always take up the same amount of space
 /// when serialized. This goes one step beyond the `Sized` trait which only requires it to take up

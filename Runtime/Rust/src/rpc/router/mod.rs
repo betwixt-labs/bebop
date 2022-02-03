@@ -6,8 +6,8 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
-use tokio::sync::oneshot;
 use context::RouterContext;
+use tokio::sync::oneshot;
 
 use crate::rpc::datagram::Datagram;
 use crate::rpc::error::TransportResult;
@@ -15,6 +15,7 @@ use crate::rpc::transport::TransportProtocol;
 
 mod call_table;
 mod context;
+mod pending_response;
 
 /// The local end of the pipe handles messages. Implementations are automatically generated from
 /// bebop service definitions.
@@ -36,47 +37,6 @@ pub trait ServiceHandlers<D> {
 /// You should not implement this by hand.
 pub trait ServiceRequests {
     const NAME: &'static str;
-}
-
-/// A pending call which resolves into the response from the remote.
-struct PendingCall<D> {
-    /// The unique call ID assigned by us, the caller.
-    call_id: NonZeroU16,
-
-    tx: oneshot::Sender<TransportResult<D>>,
-
-    /// How long this call is allowed to be pending for. If None, no timeout is specified.
-    ///
-    /// Warning: No timeout will lead to memory leaks if the transport does not notify the router
-    /// of dropped/missing data.
-    timeout: Option<Duration>,
-
-    /// The instant at which this call was sent.
-    since: Instant,
-}
-
-impl<D> PendingCall<D> {
-    fn new(
-        call_id: NonZeroU16,
-        timeout: Option<Duration>,
-    ) -> (Self, oneshot::Receiver<TransportResult<D>>) {
-        let (tx, rx) = oneshot::channel::<TransportResult<D>>();
-        (
-            Self {
-                call_id,
-                tx,
-                timeout,
-                since: Instant::now(),
-            },
-            rx,
-        )
-    }
-
-    fn resolve(self, value: TransportResult<D>) {
-        if let Err(_) = self.tx.send(value) {
-            // TODO: log this? Receiver stopped listening.
-        }
-    }
 }
 
 /// This is the main structure which represents information about both ends of the connection and

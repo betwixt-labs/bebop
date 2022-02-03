@@ -7,6 +7,7 @@ pub enum TransportError {
     SerializationError(SerializeError),
     NotConnected,
     Timeout,
+    CallDropped,
     Other(String),
 }
 
@@ -30,7 +31,7 @@ pub enum RemoteRpcError {
     UnknownCall,
     InvalidSignature(u32),
     CallNotSupported,
-    DecodeError(Option<String>)
+    DecodeError(Option<String>),
 }
 
 /// A response on the channel from the remote.
