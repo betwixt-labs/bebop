@@ -21,7 +21,12 @@ pub type TransportHandler<Datagram> =
 #[async_trait]
 pub trait TransportProtocol<Datagram: OwnedRecord> {
     /// This should only be called by the Router.
-    fn _set_handler_boxed(&mut self, recv: TransportHandler<Datagram>);
+    ///
+    /// This will await handling calls against our API which can be used to create backpressure or
+    /// be ignored. Make sure that you are careful about awaiting these promises or spawning them
+    /// on the runtime. Ideally if too many requests are being handled the transport can send
+    /// some sort of error response to reject additional work.
+    fn set_handler(&mut self, recv: TransportHandler<Datagram>);
 
     async fn send(&self, datagram: &Datagram) -> TransportResult<()>;
 }

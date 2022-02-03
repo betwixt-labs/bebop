@@ -1,7 +1,11 @@
-use std::collections::{BinaryHeap, HashMap};
+#[cfg(feature = "rpc-timeouts")]
+use std::collections::BinaryHeap;
+use std::collections::HashMap;
+use std::future::Future;
 use std::num::NonZeroU16;
 use std::ops::Deref;
-use std::sync::{Arc, Weak};
+use std::pin::Pin;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
@@ -10,7 +14,7 @@ use tokio::sync::oneshot;
 
 use crate::rpc::error::TransportResult;
 use crate::rpc::transport::TransportProtocol;
-use crate::{OwnedRecord, Record};
+use crate::OwnedRecord;
 
 /// The local end of the pipe handles messages. Implementations are automatically generated from
 /// bebop service definitions.
@@ -35,6 +39,10 @@ pub trait ServiceRequests {
 }
 
 pub trait RpcDatagram: OwnedRecord {
+    /// Set the call_id for this Datagram. This will always be set by the Router before passing
+    /// the datagram on to the transport.
+    fn set_call_id(&mut self, id: NonZeroU16);
+
     /// Get the unique call ID assigned by us, the caller.
     fn call_id(&self) -> Option<NonZeroU16>;
 
@@ -103,46 +111,59 @@ impl<D> PendingCall<D> {
 pub struct Router<Datagram, Transport, Local, Remote> {
     /// Underlying transport
     transport: Transport,
+
     /// Remote service converts requests from us, so this also provides the callable RPC functions.
     remote_service: Remote,
+
     /// Inner router state, this may be shared with components as necessary.
     context: Arc<Mutex<RouterContext<Datagram, Local>>>,
 }
 
-pub type UnknownResponseHandler<D: RpcDatagram> = Box<dyn Fn(D)>;
+pub type UnknownResponseHandler<D> = Box<dyn Fn(D)>;
 
 pub(crate) struct RouterContext<Datagram, Local> {
     /// Callback that receives any datagrams without a call id.
     unknown_response_handler: Option<UnknownResponseHandler<Datagram>>,
+
     /// Local service handles requests from the remote.
     local_service: Local,
+
     /// Table of calls which have yet to be resolved.
     call_table: HashMap<NonZeroU16, PendingCall<Datagram>>,
+
     /// Min heap with next timeout as the next item
+    #[cfg(feature = "rpc-timeouts")]
     call_timeouts: BinaryHeap<core::cmp::Reverse<CallExpiration>>,
+
     /// The next ID value which should be used.
     next_id: u16,
 }
 
 #[derive(Copy, Clone)]
+#[cfg(feature = "rpc-timeouts")]
 struct CallExpiration {
     at: Instant,
     id: NonZeroU16,
 }
 
+#[cfg(feature = "rpc-timeouts")]
 impl PartialOrd for CallExpiration {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.at.partial_cmp(&other.at)
     }
 }
 
+#[cfg(feature = "rpc-timeouts")]
 impl PartialEq<Self> for CallExpiration {
     fn eq(&self, other: &Self) -> bool {
         self.at.eq(&other.at)
     }
 }
 
+#[cfg(feature = "rpc-timeouts")]
 impl Eq for CallExpiration {}
+
+#[cfg(feature = "rpc-timeouts")]
 impl Ord for CallExpiration {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.at.cmp(&other.at)
@@ -168,11 +189,22 @@ where
     Local: 'static + ServiceHandlers<Datagram>,
     Remote: ServiceRequests,
 {
+    /// Create a new router instance.
+    ///
+    /// - `transport` The underlying transport this router uses.
+    /// - `local_service` The service which handles incoming requests.
+    /// - `remote_service` The service the remote server provides which we can call.
+    /// - `unknown_response_handler` Optional callback to handle error cases where we do not know
+    /// what the `call_id` is or it is an invalid `call_id`.
+    /// - `spawn_task` Run a task in the background. It will know when to stop on its own. This may
+    /// not always be called depending on configuration and features.
     pub fn new(
         transport: Transport,
         local_service: Local,
         remote_service: Remote,
         unknown_response_handler: Option<UnknownResponseHandler<Datagram>>,
+        #[allow(unused)]
+        spawn_task: impl Fn(Pin<Box<dyn 'static + Future<Output = ()>>>),
     ) -> Self {
         let mut zelf = Self {
             transport,
@@ -182,8 +214,21 @@ where
                 unknown_response_handler,
             ))),
         };
-        let weak_ctx = Arc::downgrade(&zelf.context);
-        zelf.transport._set_handler_boxed(Box::pin(move |datagram| {
+        zelf._init_transport();
+        #[cfg(feature = "rpc-timeouts")]
+        spawn_task(zelf._init_cleanup());
+        zelf
+    }
+
+    // /// Remove pending requests which have timed out.
+    // pub fn clean(&self) -> usize {
+    //     self.context.lock().clean()
+    // }
+
+    /// One-time setup of the transport handler.
+    fn _init_transport(&mut self) {
+        let weak_ctx = Arc::downgrade(&self.context);
+        self.transport.set_handler(Box::pin(move |datagram| {
             let weak_ctx = weak_ctx.clone();
             Box::pin(async move {
                 if let Some(ctx) = weak_ctx.upgrade() {
@@ -193,19 +238,26 @@ where
                 }
             })
         }));
-
-        zelf
     }
 
-    /// Get the ID which should be used for the next call that gets made.
-    pub fn next_call_id(&self) -> NonZeroU16 {
-        self.context.lock().next_call_id()
+    /// Create a task that will clean up any old requests every so often.
+    #[cfg(feature = "rpc-timeouts")]
+    fn _init_cleanup(&self) -> Pin<Box<dyn 'static + Future<Output = ()>>> {
+        let mut interval = tokio::time::interval(Duration::from_secs(60));
+        let ctx = Arc::downgrade(&self.context);
+        Box::pin(async move {
+            loop {
+                interval.tick().await;
+                if let Some(ctx) = ctx.upgrade() {
+                    ctx.lock().clean();
+                } else {
+                    break;
+                }
+            }
+        })
     }
 
-    /// Remove pending requests which have timed out.
-    pub fn clean(&self) -> usize {
-        self.context.lock().clean()
-    }
+    // TODO: Need a way to send datagrams.
 
     // /// Send a request
     // pub async fn _send_request(&self, call_id: u16, buf: &[u8]) -> TransportResult {}
@@ -233,10 +285,12 @@ where
             local_service,
             next_id: 1,
             call_table: HashMap::new(),
+            #[cfg(feature = "rpc-timeouts")]
             call_timeouts: BinaryHeap::new(),
         }
     }
 
+    /// Get the ID which should be used for the next call that gets made.
     fn next_call_id(&mut self) -> NonZeroU16 {
         // prevent an infinite loop; if this is a problem in production, we can either increase the
         // id size OR we can stall on overflow and try again creating back pressure.
@@ -261,6 +315,9 @@ where
         id
     }
 
+    /// Cleanup any calls which have gone past their timeouts. This needs to be called every so
+    /// often even with reliable transport to clean the heap.
+    #[cfg(feature = "rpc-timeouts")]
     fn clean(&mut self) -> usize {
         let mut removed = 0;
         let now = Instant::now();
@@ -286,15 +343,17 @@ where
         removed
     }
 
-    /// Receive a datagram and routes it.
+    /// Receive a datagram and routes it. This is used by the handler for the TransportProtocol.
     pub async fn _recv(&mut self, datagram: D) {
         if let Some(id) = datagram.call_id() {
             if datagram.is_request() {
                 // they sent a request to our service
+                // await this to allow for back pressure
                 self.local_service._recv_call(datagram).await;
                 return;
             } else if let Some(call) = self.call_table.remove(&id) {
                 // they sent a response to one of our outstanding calls
+                // no async here because they already are waiting in their own task
                 call.resolve(Ok(datagram));
                 return;
             } else {
