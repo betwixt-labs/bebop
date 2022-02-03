@@ -1,3 +1,4 @@
+use std::env;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::{Arc, Weak};
@@ -64,7 +65,10 @@ where
 
     /// Create a task that will clean up any old requests every so often.
     async fn init_cleanup(weak_ctx: Weak<Self>) {
-        let mut interval = tokio::time::interval(Duration::from_secs(60));
+        let dur = env::var("BEBOP_RPC_CLEANUP_INTERVAL")
+            .map(|v| Duration::from_secs(v.parse().expect("Invalid cleanup interval.")))
+            .unwrap_or_else(|_| Duration::from_secs(60));
+        let mut interval = tokio::time::interval(dur);
         loop {
             interval.tick().await;
             if let Some(ctx) = weak_ctx.upgrade() {
@@ -87,11 +91,11 @@ where
             "This function requires a request datagram."
         );
         let pending = self.call_table.lock().register(datagram);
-        self.transport.send(datagram).await;
+        self.transport.send(datagram).await?;
         pending.await
     }
 
-    pub async fn respond(&self, datagram: &D) {
+    pub async fn respond(&self, datagram: &D) -> TransportResult {
         debug_assert!(
             datagram.is_response(),
             "This function requires a response datagram."

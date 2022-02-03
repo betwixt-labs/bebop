@@ -120,7 +120,6 @@ impl<D> Future for PendingResponse<D> {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match Pin::new(&mut self.rx).poll(cx) {
             Poll::Ready(Ok(res)) => Poll::Ready(res),
-            #[cfg(feature = "rpc-timeouts")]
             Poll::Ready(Err(..)) if self.is_expired() => Poll::Ready(Err(TransportError::Timeout)),
             Poll::Ready(Err(..)) => Poll::Ready(Err(TransportError::CallDropped)),
             Poll::Pending => Poll::Pending,

@@ -4,10 +4,9 @@
 
 mod datagram;
 pub mod error;
-pub mod null_service;
 mod router;
 mod transport;
 
 pub use datagram::Datagram;
 pub use router::*;
-pub use transport::{TransportProtocol, TransportHandler};
+pub use transport::{TransportHandler, TransportProtocol};
