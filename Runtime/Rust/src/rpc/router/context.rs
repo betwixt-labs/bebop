@@ -1,6 +1,6 @@
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 use std::time::Duration;
 
 use parking_lot::Mutex;
@@ -33,7 +33,7 @@ where
         transport: T,
         local_service: L,
         unknown_response_handler: Option<Box<dyn Fn(D)>>,
-        #[allow(unused)] spawn_task: impl Fn(Pin<Box<dyn 'static + Future<Output = ()>>>),
+        spawn_task: impl Fn(Pin<Box<dyn 'static + Future<Output = ()>>>),
     ) -> Arc<Self> {
         let zelf = Arc::new(Self {
             unknown_response_handler,
@@ -43,8 +43,7 @@ where
         });
 
         zelf.init_transport();
-        #[cfg(feature = "rpc-timeouts")]
-        spawn_task(zelf.init_cleanup());
+        spawn_task(Box::pin(Self::init_cleanup(Arc::downgrade(&zelf))));
         zelf
     }
 
@@ -64,20 +63,16 @@ where
     }
 
     /// Create a task that will clean up any old requests every so often.
-    #[cfg(feature = "rpc-timeouts")]
-    fn init_cleanup(self: &Arc<Self>) -> Pin<Box<dyn 'static + Future<Output = ()>>> {
+    async fn init_cleanup(weak_ctx: Weak<Self>) {
         let mut interval = tokio::time::interval(Duration::from_secs(60));
-        let ctx = Arc::downgrade(self);
-        Box::pin(async move {
-            loop {
-                interval.tick().await;
-                if let Some(ctx) = ctx.upgrade() {
-                    ctx.call_table.lock().clean();
-                } else {
-                    break;
-                }
+        loop {
+            interval.tick().await;
+            if let Some(ctx) = weak_ctx.upgrade() {
+                ctx.call_table.lock().clean();
+            } else {
+                break;
             }
-        })
+        }
     }
 
     /// Send a datagram to the remote. Can be either a request or response.

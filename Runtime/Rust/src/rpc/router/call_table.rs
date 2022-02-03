@@ -1,7 +1,6 @@
-use std::collections::HashMap;
+use std::collections::{BinaryHeap, HashMap};
 use std::num::NonZeroU16;
-#[cfg(feature = "rpc-timeouts")]
-use std::{collections::BinaryHeap, time::Instant};
+use std::time::Instant;
 
 use crate::rpc::datagram::Datagram;
 use crate::rpc::router::pending_response::{new_pending_response, PendingResponse, ResponseHandle};
@@ -13,7 +12,6 @@ pub(super) struct RouterCallTable<Datagram> {
     call_table: HashMap<NonZeroU16, ResponseHandle<Datagram>>,
 
     /// Min heap with next timeout as the next item
-    #[cfg(feature = "rpc-timeouts")]
     call_timeouts: BinaryHeap<core::cmp::Reverse<CallExpiration>>,
 
     /// The next ID value which should be used.
@@ -26,7 +24,6 @@ where
 {
     /// Cleanup any calls which have gone past their timeouts. This needs to be called every so
     /// often even with reliable transport to clean the heap.
-    #[cfg(feature = "rpc-timeouts")]
     pub fn clean(&mut self) -> usize {
         let mut removed = 0;
         let now = Instant::now();
@@ -131,37 +128,31 @@ impl<D> Default for RouterCallTable<D> {
         Self {
             next_id: 1,
             call_table: HashMap::new(),
-            #[cfg(feature = "rpc-timeouts")]
             call_timeouts: BinaryHeap::new(),
         }
     }
 }
 
 #[derive(Copy, Clone)]
-#[cfg(feature = "rpc-timeouts")]
 struct CallExpiration {
     at: Instant,
     id: NonZeroU16,
 }
 
-#[cfg(feature = "rpc-timeouts")]
 impl PartialOrd for CallExpiration {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.at.partial_cmp(&other.at)
     }
 }
 
-#[cfg(feature = "rpc-timeouts")]
 impl PartialEq<Self> for CallExpiration {
     fn eq(&self, other: &Self) -> bool {
         self.at.eq(&other.at)
     }
 }
 
-#[cfg(feature = "rpc-timeouts")]
 impl Eq for CallExpiration {}
 
-#[cfg(feature = "rpc-timeouts")]
 impl Ord for CallExpiration {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.at.cmp(&other.at)

@@ -25,12 +25,12 @@ parking_lot = { version = "0.12", optional = true }
 criterion = "0.3"
 
 [features]
-default = ["rpc", "rpc-timeouts"]
+default = ["rpc"]
 # where reasonable, skip decoding checks, this will cause random issues if invalid UTF8 is sent to
 # the program
 unchecked = []
 # Enable to have maps sorted by their key values
 sorted_maps = ["itertools"]
 # Enable support for Bebop RPC services
-rpc = ["async-trait", "tokio/sync", "parking_lot/arc_lock"]
-rpc-timeouts = ["tokio/time"]
+rpc = ["async-trait", "tokio/sync", "parking_lot/arc_lock", "tokio/time"]
+
