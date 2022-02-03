@@ -6,3 +6,4 @@ pub mod error;
 pub mod null_service;
 pub mod router;
 pub mod transport;
+pub mod datagram;

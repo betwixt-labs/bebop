@@ -1,5 +1,5 @@
 use crate::rpc::error::TransportResult;
-use crate::{OwnedRecord, Record};
+use crate::{OwnedRecord};
 use async_trait::async_trait;
 use std::future::Future;
 use std::pin::Pin;
@@ -20,13 +20,13 @@ pub type TransportHandler<Datagram> =
 /// defined. There is no need to make a custom datagram structure.
 #[async_trait]
 pub trait TransportProtocol<Datagram: OwnedRecord> {
-    /// This should only be called by the Router.
+    /// This should only be called once by the Router during initial setup.
     ///
     /// This will await handling calls against our API which can be used to create backpressure or
     /// be ignored. Make sure that you are careful about awaiting these promises or spawning them
     /// on the runtime. Ideally if too many requests are being handled the transport can send
     /// some sort of error response to reject additional work.
-    fn set_handler(&mut self, recv: TransportHandler<Datagram>);
+    fn set_handler(&self, recv: TransportHandler<Datagram>);
 
-    async fn send(&self, datagram: &Datagram) -> TransportResult<()>;
+    async fn send(&self, datagram: &Datagram) -> TransportResult;
 }
