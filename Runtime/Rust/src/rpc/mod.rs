@@ -2,8 +2,12 @@
 //!
 //! TODO: write an example of setting up RPC.
 
-pub mod datagram;
+mod datagram;
 pub mod error;
 pub mod null_service;
-pub mod router;
-pub mod transport;
+mod router;
+mod transport;
+
+pub use datagram::Datagram;
+pub use router::*;
+pub use transport::{TransportProtocol, TransportHandler};

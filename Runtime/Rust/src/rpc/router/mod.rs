@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
-use context::RouterContext;
+pub use context::RouterContext;
 
 use crate::rpc::datagram::Datagram;
 use crate::rpc::transport::TransportProtocol;

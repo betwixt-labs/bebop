@@ -81,7 +81,7 @@ where
     /// TODO: should we expose the PendingCall structure instead? Means this will be a future that
     ///  returns a future which might be a little unnecessary, but it will expose more info about
     ///  the underlying data.
-    async fn request(&self, datagram: &mut D) -> TransportResult<D> {
+    pub async fn request(&self, datagram: &mut D) -> TransportResult<D> {
         debug_assert!(
             datagram.is_request(),
             "This function requires a request datagram."
@@ -91,11 +91,12 @@ where
         pending.await
     }
 
-    pub fn respond(&self, datagram: &D) {
+    pub async fn respond(&self, datagram: &D) {
         debug_assert!(
             datagram.is_response(),
             "This function requires a response datagram."
         );
+        self.transport.send(datagram).await
     }
 
     /// Receive a datagram and routes it. This is used by the handler for the TransportProtocol.
