@@ -156,7 +156,7 @@ readonly os_version
 kernel_arch="${uname[2]}"
 case $kernel_arch in
 x86_64 | amd64)
-    os=x64
+    os_arch=x64
     ;;
 arm64 | aarch64)
     os_arch=arm64
