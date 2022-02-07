@@ -475,7 +475,8 @@ point "${UNICORN_UTF8} Downloading and installing bebopc (${BEBOPC_VERSION})..."
 
     # work around the fact macOS does not support
     # XXXXX formatting with sufixes
-    temp_file=$(mktemp "${TMPDIR}$(uuid)".zip 2>/dev/null)
+    temp_dir=$(mktemp -d 2>/dev/null || mktemp -d -t "$(uuid)")
+    temp_file=$(mktemp "${temp_dir}$(uuid)".zip 2>/dev/null)
     readonly temp_file
     # Bail out if the temp file wasn't created successfully.
     if [ ! -e "$temp_file" ]; then
