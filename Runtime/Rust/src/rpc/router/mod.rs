@@ -72,7 +72,7 @@ where
         local_service: L,
         remote_service: R,
         unknown_response_handler: Option<Box<dyn Fn(D)>>,
-        spawn_task: impl Fn(Pin<Box<dyn 'static + Future<Output = ()>>>),
+        spawn_task: impl 'static + Fn(Pin<Box<dyn 'static + Future<Output = ()>>>),
     ) -> Self {
         Self {
             _remote_service: remote_service,

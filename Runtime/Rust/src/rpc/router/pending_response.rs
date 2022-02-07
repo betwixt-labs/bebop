@@ -51,6 +51,10 @@ impl CallDetails {
             false
         }
     }
+
+    pub fn expires_at(&self) -> Option<Instant> {
+        self.timeout.map(|t| self.since + t)
+    }
 }
 
 /// A pending response handle which resolves into the response from the remote.
@@ -78,6 +82,10 @@ impl<D> ResponseHandle<D> {
 
     pub fn is_expired(&self) -> bool {
         self.details.is_expired()
+    }
+
+    pub fn expires_at(&self) -> Option<Instant> {
+        self.details.expires_at()
     }
 
     pub fn resolve(self, value: TransportResult<D>) {
@@ -111,6 +119,10 @@ impl<D> PendingResponse<D> {
 
     pub fn is_expired(&self) -> bool {
         self.details.is_expired()
+    }
+
+    pub fn expires_at(&self) -> Option<Instant> {
+        self.details.expires_at()
     }
 }
 

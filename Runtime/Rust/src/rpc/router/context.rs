@@ -1,8 +1,8 @@
-use std::env;
 use std::future::Future;
+use std::num::NonZeroU16;
 use std::pin::Pin;
 use std::sync::{Arc, Weak};
-use std::time::Duration;
+use std::time::Instant;
 
 use parking_lot::Mutex;
 
@@ -22,6 +22,12 @@ pub struct RouterContext<Datagram, Transport, Local> {
     transport: Transport,
 
     call_table: Mutex<RouterCallTable<Datagram>>,
+
+    // /// Keep these so we can abort them on cleanup and prevent unclean exits.
+    // /// TODO: Do we want this? Adds some overhead without any benefit besides quick shutdown.
+    // expire_futures: Mutex<HashMap<NonZeroU16, tokio::task::JoinHandle<()>>>,
+    /// Callback we should use to spawn futures for cleanup.
+    spawn_task: Box<dyn Fn(Pin<Box<dyn 'static + Future<Output = ()>>>)>,
 }
 
 impl<D, T, L> RouterContext<D, T, L>
@@ -34,17 +40,18 @@ where
         transport: T,
         local_service: L,
         unknown_response_handler: Option<Box<dyn Fn(D)>>,
-        spawn_task: impl Fn(Pin<Box<dyn 'static + Future<Output = ()>>>),
+        spawn_task: impl 'static + Fn(Pin<Box<dyn 'static + Future<Output = ()>>>),
     ) -> Arc<Self> {
         let zelf = Arc::new(Self {
             unknown_response_handler,
             local_service,
             transport,
-            call_table: Mutex::default(),
+            call_table: Default::default(),
+            // expire_futures: Default::default(),
+            spawn_task: Box::new(spawn_task),
         });
 
         zelf.init_transport();
-        spawn_task(Box::pin(Self::init_cleanup(Arc::downgrade(&zelf))));
         zelf
     }
 
@@ -63,34 +70,25 @@ where
         }));
     }
 
-    /// Create a task that will clean up any old requests every so often.
-    async fn init_cleanup(weak_ctx: Weak<Self>) {
-        let dur = env::var("BEBOP_RPC_CLEANUP_INTERVAL")
-            .map(|v| Duration::from_secs(v.parse().expect("Invalid cleanup interval.")))
-            .unwrap_or_else(|_| Duration::from_secs(60));
-        let mut interval = tokio::time::interval(dur);
-        loop {
-            interval.tick().await;
-            if let Some(ctx) = weak_ctx.upgrade() {
-                ctx.call_table.lock().clean();
-            } else {
-                break;
-            }
-        }
-    }
-
     /// Send a datagram to the remote. Can be either a request or response.
     /// This is used by the generated code.
     ///
     /// TODO: should we expose the PendingCall structure instead? Means this will be a future that
     ///  returns a future which might be a little unnecessary, but it will expose more info about
     ///  the underlying data.
-    pub async fn request(&self, datagram: &mut D) -> TransportResult<D> {
+    pub async fn request(self: &Arc<Self>, datagram: &mut D) -> TransportResult<D> {
         debug_assert!(
             datagram.is_request(),
             "This function requires a request datagram."
         );
         let pending = self.call_table.lock().register(datagram);
+        if let Some(at) = pending.expires_at() {
+            (self.spawn_task)(Box::pin(Self::clean_on_expiration(
+                Arc::downgrade(self),
+                datagram.call_id().unwrap(),
+                at,
+            )));
+        }
         self.transport.send(datagram).await?;
         pending.await
     }
@@ -114,4 +112,21 @@ where
             )
             .await
     }
+
+    /// Notify the call table of an expiration event and have it remove the datagram if appropriate.
+    async fn clean_on_expiration(zelf: Weak<Self>, id: NonZeroU16, at: Instant) {
+        tokio::time::sleep_until(at.into()).await;
+        if let Some(zelf) = zelf.upgrade() {
+            // zelf.expire_futures.lock().remove(&id).unwrap();
+            zelf.call_table.lock().drop_expired(id);
+        }
+    }
 }
+
+// impl<D, T, L> Drop for RouterContext<D, T, L> {
+//     fn drop(&mut self) {
+//         for handle in self.expire_futures.lock().values() {
+//             handle.abort()
+//         }
+//     }
+// }

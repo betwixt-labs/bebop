@@ -1,25 +1,20 @@
-use std::cmp::Reverse;
-use std::collections::{BinaryHeap, HashMap};
+use std::collections::hash_map::Entry;
+use std::collections::HashMap;
 use std::env;
 use std::num::NonZeroU16;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use crate::rpc::datagram::Datagram;
 use crate::rpc::router::pending_response::{new_pending_response, PendingResponse, ResponseHandle};
 use crate::rpc::router::ServiceHandlers;
 
 /// The call table which can be kept private and needs to get locked all together.
+/// Expirations are handled by the context which is responsible for calling `drop_expired`.
 pub(super) struct RouterCallTable<Datagram> {
     default_timeout: Option<Duration>,
 
     /// Table of calls which have yet to be resolved.
     call_table: HashMap<NonZeroU16, ResponseHandle<Datagram>>,
-
-    /// Min heap with next timeout as the next item. This makes it so we don't have to check all
-    /// pending items, but it does mean we have to clean the heap even if items were handled
-    /// already.
-    /// TODO: replace this with tokio timeouts since tokio already does sort of thing internally
-    call_timeouts: BinaryHeap<core::cmp::Reverse<CallExpiration>>,
 
     /// The next ID value which should be used.
     next_id: u16,
@@ -39,8 +34,7 @@ impl<D> Default for RouterCallTable<D> {
                 })
                 .unwrap_or_default(),
             next_id: 1,
-            call_table: HashMap::new(),
-            call_timeouts: BinaryHeap::new(),
+            call_table: Default::default(),
         }
     }
 }
@@ -49,34 +43,6 @@ impl<D> RouterCallTable<D>
 where
     D: Datagram,
 {
-    /// Cleanup any calls which have gone past their timeouts. This needs to be called every so
-    /// often even with reliable transport to clean the heap.
-    pub fn clean(&mut self) -> usize {
-        let mut removed = 0;
-        let now = Instant::now();
-        while let Some(std::cmp::Reverse(call_expiration)) = self.call_timeouts.peek().copied() {
-            if call_expiration.at > now {
-                break;
-            }
-            self.call_timeouts.pop();
-            if let Some(v) = self.call_table.remove(&call_expiration.id) {
-                // avoiding v.is_expired to reduce calls to OS for time
-                if v.timeout().is_some() && (now - v.since()) >= v.timeout().unwrap() {
-                    // Removed an expired value
-                    removed += 1;
-                    self.call_timeouts.pop();
-                } else {
-                    // Oops, removed this when we should not have. This should be a rare case.
-                    self.call_table.insert(v.call_id(), v);
-                }
-            } else {
-                // it no longer exists, we can move on
-                self.call_timeouts.pop();
-            }
-        }
-        removed
-    }
-
     /// Get the ID which should be used for the next call that gets made.
     pub fn next_call_id(&mut self) -> NonZeroU16 {
         // prevent an infinite loop; if this is a problem in production, we can either increase the
@@ -114,13 +80,8 @@ where
         datagram.set_call_id(call_id);
         let timeout = datagram.timeout().or(self.default_timeout);
         let (handle, pending) = new_pending_response(call_id, timeout);
+
         self.call_table.insert(call_id, handle);
-        if let Some(timeout) = timeout {
-            self.call_timeouts.push(Reverse(CallExpiration {
-                at: Instant::now() + timeout,
-                id: call_id,
-            }));
-        }
         pending
     }
 
@@ -155,30 +116,12 @@ where
             // TODO: log this?
         }
     }
-}
 
-#[derive(Copy, Clone)]
-struct CallExpiration {
-    at: Instant,
-    id: NonZeroU16,
-}
-
-impl PartialOrd for CallExpiration {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.at.partial_cmp(&other.at)
-    }
-}
-
-impl PartialEq<Self> for CallExpiration {
-    fn eq(&self, other: &Self) -> bool {
-        self.at.eq(&other.at)
-    }
-}
-
-impl Eq for CallExpiration {}
-
-impl Ord for CallExpiration {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.at.cmp(&other.at)
+    pub fn drop_expired(&mut self, id: NonZeroU16) {
+        if let Entry::Occupied(e) = self.call_table.entry(id) {
+            if e.get().is_expired() {
+                e.remove();
+            }
+        }
     }
 }
