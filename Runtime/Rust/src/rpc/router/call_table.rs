@@ -125,3 +125,103 @@ where
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::RouterCallTable;
+    use crate::rpc::datagram::TestDatagram;
+    use crate::rpc::router::pending_response::new_pending_response;
+    use crate::rpc::router::ServiceHandlers;
+    use crate::rpc::Datagram;
+    use async_trait::async_trait;
+    use std::num::NonZeroU16;
+    use std::time::Duration;
+    use crate::rpc::error::TransportError;
+
+    struct MockLocalService;
+
+    #[async_trait]
+    impl ServiceHandlers<TestDatagram> for MockLocalService {
+        async fn _recv_call(&self, datagram: TestDatagram) {
+            // do nothing
+        }
+    }
+
+    #[test]
+    fn gets_next_id() {
+        let mut ct = RouterCallTable::<TestDatagram>::default();
+        assert_eq!(ct.next_call_id().get(), 1u16);
+        assert_eq!(ct.next_call_id().get(), 2u16);
+        ct.next_id = u16::MAX;
+        assert_eq!(ct.next_call_id().get(), u16::MAX);
+        assert_eq!(ct.next_call_id().get(), 1u16);
+    }
+
+    #[test]
+    fn get_next_id_avoids_duplicates() {
+        let mut ct = RouterCallTable::<TestDatagram>::default();
+        let (h1, p1) = new_pending_response(1.try_into().unwrap(), None);
+        ct.call_table.insert(h1.call_id(), h1);
+        let (h2, p2) = new_pending_response(2.try_into().unwrap(), None);
+        ct.call_table.insert(h2.call_id(), h2);
+        ct.next_id = u16::MAX;
+        assert_eq!(ct.next_call_id().get(), u16::MAX);
+        assert_eq!(ct.next_call_id().get(), 3u16);
+    }
+
+    #[test]
+    fn registers_requests() {
+        let mut ct = RouterCallTable::<TestDatagram>::default();
+        let timeout = Some(Duration::from_millis(100));
+        let mut d = TestDatagram {
+            timeout,
+            call_id: None,
+            is_request: true,
+            is_ok: true,
+        };
+        let pending = ct.register(&mut d);
+        assert_eq!(pending.timeout(), timeout);
+        assert_eq!(d.call_id, NonZeroU16::new(1));
+        assert_eq!(pending.call_id(), d.call_id.unwrap());
+        assert_eq!(ct.next_id, 2);
+        assert!(ct.call_table.contains_key(&(1.try_into().unwrap())));
+    }
+
+    #[tokio::test]
+    async fn forwards_responses() {
+        let mut ct = RouterCallTable::<TestDatagram>::default();
+        let mut request = TestDatagram {
+            timeout: None,
+            call_id: None,
+            is_request: true,
+            is_ok: true,
+        };
+        let pending = ct.register(&mut request);
+        let response = TestDatagram {
+            timeout: None,
+            call_id: NonZeroU16::new(1),
+            is_request: false,
+            is_ok: true,
+        };
+        ct.recv(&MockLocalService, &None, response).await;
+        let d = pending.await.unwrap();
+        assert_eq!(d.call_id, NonZeroU16::new(1));
+        assert!(d.is_response());
+        assert!(d.is_ok);
+    }
+
+    #[tokio::test]
+    async fn drops_expired_entry() {
+        let mut ct = RouterCallTable::<TestDatagram>::default();
+        let mut request = TestDatagram {
+            timeout: Some(Duration::from_millis(10)),
+            call_id: None,
+            is_request: true,
+            is_ok: true,
+        };
+        let pending = ct.register(&mut request);
+        tokio::time::sleep(Duration::from_millis(10)).await;
+        ct.drop_expired(1.try_into().unwrap());
+        assert!(matches!(pending.await, Err(TransportError::Timeout)));
+    }
+}

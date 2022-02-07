@@ -31,7 +31,7 @@ pub trait Datagram: OwnedRecord {
         !self.is_request()
     }
 
-    /// Whether this datagram represents a "happy path" result.
+    /// Whether this datagram represents a "happy path" result. Should always be true if `is_request`.
     fn is_ok(&self) -> bool;
 
     /// Whether this datagram represents an error from the remote.
