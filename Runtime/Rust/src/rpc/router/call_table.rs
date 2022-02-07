@@ -1,6 +1,8 @@
+use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashMap};
+use std::env;
 use std::num::NonZeroU16;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use crate::rpc::datagram::Datagram;
 use crate::rpc::router::pending_response::{new_pending_response, PendingResponse, ResponseHandle};
@@ -8,14 +10,39 @@ use crate::rpc::router::ServiceHandlers;
 
 /// The call table which can be kept private and needs to get locked all together.
 pub(super) struct RouterCallTable<Datagram> {
+    default_timeout: Option<Duration>,
+
     /// Table of calls which have yet to be resolved.
     call_table: HashMap<NonZeroU16, ResponseHandle<Datagram>>,
 
-    /// Min heap with next timeout as the next item
+    /// Min heap with next timeout as the next item. This makes it so we don't have to check all
+    /// pending items, but it does mean we have to clean the heap even if items were handled
+    /// already.
+    /// TODO: replace this with tokio timeouts since tokio already does sort of thing internally
     call_timeouts: BinaryHeap<core::cmp::Reverse<CallExpiration>>,
 
     /// The next ID value which should be used.
     next_id: u16,
+}
+
+impl<D> Default for RouterCallTable<D> {
+    fn default() -> Self {
+        Self {
+            default_timeout: env::var("BEBOP_RPC_DEFAULT_TIMEOUT")
+                .map(|v| {
+                    let dur = v.parse().expect("Invalid default timeout");
+                    if dur == 0 {
+                        None
+                    } else {
+                        Some(Duration::from_secs(dur))
+                    }
+                })
+                .unwrap_or_default(),
+            next_id: 1,
+            call_table: HashMap::new(),
+            call_timeouts: BinaryHeap::new(),
+        }
+    }
 }
 
 impl<D> RouterCallTable<D>
@@ -85,8 +112,15 @@ where
 
         let call_id = self.next_call_id();
         datagram.set_call_id(call_id);
-        let (handle, pending) = new_pending_response(call_id, datagram.timeout());
+        let timeout = datagram.timeout().or(self.default_timeout);
+        let (handle, pending) = new_pending_response(call_id, timeout);
         self.call_table.insert(call_id, handle);
+        if let Some(timeout) = timeout {
+            self.call_timeouts.push(Reverse(CallExpiration {
+                at: Instant::now() + timeout,
+                id: call_id,
+            }));
+        }
         pending
     }
 
@@ -119,16 +153,6 @@ where
             cb(datagram)
         } else {
             // TODO: log this?
-        }
-    }
-}
-
-impl<D> Default for RouterCallTable<D> {
-    fn default() -> Self {
-        Self {
-            next_id: 1,
-            call_table: HashMap::new(),
-            call_timeouts: BinaryHeap::new(),
         }
     }
 }

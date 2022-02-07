@@ -122,7 +122,85 @@ impl<D> Future for PendingResponse<D> {
             Poll::Ready(Ok(res)) => Poll::Ready(res),
             Poll::Ready(Err(..)) if self.is_expired() => Poll::Ready(Err(TransportError::Timeout)),
             Poll::Ready(Err(..)) => Poll::Ready(Err(TransportError::CallDropped)),
+            // timeouts are handled by the call_table and not the pending response itself
             Poll::Pending => Poll::Pending,
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::rpc::datagram::TestDatagram;
+    use crate::rpc::error::TransportError;
+    use crate::rpc::router::pending_response::new_pending_response;
+    use std::num::NonZeroU16;
+    use std::time::Duration;
+
+    #[tokio::test]
+    async fn resolves() {
+        // happy path
+        let (handle1, pending1) = new_pending_response::<TestDatagram>(1.try_into().unwrap(), None);
+        let (handle2, pending2) = new_pending_response::<TestDatagram>(
+            2.try_into().unwrap(),
+            Some(Duration::from_secs(10)),
+        );
+
+        let response1 = TestDatagram {
+            timeout: None,
+            call_id: NonZeroU16::new(1),
+            is_request: false,
+            is_ok: true,
+        };
+        let response2 = TestDatagram {
+            timeout: None, // responses never have timeouts, even when the request had one
+            call_id: NonZeroU16::new(2),
+            is_request: false,
+            is_ok: true,
+        };
+
+        assert_eq!(pending1.call_id(), NonZeroU16::new(1).unwrap());
+        assert_eq!(pending1.timeout(), None);
+        assert_eq!(pending2.timeout(), Some(Duration::from_secs(10)));
+        assert!(!pending1.is_expired());
+        assert!(!pending2.is_expired());
+
+        handle1.resolve(Ok(response1));
+        handle2.resolve(Ok(response2));
+
+        assert_eq!(pending1.await.unwrap(), response1);
+        assert_eq!(pending2.await.unwrap(), response2);
+    }
+
+    #[tokio::test]
+    async fn resolves_err() {
+        // when there is a transport error
+        let (handle, pending) = new_pending_response::<TestDatagram>(1.try_into().unwrap(), None);
+        handle.resolve(Err(TransportError::CallDropped));
+        assert!(matches!(pending.await, Err(TransportError::CallDropped)));
+    }
+
+    #[tokio::test]
+    async fn resolves_timeout() {
+        // when the handle gets dropped due to a timeout
+        let (handle, pending) = new_pending_response::<TestDatagram>(
+            1.try_into().unwrap(),
+            Some(Duration::from_millis(10)),
+        );
+        assert!(!handle.is_expired());
+        assert!(!pending.is_expired());
+
+        tokio::time::sleep(Duration::from_millis(10)).await;
+        assert!(handle.is_expired());
+        assert!(pending.is_expired());
+        drop(handle);
+        let r = pending.await;
+        assert!(matches!(r, Err(TransportError::Timeout)), "{r:?}");
+    }
+
+    #[tokio::test]
+    async fn resolves_dropped() {
+        // when the handle gets dropped but it has not timed out
+        let (_, pending) = new_pending_response::<TestDatagram>(1.try_into().unwrap(), None);
+        assert!(matches!(pending.await, Err(TransportError::CallDropped)));
     }
 }
