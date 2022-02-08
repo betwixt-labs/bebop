@@ -6,7 +6,7 @@ use std::time::Instant;
 
 use parking_lot::Mutex;
 
-use crate::rpc::datagram::Datagram;
+use crate::rpc::datagram::OwnedDatagram;
 use crate::rpc::error::TransportResult;
 use crate::rpc::router::call_table::RouterCallTable;
 use crate::rpc::router::ServiceHandlers;
@@ -32,7 +32,7 @@ pub struct RouterContext<Datagram, Transport, Local> {
 
 impl<D, T, L> RouterContext<D, T, L>
 where
-    D: 'static + Datagram,
+    D: 'static + OwnedDatagram,
     T: 'static + TransportProtocol<D>,
     L: 'static + ServiceHandlers<D>,
 {

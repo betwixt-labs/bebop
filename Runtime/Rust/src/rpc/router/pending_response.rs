@@ -142,7 +142,7 @@ impl<D> Future for PendingResponse<D> {
 
 #[cfg(test)]
 mod test {
-    use crate::rpc::datagram::TestDatagram;
+    use crate::rpc::datagram::TestOwnedDatagram;
     use crate::rpc::error::TransportError;
     use crate::rpc::router::pending_response::new_pending_response;
     use std::num::NonZeroU16;
@@ -151,19 +151,20 @@ mod test {
     #[tokio::test]
     async fn resolves() {
         // happy path
-        let (handle1, pending1) = new_pending_response::<TestDatagram>(1.try_into().unwrap(), None);
-        let (handle2, pending2) = new_pending_response::<TestDatagram>(
+        let (handle1, pending1) =
+            new_pending_response::<TestOwnedDatagram>(1.try_into().unwrap(), None);
+        let (handle2, pending2) = new_pending_response::<TestOwnedDatagram>(
             2.try_into().unwrap(),
             Some(Duration::from_secs(10)),
         );
 
-        let response1 = TestDatagram {
+        let response1 = TestOwnedDatagram {
             timeout: None,
             call_id: NonZeroU16::new(1),
             is_request: false,
             is_ok: true,
         };
-        let response2 = TestDatagram {
+        let response2 = TestOwnedDatagram {
             timeout: None, // responses never have timeouts, even when the request had one
             call_id: NonZeroU16::new(2),
             is_request: false,
@@ -186,7 +187,8 @@ mod test {
     #[tokio::test]
     async fn resolves_err() {
         // when there is a transport error
-        let (handle, pending) = new_pending_response::<TestDatagram>(1.try_into().unwrap(), None);
+        let (handle, pending) =
+            new_pending_response::<TestOwnedDatagram>(1.try_into().unwrap(), None);
         handle.resolve(Err(TransportError::CallDropped));
         assert!(matches!(pending.await, Err(TransportError::CallDropped)));
     }
@@ -194,7 +196,7 @@ mod test {
     #[tokio::test]
     async fn resolves_timeout() {
         // when the handle gets dropped due to a timeout
-        let (handle, pending) = new_pending_response::<TestDatagram>(
+        let (handle, pending) = new_pending_response::<TestOwnedDatagram>(
             1.try_into().unwrap(),
             Some(Duration::from_millis(10)),
         );
@@ -212,7 +214,7 @@ mod test {
     #[tokio::test]
     async fn resolves_dropped() {
         // when the handle gets dropped but it has not timed out
-        let (_, pending) = new_pending_response::<TestDatagram>(1.try_into().unwrap(), None);
+        let (_, pending) = new_pending_response::<TestOwnedDatagram>(1.try_into().unwrap(), None);
         assert!(matches!(pending.await, Err(TransportError::CallDropped)));
     }
 }

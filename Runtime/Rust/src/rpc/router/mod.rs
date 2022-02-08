@@ -7,7 +7,7 @@ use async_trait::async_trait;
 
 pub use context::RouterContext;
 
-use crate::rpc::datagram::Datagram;
+use crate::rpc::datagram::OwnedDatagram;
 use crate::rpc::transport::TransportProtocol;
 
 mod call_table;
@@ -53,7 +53,7 @@ pub struct Router<Datagram, Transport, Local, Remote> {
 
 impl<D, T, L, R> Router<D, T, L, R>
 where
-    D: 'static + Datagram,
+    D: 'static + OwnedDatagram,
     T: 'static + TransportProtocol<D>,
     L: 'static + ServiceHandlers<D>,
     R: ServiceRequests,

@@ -4,7 +4,7 @@ use std::env;
 use std::num::NonZeroU16;
 use std::time::Duration;
 
-use crate::rpc::datagram::Datagram;
+use crate::rpc::datagram::OwnedDatagram;
 use crate::rpc::router::pending_response::{new_pending_response, PendingResponse, ResponseHandle};
 
 /// The call table which can be kept private and needs to get locked all together.
@@ -40,7 +40,7 @@ impl<D> Default for RouterCallTable<D> {
 
 impl<D> RouterCallTable<D>
 where
-    D: Datagram,
+    D: OwnedDatagram,
 {
     /// Get the ID which should be used for the next call that gets made.
     pub fn next_call_id(&mut self) -> NonZeroU16 {
@@ -121,7 +121,7 @@ mod test {
     use std::num::NonZeroU16;
     use std::time::Duration;
 
-    use crate::rpc::datagram::TestDatagram;
+    use crate::rpc::datagram::TestOwnedDatagram;
     use crate::rpc::error::TransportError;
     use crate::rpc::router::pending_response::new_pending_response;
     use crate::rpc::Datagram;
@@ -130,7 +130,7 @@ mod test {
 
     #[test]
     fn gets_next_id() {
-        let mut ct = RouterCallTable::<TestDatagram>::default();
+        let mut ct = RouterCallTable::<TestOwnedDatagram>::default();
         assert_eq!(ct.next_call_id().get(), 1u16);
         assert_eq!(ct.next_call_id().get(), 2u16);
         ct.next_id = u16::MAX;
@@ -140,7 +140,7 @@ mod test {
 
     #[test]
     fn get_next_id_avoids_duplicates() {
-        let mut ct = RouterCallTable::<TestDatagram>::default();
+        let mut ct = RouterCallTable::<TestOwnedDatagram>::default();
         let (h1, _p1) = new_pending_response(1.try_into().unwrap(), None);
         ct.call_table.insert(h1.call_id(), h1);
         let (h2, _p2) = new_pending_response(2.try_into().unwrap(), None);
@@ -152,9 +152,9 @@ mod test {
 
     #[test]
     fn registers_requests() {
-        let mut ct = RouterCallTable::<TestDatagram>::default();
+        let mut ct = RouterCallTable::<TestOwnedDatagram>::default();
         let timeout = Some(Duration::from_millis(100));
-        let mut d = TestDatagram {
+        let mut d = TestOwnedDatagram {
             timeout,
             call_id: None,
             is_request: true,
@@ -170,15 +170,15 @@ mod test {
 
     #[tokio::test]
     async fn forwards_responses() {
-        let mut ct = RouterCallTable::<TestDatagram>::default();
-        let mut request = TestDatagram {
+        let mut ct = RouterCallTable::<TestOwnedDatagram>::default();
+        let mut request = TestOwnedDatagram {
             timeout: None,
             call_id: None,
             is_request: true,
             is_ok: true,
         };
         let pending = ct.register(&mut request);
-        let response = TestDatagram {
+        let response = TestOwnedDatagram {
             timeout: None,
             call_id: NonZeroU16::new(1),
             is_request: false,
@@ -193,8 +193,8 @@ mod test {
 
     #[tokio::test]
     async fn drops_expired_entry() {
-        let mut ct = RouterCallTable::<TestDatagram>::default();
-        let mut request = TestDatagram {
+        let mut ct = RouterCallTable::<TestOwnedDatagram>::default();
+        let mut request = TestOwnedDatagram {
             timeout: Some(Duration::from_millis(10)),
             call_id: None,
             is_request: true,
