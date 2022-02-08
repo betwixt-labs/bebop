@@ -101,16 +101,16 @@ where
         self.transport.send(datagram).await
     }
 
-    /// Receive a datagram and routes it. This is used by the handler for the TransportProtocol.
+    /// Receive a datagram and handles it appropriately. Async to apply backpressure on requests.
+    /// This is used by the handler for the TransportProtocol.
     async fn recv(&self, datagram: D) {
-        self.call_table
-            .lock()
-            .recv(
-                &self.local_service,
-                &self.unknown_response_handler,
-                datagram,
-            )
-            .await
+        if datagram.is_request() {
+            self.local_service._recv_call(datagram).await;
+        } else {
+            self.call_table
+                .lock()
+                .resolve(&self.unknown_response_handler, datagram);
+        }
     }
 
     /// Notify the call table of an expiration event and have it remove the datagram if appropriate.

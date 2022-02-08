@@ -6,7 +6,6 @@ use std::time::Duration;
 
 use crate::rpc::datagram::Datagram;
 use crate::rpc::router::pending_response::{new_pending_response, PendingResponse, ResponseHandle};
-use crate::rpc::router::ServiceHandlers;
 
 /// The call table which can be kept private and needs to get locked all together.
 /// Expirations are handled by the context which is responsible for calling `drop_expired`.
@@ -86,19 +85,10 @@ where
     }
 
     /// Receive a datagram and routes it. This is used by the handler for the TransportProtocol.
-    pub async fn recv(
-        &mut self,
-        local_service: &impl ServiceHandlers<D>,
-        urh: &Option<Box<dyn Fn(D)>>,
-        datagram: D,
-    ) {
+    pub fn resolve(&mut self, urh: &Option<Box<dyn Fn(D)>>, datagram: D) {
+        debug_assert!(datagram.is_response(), "Only responses should be resolved.");
         if let Some(id) = datagram.call_id() {
-            if datagram.is_request() {
-                // they sent a request to our service
-                // await this to allow for back pressure
-                local_service._recv_call(datagram).await;
-                return;
-            } else if let Some(call) = self.call_table.remove(&id) {
+            if let Some(call) = self.call_table.remove(&id) {
                 // they sent a response to one of our outstanding calls
                 // no async here because they already are waiting in their own task
                 call.resolve(Ok(datagram));
@@ -128,24 +118,15 @@ where
 
 #[cfg(test)]
 mod test {
-    use super::RouterCallTable;
-    use crate::rpc::datagram::TestDatagram;
-    use crate::rpc::router::pending_response::new_pending_response;
-    use crate::rpc::router::ServiceHandlers;
-    use crate::rpc::Datagram;
-    use async_trait::async_trait;
     use std::num::NonZeroU16;
     use std::time::Duration;
+
+    use crate::rpc::datagram::TestDatagram;
     use crate::rpc::error::TransportError;
+    use crate::rpc::router::pending_response::new_pending_response;
+    use crate::rpc::Datagram;
 
-    struct MockLocalService;
-
-    #[async_trait]
-    impl ServiceHandlers<TestDatagram> for MockLocalService {
-        async fn _recv_call(&self, datagram: TestDatagram) {
-            // do nothing
-        }
-    }
+    use super::RouterCallTable;
 
     #[test]
     fn gets_next_id() {
@@ -160,9 +141,9 @@ mod test {
     #[test]
     fn get_next_id_avoids_duplicates() {
         let mut ct = RouterCallTable::<TestDatagram>::default();
-        let (h1, p1) = new_pending_response(1.try_into().unwrap(), None);
+        let (h1, _p1) = new_pending_response(1.try_into().unwrap(), None);
         ct.call_table.insert(h1.call_id(), h1);
-        let (h2, p2) = new_pending_response(2.try_into().unwrap(), None);
+        let (h2, _p2) = new_pending_response(2.try_into().unwrap(), None);
         ct.call_table.insert(h2.call_id(), h2);
         ct.next_id = u16::MAX;
         assert_eq!(ct.next_call_id().get(), u16::MAX);
@@ -203,7 +184,7 @@ mod test {
             is_request: false,
             is_ok: true,
         };
-        ct.recv(&MockLocalService, &None, response).await;
+        ct.resolve(&None, response);
         let d = pending.await.unwrap();
         assert_eq!(d.call_id, NonZeroU16::new(1));
         assert!(d.is_response());
