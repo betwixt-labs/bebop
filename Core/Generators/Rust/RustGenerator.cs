@@ -111,6 +111,16 @@ namespace Core.Generators.Rust
                         throw new InvalidOperationException($"unsupported definition {definition.GetType()}");
                 }
 
+                if (definition.Name == "RpcDatagram")
+                {
+                    // special case, we need to generate the `impl Datagram`
+                    mainBuilder.AppendLine();
+                    ownedBuilder.AppendLine();
+
+                    WriteDatagramImpl(mainBuilder, (UnionDefinition)definition, CodeRegion.Main);
+                    WriteDatagramImpl(mainBuilder, (UnionDefinition)definition, CodeRegion.Owned);
+                }
+
                 mainBuilder.AppendLine();
                 ownedBuilder.AppendLine();
             }
@@ -956,6 +966,94 @@ namespace Core.Generators.Rust
 
         #endregion
 
+        #region rpc
+
+        private void WriteDatagramImpl(IndentedStringBuilder bldr, UnionDefinition d, CodeRegion region)
+        {
+            var ot = region switch
+            {
+                CodeRegion.Main => OwnershipType.Borrowed,
+                CodeRegion.Owned => OwnershipType.Owned,
+                _ => throw new ArgumentOutOfRangeException(nameof(region), region, null)
+            };
+            var ident = d.Name;
+            var name = NeedsLifetime(d, ot) ? $"{ident}<'raw>" : ident;
+            var rpcDatagramDef = (UnionDefinition)Schema.Definitions["RpcDatagram"];
+
+            bldr.CodeBlock($"impl<'raw> ::bebop::Datagram<'raw> for {name}", _tab, () =>
+            {
+                bldr.CodeBlock("fn set_call_id(&mut self, id: ::core::num::NonZeroU16)", _tab, () =>
+                {
+                    bldr.CodeBlock("match self", _tab, () =>
+                    {
+                        foreach (var branch in rpcDatagramDef.Branches)
+                        {
+                            bldr.AppendLine(
+                                $"RpcDatagram::{branch.Definition.Name} {{ ref mut header, .. }} => header.id = Some(id),");
+                        }
+                    });
+                }).AppendLine();
+
+                bldr.CodeBlock("fn timeout(&self) -> ::core::option::Option<::core::time::Duration>", _tab, () =>
+                {
+                    bldr.CodeBlock("match self", _tab, () =>
+                    {
+                        foreach (var branch in rpcDatagramDef.Branches)
+                        {
+                            var bName = branch.Definition.Name;
+                            bldr.Append($"RpcDatagram::{bName} {{ ref header, .. }} => ");
+                            if (bName.Contains("Request"))
+                                bldr.AppendEnd("header.timeout,");
+                            else
+                                bldr.AppendEnd("None,");
+                        }
+                    });
+                }).AppendLine();
+
+                bldr.CodeBlock("fn call_id(&self) -> ::core::option::Option<::core::num::NonZeroU16>", _tab, () =>
+                {
+                    bldr.CodeBlock("match self", _tab, () =>
+                    {
+                        foreach (var branch in rpcDatagramDef.Branches)
+                        {
+                            bldr.AppendLine($"RpcDatagram::{branch.Definition.Name} {{ header, .. }} => header.id,");
+                        }
+                    });
+                }).AppendLine();
+
+                bldr.CodeBlock("fn is_request(&self) -> bool", _tab, () =>
+                {
+                    bldr.CodeBlock("match self", _tab, () =>
+                    {
+                        foreach (var branch in rpcDatagramDef.Branches)
+                        {
+                            var bName = branch.Definition.Name;
+                            bldr.Append($"RpcDatagram::{bName} {{ ref header, .. }} => ");
+                            if (bName.Contains("Request"))
+                                bldr.AppendEnd("true,");
+                            else
+                                bldr.AppendEnd("false,");
+                        }
+                    });
+                }).AppendLine();
+
+                bldr.CodeBlock("fn is_ok(&self) -> bool", _tab, () =>
+                {
+                    foreach (var branch in rpcDatagramDef.Branches)
+                    {
+                        var bName = branch.Definition.Name;
+                        bldr.Append($"RpcDatagram::{bName} {{ ref header, .. }} => ");
+                        if (bName.Contains("Request") || bName.Contains("Ok"))
+                            bldr.AppendEnd("true,");
+                        else
+                            bldr.AppendEnd("false,");
+                    }
+                }).AppendLine();
+            });
+        }
+
+        #endregion
+
         #region component_writers
 
         private static void WriteDocumentation(IndentedStringBuilder builder, string documentation)
@@ -1213,6 +1311,11 @@ namespace Core.Generators.Rust
 
         private bool NeedsLifetime(Definition d, OwnershipType ot = OwnershipType.Borrowed)
         {
+            if (ot == OwnershipType.Owned)
+            {
+                return false;
+            }
+
             if (_needsLifetime.ContainsKey(d.Name))
             {
                 return _needsLifetime[d.Name];

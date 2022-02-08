@@ -33,7 +33,7 @@ union RpcDatagram {
     }
 
     /* Default response if no handler was registered. */
-    0xfc -> struct CallNotSupported {
+    0xfc -> struct RpcResponseCallNotSupported {
         RpcResponseHeader header;
     }
 
@@ -55,7 +55,7 @@ union RpcDatagram {
 
         This should never occur between proper implementations of the same version.
     */
-    0xff -> struct DecodeError {
+    0xff -> struct RpcDecodeError {
         /* Information provided on a best-effort basis. */
         RpcResponseHeader header;
         string info;
