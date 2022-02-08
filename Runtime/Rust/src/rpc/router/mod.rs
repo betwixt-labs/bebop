@@ -1,7 +1,8 @@
 use std::future::Future;
+use std::marker::PhantomData;
 use std::ops::Deref;
 use std::pin::Pin;
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 
 use async_trait::async_trait;
 
@@ -20,6 +21,8 @@ mod pending_response;
 /// You should not implement this by hand.
 #[async_trait]
 pub trait ServiceHandlers<D> {
+    const NAME: &'static str;
+
     /// Use opcode to determine which function to call, whether the signature matches,
     /// how to read the buffer, and then convert the returned values and send them as a
     /// response
@@ -32,8 +35,15 @@ pub trait ServiceHandlers<D> {
 /// bebop service definitions.
 ///
 /// You should not implement this by hand.
-pub trait ServiceRequests {
+pub trait ServiceRequests<D, T, L>
+where
+    D: 'static + OwnedDatagram,
+    T: 'static + TransportProtocol<D>,
+    L: 'static + ServiceHandlers<D>,
+{
     const NAME: &'static str;
+
+    fn new(ctx: Weak<RouterContext<D, T, L>>) -> Self;
 }
 
 /// This is the main structure which represents information about both ends of the connection and
@@ -56,7 +66,7 @@ where
     D: 'static + OwnedDatagram,
     T: 'static + TransportProtocol<D>,
     L: 'static + ServiceHandlers<D>,
-    R: ServiceRequests,
+    R: ServiceRequests<D, T, L>,
 {
     /// Create a new router instance.
     ///
@@ -70,27 +80,24 @@ where
     pub fn new(
         transport: T,
         local_service: L,
-        remote_service: R,
         unknown_response_handler: Option<Box<dyn Fn(D)>>,
         spawn_task: impl 'static + Fn(Pin<Box<dyn 'static + Future<Output = ()>>>),
     ) -> Self {
+        let ctx = RouterContext::new(
+            transport,
+            local_service,
+            unknown_response_handler,
+            spawn_task,
+        );
         Self {
-            _remote_service: remote_service,
-            _context: RouterContext::new(
-                transport,
-                local_service,
-                unknown_response_handler,
-                spawn_task,
-            ),
+            _remote_service: R::new(Arc::downgrade(&ctx)),
+            _context: ctx,
         }
     }
 }
 
 /// Allows passthrough of function calls to the remote
-impl<D, T, L, R> Deref for Router<D, T, L, R>
-where
-    R: ServiceRequests,
-{
+impl<D, T, L, R> Deref for Router<D, T, L, R> {
     type Target = R;
 
     fn deref(&self) -> &Self::Target {
