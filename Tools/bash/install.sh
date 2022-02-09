@@ -274,10 +274,10 @@ download() {
     local url=$1
     local filename=$2
     if ! result=$(
-        if [[ -x "$(which wgett)" ]]; then
+        if [[ -x "$(which wget)" ]]; then
             wget -O "${filename}" "${url}" 2>&1
         elif [[ -x "$(which curl)" ]]; then
-            curl -fL -o "${filename}" "${url}" 2>&1
+            curl -fLO "${filename}" "${url}" 2>&1
         fi
     ); then
         local error_message
@@ -332,13 +332,7 @@ EOABORT
 extract() {
     local filename=$1
     local destination=$2
-    if ! result=$(
-        if [[ -x "$(which tar)" ]]; then
-            sudo tar -zxpf "${filename}" -C "${destination}" 2>&1
-        elif [[ -x "$(which unzip)" ]]; then
-            sudo unzip -qq -o -j "${filename}" -d "${destination}" 2>&1
-        fi
-    ); then
+    if ! result=$(sudo unzip -X -qq -o -j "${filename}" -d "${destination}" 2>&1); then
         abort "$(
             cat <<EOABORT
 ${ERROR_UTF8} 
@@ -374,8 +368,8 @@ if ! command -v curl >/dev/null && ! command -v wget >/dev/null; then
     abort "$COLLISION_UTF8} You must install either ${tty_underline}${tty_white}cURL${tty_reset} or ${tty_underline}${tty_white}wget${tty_reset} to use this script."
 fi
 
-if ! command -v tar >/dev/null && ! command -v unzip >/dev/null; then
-    abort "$COLLISION_UTF8} You must install either ${tty_underline}${tty_white}tar${tty_reset} or ${tty_underline}${tty_white}unzip${tty_reset} to use this script."
+if ! command -v unzip >/dev/null; then
+    abort "$COLLISION_UTF8} You must install ${tty_underline}${tty_white}unzip${tty_reset} to use this script."
 fi
 
 BEBOPC_PREFIX="/usr/local"
@@ -473,10 +467,7 @@ point "${UNICORN_UTF8} Downloading and installing bebopc (${BEBOPC_VERSION})..."
 
     echo -ne "- ${tty_bold}Creating temp file${tty_reset} "
 
-    # work around the fact macOS does not support
-    # XXXXX formatting with sufixes
-    temp_dir=$(mktemp -d 2>/dev/null || mktemp -d -t "$(uuid)")
-    temp_file=$(mktemp "${temp_dir}$(uuid)".zip 2>/dev/null)
+    temp_file=$(mktemp)
     readonly temp_file
     # Bail out if the temp file wasn't created successfully.
     if [ ! -e "$temp_file" ]; then
