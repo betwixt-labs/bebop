@@ -29,7 +29,7 @@
     IsExternalInit will not be added to legacy .NET Framework and as such this dependency needs to flow 
     to projects that reference our package so generated code works.
     -->
-    <PackageReference Include="IsExternalInit" Version="1.0.0">
+    <PackageReference Include="IsExternalInit" Version="1.0.2">
       <PrivateAssets>none</PrivateAssets>
       <ExcludeAssets>none</ExcludeAssets>
       <IncludeAssets>all</IncludeAssets>
@@ -38,8 +38,8 @@
   </ItemGroup>
 
   <ItemGroup Condition="$(TargetFramework.StartsWith('net4')) Or $(TargetFramework.StartsWith('netstandard'))">
-    <PackageReference Include="System.Collections.Immutable" Version="5.0.0" />
-     <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="5.0.0" />
+    <PackageReference Include="System.Collections.Immutable" Version="6.0.0" />
+	<PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
   </ItemGroup>
 
 
