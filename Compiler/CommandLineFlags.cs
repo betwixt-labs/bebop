@@ -169,7 +169,7 @@ namespace Compiler
         private const string ConfigFileName = "bebop.json";
 
         [CommandLineFlag("config", "Initializes the compiler from the specified configuration file.",
-            "--config bebop.json", )]
+            "--config bebop.json")]
         public string? ConfigFile { get; private set; }
 
         [CommandLineFlag("cpp", "Generate C++ source code to the specified file",
