@@ -359,8 +359,10 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
 
       - name: Stage Website
-        run: mkdir -p homepage/repl && cp -a bebop-repl-${{ steps.dotenv.outputs.version }}/. homepage/repl
-
+        run: |
+          mkdir -p homepage/repl && cp -a bebop-repl-${{ steps.dotenv.outputs.version }}/. homepage/repl
+          sed 's/0.0.0/${{ steps.dotenv.outputs.version }}/' ${{env.TOOLS_ROOT}}/bash/install.sh > homepage/install.sh
+          
       - name: Publish Website
         uses: jakejarvis/s3-sync-action@master
         env:
