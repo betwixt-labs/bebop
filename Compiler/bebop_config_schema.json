@@ -1,0 +1,133 @@
+﻿{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "id": "https://json.schemastore.org/bebop",
+  "title": "JSON schema for the Bebop compiler's configuration file",
+  "type": "object",
+  "definitions": {
+    "//": {
+      "explainer": "https://github.com/RainwayApp/bebop/wiki",
+      "reference": "https://github.com/RainwayApp/bebop/wiki/bebop.json-configuration"
+    },
+    "filesDefinition": {
+      "properties": {
+        "inputFiles": {
+          "description": "Specifies a list of schemas that will be included for compilation.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "inputFiles"
+      ]
+    },
+    "directoryDefinition": {
+      "properties": {
+        "inputDirectory": {
+          "description": "Specifies a directory containing Bebop schemas that will be included for compilation.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "inputDirectory"
+      ]
+    },
+    "compilerOptionsDefinition": {
+      "properties": {
+        "compilerOptions": {
+          "type": "object",
+          "description": "Instructs the Bebop compiler how to compile .bop files.",
+          "properties": {
+            "exclude": {
+              "description": "Specifies a list of schemas to be excluded from compilation. The 'exclude' property only affects the files included via the 'inputDirectory' property and not the 'inputFiles' property.",
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string"
+              }
+            },
+            "noEmit": {
+              "description": "Disable emitting files from a compilation.",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        }
+      }
+    },
+    "namespaceDefinition": {
+      "properties": {
+        "namespace": {
+          "description": "Specifies a namespace that generated code will use.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "generatorsDefinition": {
+      "properties": {
+        "generators": {
+          "description": "Specifies a list of code generators to target during compilation.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "properties": {
+              "alias": {
+                "description": "Specify the code generator schemas will be compiled to.",
+                "type": "string",
+                "enum": [
+                  "cs",
+                  "ts",
+                  "cpp",
+                  "dart",
+                  "rust"
+                ]
+              },
+              "outputFile": {
+                "description": "Specify a file that bundles all generated code into one file.",
+                "type": "string"
+              },
+              "langVersion": {
+                "description": "Specify the version of the language the code generator should target.",
+                "type": "string"
+              },
+              "disableGenerationNotice": {
+                "default": false,
+                "description": "Specify if the code generator should produces a notice at the start of the output file stating code was auto-generated.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "alias",
+              "outputFile"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "#/definitions/generatorsDefinition"
+    },
+    {
+      "$ref": "#/definitions/compilerOptionsDefinition"
+    },
+    {
+      "$ref": "#/definitions/namespaceDefinition"
+    },
+    {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/filesDefinition"
+        },
+        {
+          "$ref": "#/definitions/directoryDefinition"
+        }
+      ]
+    }
+  ]
+}
