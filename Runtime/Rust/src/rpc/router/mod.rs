@@ -1,5 +1,4 @@
 use std::future::Future;
-use std::marker::PhantomData;
 use std::ops::Deref;
 use std::pin::Pin;
 use std::sync::{Arc, Weak};
@@ -19,6 +18,8 @@ mod pending_response;
 /// bebop service definitions.
 ///
 /// You should not implement this by hand.
+///
+/// TODO: can this use Datagram<'raw> instead of OwnedDatagram.
 #[async_trait]
 pub trait ServiceHandlers<D> {
     const NAME: &'static str;
@@ -35,6 +36,8 @@ pub trait ServiceHandlers<D> {
 /// bebop service definitions.
 ///
 /// You should not implement this by hand.
+///
+/// TODO: this needs to use Datagram<'raw> instead of OwnedDatagram.
 pub trait ServiceRequests<D, T, L>
 where
     D: 'static + OwnedDatagram,

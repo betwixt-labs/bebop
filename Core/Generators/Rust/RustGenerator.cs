@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using Core.Meta;
@@ -88,24 +89,40 @@ namespace Core.Generators.Rust
                     case ConstDefinition cd:
                         WriteConstDefinition(mainBuilder, cd, CodeRegion.Main);
                         WriteConstDefinition(ownedBuilder, cd, CodeRegion.Owned);
+                        mainBuilder.AppendLine();
+                        ownedBuilder.AppendLine();
                         break;
                     case EnumDefinition ed:
                         WriteEnumDefinition(mainBuilder, ed, CodeRegion.Main);
                         WriteEnumDefinition(ownedBuilder, ed, CodeRegion.Owned);
+                        mainBuilder.AppendLine();
+                        ownedBuilder.AppendLine();
                         break;
                     case MessageDefinition md:
                         if (md.Parent is UnionDefinition) continue;
                         WriteMessageDefinition(mainBuilder, md, CodeRegion.Main);
                         WriteMessageDefinition(ownedBuilder, md, CodeRegion.Owned);
+                        mainBuilder.AppendLine();
+                        ownedBuilder.AppendLine();
                         break;
                     case StructDefinition sd:
                         if (sd.Parent is UnionDefinition) continue;
                         WriteStructDefinition(mainBuilder, sd, CodeRegion.Main);
                         WriteStructDefinition(ownedBuilder, sd, CodeRegion.Owned);
+                        mainBuilder.AppendLine();
+                        ownedBuilder.AppendLine();
                         break;
                     case UnionDefinition ud:
                         WriteUnionDefinition(mainBuilder, ud, CodeRegion.Main);
                         WriteUnionDefinition(ownedBuilder, ud, CodeRegion.Owned);
+                        mainBuilder.AppendLine();
+                        ownedBuilder.AppendLine();
+                        break;
+                    case ServiceDefinition sd:
+                        // for now we only support the owned datagrams so might as well put it where it can reference
+                        // them correctly.
+                        WriteServiceDefinition(ownedBuilder, sd);
+                        ownedBuilder.AppendLine();
                         break;
                     default:
                         throw new InvalidOperationException($"unsupported definition {definition.GetType()}");
@@ -114,15 +131,11 @@ namespace Core.Generators.Rust
                 if (definition.Name == "RpcDatagram")
                 {
                     // special case, we need to generate the `impl Datagram`
+                    WriteDatagramImpl(mainBuilder, (UnionDefinition)definition, CodeRegion.Main);
+                    WriteDatagramImpl(ownedBuilder, (UnionDefinition)definition, CodeRegion.Owned);
                     mainBuilder.AppendLine();
                     ownedBuilder.AppendLine();
-
-                    WriteDatagramImpl(mainBuilder, (UnionDefinition)definition, CodeRegion.Main);
-                    WriteDatagramImpl(mainBuilder, (UnionDefinition)definition, CodeRegion.Owned);
                 }
-
-                mainBuilder.AppendLine();
-                ownedBuilder.AppendLine();
             }
 
             mainBuilder
@@ -603,7 +616,7 @@ namespace Core.Generators.Rust
                 .AppendLine($"let len = ::bebop::read_len(&raw[i..])?{plusI} + ::bebop::LEN_SIZE;")
                 .AppendLine($"i += ::bebop::LEN_SIZE;")
                 .AppendLine()
-                .AppendLine("#[cfg(not(feature = \"unchecked\"))]")
+                .AppendLine("#[cfg(not(feature = \"bebop-unchecked\"))]")
                 .CodeBlock("if len == 0", _tab, () =>
                 {
                     builder.AppendLine("return Err(::bebop::DeserializeError::CorruptFrame);");
@@ -622,7 +635,7 @@ namespace Core.Generators.Rust
 
             builder
                 .AppendLine()
-                .AppendLine("#[cfg(not(feature = \"unchecked\"))]")
+                .AppendLine("#[cfg(not(feature = \"bebop-unchecked\"))]")
                 .AppendLine("let mut last = 0;")
                 .AppendLine();
 
@@ -631,7 +644,7 @@ namespace Core.Generators.Rust
                 builder
                     .AppendLine("let di = raw[i];")
                     .AppendLine()
-                    .AppendLine("#[cfg(not(feature = \"unchecked\"))]")
+                    .AppendLine("#[cfg(not(feature = \"bebop-unchecked\"))]")
                     .CodeBlock("if di != 0", _tab, () =>
                     {
                         builder.CodeBlock("if di < last", _tab, () =>
@@ -654,7 +667,7 @@ namespace Core.Generators.Rust
                         var fname = MakeAttrIdent(f.Name);
                         builder.CodeBlock($"{f.ConstantValue} =>", _tab, () =>
                         {
-                            builder.AppendLine("#[cfg(not(feature = \"unchecked\"))]");
+                            builder.AppendLine("#[cfg(not(feature = \"bebop-unchecked\"))]");
                             builder.CodeBlock($"if _{fname}.is_some()", _tab, () =>
                             {
                                 builder.AppendLine(
@@ -921,7 +934,7 @@ namespace Core.Generators.Rust
                                     .AppendLine($"{ident}::Unknown");
                             });
                         }, "{", "};");
-                        builder.CodeBlock("if !cfg!(feature = \"unchecked\") && i != len", _tab,
+                        builder.CodeBlock("if !cfg!(feature = \"bebop-unchecked\") && i != len", _tab,
                             () =>
                             {
                                 builder
@@ -968,6 +981,71 @@ namespace Core.Generators.Rust
 
         #region rpc
 
+        private void WriteServiceDefinition(IndentedStringBuilder bldr, ServiceDefinition d)
+        {
+            var ident = MakeDefIdent(d.Name);
+            var requestsFeat = $"#[cfg(feature = \"bebop-{ident.ToKebabCase()}-requests\")]";
+            var handlersFeat = $"#[cfg(feature = \"bebop-{ident.ToKebabCase()}-handlers\")";
+
+            WriteDocumentation(bldr, d.Documentation);
+            bldr.AppendLine(handlersFeat)
+                .CodeBlock($"pub trait {ident}Handlers", _tab, () =>
+                {
+                    // TODO: generate function signatures
+                })
+                .AppendLine()
+                .AppendLine(handlersFeat)
+                .AppendLine("#[::async_trait::async_trait]")
+                .CodeBlock($"impl ::bebop::ServiceHandlers<RpcDatagram> for {ident}Handlers", _tab, () =>
+                {
+                    bldr.AppendLine($"const NAME: &'static str = \"{ident}\";")
+                        .AppendLine()
+                        .CodeBlock("async fn _recv_call(&self, datagram: RpcDatagram)", _tab, () =>
+                        {
+                            foreach (var b in d.Branches.OrderBy(d => d.Discriminator))
+                            {
+                                var fn = b.Definition;
+                                var fname = MakeFnIdent(fn.Name);
+                                var args = fn.ArgumentStruct.Fields.Select(f =>
+                                    (MakeFnArgIdent(f.Name), TypeName(f.Type, OwnershipType.Owned))).ToArray();
+                                var retType = fn.ReturnStruct.Fields.Count switch
+                                {
+                                    0 => "()",
+                                    1 => TypeName(fn.ReturnStruct.Fields.First().Type, OwnershipType.Owned),
+                                    _ => throw new ArgumentOutOfRangeException(ident, fn.ReturnStruct.Fields, null)
+                                };
+                                var argsStr = string.Join(",", args.Select((name, type) => $"{name}: {type}"));
+                                bldr.AppendLine($"fn {fname}({argsStr}) -> ::bebop::RemoteRpcResponse<{retType}>;");
+                            }
+                        });
+                }).AppendLine();
+
+            WriteDocumentation(bldr, d.Documentation);
+            bldr.AppendLine(requestsFeat)
+                .AppendLine("#[derive(Debug)]")
+                .AppendLine(
+                    $"pub struct {ident}Requests<T, L>(::std::sync::Weak<::bebop::RouterContext<RpcDatagram, T, L>>);")
+                .AppendLine()
+                .AppendLine(requestsFeat)
+                .CodeBlock($"impl {ident}Requests<T, L>", _tab, () =>
+                {
+                    // TODO: generate function calls to transport
+                })
+                .AppendLine()
+                .AppendLine(requestsFeat)
+                .CodeBlock($"impl<T, L> ::bebop::ServiceRequests<RpcDatagram, T, L> for {ident}Requests<T, L>", _tab,
+                    () =>
+                    {
+                        bldr.AppendLine($"const NAME: &'static str = \"{ident}\";")
+                            .AppendLine()
+                            .CodeBlock("fn new(ctx: ::std::sync::Weak<::bebop::RouterContext<D, T, L>) -> Self", _tab,
+                                () =>
+                                {
+                                    bldr.AppendLine("Self(ctx)");
+                                });
+                    });
+        }
+
         private void WriteDatagramImpl(IndentedStringBuilder bldr, UnionDefinition d, CodeRegion region)
         {
             var ot = region switch
@@ -976,9 +1054,10 @@ namespace Core.Generators.Rust
                 CodeRegion.Owned => OwnershipType.Owned,
                 _ => throw new ArgumentOutOfRangeException(nameof(region), region, null)
             };
-            var ident = d.Name;
+            var ident = MakeDefIdent(d.Name);
             var name = NeedsLifetime(d, ot) ? $"{ident}<'raw>" : ident;
-            var rpcDatagramDef = (UnionDefinition)Schema.Definitions["RpcDatagram"];
+            var datagramBranches = ((UnionDefinition)Schema.Definitions["RpcDatagram"]).Branches
+                .Select(b => MakeEnumVariantIdent(b.Definition.Name)).ToImmutableSortedSet();
 
             bldr.CodeBlock($"impl<'raw> ::bebop::Datagram<'raw> for {name}", _tab, () =>
             {
@@ -986,10 +1065,10 @@ namespace Core.Generators.Rust
                 {
                     bldr.CodeBlock("match self", _tab, () =>
                     {
-                        foreach (var branch in rpcDatagramDef.Branches)
+                        foreach (var branch in datagramBranches)
                         {
                             bldr.AppendLine(
-                                $"RpcDatagram::{branch.Definition.Name} {{ ref mut header, .. }} => header.id = Some(id),");
+                                $"RpcDatagram::{branch} {{ ref mut header, .. }} => header.id = Some(id),");
                         }
                     });
                 }).AppendLine();
@@ -998,11 +1077,10 @@ namespace Core.Generators.Rust
                 {
                     bldr.CodeBlock("match self", _tab, () =>
                     {
-                        foreach (var branch in rpcDatagramDef.Branches)
+                        foreach (var branch in datagramBranches)
                         {
-                            var bName = branch.Definition.Name;
-                            bldr.Append($"RpcDatagram::{bName} {{ ref header, .. }} => ");
-                            if (bName.Contains("Request"))
+                            bldr.Append($"RpcDatagram::{branch} {{ ref header, .. }} => ");
+                            if (branch.Contains("Request"))
                                 bldr.AppendEnd("header.timeout,");
                             else
                                 bldr.AppendEnd("None,");
@@ -1014,9 +1092,9 @@ namespace Core.Generators.Rust
                 {
                     bldr.CodeBlock("match self", _tab, () =>
                     {
-                        foreach (var branch in rpcDatagramDef.Branches)
+                        foreach (var branch in datagramBranches)
                         {
-                            bldr.AppendLine($"RpcDatagram::{branch.Definition.Name} {{ header, .. }} => header.id,");
+                            bldr.AppendLine($"RpcDatagram::{branch} {{ header, .. }} => header.id,");
                         }
                     });
                 }).AppendLine();
@@ -1025,11 +1103,10 @@ namespace Core.Generators.Rust
                 {
                     bldr.CodeBlock("match self", _tab, () =>
                     {
-                        foreach (var branch in rpcDatagramDef.Branches)
+                        foreach (var branch in datagramBranches)
                         {
-                            var bName = branch.Definition.Name;
-                            bldr.Append($"RpcDatagram::{bName} {{ ref header, .. }} => ");
-                            if (bName.Contains("Request"))
+                            bldr.Append($"RpcDatagram::{branch} {{ ref header, .. }} => ");
+                            if (branch.Contains("Request"))
                                 bldr.AppendEnd("true,");
                             else
                                 bldr.AppendEnd("false,");
@@ -1039,11 +1116,10 @@ namespace Core.Generators.Rust
 
                 bldr.CodeBlock("fn is_ok(&self) -> bool", _tab, () =>
                 {
-                    foreach (var branch in rpcDatagramDef.Branches)
+                    foreach (var branch in datagramBranches)
                     {
-                        var bName = branch.Definition.Name;
-                        bldr.Append($"RpcDatagram::{bName} {{ ref header, .. }} => ");
-                        if (bName.Contains("Request") || bName.Contains("Ok"))
+                        bldr.Append($"RpcDatagram::{branch} {{ ref header, .. }} => ");
+                        if (branch.Contains("Request") || branch.Contains("Ok"))
                             bldr.AppendEnd("true,");
                         else
                             bldr.AppendEnd("false,");
@@ -1191,6 +1267,10 @@ namespace Core.Generators.Rust
                 ? $"_{reCased}"
                 : reCased;
         }
+
+        private static string MakeFnIdent(string ident) => MakeAttrIdent(ident);
+
+        private static string MakeFnArgIdent(string ident) => MakeAttrIdent(ident);
 
         /// <summary>
         /// Generate a Rust type name for the given <see cref="TypeBase"/>.

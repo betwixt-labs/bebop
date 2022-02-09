@@ -1,3 +1,5 @@
+extern crate core;
+
 pub use bitflags::bitflags;
 
 pub use serialization::*;
