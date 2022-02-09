@@ -30,6 +30,10 @@ jobs:
       - name: Generate Output.g.cs
         working-directory: "./Laboratory/C#"
         run: dotnet run --project ../../Compiler/ --cs "./GeneratedTestCode/Output.g.cs" --namespace Bebop.Codegen --files $(ls -p ../Schemas/Valid/*.bop | tr '\n' ' ')
+      
+      - name: Run Test .NET 6
+        run: dotnet test -c Release -f net6.0
+        working-directory: ${{env.TEST_ROOT}}
 
       - name: Run Test .NET 5
         run: dotnet test -c Release -f net5.0
