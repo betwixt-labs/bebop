@@ -22,7 +22,7 @@ if [ -z "${BASH_VERSION:-}" ]; then
 fi
 
 ### Constants
-readonly BEBOPC_VERSION="${1:-2.3.1}"
+readonly BEBOPC_VERSION="${1:-0.0.0}"
 readonly BEBOP_RELEASE_URL="https://api.github.com/repos/rainwayapp/bebop/releases/tags/v${BEBOPC_VERSION}"
 
 readonly ARM64_ISSUE_LINK="https://github.com/RainwayApp/bebop/issues/185"
@@ -416,7 +416,7 @@ if [[ -x "$(which bebopc)" ]]; then
     fi
     # abort when the remote version is less than the installed version.
     # downgrading an install could change code generation
-    if version_lt "${BEBOPC_VERSION}" "${installed_bebopc_version}"; then
+    if version_lt "$(major_minor "${BEBOPC_VERSION}")" "$(major_minor "${installed_bebopc_version}")"; then
         abort "$(
             cat <<EOABORT
 $COLLISION_UTF8} ${tty_underline}${tty_white}$bebopc_name_and_version${tty_reset} is already installed,
@@ -430,7 +430,8 @@ EOABORT
 
     # warn and proceed if we're updating rather than installing
     # this is a warning because version changes may introduce code generator changes
-    if version_lt "${installed_bebopc_version}" "${BEBOPC_VERSION}"; then
+    # patches do not produce a warning
+    if version_lt "$(major_minor "${installed_bebopc_version}")" "$(major_minor "${BEBOPC_VERSION}")"; then
         warn "${tty_underline}${tty_white}$bebopc_name_and_version${tty_reset} will be upgraded to ${tty_underline}${tty_white}${BEBOPC_VERSION}${tty_reset}"
     fi
 
