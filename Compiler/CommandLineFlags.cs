@@ -429,13 +429,15 @@ namespace Compiler
                 return true;
             }
 
-            // if the config flag is passed in load settings from that path, otherwise search for it.
-            var bebopConfig = parsedFlags.HasFlag("config")
-                ? parsedFlags.GetFlag("config").GetValue()
-                : FindBebopConfig();
-            // if bebop.json exist load it. the values in the JSON file are written to the store.
-            if (!string.IsNullOrWhiteSpace(bebopConfig))
+            // if the config flag is passed in load settings from that specified path.
+            if (parsedFlags.HasFlag("config"))
             {
+                var bebopConfig = parsedFlags.GetFlag("config").GetValue();
+                if (string.IsNullOrWhiteSpace(bebopConfig))
+                {
+                    errorMessage = $"'--config' must be followed by the explicit path to a bebop.json config";
+                    return false;
+                }
                 if (new FileInfo(bebopConfig).Exists)
                 {
                     if (!TryParseConfig(flagStore, bebopConfig))
