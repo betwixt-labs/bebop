@@ -38,15 +38,18 @@ namespace Core.Generators.Rust
 
         const int _tab = 4;
 
-        private static readonly string[] _reservedWordsArray =
+        private static readonly ImmutableHashSet<string> _reservedWords = new[]
         {
             "Self", "abstract", "as", "become", "box", "break", "const", "continue", "crate", "do", "else", "enum",
             "extern", "false", "final", "fn", "for", "if", "impl", "in", "let", "loop", "macro", "match", "mod",
             "move", "mut", "override", "priv", "pub", "ref", "return", "self", "static", "struct", "super", "trait",
             "true", "try", "type", "typeof", "unsafe", "unsized", "use", "virtual", "where", "while", "yield",
-        };
+        }.ToImmutableHashSet();
 
-        private static readonly HashSet<string> _reservedWords = _reservedWordsArray.ToHashSet();
+        // TODO: should we get this list from the SchemaRepo or something to prevent sync issues?
+        private static readonly ImmutableHashSet<string> _rpcDefinitionsToIgnore =
+            new[] { "RpcDatagram", "RpcRequestHeader", "RpcResponseHeader" }.ToImmutableHashSet();
+
         private Dictionary<string, bool> _needsLifetime = new Dictionary<string, bool>();
 
         #endregion
@@ -79,26 +82,35 @@ namespace Core.Generators.Rust
             WriteStandardImportsForModule(mainBuilder);
             WriteStandardImportsForModule(ownedBuilder);
 
-            // TODO: do we need to do something with the namespace? Probably not since the file is itself a module.
+            var hasServiceDefinition = Schema.Definitions.Values.Any(d => d is ServiceDefinition);
 
             foreach (var definition in Schema.Definitions.Values)
             {
-                WriteDocumentation(mainBuilder, definition.Documentation);
+                if (hasServiceDefinition && _rpcDefinitionsToIgnore.Contains(definition.Name))
+                {
+                    // We don't want to generate the RPC types for Rust because we need them in the Runtime due to
+                    // the static nature of rust, so just ignore them.
+                    continue;
+                }
+
                 switch (definition)
                 {
                     case ConstDefinition cd:
+                        WriteDocumentation(mainBuilder, definition.Documentation);
                         WriteConstDefinition(mainBuilder, cd, CodeRegion.Main);
                         WriteConstDefinition(ownedBuilder, cd, CodeRegion.Owned);
                         mainBuilder.AppendLine();
                         ownedBuilder.AppendLine();
                         break;
                     case EnumDefinition ed:
+                        WriteDocumentation(mainBuilder, definition.Documentation);
                         WriteEnumDefinition(mainBuilder, ed, CodeRegion.Main);
                         WriteEnumDefinition(ownedBuilder, ed, CodeRegion.Owned);
                         mainBuilder.AppendLine();
                         ownedBuilder.AppendLine();
                         break;
                     case MessageDefinition md:
+                        WriteDocumentation(mainBuilder, definition.Documentation);
                         if (md.Parent is UnionDefinition) continue;
                         WriteMessageDefinition(mainBuilder, md, CodeRegion.Main);
                         WriteMessageDefinition(ownedBuilder, md, CodeRegion.Owned);
@@ -107,12 +119,14 @@ namespace Core.Generators.Rust
                         break;
                     case StructDefinition sd:
                         if (sd.Parent is UnionDefinition) continue;
+                        WriteDocumentation(mainBuilder, definition.Documentation);
                         WriteStructDefinition(mainBuilder, sd, CodeRegion.Main);
                         WriteStructDefinition(ownedBuilder, sd, CodeRegion.Owned);
                         mainBuilder.AppendLine();
                         ownedBuilder.AppendLine();
                         break;
                     case UnionDefinition ud:
+                        WriteDocumentation(mainBuilder, definition.Documentation);
                         WriteUnionDefinition(mainBuilder, ud, CodeRegion.Main);
                         WriteUnionDefinition(ownedBuilder, ud, CodeRegion.Owned);
                         mainBuilder.AppendLine();
@@ -126,15 +140,6 @@ namespace Core.Generators.Rust
                         break;
                     default:
                         throw new InvalidOperationException($"unsupported definition {definition.GetType()}");
-                }
-
-                if (definition.Name == "RpcDatagram")
-                {
-                    // special case, we need to generate the `impl Datagram`
-                    WriteDatagramImpl(mainBuilder, (UnionDefinition)definition, CodeRegion.Main);
-                    WriteDatagramImpl(ownedBuilder, (UnionDefinition)definition, CodeRegion.Owned);
-                    mainBuilder.AppendLine();
-                    ownedBuilder.AppendLine();
                 }
             }
 
@@ -1044,88 +1049,6 @@ namespace Core.Generators.Rust
                                     bldr.AppendLine("Self(ctx)");
                                 });
                     });
-        }
-
-        private void WriteDatagramImpl(IndentedStringBuilder bldr, UnionDefinition d, CodeRegion region)
-        {
-            var ot = region switch
-            {
-                CodeRegion.Main => OwnershipType.Borrowed,
-                CodeRegion.Owned => OwnershipType.Owned,
-                _ => throw new ArgumentOutOfRangeException(nameof(region), region, null)
-            };
-            var ident = MakeDefIdent(d.Name);
-            var name = NeedsLifetime(d, ot) ? $"{ident}<'raw>" : ident;
-            var datagramBranches = ((UnionDefinition)Schema.Definitions["RpcDatagram"]).Branches
-                .Select(b => MakeEnumVariantIdent(b.Definition.Name)).ToImmutableSortedSet();
-
-            bldr.CodeBlock($"impl<'raw> ::bebop::Datagram<'raw> for {name}", _tab, () =>
-            {
-                bldr.CodeBlock("fn set_call_id(&mut self, id: ::core::num::NonZeroU16)", _tab, () =>
-                {
-                    bldr.CodeBlock("match self", _tab, () =>
-                    {
-                        foreach (var branch in datagramBranches)
-                        {
-                            bldr.AppendLine(
-                                $"RpcDatagram::{branch} {{ ref mut header, .. }} => header.id = Some(id),");
-                        }
-                    });
-                }).AppendLine();
-
-                bldr.CodeBlock("fn timeout(&self) -> ::core::option::Option<::core::time::Duration>", _tab, () =>
-                {
-                    bldr.CodeBlock("match self", _tab, () =>
-                    {
-                        foreach (var branch in datagramBranches)
-                        {
-                            bldr.Append($"RpcDatagram::{branch} {{ ref header, .. }} => ");
-                            if (branch.Contains("Request"))
-                                bldr.AppendEnd("header.timeout,");
-                            else
-                                bldr.AppendEnd("None,");
-                        }
-                    });
-                }).AppendLine();
-
-                bldr.CodeBlock("fn call_id(&self) -> ::core::option::Option<::core::num::NonZeroU16>", _tab, () =>
-                {
-                    bldr.CodeBlock("match self", _tab, () =>
-                    {
-                        foreach (var branch in datagramBranches)
-                        {
-                            bldr.AppendLine($"RpcDatagram::{branch} {{ header, .. }} => header.id,");
-                        }
-                    });
-                }).AppendLine();
-
-                bldr.CodeBlock("fn is_request(&self) -> bool", _tab, () =>
-                {
-                    bldr.CodeBlock("match self", _tab, () =>
-                    {
-                        foreach (var branch in datagramBranches)
-                        {
-                            bldr.Append($"RpcDatagram::{branch} {{ ref header, .. }} => ");
-                            if (branch.Contains("Request"))
-                                bldr.AppendEnd("true,");
-                            else
-                                bldr.AppendEnd("false,");
-                        }
-                    });
-                }).AppendLine();
-
-                bldr.CodeBlock("fn is_ok(&self) -> bool", _tab, () =>
-                {
-                    foreach (var branch in datagramBranches)
-                    {
-                        bldr.Append($"RpcDatagram::{branch} {{ ref header, .. }} => ");
-                        if (branch.Contains("Request") || branch.Contains("Ok"))
-                            bldr.AppendEnd("true,");
-                        else
-                            bldr.AppendEnd("false,");
-                    }
-                }).AppendLine();
-            });
         }
 
         #endregion

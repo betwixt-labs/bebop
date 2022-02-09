@@ -18,23 +18,6 @@ namespace Core.Schemas
         static SchemaRepo()
         {
             var asm = Assembly.GetExecutingAssembly();
-            using (var rsrcStream =
-                   asm.GetManifestResourceStream("Core.Schemas.RpcRequestHeader.bop"))
-            {
-                using (var sRdr = new StreamReader(rsrcStream))
-                {
-                    RpcRequestHeader = sRdr.ReadToEnd();
-                }
-            }
-
-            using (var rsrcStream =
-                   asm.GetManifestResourceStream("Core.Schemas.RpcResponseHeader.bop"))
-            {
-                using (var sRdr = new StreamReader(rsrcStream))
-                {
-                    RpcResponseHeader = sRdr.ReadToEnd();
-                }
-            }
 
             using (var rsrcStream =
                    asm.GetManifestResourceStream("Core.Schemas.RpcDatagram.bop"))

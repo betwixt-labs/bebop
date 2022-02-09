@@ -1,5 +1,0 @@
-﻿/* Static RPC response header used for all response datagrams. */
-readonly struct RpcResponseHeader {
-    /* The caller-assigned identifier */
-	uint16 id;
-}
