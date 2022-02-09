@@ -1,4 +1,5 @@
 use std::future::Future;
+use std::num::NonZeroU16;
 use std::ops::Deref;
 use std::pin::Pin;
 use std::sync::{Arc, Weak};
@@ -6,12 +7,14 @@ use std::sync::{Arc, Weak};
 use async_trait::async_trait;
 
 pub use context::RouterContext;
+use crate::rpc::Datagram;
 
 use crate::rpc::transport::TransportProtocol;
 
 mod call_table;
 mod context;
-mod pending_response;
+mod calls;
+mod request;
 
 /// The local end of the pipe handles messages. Implementations are automatically generated from
 /// bebop service definitions.
@@ -78,7 +81,7 @@ where
     pub fn new(
         transport: T,
         local_service: L,
-        unknown_response_handler: Option<Box<dyn Fn(D)>>,
+        unknown_response_handler: Option<Box<dyn Fn(&Datagram)>>,
         spawn_task: impl 'static + Fn(Pin<Box<dyn 'static + Future<Output = ()>>>),
     ) -> Self {
         let ctx = RouterContext::new(

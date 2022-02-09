@@ -6,15 +6,17 @@ use std::time::Instant;
 
 use parking_lot::Mutex;
 
+use crate::rpc::datagram::RpcRequestHeader;
 use crate::rpc::error::TransportResult;
 use crate::rpc::router::call_table::RouterCallTable;
 use crate::rpc::router::ServiceHandlers;
-use crate::rpc::Datagram;
 use crate::rpc::transport::TransportProtocol;
+use crate::rpc::Datagram;
+use crate::{OwnedRecord, Record, SliceWrapper};
 
-pub struct RouterContext<Datagram, Transport, Local> {
+pub struct RouterContext<Transport, Local> {
     /// Callback that receives any datagrams without a call id.
-    unknown_response_handler: Option<Box<dyn Fn(Datagram)>>,
+    unknown_response_handler: Option<Box<dyn Fn(&Datagram)>>,
 
     /// Local service handles requests from the remote.
     local_service: Local,
@@ -69,18 +71,31 @@ where
         }));
     }
 
-    /// Send a datagram to the remote. Can be either a request or response.
-    /// This is used by the generated code.
+    /// Send a request to the remote. This is used by the generated code.
     ///
     /// TODO: should we expose the PendingCall structure instead? Means this will be a future that
     ///  returns a future which might be a little unnecessary, but it will expose more info about
     ///  the underlying data.
-    pub async fn request(self: &Arc<Self>, datagram: &mut D) -> TransportResult<D> {
-        debug_assert!(
-            datagram.is_request(),
-            "This function requires a request datagram."
-        );
-        let pending = self.call_table.lock().register(datagram);
+    pub async fn request<T: OwnedRecord>(
+        self: &Arc<Self>,
+        opcode: u16,
+        timeout: Option<NonZeroU16>,
+        signature: u32,
+        buf: &[u8],
+    ) -> TransportResult<T> {
+        let mut call_table = self.call_table.lock();
+        let datagram = Datagram::RpcRequestDatagram {
+            header: RpcRequestHeader {
+                id: call_table.next_call_id() as u16,
+                timeout: timeout.into(),
+                signature,
+            },
+            opcode,
+            request: SliceWrapper::Cooked(buf),
+        };
+        let pending = call_table.register(&datagram);
+        drop(call_table);
+
         if let Some(at) = pending.expires_at() {
             (self.spawn_task)(Box::pin(Self::clean_on_expiration(
                 Arc::downgrade(self),
@@ -92,13 +107,17 @@ where
         pending.await
     }
 
-    pub async fn respond(&self, datagram: &D) -> TransportResult {
-        debug_assert!(
-            datagram.is_response(),
-            "This function requires a response datagram."
-        );
+    pub(in super::calls) async fn send(&self, datagram: &Datagram) -> TransportResult {
         self.transport.send(datagram).await
     }
+
+    // pub async fn respond(&self, datagram: &D) -> TransportResult {
+    //     debug_assert!(
+    //         datagram.is_response(),
+    //         "This function requires a response datagram."
+    //     );
+    //     self.transport.send(datagram).await
+    // }
 
     /// Receive a datagram and handles it appropriately. Async to apply backpressure on requests.
     /// This is used by the handler for the TransportProtocol.
@@ -119,6 +138,17 @@ where
             // zelf.expire_futures.lock().remove(&id).unwrap();
             zelf.call_table.lock().drop_expired(id);
         }
+    }
+
+    /// Send notification that there was an error decoding one of the datagrams. This may be called
+    /// by the transport or by the generated handler code.
+    pub async fn send_decode_error_response(
+        &self,
+        call_id: Option<NonZeroU16>,
+        info: Option<&str>,
+    ) -> TransportResult {
+        todo!()
+        // self.transport.send_decode_error_response(...).await
     }
 }
 

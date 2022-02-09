@@ -1,6 +1,7 @@
-use crate::SerializeError;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
+
+use crate::{DeserializeError, SerializeError};
 
 /// Things that could go wrong with the underlying transport, need it to be somewhat generic.
 /// Things like the internet connection dying would fall under this.
@@ -8,10 +9,23 @@ use std::fmt::{Debug, Display, Formatter};
 pub enum TransportError {
     DatagramTooLarge,
     SerializationError(SerializeError),
+    DeserializationError(DeserializeError),
     NotConnected,
     Timeout,
     CallDropped,
     Other(String),
+}
+
+impl From<SerializeError> for TransportError {
+    fn from(e: SerializeError) -> Self {
+        Self::SerializationError(e)
+    }
+}
+
+impl From<DeserializeError> for TransportError {
+    fn from(e: DeserializeError) -> Self {
+        Self::DeserializationError(e)
+    }
 }
 
 impl Display for TransportError {
@@ -52,7 +66,13 @@ pub enum RemoteRpcError {
     UnknownCall,
     InvalidSignature(u32),
     CallNotSupported,
-    DecodeError(Option<String>),
+    RemoteDecodeError(Option<String>),
+}
+
+impl From<TransportError> for RemoteRpcError {
+    fn from(e: TransportError) -> Self {
+        Self::TransportError(e)
+    }
 }
 
 impl Display for RemoteRpcError {
