@@ -130,10 +130,11 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: "5.0.x" # SDK Version to use; x will use the latest version of the 5.0 channel
+          dotnet-version: "6.0.x" # SDK Version to use; x will use the latest version of the 5.0 channel
 
       - name: Test .NET Runtime
         run: |
+          dotnet test -c Release -f net6.0
           dotnet test -c Release -f net5.0
           dotnet test -c Release -f net48
           dotnet test -c Release -f net472
@@ -314,7 +315,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: "5.0.x" # SDK Version to use; x will use the latest version of the 5.0 channel
+          dotnet-version: "6.0.x" # SDK Version to use; x will use the latest version of the 5.0 channel
           
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
