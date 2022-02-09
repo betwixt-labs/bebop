@@ -1023,7 +1023,7 @@ namespace Core.Generators.CSharp
                     _ => throw new ArgumentOutOfRangeException()
                 },
                 DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition ed =>
-                    CompileEncodeField(ed.ScalarType, $"(({TypeName(ed.ScalarType)})({target}))", depth, indentDepth),
+                    CompileEncodeField(ed.ScalarType, $"{As(PrefixNamespace(dt.Name.ToPascalCase()), TypeName(ed.ScalarType), target)}", depth, indentDepth),
                 DefinedType dt =>
                     $"{PrefixNamespace(dt.Name.ToPascalCase())}.__EncodeInto({target}, ref writer);",
                 _ => throw new InvalidOperationException($"CompileEncodeField: {type}")
@@ -1083,7 +1083,7 @@ namespace Core.Generators.CSharp
                     "}",
                 ScalarType st => $"{target} = {ReadBaseType(st.BaseType)};",
                 DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition ed =>
-                    $"{target} = ({PrefixNamespace(dt.Name.ToPascalCase())})({ReadBaseType(ed.BaseType)});",
+                    $"{target} = {As(TypeName(ed.ScalarType), PrefixNamespace(dt.Name.ToPascalCase()), ReadBaseType(ed.BaseType))};",
                 DefinedType dt =>
                     $"{target} = {PrefixNamespace(dt.Name.ToPascalCase())}.__DecodeFrom(ref reader);",
                 _ => throw new InvalidOperationException($"CompileDecodeField: {type}")
@@ -1301,6 +1301,10 @@ namespace Core.Generators.CSharp
             };
         }
 
+        private static string As(string from, string to, string value)
+        {
+            return $"System.Runtime.CompilerServices.Unsafe.As<{from}, {to}>(ref System.Runtime.CompilerServices.Unsafe.AsRef({value}))";
+        }
 
         public override void WriteAuxiliaryFiles(string outputPath)
         {
