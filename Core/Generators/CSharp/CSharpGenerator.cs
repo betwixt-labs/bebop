@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Text;
 using System.Text.Encodings.Web;
@@ -11,6 +11,7 @@ namespace Core.Generators.CSharp
     public class CSharpGenerator : BaseGenerator
     {
         private Version LanguageVersion = CSharpNine;
+
 
         public CSharpGenerator(BebopSchema schema) : base(schema)
         {
@@ -45,8 +46,9 @@ namespace Core.Generators.CSharp
                 builder.AppendLine(GeneratedAttribute);
                 builder.AppendLine($"public static class BopConstants {{");
                 builder.Indent(indentStep);
- 
-                foreach (ConstDefinition cd in Schema.Definitions.Values.Where(d => d is ConstDefinition)) {
+
+                foreach (ConstDefinition cd in Schema.Definitions.Values.Where(d => d is ConstDefinition))
+                {
                     var constish = CanBeDeclaredConst(cd.Value.Type) ? "const" : "static readonly";
                     if (!string.IsNullOrWhiteSpace(cd.Documentation))
                     {
@@ -57,9 +59,9 @@ namespace Core.Generators.CSharp
                 builder.Dedent(indentStep);
                 builder.AppendLine("}").AppendLine();
             }
-          
 
-            
+
+
 
             foreach (var definition in Schema.Definitions.Values)
             {
@@ -557,7 +559,7 @@ namespace Core.Generators.CSharp
                 {
                     builder.AppendLine($"return other.GetType() == typeof({PrefixNamespace(ud.BaseClassName())}<{genericPositionalArguments}>) && Equals(({PrefixNamespace(ud.BaseClassName())}<{genericPositionalArguments}>) other);").Dedent(4).AppendLine("}");
                 }
-                
+
                 builder.AppendLine();
                 if (isClass)
                 {
@@ -683,12 +685,13 @@ namespace Core.Generators.CSharp
                     {
                         builder.AppendLine($"public static implicit operator {PrefixNamespace(ud.ClassName())}({PrefixNamespace(branch.Definition.ClassName())} _) => new (_);");
                         builder.AppendLine($"public static {PrefixNamespace(ud.ClassName())} From{branch.Definition.ClassName()}({PrefixNamespace(branch.Definition.ClassName())} input) => new (input);").AppendLine();
-                    } else
+                    }
+                    else
                     {
                         builder.AppendLine($"public static implicit operator {PrefixNamespace(ud.ClassName())}({PrefixNamespace(branch.Definition.ClassName())} _) => new {PrefixNamespace(ud.ClassName())}(_);");
                         builder.AppendLine($"public static {PrefixNamespace(ud.ClassName())} From{branch.Definition.ClassName()}({PrefixNamespace(branch.Definition.ClassName())} input) => new {PrefixNamespace(ud.ClassName())}(input);").AppendLine();
                     }
-                   
+
                 }
                 builder.AppendLine("#endregion");
 
@@ -1033,22 +1036,22 @@ namespace Core.Generators.CSharp
         private string ReadBaseType(BaseType baseType)
         {
             return baseType switch
-                {
-                    BaseType.Bool => "reader.ReadByte() != 0",
-                    BaseType.Byte => "reader.ReadByte()",
-                    BaseType.UInt32 => "reader.ReadUInt32()",
-                    BaseType.Int32 => "reader.ReadInt32()",
-                    BaseType.Float32 => "reader.ReadFloat32()",
-                    BaseType.String => "reader.ReadString()",
-                    BaseType.Guid => "reader.ReadGuid()",
-                    BaseType.UInt16 => "reader.ReadUInt16()",
-                    BaseType.Int16 => "reader.ReadInt16()",
-                    BaseType.UInt64 => "reader.ReadUInt64()",
-                    BaseType.Int64 => "reader.ReadInt64()",
-                    BaseType.Float64 => "reader.ReadFloat64()",
-                    BaseType.Date => "reader.ReadDate()",
-                    _ => throw new ArgumentOutOfRangeException()
-                };
+            {
+                BaseType.Bool => "reader.ReadByte() != 0",
+                BaseType.Byte => "reader.ReadByte()",
+                BaseType.UInt32 => "reader.ReadUInt32()",
+                BaseType.Int32 => "reader.ReadInt32()",
+                BaseType.Float32 => "reader.ReadFloat32()",
+                BaseType.String => "reader.ReadString()",
+                BaseType.Guid => "reader.ReadGuid()",
+                BaseType.UInt16 => "reader.ReadUInt16()",
+                BaseType.Int16 => "reader.ReadInt16()",
+                BaseType.UInt64 => "reader.ReadUInt64()",
+                BaseType.Int64 => "reader.ReadInt64()",
+                BaseType.Float64 => "reader.ReadFloat64()",
+                BaseType.Date => "reader.ReadDate()",
+                _ => throw new ArgumentOutOfRangeException()
+            };
         }
 
         private string CompileDecodeField(TypeBase type, string target, int depth = 0)
@@ -1305,6 +1308,7 @@ namespace Core.Generators.CSharp
         {
             return $"System.Runtime.CompilerServices.Unsafe.As<{from}, {to}>(ref System.Runtime.CompilerServices.Unsafe.AsRef({value}))";
         }
+
 
         public override void WriteAuxiliaryFiles(string outputPath)
         {
