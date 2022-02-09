@@ -7,7 +7,6 @@ use async_trait::async_trait;
 
 pub use context::RouterContext;
 
-use crate::rpc::datagram::OwnedDatagram;
 use crate::rpc::transport::TransportProtocol;
 
 mod call_table;
@@ -21,7 +20,7 @@ mod pending_response;
 ///
 /// TODO: can this use Datagram<'raw> instead of OwnedDatagram.
 #[async_trait]
-pub trait ServiceHandlers<D> {
+pub trait ServiceHandlers {
     const NAME: &'static str;
 
     /// Use opcode to determine which function to call, whether the signature matches,
@@ -36,23 +35,20 @@ pub trait ServiceHandlers<D> {
 /// bebop service definitions.
 ///
 /// You should not implement this by hand.
-///
-/// TODO: this needs to use Datagram<'raw> instead of OwnedDatagram.
-pub trait ServiceRequests<D, T, L>
+pub trait ServiceRequests<T, L>
 where
-    D: 'static + OwnedDatagram,
-    T: 'static + TransportProtocol<D>,
-    L: 'static + ServiceHandlers<D>,
+    T: 'static + TransportProtocol,
+    L: 'static + ServiceHandlers,
 {
     const NAME: &'static str;
 
-    fn new(ctx: Weak<RouterContext<D, T, L>>) -> Self;
+    fn new(ctx: Weak<RouterContext<T, L>>) -> Self;
 }
 
 /// This is the main structure which represents information about both ends of the connection and
 /// maintains the needed state to make and receive calls. This is the only struct of which an
 /// instance should need to be maintained by the user.
-pub struct Router<Datagram, Transport, Local, Remote> {
+pub struct Router<Transport, Local, Remote> {
     /// Remote service converts requests from us, so this also provides the callable RPC functions.
     _remote_service: Remote,
 
@@ -61,15 +57,14 @@ pub struct Router<Datagram, Transport, Local, Remote> {
     ///
     /// **Warning:** always store weak references or the router will have issues shutting down due
     /// to cyclical dependencies.
-    pub _context: Arc<RouterContext<Datagram, Transport, Local>>,
+    pub _context: Arc<RouterContext<Transport, Local>>,
 }
 
-impl<D, T, L, R> Router<D, T, L, R>
+impl<T, L, R> Router<T, L, R>
 where
-    D: 'static + OwnedDatagram,
-    T: 'static + TransportProtocol<D>,
-    L: 'static + ServiceHandlers<D>,
-    R: ServiceRequests<D, T, L>,
+    T: 'static + TransportProtocol,
+    L: 'static + ServiceHandlers,
+    R: ServiceRequests<T, L>,
 {
     /// Create a new router instance.
     ///
@@ -100,7 +95,7 @@ where
 }
 
 /// Allows passthrough of function calls to the remote
-impl<D, T, L, R> Deref for Router<D, T, L, R> {
+impl<T, L, R> Deref for Router<T, L, R> {
     type Target = R;
 
     fn deref(&self) -> &Self::Target {

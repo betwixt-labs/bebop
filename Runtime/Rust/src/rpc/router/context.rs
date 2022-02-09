@@ -6,10 +6,10 @@ use std::time::Instant;
 
 use parking_lot::Mutex;
 
-use crate::rpc::datagram::OwnedDatagram;
 use crate::rpc::error::TransportResult;
 use crate::rpc::router::call_table::RouterCallTable;
 use crate::rpc::router::ServiceHandlers;
+use crate::rpc::Datagram;
 use crate::rpc::transport::TransportProtocol;
 
 pub struct RouterContext<Datagram, Transport, Local> {
@@ -21,7 +21,7 @@ pub struct RouterContext<Datagram, Transport, Local> {
 
     transport: Transport,
 
-    call_table: Mutex<RouterCallTable<Datagram>>,
+    call_table: Mutex<RouterCallTable>,
 
     // /// Keep these so we can abort them on cleanup and prevent unclean exits.
     // /// TODO: Do we want this? Adds some overhead without any benefit besides quick shutdown.
@@ -30,11 +30,10 @@ pub struct RouterContext<Datagram, Transport, Local> {
     spawn_task: Box<dyn Fn(Pin<Box<dyn 'static + Future<Output = ()>>>)>,
 }
 
-impl<D, T, L> RouterContext<D, T, L>
+impl<T, L> RouterContext<T, L>
 where
-    D: 'static + OwnedDatagram,
-    T: 'static + TransportProtocol<D>,
-    L: 'static + ServiceHandlers<D>,
+    T: 'static + TransportProtocol,
+    L: 'static + ServiceHandlers,
 {
     pub(super) fn new(
         transport: T,
@@ -103,7 +102,7 @@ where
 
     /// Receive a datagram and handles it appropriately. Async to apply backpressure on requests.
     /// This is used by the handler for the TransportProtocol.
-    async fn recv(&self, datagram: D) {
+    async fn recv(&self, datagram: &Datagram) {
         if datagram.is_request() {
             self.local_service._recv_call(datagram).await;
         } else {

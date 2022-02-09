@@ -8,10 +8,10 @@ use tokio::sync::oneshot;
 
 use crate::rpc::error::{TransportError, TransportResult};
 
-pub(super) fn new_pending_response<D>(
+pub(super) fn new_pending_response(
     call_id: NonZeroU16,
     timeout: Option<Duration>,
-) -> (ResponseHandle<D>, PendingResponse<D>) {
+) -> (ResponseHandle, PendingResponse) {
     let (tx, rx) = oneshot::channel::<TransportResult<D>>();
     let details = CallDetails {
         timeout,
@@ -58,12 +58,12 @@ impl CallDetails {
 }
 
 /// A pending response handle which resolves into the response from the remote.
-pub(super) struct ResponseHandle<D> {
-    tx: oneshot::Sender<TransportResult<D>>,
+pub(super) struct ResponseHandle {
+    tx: oneshot::Sender<TransportResult>,
     details: CallDetails,
 }
 
-impl<D> ResponseHandle<D> {
+impl ResponseHandle {
     pub fn call_id(&self) -> NonZeroU16 {
         self.details.call_id
     }
@@ -88,19 +88,19 @@ impl<D> ResponseHandle<D> {
         self.details.expires_at()
     }
 
-    pub fn resolve(self, value: TransportResult<D>) {
+    pub fn resolve(self, value: TransportResult) {
         if let Err(_) = self.tx.send(value) {
             // TODO: log this? Receiver stopped listening.
         }
     }
 }
 
-pub(super) struct PendingResponse<D> {
-    rx: oneshot::Receiver<TransportResult<D>>,
+pub(super) struct PendingResponse {
+    rx: oneshot::Receiver<TransportResult>,
     details: CallDetails,
 }
 
-impl<D> PendingResponse<D> {
+impl PendingResponse {
     pub fn call_id(&self) -> NonZeroU16 {
         self.details.call_id
     }
@@ -126,8 +126,8 @@ impl<D> PendingResponse<D> {
     }
 }
 
-impl<D> Future for PendingResponse<D> {
-    type Output = TransportResult<D>;
+impl Future for PendingResponse {
+    type Output = TransportResult;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match Pin::new(&mut self.rx).poll(cx) {
@@ -142,7 +142,6 @@ impl<D> Future for PendingResponse<D> {
 
 #[cfg(test)]
 mod test {
-    use crate::rpc::datagram::TestOwnedDatagram;
     use crate::rpc::error::TransportError;
     use crate::rpc::router::pending_response::new_pending_response;
     use std::num::NonZeroU16;
@@ -152,8 +151,8 @@ mod test {
     async fn resolves() {
         // happy path
         let (handle1, pending1) =
-            new_pending_response::<TestOwnedDatagram>(1.try_into().unwrap(), None);
-        let (handle2, pending2) = new_pending_response::<TestOwnedDatagram>(
+            new_pending_response(1.try_into().unwrap(), None);
+        let (handle2, pending2) = new_pending_response(
             2.try_into().unwrap(),
             Some(Duration::from_secs(10)),
         );
@@ -188,7 +187,7 @@ mod test {
     async fn resolves_err() {
         // when there is a transport error
         let (handle, pending) =
-            new_pending_response::<TestOwnedDatagram>(1.try_into().unwrap(), None);
+            new_pending_response(1.try_into().unwrap(), None);
         handle.resolve(Err(TransportError::CallDropped));
         assert!(matches!(pending.await, Err(TransportError::CallDropped)));
     }
@@ -196,7 +195,7 @@ mod test {
     #[tokio::test]
     async fn resolves_timeout() {
         // when the handle gets dropped due to a timeout
-        let (handle, pending) = new_pending_response::<TestOwnedDatagram>(
+        let (handle, pending) = new_pending_response(
             1.try_into().unwrap(),
             Some(Duration::from_millis(10)),
         );
@@ -214,7 +213,7 @@ mod test {
     #[tokio::test]
     async fn resolves_dropped() {
         // when the handle gets dropped but it has not timed out
-        let (_, pending) = new_pending_response::<TestOwnedDatagram>(1.try_into().unwrap(), None);
+        let (_, pending) = new_pending_response(1.try_into().unwrap(), None);
         assert!(matches!(pending.await, Err(TransportError::CallDropped)));
     }
 }

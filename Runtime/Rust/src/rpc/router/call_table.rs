@@ -3,23 +3,23 @@ use std::collections::HashMap;
 use std::env;
 use std::num::NonZeroU16;
 use std::time::Duration;
+use crate::rpc::Datagram;
 
-use crate::rpc::datagram::OwnedDatagram;
 use crate::rpc::router::pending_response::{new_pending_response, PendingResponse, ResponseHandle};
 
 /// The call table which can be kept private and needs to get locked all together.
 /// Expirations are handled by the context which is responsible for calling `drop_expired`.
-pub(super) struct RouterCallTable<Datagram> {
+pub(super) struct RouterCallTable {
     default_timeout: Option<Duration>,
 
     /// Table of calls which have yet to be resolved.
-    call_table: HashMap<NonZeroU16, ResponseHandle<Datagram>>,
+    call_table: HashMap<NonZeroU16, ResponseHandle>,
 
     /// The next ID value which should be used.
     next_id: u16,
 }
 
-impl<D> Default for RouterCallTable<D> {
+impl<D> Default for RouterCallTable {
     fn default() -> Self {
         Self {
             default_timeout: env::var("BEBOP_RPC_DEFAULT_TIMEOUT")
@@ -38,10 +38,7 @@ impl<D> Default for RouterCallTable<D> {
     }
 }
 
-impl<D> RouterCallTable<D>
-where
-    D: OwnedDatagram,
-{
+impl RouterCallTable {
     /// Get the ID which should be used for the next call that gets made.
     pub fn next_call_id(&mut self) -> NonZeroU16 {
         // prevent an infinite loop; if this is a problem in production, we can either increase the
@@ -68,7 +65,7 @@ where
     }
 
     /// Register a datagram before we send it.
-    pub fn register(&mut self, datagram: &mut D) -> PendingResponse<D> {
+    pub fn register(&mut self, datagram: &mut Datagram) -> PendingResponse {
         debug_assert!(datagram.is_request(), "Only requests should be registered.");
         debug_assert!(
             datagram.call_id().is_none(),
@@ -85,7 +82,7 @@ where
     }
 
     /// Receive a datagram and routes it. This is used by the handler for the TransportProtocol.
-    pub fn resolve(&mut self, urh: &Option<Box<dyn Fn(D)>>, datagram: D) {
+    pub fn resolve(&mut self, urh: &Option<Box<dyn Fn(Datagram)>>, datagram: Datagram) {
         debug_assert!(datagram.is_response(), "Only responses should be resolved.");
         if let Some(id) = datagram.call_id() {
             if let Some(call) = self.call_table.remove(&id) {
@@ -121,7 +118,6 @@ mod test {
     use std::num::NonZeroU16;
     use std::time::Duration;
 
-    use crate::rpc::datagram::TestOwnedDatagram;
     use crate::rpc::error::TransportError;
     use crate::rpc::router::pending_response::new_pending_response;
     use crate::rpc::Datagram;
@@ -130,7 +126,7 @@ mod test {
 
     #[test]
     fn gets_next_id() {
-        let mut ct = RouterCallTable::<TestOwnedDatagram>::default();
+        let mut ct = RouterCallTable::default();
         assert_eq!(ct.next_call_id().get(), 1u16);
         assert_eq!(ct.next_call_id().get(), 2u16);
         ct.next_id = u16::MAX;
@@ -140,7 +136,7 @@ mod test {
 
     #[test]
     fn get_next_id_avoids_duplicates() {
-        let mut ct = RouterCallTable::<TestOwnedDatagram>::default();
+        let mut ct = RouterCallTable::default();
         let (h1, _p1) = new_pending_response(1.try_into().unwrap(), None);
         ct.call_table.insert(h1.call_id(), h1);
         let (h2, _p2) = new_pending_response(2.try_into().unwrap(), None);
@@ -152,7 +148,7 @@ mod test {
 
     #[test]
     fn registers_requests() {
-        let mut ct = RouterCallTable::<TestOwnedDatagram>::default();
+        let mut ct = RouterCallTable::default();
         let timeout = Some(Duration::from_millis(100));
         let mut d = TestOwnedDatagram {
             timeout,
@@ -170,7 +166,7 @@ mod test {
 
     #[tokio::test]
     async fn forwards_responses() {
-        let mut ct = RouterCallTable::<TestOwnedDatagram>::default();
+        let mut ct = RouterCallTable::default();
         let mut request = TestOwnedDatagram {
             timeout: None,
             call_id: None,
@@ -193,7 +189,7 @@ mod test {
 
     #[tokio::test]
     async fn drops_expired_entry() {
-        let mut ct = RouterCallTable::<TestOwnedDatagram>::default();
+        let mut ct = RouterCallTable::default();
         let mut request = TestOwnedDatagram {
             timeout: Some(Duration::from_millis(10)),
             call_id: None,

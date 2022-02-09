@@ -35,11 +35,19 @@ name = "bebop"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "bebop-tools",
  "bitflags",
  "criterion",
  "itertools",
  "parking_lot",
  "tokio",
+]
+
+[[package]]
+name = "bebop-tools"
+version = "0.1.0"
+dependencies = [
+ "which",
 ]
 
 [[package]]
@@ -655,6 +663,17 @@ checksum = "01c70a82d842c9979078c772d4a1344685045f1a5628f677c2b2eab4dd7d2696"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "which"
+version = "4.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2a5a7e487e921cf220206864a94a89b6c6905bfc19f1057fa26a4cb360e5c1d2"
+dependencies = [
+ "either",
+ "lazy_static",
+ "libc",
 ]
 
 [[package]]
