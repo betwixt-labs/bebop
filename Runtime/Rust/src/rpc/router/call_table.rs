@@ -1,9 +1,12 @@
+use crate::rpc::datagram::RpcDatagram;
+use crate::rpc::error::{RemoteRpcError, RemoteRpcResponse};
+use crate::rpc::{Datagram, DatagramInfo};
+use crate::OwnedRecord;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::env;
 use std::num::NonZeroU16;
 use std::time::Duration;
-use crate::rpc::Datagram;
 
 use crate::rpc::router::calls::{new_pending_response, PendingResponse, ResponseHandle};
 
@@ -19,7 +22,7 @@ pub(super) struct RouterCallTable {
     next_id: u16,
 }
 
-impl<D> Default for RouterCallTable {
+impl Default for RouterCallTable {
     fn default() -> Self {
         Self {
             default_timeout: env::var("BEBOP_RPC_DEFAULT_TIMEOUT")
@@ -65,12 +68,14 @@ impl RouterCallTable {
     }
 
     /// Register a datagram before we send it. This will set the call_id.
-    pub fn register(&mut self, datagram: &Datagram) -> PendingResponse {
+    pub fn register<R>(&mut self, datagram: &Datagram) -> PendingResponse<R>
+    where
+        R: 'static + OwnedRecord,
+    {
         debug_assert!(datagram.is_request(), "Only requests should be registered.");
-        debug_assert!(
-            datagram.call_id().is_none(),
-            "Datagram call ids must be set by the router."
-        );
+        let call_id = datagram
+            .call_id()
+            .expect("Datagram call ids must be set by the router.");
 
         let timeout = datagram.timeout().or(self.default_timeout);
         let (handle, pending) = new_pending_response(call_id, timeout);
@@ -80,25 +85,51 @@ impl RouterCallTable {
     }
 
     /// Receive a datagram and routes it. This is used by the handler for the TransportProtocol.
-    pub fn resolve(&mut self, urh: &Option<Box<dyn Fn(&Datagram)>>, datagram: Datagram) {
+    pub fn resolve(&mut self, urh: &Option<Box<dyn Fn(&Datagram)>>, datagram: &Datagram) {
         debug_assert!(datagram.is_response(), "Only responses should be resolved.");
-        if let Some(id) = datagram.call_id() {
-            if let Some(call) = self.call_table.remove(&id) {
-                // they sent a response to one of our outstanding calls
-                // no async here because they already are waiting in their own task
-                call.resolve(Ok(datagram));
-                return;
-            } else {
-                // we don't know the id
+        let v = match datagram {
+            RpcDatagram::Unknown => None,
+            RpcDatagram::RpcResponseOk { header, data } => Some((header.id, Ok(**data))),
+            RpcDatagram::RpcResponseErr {
+                header, code, info, ..
+            } => Some((
+                header.id,
+                Err(RemoteRpcError::CustomError(
+                    *code,
+                    if info.is_empty() {
+                        None
+                    } else {
+                        Some((*info).into())
+                    },
+                )),
+            )),
+            RpcDatagram::RpcResponseCallNotSupported { header, .. } => {
+                Some((header.id, Err(RemoteRpcError::CallNotSupported)))
             }
-        } else {
-            // the ID was not parseable
+            RpcDatagram::RpcResponseUnknownCall { header, .. } => {
+                Some((header.id, Err(RemoteRpcError::UnknownResponse)))
+            }
+            RpcDatagram::RpcResponseInvalidSignature {
+                header, signature, ..
+            } => Some((header.id, Err(RemoteRpcError::InvalidSignature(*signature)))),
+            RpcDatagram::RpcDecodeError { header, info, .. } => Some((
+                header.id,
+                Err(RemoteRpcError::RemoteDecodeError(if info.is_empty() {
+                    None
+                } else {
+                    Some((*info).into())
+                })),
+            )),
+            RpcDatagram::RpcRequestDatagram { .. } => unreachable!(),
         }
+        .map(|(id, res)| (NonZeroU16::new(id), res));
 
-        if let Some(ref cb) = urh {
+        if let Some((Some(id), res)) = v {
+            if let Some(mut call) = self.call_table.remove(&id) {
+                call.resolve(res);
+            }
+        } else if let Some(cb) = urh {
             cb(datagram)
-        } else {
-            // TODO: log this?
         }
     }
 

@@ -60,10 +60,12 @@ pub type LocalRpcResponse<T> = Result<T, LocalRpcError>;
 /// Errors that can be received from the remote when making a request.
 #[derive(Debug)]
 pub enum RemoteRpcError {
+    // do we ever use this?
     TransportError(TransportError),
     CustomError(u32, Option<String>),
     NotSupported,
     UnknownCall,
+    UnknownResponse,
     InvalidSignature(u32),
     CallNotSupported,
     RemoteDecodeError(Option<String>),
@@ -72,6 +74,12 @@ pub enum RemoteRpcError {
 impl From<TransportError> for RemoteRpcError {
     fn from(e: TransportError) -> Self {
         Self::TransportError(e)
+    }
+}
+
+impl From<DeserializeError> for RemoteRpcError {
+    fn from(e: DeserializeError) -> Self {
+        Self::TransportError(e.into())
     }
 }
 

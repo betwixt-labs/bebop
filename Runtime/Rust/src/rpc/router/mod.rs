@@ -1,20 +1,18 @@
 use std::future::Future;
-use std::num::NonZeroU16;
 use std::ops::Deref;
 use std::pin::Pin;
 use std::sync::{Arc, Weak};
 
 use async_trait::async_trait;
 
-pub use context::RouterContext;
 use crate::rpc::Datagram;
+pub use context::RouterContext;
 
 use crate::rpc::transport::TransportProtocol;
 
 mod call_table;
+pub mod calls;
 mod context;
-mod calls;
-mod request;
 
 /// The local end of the pipe handles messages. Implementations are automatically generated from
 /// bebop service definitions.
@@ -22,7 +20,6 @@ mod request;
 /// You should not implement this by hand.
 ///
 /// TODO: can this use Datagram<'raw> instead of OwnedDatagram.
-#[async_trait]
 pub trait ServiceHandlers {
     const NAME: &'static str;
 
@@ -31,7 +28,10 @@ pub trait ServiceHandlers {
     /// response
     ///
     /// This should only be called by the `Router` and is not for external use.
-    async fn _recv_call(&self, datagram: D);
+    ///
+    /// This returns a future instead of being async because it must decode datagram before starting
+    /// the async section.
+    fn _recv_call(&self, datagram: &Datagram) -> Option<Pin<Box<dyn Future<Output = ()>>>>;
 }
 
 /// Wrappers around the process of calling remote functions. Implementations are generated from

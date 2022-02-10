@@ -5,7 +5,7 @@ use std::future::Future;
 use std::pin::Pin;
 
 pub type TransportHandler =
-    Pin<Box<dyn Fn(Datagram) -> Pin<Box<dyn Future<Output = ()>>>>>;
+    Pin<Box<dyn Fn(&Datagram) -> Option<Pin<Box<dyn Future<Output = ()>>>>>>;
 
 /// Transport protocol has a few main responsibilities:
 /// 1. interpreting the raw stream as datagrams

@@ -7,11 +7,12 @@ use std::time::Instant;
 use parking_lot::Mutex;
 
 use crate::rpc::datagram::RpcRequestHeader;
-use crate::rpc::error::TransportResult;
+use crate::rpc::error::{RemoteRpcResponse, TransportResult};
 use crate::rpc::router::call_table::RouterCallTable;
 use crate::rpc::router::ServiceHandlers;
 use crate::rpc::transport::TransportProtocol;
 use crate::rpc::Datagram;
+use crate::rpc::DatagramInfo;
 use crate::{OwnedRecord, Record, SliceWrapper};
 
 pub struct RouterContext<Transport, Local> {
@@ -40,7 +41,7 @@ where
     pub(super) fn new(
         transport: T,
         local_service: L,
-        unknown_response_handler: Option<Box<dyn Fn(D)>>,
+        unknown_response_handler: Option<Box<dyn Fn(&Datagram)>>,
         spawn_task: impl 'static + Fn(Pin<Box<dyn 'static + Future<Output = ()>>>),
     ) -> Arc<Self> {
         let zelf = Arc::new(Self {
@@ -60,14 +61,17 @@ where
     fn init_transport(self: &Arc<Self>) {
         let weak_ctx = Arc::downgrade(self);
         self.transport.set_handler(Box::pin(move |datagram| {
-            let weak_ctx = weak_ctx.clone();
-            Box::pin(async move {
-                if let Some(ctx) = weak_ctx.upgrade() {
-                    ctx.recv(datagram).await;
+            if let Some(ctx) = weak_ctx.upgrade() {
+                if datagram.is_request() {
+                    ctx.recv_request(datagram)
                 } else {
-                    // No more router, just ignore
+                    ctx.recv_response(datagram);
+                    None
                 }
-            })
+            } else {
+                // No more router, just ignore
+                None
+            }
         }));
     }
 
@@ -76,22 +80,25 @@ where
     /// TODO: should we expose the PendingCall structure instead? Means this will be a future that
     ///  returns a future which might be a little unnecessary, but it will expose more info about
     ///  the underlying data.
-    pub async fn request<T: OwnedRecord>(
+    pub async fn request<R>(
         self: &Arc<Self>,
         opcode: u16,
         timeout: Option<NonZeroU16>,
         signature: u32,
         buf: &[u8],
-    ) -> TransportResult<T> {
+    ) -> RemoteRpcResponse<R>
+    where
+        R: 'static + OwnedRecord,
+    {
         let mut call_table = self.call_table.lock();
         let datagram = Datagram::RpcRequestDatagram {
             header: RpcRequestHeader {
-                id: call_table.next_call_id() as u16,
-                timeout: timeout.into(),
+                id: u16::from(call_table.next_call_id()),
+                timeout: timeout.map(u16::from).unwrap_or(0),
                 signature,
             },
             opcode,
-            request: SliceWrapper::Cooked(buf),
+            data: SliceWrapper::Cooked(buf),
         };
         let pending = call_table.register(&datagram);
         drop(call_table);
@@ -103,11 +110,11 @@ where
                 at,
             )));
         }
-        self.transport.send(datagram).await?;
+        self.send(&datagram).await?;
         pending.await
     }
 
-    pub(in super::calls) async fn send(&self, datagram: &Datagram) -> TransportResult {
+    pub(super) async fn send<'a, 'b: 'a>(&self, datagram: &'a Datagram<'b>) -> TransportResult {
         self.transport.send(datagram).await
     }
 
@@ -119,16 +126,23 @@ where
     //     self.transport.send(datagram).await
     // }
 
-    /// Receive a datagram and handles it appropriately. Async to apply backpressure on requests.
+    /// Receive a request datagram and send it to the local service for handling.
     /// This is used by the handler for the TransportProtocol.
-    async fn recv(&self, datagram: &Datagram) {
-        if datagram.is_request() {
-            self.local_service._recv_call(datagram).await;
-        } else {
-            self.call_table
-                .lock()
-                .resolve(&self.unknown_response_handler, datagram);
-        }
+    fn recv_request<'a, 'b: 'a>(
+        &self,
+        datagram: &'a Datagram<'b>,
+    ) -> Option<Pin<Box<dyn Future<Output = ()>>>> {
+        debug_assert!(datagram.is_request(), "Datagram must be a request");
+        self.local_service._recv_call(datagram)
+    }
+
+    /// Receive a response datagram and pass it to the call table to resolve the correct future.
+    /// This is used by the handler for the TransportProtocol.
+    fn recv_response<'a, 'b: 'a>(&self, datagram: &'a Datagram<'b>) {
+        debug_assert!(datagram.is_response(), "Datagram must be a response");
+        self.call_table
+            .lock()
+            .resolve(&self.unknown_response_handler, datagram);
     }
 
     /// Notify the call table of an expiration event and have it remove the datagram if appropriate.

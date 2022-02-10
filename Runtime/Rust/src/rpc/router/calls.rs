@@ -45,27 +45,49 @@ where
         todo!()
     }
 
+    pub fn call_id(&self) -> NonZeroU16 {
+        self.details.call_id
+    }
+
+    pub fn duration(&self) -> Duration {
+        self.details.duration()
+    }
+
+    pub fn received_at(&self) -> Instant {
+        self.details.since
+    }
+
+    pub fn timeout(&self) -> Option<Duration> {
+        self.details.timeout
+    }
+
     pub fn is_expired(&self) -> bool {
-        if let Some(timeout) = self.timeout {
-            Instant::now() - self.at > timeout
-        } else {
-            false
-        }
+        self.details.is_expired()
+    }
+
+    pub fn expires_at(&self) -> Option<Instant> {
+        self.details.expires_at()
     }
 }
 
-pub(super) fn new_pending_response<T: OwnedRecord>(
+pub(super) fn new_pending_response<R>(
     call_id: NonZeroU16,
     timeout: Option<Duration>,
-) -> (Box<dyn ResponseHandle>, PendingResponse<T>) {
-    let (tx, rx) = oneshot::channel::<RemoteRpcResponse<T>>();
+) -> (Box<dyn ResponseHandle>, PendingResponse<R>)
+where
+    R: 'static + OwnedRecord,
+{
+    let (tx, rx) = oneshot::channel::<RemoteRpcResponse<R>>();
     let details = CallDetails {
         timeout,
         since: Instant::now(),
         call_id,
     };
     (
-        Box::new(ResponseHandleImpl { tx, details }),
+        Box::new(ResponseHandleImpl {
+            tx: Some(tx),
+            details,
+        }),
         PendingResponse { rx, details },
     )
 }
@@ -76,7 +98,7 @@ pub(super) fn new_pending_response<T: OwnedRecord>(
 /// Would just send `&[u8]` but doing that over a channel is not possible so we have to deserialize
 /// an owned copy and _then_ send.
 struct ResponseHandleImpl<T> {
-    tx: oneshot::Sender<RemoteRpcResponse<T>>,
+    tx: Option<oneshot::Sender<RemoteRpcResponse<T>>>,
     details: CallDetails,
 }
 
@@ -87,7 +109,7 @@ pub trait ResponseHandle {
     fn timeout(&self) -> Option<Duration>;
     fn is_expired(&self) -> bool;
     fn expires_at(&self) -> Option<Instant>;
-    fn resolve(self, value: RemoteRpcResponse<&[u8]>);
+    fn resolve(&mut self, value: RemoteRpcResponse<&[u8]>);
 }
 
 /// A pending response from the remote which will resolve once you receive their reply.
@@ -96,7 +118,7 @@ pub(super) struct PendingResponse<T> {
     details: CallDetails,
 }
 
-impl<T: OwnedRecord> ResponseHandle for ResponseHandleImpl<T> {
+impl<R: OwnedRecord> ResponseHandle for ResponseHandleImpl<R> {
     fn call_id(&self) -> NonZeroU16 {
         self.details.call_id
     }
@@ -121,10 +143,12 @@ impl<T: OwnedRecord> ResponseHandle for ResponseHandleImpl<T> {
         self.details.expires_at()
     }
 
-    fn resolve(self, value: RemoteRpcResponse<&[u8]>) {
-        let res = value.and_then(|v| T::deserialize(v).into());
-        if let Err(_) = self.tx.send(res) {
-            // TODO: log this? Receiver stopped listening.
+    fn resolve(&mut self, value: RemoteRpcResponse<&[u8]>) {
+        let res = value.and_then(|v| Ok(R::deserialize(v)?));
+        if let Some(tx) = self.tx.take() {
+            if let Err(_) = tx.send(res) {
+                // TODO: log this? Receiver stopped listening.
+            }
         }
     }
 }
