@@ -6,14 +6,14 @@ use std::time::Instant;
 
 use parking_lot::Mutex;
 
-use crate::rpc::datagram::RpcRequestHeader;
+use crate::rpc::datagram::{RpcDatagram, RpcRequestHeader, RpcResponseHeader};
 use crate::rpc::error::{RemoteRpcResponse, TransportResult};
 use crate::rpc::router::call_table::RouterCallTable;
 use crate::rpc::router::ServiceHandlers;
 use crate::rpc::transport::TransportProtocol;
 use crate::rpc::Datagram;
 use crate::rpc::DatagramInfo;
-use crate::{OwnedRecord, Record, SliceWrapper};
+use crate::{OwnedRecord, SliceWrapper};
 
 pub struct RouterContext<Transport, Local> {
     /// Callback that receives any datagrams without a call id.
@@ -161,8 +161,13 @@ where
         call_id: Option<NonZeroU16>,
         info: Option<&str>,
     ) -> TransportResult {
-        todo!()
-        // self.transport.send_decode_error_response(...).await
+        self.send(&RpcDatagram::RpcDecodeError {
+            header: RpcResponseHeader {
+                id: call_id.map(Into::into).unwrap_or(0),
+            },
+            info: info.unwrap_or(""),
+        })
+        .await
     }
 }
 

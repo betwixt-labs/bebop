@@ -57,7 +57,7 @@ union RpcDatagram {
         /* The function that is to be called. */
         uint16 opcode;
         /* Callee can decode this given the opcode in the header. */
-        byte[] request;
+        byte[] data;
     }
 
     2 -> struct RpcResponseOk {

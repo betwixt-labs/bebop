@@ -6,7 +6,7 @@ use std::process::Command;
 #[cfg(feature = "downloader")]
 pub use downloader::*;
 #[cfg(feature = "format")]
-use format::*;
+pub use format::*;
 
 /// Configurable compiler path. By default it will use the downloaded executeable or assume it is in PATH.
 pub static mut COMPILER_PATH: Option<PathBuf> = None;
@@ -16,8 +16,6 @@ pub static mut GENERATED_PREFIX: Option<String> = None;
 mod downloader;
 #[cfg(feature = "format")]
 mod format;
-#[cfg(feature = "format")]
-pub use format::fmt_file;
 
 #[derive(Debug)]
 pub struct BuildConfig {

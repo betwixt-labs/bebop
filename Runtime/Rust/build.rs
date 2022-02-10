@@ -33,12 +33,12 @@ fn main() {
         .unwrap();
     let dg = dg.replace("::bebop", "crate");
     if Path::new(RPC_DATAGRAM_OUT).exists() {
-        fs::remove_file(RPC_DATAGRAM_OUT);
+        fs::remove_file(RPC_DATAGRAM_OUT).unwrap();
     }
     File::create(RPC_DATAGRAM_OUT)
         .unwrap()
         .write_all(dg.as_bytes())
         .unwrap();
-    fs::remove_file(RPC_DATAGRAM_TMP);
+    fs::remove_file(RPC_DATAGRAM_TMP).unwrap();
     bebop::fmt_file(RPC_DATAGRAM_OUT);
 }

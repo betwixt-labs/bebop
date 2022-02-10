@@ -2,19 +2,21 @@
 //!
 //! TODO: write an example of setting up RPC.
 
-mod datagram;
-pub mod error;
-mod router;
-mod transport;
+use std::num::NonZeroU16;
+use std::time::Duration;
 
-use crate::rpc::datagram::{RpcDatagram, RpcRequestHeader, RpcResponseHeader};
 pub use datagram::{
     RpcDatagram as Datagram, RpcRequestHeader as RequestHeader, RpcResponseHeader as ResponseHeader,
 };
 pub use router::*;
-use std::num::NonZeroU16;
-use std::time::Duration;
 pub use transport::{TransportHandler, TransportProtocol};
+
+use crate::rpc::datagram::RpcDatagram;
+
+mod datagram;
+pub mod error;
+mod router;
+mod transport;
 
 /// Utility for parsing information about a datagram without having to match all cases.
 pub trait DatagramInfo {

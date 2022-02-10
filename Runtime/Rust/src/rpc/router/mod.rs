@@ -3,12 +3,10 @@ use std::ops::Deref;
 use std::pin::Pin;
 use std::sync::{Arc, Weak};
 
-use async_trait::async_trait;
-
-use crate::rpc::Datagram;
 pub use context::RouterContext;
 
 use crate::rpc::transport::TransportProtocol;
+use crate::rpc::Datagram;
 
 mod call_table;
 pub mod calls;
