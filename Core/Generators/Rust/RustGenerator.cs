@@ -96,21 +96,18 @@ namespace Core.Generators.Rust
                 switch (definition)
                 {
                     case ConstDefinition cd:
-                        WriteDocumentation(mainBuilder, definition.Documentation);
                         WriteConstDefinition(mainBuilder, cd, CodeRegion.Main);
                         WriteConstDefinition(ownedBuilder, cd, CodeRegion.Owned);
                         mainBuilder.AppendLine();
                         ownedBuilder.AppendLine();
                         break;
                     case EnumDefinition ed:
-                        WriteDocumentation(mainBuilder, definition.Documentation);
                         WriteEnumDefinition(mainBuilder, ed, CodeRegion.Main);
                         WriteEnumDefinition(ownedBuilder, ed, CodeRegion.Owned);
                         mainBuilder.AppendLine();
                         ownedBuilder.AppendLine();
                         break;
                     case MessageDefinition md:
-                        WriteDocumentation(mainBuilder, definition.Documentation);
                         if (md.Parent is UnionDefinition) continue;
                         WriteMessageDefinition(mainBuilder, md, CodeRegion.Main);
                         WriteMessageDefinition(ownedBuilder, md, CodeRegion.Owned);
@@ -119,14 +116,12 @@ namespace Core.Generators.Rust
                         break;
                     case StructDefinition sd:
                         if (sd.Parent is UnionDefinition) continue;
-                        WriteDocumentation(mainBuilder, definition.Documentation);
                         WriteStructDefinition(mainBuilder, sd, CodeRegion.Main);
                         WriteStructDefinition(ownedBuilder, sd, CodeRegion.Owned);
                         mainBuilder.AppendLine();
                         ownedBuilder.AppendLine();
                         break;
                     case UnionDefinition ud:
-                        WriteDocumentation(mainBuilder, definition.Documentation);
                         WriteUnionDefinition(mainBuilder, ud, CodeRegion.Main);
                         WriteUnionDefinition(ownedBuilder, ud, CodeRegion.Owned);
                         mainBuilder.AppendLine();
@@ -179,6 +174,7 @@ namespace Core.Generators.Rust
             switch (region)
             {
                 case CodeRegion.Main:
+                    WriteDocumentation(builder, d.Documentation);
                     builder.AppendLine(
                         $"pub const {ident}: {TypeName(d.Value.Type, OwnershipType.Constant)} = {EmitLiteral(d.Value)};");
                     break;
@@ -201,6 +197,8 @@ namespace Core.Generators.Rust
                 builder.AppendLine($"pub use super::{name};");
                 return;
             }
+
+            WriteDocumentation(builder, d.Documentation);
 
             if (d.IsBitFlags)
             {
@@ -316,6 +314,8 @@ namespace Core.Generators.Rust
                 builder.AppendLine($"pub use super::{ident};");
                 return;
             }
+
+            WriteDocumentation(builder, d.Documentation);
 
             var ot = region switch
             {
@@ -489,6 +489,7 @@ namespace Core.Generators.Rust
 
         private void WriteMessageDefinition(IndentedStringBuilder builder, MessageDefinition d, CodeRegion region)
         {
+            WriteDocumentation(builder, d.Documentation);
             var needsLifetime = NeedsLifetime(d);
             var ident = MakeDefIdent(d.Name);
 
@@ -720,6 +721,8 @@ namespace Core.Generators.Rust
                 builder.AppendLine($"pub use super::{ident};");
                 return;
             }
+
+            WriteDocumentation(builder, d.Documentation);
 
             var ot = region switch
             {
