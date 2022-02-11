@@ -16,8 +16,6 @@ mod context;
 /// bebop service definitions.
 ///
 /// You should not implement this by hand.
-///
-/// TODO: can this use Datagram<'raw> instead of OwnedDatagram.
 pub trait ServiceHandlers {
     const NAME: &'static str;
 

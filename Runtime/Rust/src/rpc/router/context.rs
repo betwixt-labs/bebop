@@ -13,7 +13,7 @@ use crate::rpc::router::ServiceHandlers;
 use crate::rpc::transport::TransportProtocol;
 use crate::rpc::Datagram;
 use crate::rpc::DatagramInfo;
-use crate::{OwnedRecord, SliceWrapper};
+use crate::{OwnedRecord, Record, SliceWrapper};
 
 pub struct RouterContext<Transport, Local> {
     /// Callback that receives any datagrams without a call id.
@@ -76,16 +76,27 @@ where
     }
 
     /// Send a request to the remote. This is used by the generated code.
-    ///
-    /// TODO: should we expose the PendingCall structure instead? Means this will be a future that
-    ///  returns a future which might be a little unnecessary, but it will expose more info about
-    ///  the underlying data.
-    pub async fn request<R>(
+    pub async fn request<'a, 'b: 'a, R>(
         self: &Arc<Self>,
         opcode: u16,
         timeout: Option<NonZeroU16>,
         signature: u32,
-        buf: &[u8],
+        record: &'a impl Record<'b>,
+    ) -> RemoteRpcResponse<R>
+    where
+        R: 'static + OwnedRecord,
+    {
+        self.request_raw(opcode, timeout, signature, &record.serialize_to_vec()?)
+            .await
+    }
+
+    /// Send a raw byte request to the remote. This is used by the generated code.
+    pub async fn request_raw<R>(
+        self: &Arc<Self>,
+        opcode: u16,
+        timeout: Option<NonZeroU16>,
+        signature: u32,
+        data: &[u8],
     ) -> RemoteRpcResponse<R>
     where
         R: 'static + OwnedRecord,
@@ -98,7 +109,7 @@ where
                 signature,
             },
             opcode,
-            data: SliceWrapper::Cooked(buf),
+            data: SliceWrapper::Cooked(data),
         };
         let pending = call_table.register(&datagram);
         drop(call_table);
@@ -110,6 +121,7 @@ where
                 at,
             )));
         }
+
         self.send(&datagram).await?;
         pending.await
     }

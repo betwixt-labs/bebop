@@ -83,6 +83,12 @@ impl From<DeserializeError> for RemoteRpcError {
     }
 }
 
+impl From<SerializeError> for RemoteRpcError {
+    fn from(e: SerializeError) -> Self {
+        Self::TransportError(e.into())
+    }
+}
+
 impl Display for RemoteRpcError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self:?}")

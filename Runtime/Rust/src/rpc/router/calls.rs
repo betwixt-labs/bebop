@@ -11,7 +11,7 @@ use crate::rpc::datagram::{RpcDatagram, RpcResponseHeader};
 use crate::rpc::error::{RemoteRpcResponse, TransportError, TransportResult};
 use crate::rpc::router::ServiceHandlers;
 use crate::rpc::{RouterContext, TransportProtocol};
-use crate::{OwnedRecord, SliceWrapper};
+use crate::{OwnedRecord, Record, SliceWrapper};
 
 /// Request handle to allow sending your response to the remote.
 pub struct RequestHandle<T, L> {
@@ -26,13 +26,17 @@ where
     L: 'static + ServiceHandlers,
 {
     /// Send a response to a call.
-    pub async fn send_response(self, data: &[u8]) -> TransportResult {
+    pub async fn send_response<'a, 'b: 'a>(self, record: &'a impl Record<'b>) -> TransportResult {
+        self.send_response_raw(&record.serialize_to_vec()?).await
+    }
+
+    pub async fn send_response_raw(self, data: &[u8]) -> TransportResult {
         if let Some(ctx) = self.ctx.upgrade() {
             ctx.send(&RpcDatagram::RpcResponseOk {
                 header: RpcResponseHeader {
                     id: self.call_id().into(),
                 },
-                data: SliceWrapper::Cooked(data),
+                data: SliceWrapper::Cooked(&data),
             })
             .await
         } else {
