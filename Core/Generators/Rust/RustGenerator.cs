@@ -48,7 +48,10 @@ namespace Core.Generators.Rust
 
         // TODO: should we get this list from the SchemaRepo or something to prevent sync issues?
         private static readonly ImmutableHashSet<string> _rpcDefinitionsToIgnore =
-            new[] { "RpcDatagram", "RpcRequestHeader", "RpcResponseHeader" }.ToImmutableHashSet();
+            new[]
+            {
+                "RpcDatagram", "RpcRequestHeader", "RpcResponseHeader", "RpcServiceNameReturn", "RpcServiceNameArgs"
+            }.ToImmutableHashSet();
 
         private Dictionary<string, bool> _needsLifetime = new Dictionary<string, bool>();
 
@@ -76,7 +79,7 @@ namespace Core.Generators.Rust
 
             if (!string.IsNullOrWhiteSpace(Schema.Namespace))
             {
-                mainBuilder.AppendLine($"#![cfg(feature = \"{Schema.Namespace.ToKebabCase()}\")]");
+                mainBuilder.AppendLine($"#![cfg(feature = \"{MakeFeatureIdent(Schema.Namespace)}\")]");
             }
 
             WriteStandardImportsForModule(mainBuilder);
@@ -141,7 +144,7 @@ namespace Core.Generators.Rust
             mainBuilder
                 .AppendLine(string.IsNullOrWhiteSpace(Schema.Namespace)
                     ? "#[cfg(feature = \"bebop-owned-all\")]"
-                    : $"#[cfg(any(feature = \"bebop-owned-all\", feature = \"{Schema.Namespace.ToKebabCase()}-owned\"))]")
+                    : $"#[cfg(any(feature = \"bebop-owned-all\", feature = \"{MakeFeatureIdent(Schema.Namespace)}-owned\"))]")
                 .CodeBlock("pub mod owned", _tab, () =>
                 {
                     mainBuilder.Append(ownedBuilder.ToString());
@@ -166,6 +169,8 @@ namespace Core.Generators.Rust
                 .AppendLine("use ::std::io::Write as _;")
                 .AppendLine("use ::core::convert::TryInto as _;") // we can remove this for Rust 2021
                 .AppendLine("use ::bebop::FixedSized as _;")
+                .AppendLine()
+                .AppendLine("pub type _DynFut<T> = ::core::pin::Pin<::std::boxed::Box<dyn ::core::future::Future<Output = T>>>;")
                 .AppendLine();
 
         private void WriteConstDefinition(IndentedStringBuilder builder, ConstDefinition d, CodeRegion region)
@@ -992,14 +997,33 @@ namespace Core.Generators.Rust
         private void WriteServiceDefinition(IndentedStringBuilder bldr, ServiceDefinition d)
         {
             var ident = MakeDefIdent(d.Name);
-            var requestsFeat = $"#[cfg(feature = \"bebop-{ident.ToKebabCase()}-requests\")]";
-            var handlersFeat = $"#[cfg(feature = \"bebop-{ident.ToKebabCase()}-handlers\")";
+            var requestsFeat = $"#[cfg(feature = \"{MakeFeatureIdent(ident)}-requests\")]";
+            var handlersFeat = $"#[cfg(feature = \"{MakeFeatureIdent(ident)}-handlers\")]";
 
             WriteDocumentation(bldr, d.Documentation);
             bldr.AppendLine(handlersFeat)
                 .CodeBlock($"pub trait {ident}Handlers", _tab, () =>
                 {
-                    // TODO: generate function signatures
+                    bldr.AppendLine("/// Send a response to the transport.")
+                        .AppendLine("/// The implementation will *probably* be to call the router context's `send` function.")
+                        .AppendLine($"fn _send_response(&self, datagram: &::bebop::Datagram) -> {DynFutureType()};");
+                    foreach (var b in d.Branches.OrderBy(d => d.Discriminator))
+                    {
+                        var fn = b.Definition;
+                        var fname = MakeFnIdent(fn.Name);
+                        var args = fn.ArgumentStruct.Fields.Select(f =>
+                            (MakeFnArgIdent(f.Name), TypeName(f.Type, OwnershipType.Owned))).ToArray();
+                        var retType = fn.ReturnStruct.Fields.Count switch
+                        {
+                            0 => "()",
+                            1 => TypeName(fn.ReturnStruct.Fields.First().Type, OwnershipType.Owned),
+                            _ => throw new ArgumentOutOfRangeException(ident, fn.ReturnStruct.Fields, null)
+                        };
+                        var argsStr = string.Join(", ",
+                            new[] { "&self" }.Concat(args.Select(i => $"{i.Item1}: {i.Item2}")));
+                        var responseType = $"::bebop::LocalRpcResponse<{retType}>";
+                        bldr.AppendLine($"fn {fname}({argsStr}) -> {DynFutureType(responseType)};");
+                    }
                 })
                 .AppendLine()
                 .AppendLine(handlersFeat)
@@ -1010,21 +1034,11 @@ namespace Core.Generators.Rust
                         .AppendLine()
                         .CodeBlock("async fn _recv_call(&self, datagram: RpcDatagram)", _tab, () =>
                         {
-                            foreach (var b in d.Branches.OrderBy(d => d.Discriminator))
-                            {
-                                var fn = b.Definition;
-                                var fname = MakeFnIdent(fn.Name);
-                                var args = fn.ArgumentStruct.Fields.Select(f =>
-                                    (MakeFnArgIdent(f.Name), TypeName(f.Type, OwnershipType.Owned))).ToArray();
-                                var retType = fn.ReturnStruct.Fields.Count switch
-                                {
-                                    0 => "()",
-                                    1 => TypeName(fn.ReturnStruct.Fields.First().Type, OwnershipType.Owned),
-                                    _ => throw new ArgumentOutOfRangeException(ident, fn.ReturnStruct.Fields, null)
-                                };
-                                var argsStr = string.Join(",", args.Select((name, type) => $"{name}: {type}"));
-                                bldr.AppendLine($"fn {fname}({argsStr}) -> ::bebop::RemoteRpcResponse<{retType}>;");
-                            }
+                            // TODO:
+                            //  - Deserialize datagram
+                            //  - Signature checks
+                            //  - Call appropriate function
+                            //  - Submit return datagram to context 
                         });
                 }).AppendLine();
 
@@ -1032,11 +1046,22 @@ namespace Core.Generators.Rust
             bldr.AppendLine(requestsFeat)
                 .AppendLine("#[derive(Debug)]")
                 .AppendLine(
-                    $"pub struct {ident}Requests<T, L>(::std::sync::Weak<::bebop::RouterContext<RpcDatagram, T, L>>);")
+                    $"pub struct {ident}Requests<T, L>(::std::sync::Weak<::bebop::RouterContext<T, L>>);")
                 .AppendLine()
                 .AppendLine(requestsFeat)
                 .CodeBlock($"impl {ident}Requests<T, L>", _tab, () =>
                 {
+                    bldr.CodeBlock("pub async fn service_name(&self) -> ::bebop::RemoteRpcResponse<String>", _tab, () =>
+                        {
+                            bldr.AppendLine($"self.service_name_timeout(None).await");
+                        })
+                        .AppendLine()
+                        .CodeBlock(
+                            "pub async fn service_name_timeout(&self, timeout: Option<::core::time::Duration>) -> ::bebop::RemoteRpcResponse<String>",
+                            _tab, () =>
+                            {
+                                WriteRpcRequest(bldr, 0, "::bebop::RpcServiceNameReturn", "::bebop::RpcServiceArgs {}");
+                            });
                     // TODO: generate function calls to transport
                 })
                 .AppendLine()
@@ -1046,12 +1071,30 @@ namespace Core.Generators.Rust
                     {
                         bldr.AppendLine($"const NAME: &'static str = \"{ident}\";")
                             .AppendLine()
-                            .CodeBlock("fn new(ctx: ::std::sync::Weak<::bebop::RouterContext<D, T, L>) -> Self", _tab,
+                            .CodeBlock("fn new(ctx: ::std::sync::Weak<::bebop::RouterContext<T, L>>) -> Self", _tab,
                                 () =>
                                 {
                                     bldr.AppendLine("Self(ctx)");
                                 });
                     });
+        }
+
+        private void WriteRpcRequest(IndentedStringBuilder bldr, ushort opcode, string remoteReturnType,
+            string argsStruct, bool isVoid = false)
+        {
+            bldr.Append("self.0.upgrade()")
+                .AppendEnd(".ok_or(::bebop::RemoteRpcError::TransportError(::bebop::TransportError::NotConnected))?")
+                .CodeBlock($".request::<{remoteReturnType}>", _tab, () =>
+                {
+                    bldr.AppendLine($"{opcode},")
+                        .AppendLine("timeout.and_then(|t| ::core::num::NonZeroU16::new(t.as_secs())),")
+                        .AppendLine("0,")
+                        .AppendLine($"&{argsStruct}");
+                }, "(", ").await");
+            if (!isVoid)
+            {
+                bldr.AppendLine(".map(|r| r.value)");
+            }
         }
 
         #endregion
@@ -1164,6 +1207,8 @@ namespace Core.Generators.Rust
             }
         }
 
+        private string DynFutureType(string output = "()") => $"_DynFut<{output}>";
+
         #endregion
 
         #region types_and_identifiers
@@ -1197,6 +1242,8 @@ namespace Core.Generators.Rust
         private static string MakeFnIdent(string ident) => MakeAttrIdent(ident);
 
         private static string MakeFnArgIdent(string ident) => MakeAttrIdent(ident);
+
+        private static string MakeFeatureIdent(string ident) => ident.ToKebabCase();
 
         /// <summary>
         /// Generate a Rust type name for the given <see cref="TypeBase"/>.

@@ -9,10 +9,6 @@ namespace Core.Schemas
     /// </summary>
     static class SchemaRepo
     {
-        public static readonly string RpcRequestHeader;
-
-        public static readonly string RpcResponseHeader;
-
         public static readonly string RpcDatagram;
 
         static SchemaRepo()

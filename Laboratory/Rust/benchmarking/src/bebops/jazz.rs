@@ -185,7 +185,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for Song<'raw> {
         let len = ::bebop::read_len(&raw[i..])? + ::bebop::LEN_SIZE;
         i += ::bebop::LEN_SIZE;
 
-        #[cfg(not(feature = "unchecked"))]
+        #[cfg(not(feature = "bebop-unchecked"))]
         if len == 0 {
             return Err(::bebop::DeserializeError::CorruptFrame);
         }
@@ -198,13 +198,13 @@ impl<'raw> ::bebop::SubRecord<'raw> for Song<'raw> {
         let mut _year = None;
         let mut _performers = None;
 
-        #[cfg(not(feature = "unchecked"))]
+        #[cfg(not(feature = "bebop-unchecked"))]
         let mut last = 0;
 
         while i < len {
             let di = raw[i];
 
-            #[cfg(not(feature = "unchecked"))]
+            #[cfg(not(feature = "bebop-unchecked"))]
             if di != 0 {
                 if di < last {
                     return Err(::bebop::DeserializeError::CorruptFrame);
@@ -218,7 +218,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for Song<'raw> {
                     break;
                 }
                 1 => {
-                    #[cfg(not(feature = "unchecked"))]
+                    #[cfg(not(feature = "bebop-unchecked"))]
                     if _title.is_some() {
                         return Err(::bebop::DeserializeError::DuplicateMessageField);
                     }
@@ -227,7 +227,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for Song<'raw> {
                     _title = Some(value)
                 }
                 2 => {
-                    #[cfg(not(feature = "unchecked"))]
+                    #[cfg(not(feature = "bebop-unchecked"))]
                     if _year.is_some() {
                         return Err(::bebop::DeserializeError::DuplicateMessageField);
                     }
@@ -236,7 +236,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for Song<'raw> {
                     _year = Some(value)
                 }
                 3 => {
-                    #[cfg(not(feature = "unchecked"))]
+                    #[cfg(not(feature = "bebop-unchecked"))]
                     if _performers.is_some() {
                         return Err(::bebop::DeserializeError::DuplicateMessageField);
                     }
@@ -374,7 +374,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for Album<'raw> {
                 let len = ::bebop::read_len(&raw[i..])? + i + ::bebop::LEN_SIZE;
                 i += ::bebop::LEN_SIZE;
 
-                #[cfg(not(feature = "unchecked"))]
+                #[cfg(not(feature = "bebop-unchecked"))]
                 if len == 0 {
                     return Err(::bebop::DeserializeError::CorruptFrame);
                 }
@@ -387,13 +387,13 @@ impl<'raw> ::bebop::SubRecord<'raw> for Album<'raw> {
                 let mut _venue_name = None;
                 let mut _concert_date = None;
 
-                #[cfg(not(feature = "unchecked"))]
+                #[cfg(not(feature = "bebop-unchecked"))]
                 let mut last = 0;
 
                 while i < len {
                     let di = raw[i];
 
-                    #[cfg(not(feature = "unchecked"))]
+                    #[cfg(not(feature = "bebop-unchecked"))]
                     if di != 0 {
                         if di < last {
                             return Err(::bebop::DeserializeError::CorruptFrame);
@@ -407,7 +407,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for Album<'raw> {
                             break;
                         }
                         1 => {
-                            #[cfg(not(feature = "unchecked"))]
+                            #[cfg(not(feature = "bebop-unchecked"))]
                             if _tracks.is_some() {
                                 return Err(::bebop::DeserializeError::DuplicateMessageField);
                             }
@@ -417,7 +417,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for Album<'raw> {
                             _tracks = Some(value)
                         }
                         2 => {
-                            #[cfg(not(feature = "unchecked"))]
+                            #[cfg(not(feature = "bebop-unchecked"))]
                             if _venue_name.is_some() {
                                 return Err(::bebop::DeserializeError::DuplicateMessageField);
                             }
@@ -427,7 +427,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for Album<'raw> {
                             _venue_name = Some(value)
                         }
                         3 => {
-                            #[cfg(not(feature = "unchecked"))]
+                            #[cfg(not(feature = "bebop-unchecked"))]
                             if _concert_date.is_some() {
                                 return Err(::bebop::DeserializeError::DuplicateMessageField);
                             }
@@ -459,7 +459,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for Album<'raw> {
                 Album::Unknown
             }
         };
-        if !cfg!(feature = "unchecked") && i != len {
+        if !cfg!(feature = "bebop-unchecked") && i != len {
             debug_assert!(i > len);
             Err(::bebop::DeserializeError::CorruptFrame)
         } else {
@@ -642,7 +642,7 @@ pub mod owned {
             let len = ::bebop::read_len(&raw[i..])? + ::bebop::LEN_SIZE;
             i += ::bebop::LEN_SIZE;
 
-            #[cfg(not(feature = "unchecked"))]
+            #[cfg(not(feature = "bebop-unchecked"))]
             if len == 0 {
                 return Err(::bebop::DeserializeError::CorruptFrame);
             }
@@ -655,13 +655,13 @@ pub mod owned {
             let mut _year = None;
             let mut _performers = None;
 
-            #[cfg(not(feature = "unchecked"))]
+            #[cfg(not(feature = "bebop-unchecked"))]
             let mut last = 0;
 
             while i < len {
                 let di = raw[i];
 
-                #[cfg(not(feature = "unchecked"))]
+                #[cfg(not(feature = "bebop-unchecked"))]
                 if di != 0 {
                     if di < last {
                         return Err(::bebop::DeserializeError::CorruptFrame);
@@ -675,7 +675,7 @@ pub mod owned {
                         break;
                     }
                     1 => {
-                        #[cfg(not(feature = "unchecked"))]
+                        #[cfg(not(feature = "bebop-unchecked"))]
                         if _title.is_some() {
                             return Err(::bebop::DeserializeError::DuplicateMessageField);
                         }
@@ -684,7 +684,7 @@ pub mod owned {
                         _title = Some(value)
                     }
                     2 => {
-                        #[cfg(not(feature = "unchecked"))]
+                        #[cfg(not(feature = "bebop-unchecked"))]
                         if _year.is_some() {
                             return Err(::bebop::DeserializeError::DuplicateMessageField);
                         }
@@ -693,7 +693,7 @@ pub mod owned {
                         _year = Some(value)
                     }
                     3 => {
-                        #[cfg(not(feature = "unchecked"))]
+                        #[cfg(not(feature = "bebop-unchecked"))]
                         if _performers.is_some() {
                             return Err(::bebop::DeserializeError::DuplicateMessageField);
                         }
@@ -854,7 +854,7 @@ pub mod owned {
                     let len = ::bebop::read_len(&raw[i..])? + i + ::bebop::LEN_SIZE;
                     i += ::bebop::LEN_SIZE;
 
-                    #[cfg(not(feature = "unchecked"))]
+                    #[cfg(not(feature = "bebop-unchecked"))]
                     if len == 0 {
                         return Err(::bebop::DeserializeError::CorruptFrame);
                     }
@@ -867,13 +867,13 @@ pub mod owned {
                     let mut _venue_name = None;
                     let mut _concert_date = None;
 
-                    #[cfg(not(feature = "unchecked"))]
+                    #[cfg(not(feature = "bebop-unchecked"))]
                     let mut last = 0;
 
                     while i < len {
                         let di = raw[i];
 
-                        #[cfg(not(feature = "unchecked"))]
+                        #[cfg(not(feature = "bebop-unchecked"))]
                         if di != 0 {
                             if di < last {
                                 return Err(::bebop::DeserializeError::CorruptFrame);
@@ -887,7 +887,7 @@ pub mod owned {
                                 break;
                             }
                             1 => {
-                                #[cfg(not(feature = "unchecked"))]
+                                #[cfg(not(feature = "bebop-unchecked"))]
                                 if _tracks.is_some() {
                                     return Err(::bebop::DeserializeError::DuplicateMessageField);
                                 }
@@ -897,7 +897,7 @@ pub mod owned {
                                 _tracks = Some(value)
                             }
                             2 => {
-                                #[cfg(not(feature = "unchecked"))]
+                                #[cfg(not(feature = "bebop-unchecked"))]
                                 if _venue_name.is_some() {
                                     return Err(::bebop::DeserializeError::DuplicateMessageField);
                                 }
@@ -907,7 +907,7 @@ pub mod owned {
                                 _venue_name = Some(value)
                             }
                             3 => {
-                                #[cfg(not(feature = "unchecked"))]
+                                #[cfg(not(feature = "bebop-unchecked"))]
                                 if _concert_date.is_some() {
                                     return Err(::bebop::DeserializeError::DuplicateMessageField);
                                 }
@@ -939,7 +939,7 @@ pub mod owned {
                     Album::Unknown
                 }
             };
-            if !cfg!(feature = "unchecked") && i != len {
+            if !cfg!(feature = "bebop-unchecked") && i != len {
                 debug_assert!(i > len);
                 Err(::bebop::DeserializeError::CorruptFrame)
             } else {

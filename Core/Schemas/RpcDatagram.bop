@@ -107,3 +107,10 @@ union RpcDatagram {
         string info;
     }
 }
+
+/* Service name function arguments */
+struct RpcServiceNameArgs {}
+/* Service name function reponmse. */
+struct RpcServiceNameReturn {
+    string value;
+}

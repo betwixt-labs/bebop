@@ -45,8 +45,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="Schemas\RpcRequestHeader.bop" />
-    <None Remove="Schemas\RpcResponseHeader.bop" />
     <None Remove="Schemas\RpcDatagram.bop" />
     <EmbeddedResource Include="Schemas\RpcDatagram.bop" />
   </ItemGroup>

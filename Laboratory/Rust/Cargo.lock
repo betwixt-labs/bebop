@@ -93,6 +93,7 @@ name = "bebop"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "bebop-tools",
  "bitflags",
  "parking_lot 0.12.0",
  "tokio",

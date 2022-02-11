@@ -360,8 +360,6 @@ namespace Core.Parser
                     throw new UnexpectedTokenException(TokenKind.Service, CurrentToken, "Did not expect service definition after opcode. (Services are not allowed opcodes).");
                 }
 
-                _tokenizer.AddString("rpc_request_header", SchemaRepo.RpcRequestHeader);
-                _tokenizer.AddString("rpc_response_header", SchemaRepo.RpcResponseHeader);
                 _tokenizer.AddString("rpc_datagram", SchemaRepo.RpcDatagram);
                 return ParseServiceDefinition(CurrentToken, definitionDocumentation);
             }
