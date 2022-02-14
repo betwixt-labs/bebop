@@ -26,23 +26,43 @@ namespace Core.Parser
         /// <summary>
         /// Definitions which are allowed to appear at the top level of a bebop file.
         /// </summary>
-        private readonly HashSet<TokenKind> _topLevelDefinitionKinds = new() { TokenKind.Enum, TokenKind.Struct, TokenKind.Message, TokenKind.Union, TokenKind.Service };
+        private readonly HashSet<TokenKind> _topLevelDefinitionKinds = new()
+        {
+            TokenKind.Enum,
+            TokenKind.Struct,
+            TokenKind.Message,
+            TokenKind.Union,
+            TokenKind.Service
+        };
+
         /// <summary>
         /// Tokens we can use to recover from practically anywhere.
         /// </summary>
-        private readonly HashSet<TokenKind> _universalFollowKinds = new() { TokenKind.Enum, TokenKind.Struct, TokenKind.Message, TokenKind.Union, TokenKind.Service, TokenKind.EndOfFile };
+        private readonly HashSet<TokenKind> _universalFollowKinds = new()
+        {
+            TokenKind.Enum,
+            TokenKind.Struct,
+            TokenKind.Message,
+            TokenKind.Union,
+            TokenKind.Service,
+            TokenKind.EndOfFile
+        };
+
         private readonly Stack<List<Definition>> _scopes = new();
         private readonly Tokenizer _tokenizer;
         private readonly Dictionary<string, Definition> _definitions = new();
+
         /// <summary>
         /// Whether the RPC boilerplate has already been generated.
         /// </summary>
         private bool _rpcBoilerplateGenerated = false;
+
         /// <summary>
         /// A set of references to named types found in message/struct definitions:
         /// the left token is the type name, and the right token is the definition it's used in (used to report a helpful error).
         /// </summary>
         private readonly HashSet<(Token, Token)> _typeReferences = new();
+
         private int _index;
         private readonly string _nameSpace;
         private List<SpanException> _errors = new();
@@ -78,6 +98,7 @@ namespace Core.Parser
             {
                 definition.Parent = parent;
             }
+
             AddDefinition(parent);
         }
 
@@ -128,12 +149,12 @@ namespace Core.Parser
         /// <returns></returns>
         private bool Eat(TokenKind kind)
         {
-
             if (CurrentToken.Kind == kind)
             {
                 _index++;
                 return true;
             }
+
             return false;
         }
 
@@ -148,6 +169,7 @@ namespace Core.Parser
                 _index++;
                 return true;
             }
+
             return false;
         }
 
@@ -185,13 +207,15 @@ namespace Core.Parser
         /// <param name="kinds"></param>
         /// <param name="additionalTokens"></param>
         /// <param name="hint"></param>
-        private void ExpectAndSkip(HashSet<TokenKind> kinds, HashSet<TokenKind>? additionalTokens = null, string? hint = null)
+        private void ExpectAndSkip(HashSet<TokenKind> kinds, HashSet<TokenKind>? additionalTokens = null,
+            string? hint = null)
         {
             additionalTokens ??= new();
             ConsumeBlockComments();
             if (kinds.Contains(CurrentToken.Kind)) return;
             _errors.Add(new UnexpectedTokenException(kinds, CurrentToken, hint));
-            while (_index < _tokens.Count - 1 && !kinds.Contains(CurrentToken.Kind) && !additionalTokens.Contains(CurrentToken.Kind))
+            while (_index < _tokens.Count - 1 && !kinds.Contains(CurrentToken.Kind) &&
+                   !additionalTokens.Contains(CurrentToken.Kind))
             {
                 _index++;
             }
@@ -204,6 +228,7 @@ namespace Core.Parser
             {
                 _index++;
             }
+
             while (_index < _tokens.Count - 1 && !kinds.Contains(CurrentToken.Kind))
             {
                 _index++;
@@ -239,13 +264,13 @@ namespace Core.Parser
         /// <returns>The content of the last block comment which usually proceeds a definition.</returns>
         private string ConsumeBlockComments()
         {
-
             var definitionDocumentation = string.Empty;
             while (CurrentToken.Kind == TokenKind.BlockComment)
             {
                 definitionDocumentation = CurrentToken.Lexeme;
                 _index++;
             }
+
             return definitionDocumentation;
         }
 
@@ -268,9 +293,9 @@ namespace Core.Parser
                 if (EatPseudoKeyword("import"))
                 {
                     var currentFilePath = CurrentToken.Span.FileName;
-                    
+
                     var currentFileDirectory = Path.GetDirectoryName(currentFilePath)!;
-       
+
                     var pathToken = CurrentToken;
                     var relativePathFromCurrent = ExpectStringLiteral();
                     var combinedPath = Path.Combine(currentFileDirectory, relativePathFromCurrent);
@@ -280,7 +305,9 @@ namespace Core.Parser
                     }
                     catch (IOException)
                     {
-                        throw File.Exists(combinedPath) ? new ImportFileReadException(pathToken) : new ImportFileNotFoundException(pathToken);
+                        throw File.Exists(combinedPath)
+                            ? new ImportFileReadException(pathToken)
+                            : new ImportFileNotFoundException(pathToken);
                     }
                 }
                 else
@@ -301,10 +328,11 @@ namespace Core.Parser
                     }
                 }
             }
+
             return new BebopSchema(
-                nameSpace: _nameSpace, 
-                definitions: _definitions, 
-                typeReferences: _typeReferences, 
+                nameSpace: _nameSpace,
+                definitions: _definitions,
+                typeReferences: _typeReferences,
                 parsingErrors: _errors
             );
         }
@@ -317,6 +345,7 @@ namespace Core.Parser
             {
                 return ParseConstDefinition(definitionDocumentation);
             }
+
             BaseAttribute? opcodeAttribute = null;
             BaseAttribute? flagsAttribute = null;
 
@@ -349,20 +378,25 @@ namespace Core.Parser
                 // We probably want to start over if we hit the end of the file.
                 return null;
             }
+
             if (Eat(TokenKind.Service))
             {
                 if (isReadOnly)
                 {
-                    throw new UnexpectedTokenException(TokenKind.Service, CurrentToken, "Did not expect service definition after readonly. (Services are not allowed to be readonly).");
+                    throw new UnexpectedTokenException(TokenKind.Service, CurrentToken,
+                        "Did not expect service definition after readonly. (Services are not allowed to be readonly).");
                 }
+
                 if (opcodeAttribute != null)
                 {
-                    throw new UnexpectedTokenException(TokenKind.Service, CurrentToken, "Did not expect service definition after opcode. (Services are not allowed opcodes).");
+                    throw new UnexpectedTokenException(TokenKind.Service, CurrentToken,
+                        "Did not expect service definition after opcode. (Services are not allowed opcodes).");
                 }
 
                 _tokenizer.AddString("rpc_datagram", SchemaRepo.RpcDatagram);
                 return ParseServiceDefinition(CurrentToken, definitionDocumentation);
             }
+
             if (Eat(TokenKind.Union))
             {
                 return ParseUnionDefinition(CurrentToken, definitionDocumentation, opcodeAttribute);
@@ -382,17 +416,19 @@ namespace Core.Parser
                     // Uh oh we skipped ahead due to a missing identifier, get outta there
                     return null;
                 }
-                return ParseNonUnionDefinition(CurrentToken, kind, isReadOnly, definitionDocumentation, opcodeAttribute, flagsAttribute);
+
+                return ParseNonUnionDefinition(CurrentToken, kind, isReadOnly, definitionDocumentation, opcodeAttribute,
+                    flagsAttribute);
             }
         }
 
         private ConstDefinition ParseConstDefinition(string definitionDocumentation)
         {
             var definitionStart = CurrentToken.Span;
-            
+
             TypeBase type;
             string name = "";
-            Literal? value = new IntegerLiteral(new ScalarType(BaseType.UInt32, new Span(), ""), new Span(), "") ;
+            Literal? value = new IntegerLiteral(new ScalarType(BaseType.UInt32, new Span(), ""), new Span(), "");
             try
             {
                 type = ParseType(CurrentToken);
@@ -404,18 +440,21 @@ namespace Core.Parser
             {
                 _errors.Add(e);
             }
-            ExpectAndSkip(TokenKind.Semicolon, hint: "A constant definition must end in a semicolon: const uint32 pianoKeys = 88;");
+
+            ExpectAndSkip(TokenKind.Semicolon,
+                hint: "A constant definition must end in a semicolon: const uint32 pianoKeys = 88;");
             Eat(TokenKind.Semicolon);
             var definitionSpan = definitionStart.Combine(CurrentToken.Span);
             var definition = new ConstDefinition(name, definitionSpan, definitionDocumentation, value);
             if (_definitions.ContainsKey(name))
             {
-               _errors.Add(new DuplicateConstDefinitionException(definition));
+                _errors.Add(new DuplicateConstDefinitionException(definition));
             }
             else
             {
                 AddDefinition(definition);
             }
+
             return definition;
         }
 
@@ -440,13 +479,17 @@ namespace Core.Parser
             switch (type)
             {
                 case ArrayType:
-                    throw new UnsupportedConstTypeException("Array-typed constant definitions are not supported.", type.Span);
+                    throw new UnsupportedConstTypeException("Array-typed constant definitions are not supported.",
+                        type.Span);
                 case MapType:
-                    throw new UnsupportedConstTypeException("Map-typed constant definitions are not supported.", type.Span);
+                    throw new UnsupportedConstTypeException("Map-typed constant definitions are not supported.",
+                        type.Span);
                 case DefinedType:
-                    throw new UnsupportedConstTypeException("User-defined-type constant definitions are not supported.", type.Span);
+                    throw new UnsupportedConstTypeException("User-defined-type constant definitions are not supported.",
+                        type.Span);
                 case ScalarType st when st.BaseType == BaseType.Date:
-                    throw new UnsupportedConstTypeException("Date-type constant definitions are not supported.", type.Span);
+                    throw new UnsupportedConstTypeException("Date-type constant definitions are not supported.",
+                        type.Span);
                 case ScalarType st when st.IsFloat:
                     var (floatSpan, floatLexeme) = ParseNumberLiteral();
                     if (!_reFloat.IsMatch(floatLexeme)) throw new InvalidLiteralException(token, st);
@@ -471,7 +514,8 @@ namespace Core.Parser
                     if (!_reGuid.IsMatch(token.Lexeme)) throw new InvalidLiteralException(token, st);
                     return new GuidLiteral(st, token.Span, Guid.Parse(token.Lexeme));
                 default:
-                    throw new UnsupportedConstTypeException($"Constant definitions for type {type.AsString} are not supported.", type.Span);
+                    throw new UnsupportedConstTypeException(
+                        $"Constant definitions for type {type.AsString} are not supported.", type.Span);
             }
         }
 
@@ -491,7 +535,7 @@ namespace Core.Parser
                 if (Eat(TokenKind.OpenParenthesis))
                 {
                     value = CurrentToken.Lexeme;
-                    if (Eat(TokenKind.String)|| (kind == "opcode" && Eat(TokenKind.Number)))
+                    if (Eat(TokenKind.String) || (kind == "opcode" && Eat(TokenKind.Number)))
                     {
                         isNumber = PeekToken(_index - 1).Kind == TokenKind.Number;
                     }
@@ -499,8 +543,10 @@ namespace Core.Parser
                     {
                         throw new UnexpectedTokenException(TokenKind.String, CurrentToken);
                     }
+
                     Expect(TokenKind.CloseParenthesis);
                 }
+
                 Expect(TokenKind.CloseBracket);
                 return kind switch
                 {
@@ -510,6 +556,7 @@ namespace Core.Parser
                     _ => throw new UnknownAttributeException(kindToken),
                 };
             }
+
             return null;
         }
 
@@ -531,24 +578,31 @@ namespace Core.Parser
             BaseAttribute? opcodeAttribute,
             BaseAttribute? flagsAttribute)
         {
-            
             var fields = new List<Field>();
             var enumBaseType = BaseType.UInt32;
-            var kindName = kind switch { AggregateKind.Enum => "enum", AggregateKind.Struct => "struct", _ => "message" };
-            var aKindName = kind switch { AggregateKind.Enum => "an enum", AggregateKind.Struct => "a struct", _ => "a message" };
+            var kindName = kind switch
+            {
+                AggregateKind.Enum => "enum", AggregateKind.Struct => "struct", _ => "message"
+            };
+            var aKindName = kind switch
+            {
+                AggregateKind.Enum => "an enum", AggregateKind.Struct => "a struct", _ => "a message"
+            };
 
-            ExpectAndSkip(TokenKind.Identifier, new(_universalFollowKinds.Append(TokenKind.OpenBrace)), hint: $"Did you forget to specify a name for this {kindName}?");
+            ExpectAndSkip(TokenKind.Identifier, new(_universalFollowKinds.Append(TokenKind.OpenBrace)),
+                hint: $"Did you forget to specify a name for this {kindName}?");
             Eat(TokenKind.Identifier);
             if (kind == AggregateKind.Enum && Eat(TokenKind.Colon))
             {
-
                 var t = ParseType(definitionToken);
                 if (!(t is ScalarType st && st.IsInteger))
                 {
                     throw new InvalidEnumTypeException(t);
                 }
+
                 enumBaseType = st.BaseType;
             }
+
             ExpectAndSkip(TokenKind.OpenBrace, new(_universalFollowKinds.Append(TokenKind.CloseBrace)));
             if (!Eat(TokenKind.OpenBrace))
             {
@@ -557,8 +611,19 @@ namespace Core.Parser
             }
 
             var definitionEnd = CurrentToken.Span;
-            var messageFieldFollowKinds = new HashSet<TokenKind> { TokenKind.BlockComment, TokenKind.CloseBrace, TokenKind.OpenBracket, TokenKind.Number };
-            var fieldFollowKinds = new HashSet<TokenKind>() { TokenKind.BlockComment, TokenKind.CloseBrace, TokenKind.OpenBracket, TokenKind.Number, TokenKind.Map, TokenKind.Array };
+            var messageFieldFollowKinds = new HashSet<TokenKind>
+            {
+                TokenKind.BlockComment, TokenKind.CloseBrace, TokenKind.OpenBracket, TokenKind.Number
+            };
+            var fieldFollowKinds = new HashSet<TokenKind>()
+            {
+                TokenKind.BlockComment,
+                TokenKind.CloseBrace,
+                TokenKind.OpenBracket,
+                TokenKind.Number,
+                TokenKind.Map,
+                TokenKind.Array
+            };
             // var fieldStoppingKinds = new HashSet<TokenKind>(_universalFollowKinds.Concat(fieldFollowKinds));
             var errored = false;
 
@@ -578,6 +643,7 @@ namespace Core.Parser
                     CancelScope();
                     return null;
                 }
+
                 errored = false;
                 var value = BigInteger.Zero;
 
@@ -595,13 +661,16 @@ namespace Core.Parser
                 {
                     try
                     {
-                        const string? indexHint = "Fields in a message must be explicitly indexed: message A { 1 -> string s; 2 -> bool b; }";
+                        const string? indexHint =
+                            "Fields in a message must be explicitly indexed: message A { 1 -> string s; 2 -> bool b; }";
                         var indexLexeme = CurrentToken.Lexeme;
                         Expect(TokenKind.Number, hint: indexHint);
                         if (!TryParseBigInteger(indexLexeme, out value))
                         {
-                            throw new UnexpectedTokenException(TokenKind.Number, CurrentToken, "Field index must be an unsigned integer.");
+                            throw new UnexpectedTokenException(TokenKind.Number, CurrentToken,
+                                "Field index must be an unsigned integer.");
                         }
+
                         // Parse an arrow ("->").
                         Expect(TokenKind.Hyphen, hint: indexHint);
                         Expect(TokenKind.CloseCaret, hint: indexHint);
@@ -617,8 +686,6 @@ namespace Core.Parser
 
                 try
                 {
-
-                
                     // Parse a type name, if this isn't an enum:
                     TypeBase type = kind == AggregateKind.Enum
                         ? new ScalarType(enumBaseType, definitionToken.Span, definitionToken.Lexeme)
@@ -629,10 +696,12 @@ namespace Core.Parser
                     {
                         throw new ReservedIdentifierException(fieldName, CurrentToken.Span);
                     }
+
                     if (fieldName.Equals(definitionToken.Lexeme, StringComparison.OrdinalIgnoreCase))
                     {
                         throw new FieldNameException(CurrentToken);
                     }
+
                     var fieldStart = CurrentToken.Span;
 
                     Expect(TokenKind.Identifier);
@@ -657,7 +726,8 @@ namespace Core.Parser
                     Expect(TokenKind.Semicolon, hint: CurrentToken.Kind == TokenKind.OpenBracket
                         ? "Try 'Type[] foo' instead of 'Type foo[]'."
                         : $"Elements in {aKindName} are delimited using semicolons.");
-                    fields.Add(new Field(fieldName, type, fieldStart.Combine(fieldEnd), deprecatedAttribute, value, fieldDocumentation));
+                    fields.Add(new Field(fieldName, type, fieldStart.Combine(fieldEnd), deprecatedAttribute, value,
+                        fieldDocumentation));
                     definitionEnd = CurrentToken.Span;
                 }
                 catch (SpanException e)
@@ -674,9 +744,12 @@ namespace Core.Parser
 
             Definition definition = kind switch
             {
-                AggregateKind.Enum => new EnumDefinition(name, definitionSpan, definitionDocumentation, fields, flagsAttribute != null, enumBaseType),
-                AggregateKind.Struct => new StructDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, fields, isReadOnly),
-                AggregateKind.Message => new MessageDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, fields),
+                AggregateKind.Enum => new EnumDefinition(name, definitionSpan, definitionDocumentation, fields,
+                    flagsAttribute != null, enumBaseType),
+                AggregateKind.Struct => new StructDefinition(name, definitionSpan, definitionDocumentation,
+                    opcodeAttribute, fields, isReadOnly),
+                AggregateKind.Message => new MessageDefinition(name, definitionSpan, definitionDocumentation,
+                    opcodeAttribute, fields),
                 _ => throw new InvalidOperationException("invalid kind when making definition"),
             };
 
@@ -684,6 +757,7 @@ namespace Core.Parser
             {
                 _errors.Add(new InvalidReadOnlyException(definition));
             }
+
             if (opcodeAttribute != null && definition is not RecordDefinition)
             {
                 _errors.Add(new InvalidOpcodeAttributeUsageException(definition));
@@ -698,9 +772,10 @@ namespace Core.Parser
             {
                 CloseScope(definition);
             }
+
             return definition;
         }
-        
+
         /// <summary>
         ///     Parses an rpc service definition and adds it to the <see cref="_definitions"/> collection.
         /// </summary>
@@ -710,21 +785,24 @@ namespace Core.Parser
         private Definition? ParseServiceDefinition(Token definitionToken,
             string definitionDocumentation)
         {
-            ExpectAndSkip(TokenKind.Identifier, new(_universalFollowKinds.Append(TokenKind.OpenBrace)), "Did you forget to specify a name for this service?");
+            ExpectAndSkip(TokenKind.Identifier, new(_universalFollowKinds.Append(TokenKind.OpenBrace)),
+                "Did you forget to specify a name for this service?");
             Eat(TokenKind.Identifier);
             ExpectAndSkip(TokenKind.OpenBrace, new(_universalFollowKinds.Append(TokenKind.CloseBrace)));
             if (!Eat(TokenKind.OpenBrace))
             {
                 return null;
             }
+
             StartScope();
             var name = definitionToken.Lexeme;
             var branches = new List<ServiceBranch>();
-            var usedDiscriminators = new HashSet<uint>(){0};
-            
+            var usedDiscriminators = new HashSet<uint>() { 0 };
+
             var definitionEnd = CurrentToken.Span;
             var errored = false;
-            var serviceFieldFollowKinds = new HashSet<TokenKind>() { TokenKind.BlockComment, TokenKind.Number, TokenKind.CloseBrace };
+            var serviceFieldFollowKinds =
+                new HashSet<TokenKind>() { TokenKind.BlockComment, TokenKind.Number, TokenKind.CloseBrace };
             while (!Eat(TokenKind.CloseBrace))
             {
                 if (errored && !serviceFieldFollowKinds.Contains(CurrentToken.Kind))
@@ -732,33 +810,44 @@ namespace Core.Parser
                     CancelScope();
                     return null;
                 }
+
                 errored = false;
-                var documentation = ConsumeBlockComments();
+                var fnDocumentation = ConsumeBlockComments();
+                var fnDeprecatedAttribute = EatAttribute();
+                if (fnDeprecatedAttribute is not DeprecatedAttribute) fnDeprecatedAttribute = null;
+                
                 // if we've reached the end of the definition after parsing documentation we need to exit.
                 if (Eat(TokenKind.CloseBrace))
                 {
                     break;
                 }
 
-                const string indexHint = "Branches in a service must be explicitly indexed: service U { 1 -> void doThing(int32 myarg); 2 -> bool foo(float32 a, float32 b); }";
+                const string indexHint =
+                    "Branches in a service must be explicitly indexed: service U { 1 -> void doThing(int32 myarg); 2 -> bool foo(float32 a, float32 b); }";
                 var indexToken = CurrentToken;
                 var indexLexeme = indexToken.Lexeme;
+
                 uint discriminator;
                 try
                 {
                     Expect(TokenKind.Number, indexHint);
                     if (!indexLexeme.TryParseUInt(out discriminator))
                     {
-                        throw new UnexpectedTokenException(TokenKind.Number, indexToken, "A function id must be an unsigned integer.");
+                        throw new UnexpectedTokenException(TokenKind.Number, indexToken,
+                            "A function id must be an unsigned integer.");
                     }
+
                     if (discriminator < 1 || discriminator > 0xffff)
                     {
-                        _errors.Add(new UnexpectedTokenException(TokenKind.Number, indexToken, "A function id must be between 1 and 65535."));
+                        _errors.Add(new UnexpectedTokenException(TokenKind.Number, indexToken,
+                            "A function id must be between 1 and 65535."));
                     }
+
                     if (usedDiscriminators.Contains(discriminator))
                     {
                         _errors.Add(new DuplicateServiceDiscriminatorException(indexToken, name));
                     }
+
                     usedDiscriminators.Add(discriminator);
                     // Parse an arrow ("->").
                     Expect(TokenKind.Hyphen, indexHint);
@@ -771,22 +860,29 @@ namespace Core.Parser
                     SkipAndSkipUntil(new HashSet<TokenKind>(serviceFieldFollowKinds.Concat(_universalFollowKinds)));
                     continue;
                 }
-                var definition = ParseFunctionDefinition(name, indexLexeme);
+
+                var definition = ParseFunctionDefinition(name, fnDocumentation, fnDeprecatedAttribute, indexLexeme);
                 if (definition is null)
                 {
                     // Just escape out of there if there's a parsing error in one of the definitions.
                     CancelScope();
                     return null;
                 }
+
                 Eat(TokenKind.Semicolon);
                 definitionEnd = CurrentToken.Span;
                 branches.Add(new((ushort)discriminator, definition));
             }
 
             var definitionSpan = definitionToken.Span.Combine(definitionEnd);
-            
+
             // add the implicit "ServiceName" function
-            var serviceNameReturnStruct = new StructDefinition($"_{name}NameReturn", definitionSpan, "", null, new List<Field>(){new("serviceName", new ScalarType(BaseType.String, definitionSpan, "name"), definitionSpan, null, 0, "")}, true);
+            var serviceNameReturnStruct = new StructDefinition($"_{name}NameReturn", definitionSpan, "", null,
+                new List<Field>()
+                {
+                    new("serviceName", new ScalarType(BaseType.String, definitionSpan, "name"), definitionSpan,
+                        null, 0, "")
+                }, true);
             AddDefinition(serviceNameReturnStruct);
             var serviceNameArgsStruct = new StructDefinition($"_{name}NameArgs", definitionSpan, "",
                 null, new List<Field>() { }, true);
@@ -794,9 +890,10 @@ namespace Core.Parser
             var serviceNameSignature =
                 MakeFunctionSignature(name, serviceNameReturnStruct, serviceNameArgsStruct, "name", definitionSpan);
             AddDefinition(serviceNameSignature);
-            var serviceNameDefinition = new FunctionDefinition("name", definitionSpan, "", serviceNameSignature, serviceNameArgsStruct, serviceNameReturnStruct);
+            var serviceNameDefinition = new FunctionDefinition("name", definitionSpan, "", null, serviceNameSignature,
+                serviceNameArgsStruct, serviceNameReturnStruct);
             branches.Add(new(0, serviceNameDefinition));
-            
+
             // make the service itself
             var serviceDefinition = new ServiceDefinition(name, definitionSpan, definitionDocumentation, branches);
             CloseScope(serviceDefinition);
@@ -809,26 +906,25 @@ namespace Core.Parser
         /// <param name="serviceName">Name of the service this function is part of.</param>
         /// <para name="serviceIndex">Index of this function within the service.</para>
         /// <returns>The parsed rpc function definition.</returns>
-        private FunctionDefinition? ParseFunctionDefinition(string serviceName, string serviceIndex)
+        private FunctionDefinition? ParseFunctionDefinition(string serviceName, string fnDocs, BaseAttribute? fnAttrs, string serviceIndex)
         {
-            var definitionDocumentation = ConsumeBlockComments();
-            
             // The start of the function is the definition token of the function
             var definitionToken = CurrentToken;
-            var functionStart = CurrentToken.Span;
+            var fnStart = CurrentToken.Span;
 
             var isReadonly = Eat(TokenKind.ReadOnly);
-            var returnType = EatPseudoKeyword("void") ? null : ParseType(definitionToken);
-            var returnTypeSpan = functionStart.Combine(CurrentToken.Span);
+            var retType = EatPseudoKeyword("void") ? null : ParseType(definitionToken);
+            var retTypeSpan = fnStart.Combine(CurrentToken.Span);
 
-            const string hint = "A function must be defined with a return type, name, and arguments such as 'RetType myFunction(ArgType arg1, OtherArg arg2);' or 'void emptyFn();'";
+            const string hint =
+                "A function must be defined with a return type, name, and arguments such as 'RetType myFunction(ArgType arg1, OtherArg arg2);' or 'void emptyFn();'";
             var name = ExpectLexeme(TokenKind.Identifier, hint);
-            
+
             Expect(TokenKind.OpenParenthesis, hint);
 
             var argList = new List<Field>();
             var argsStart = CurrentToken.Span;
-            
+
             // read parameter list
             while (!Eat(TokenKind.CloseParenthesis))
             {
@@ -836,40 +932,42 @@ namespace Core.Parser
                 {
                     Expect(TokenKind.Comma, "Function arguments must be separated by commas");
                 }
+
                 var paramStart = CurrentToken.Span;
                 var paramType = ParseType(definitionToken);
                 var paramName = ExpectLexeme(TokenKind.Identifier, hint);
                 var paramSpan = paramStart.Combine(CurrentToken.Span);
-                
+
                 if (argList.Any(t => t.Name.Equals(paramName)))
                 {
-                    _errors.Add(new DuplicateArgumentName(definitionToken.Span.Combine(CurrentToken.Span), serviceName, serviceIndex, paramName));
+                    _errors.Add(new DuplicateArgumentName(definitionToken.Span.Combine(CurrentToken.Span), serviceName,
+                        serviceIndex, paramName));
                 }
                 else
                 {
                     argList.Add(new Field(paramName, paramType, paramSpan, null, 0, ""));
                 }
             }
-            
+
             var argsSpan = argsStart.Combine(CurrentToken.Span);
-            
+
             Expect(TokenKind.Semicolon, "Function definition must end with a ';' semicolon");
 
-            var functionSpan = functionStart.Combine(CurrentToken.Span);
-            
-            var returnStruct = new StructDefinition(
+            var fnSpan = fnStart.Combine(CurrentToken.Span);
+
+            var retStruct = new StructDefinition(
                 $"_{serviceName.ToPascalCase()}{name.ToPascalCase()}Return",
-                returnTypeSpan,
+                retTypeSpan,
                 $"Wrapped return type of '{name}' in rpc service '{serviceName}'.",
                 null,
-                returnType is null
-                    ? new List<Field> {}
-                    : new List<Field> {new("value", returnType, returnTypeSpan, null, 0, "")},
+                retType is null
+                    ? new List<Field> { }
+                    : new List<Field> { new("value", retType, retTypeSpan, null, 0, "") },
                 isReadonly
             );
-            AddDefinition(returnStruct);
+            AddDefinition(retStruct);
 
-            var argumentStruct = new StructDefinition(
+            var argStruct = new StructDefinition(
                 $"_{serviceName.ToPascalCase()}{name.ToPascalCase()}Args",
                 argsSpan,
                 $"Wrapped arguments type of '{name}' in rpc service '{serviceName}'.",
@@ -877,13 +975,13 @@ namespace Core.Parser
                 argList,
                 isReadonly
             );
-            AddDefinition(argumentStruct);
-            
-            var signature = MakeFunctionSignature(serviceName, returnStruct, argumentStruct, name, functionSpan);
+            AddDefinition(argStruct);
+
+            var signature = MakeFunctionSignature(serviceName, retStruct, argStruct, name, fnSpan);
             AddDefinition(signature);
-            
-            var function = new FunctionDefinition(name, functionSpan, definitionDocumentation, signature, argumentStruct, returnStruct);
-            return function;
+
+            return new FunctionDefinition(name, fnSpan, fnDocs, fnAttrs,
+                signature, argStruct, retStruct);
         }
 
         /// <summary>
@@ -897,22 +995,25 @@ namespace Core.Parser
             string definitionDocumentation,
             BaseAttribute? opcodeAttribute)
         {
-            ExpectAndSkip(TokenKind.Identifier, new(_universalFollowKinds.Append(TokenKind.OpenBrace)), hint: $"Did you forget to specify a name for this union?");
+            ExpectAndSkip(TokenKind.Identifier, new(_universalFollowKinds.Append(TokenKind.OpenBrace)),
+                hint: $"Did you forget to specify a name for this union?");
             Eat(TokenKind.Identifier);
             ExpectAndSkip(TokenKind.OpenBrace, new(_universalFollowKinds.Append(TokenKind.CloseBrace)));
             if (!Eat(TokenKind.OpenBrace))
             {
                 return null;
             }
+
             StartScope();
             var name = definitionToken.Lexeme;
             var branches = new List<UnionBranch>();
             var usedDiscriminators = new HashSet<uint>();
 
-            
+
             var definitionEnd = CurrentToken.Span;
             var errored = false;
-            var unionFieldFollowKinds = new HashSet<TokenKind>() { TokenKind.BlockComment, TokenKind.Number, TokenKind.CloseBrace };
+            var unionFieldFollowKinds =
+                new HashSet<TokenKind>() { TokenKind.BlockComment, TokenKind.Number, TokenKind.CloseBrace };
             while (!Eat(TokenKind.CloseBrace))
             {
                 if (errored && !unionFieldFollowKinds.Contains(CurrentToken.Kind))
@@ -920,6 +1021,7 @@ namespace Core.Parser
                     CancelScope();
                     return null;
                 }
+
                 errored = false;
                 var documentation = ConsumeBlockComments();
                 // if we've reached the end of the definition after parsing documentation we need to exit.
@@ -928,7 +1030,8 @@ namespace Core.Parser
                     break;
                 }
 
-                const string? indexHint = "Branches in a union must be explicitly indexed: union U { 1 -> struct A{}; 2 -> message B{} }";
+                const string? indexHint =
+                    "Branches in a union must be explicitly indexed: union U { 1 -> struct A{}; 2 -> message B{} }";
                 var indexToken = CurrentToken;
                 var indexLexeme = indexToken.Lexeme;
                 uint discriminator;
@@ -937,16 +1040,21 @@ namespace Core.Parser
                     Expect(TokenKind.Number, hint: indexHint);
                     if (!indexLexeme.TryParseUInt(out discriminator))
                     {
-                        throw new UnexpectedTokenException(TokenKind.Number, indexToken, "A union branch discriminator must be an unsigned integer.");
+                        throw new UnexpectedTokenException(TokenKind.Number, indexToken,
+                            "A union branch discriminator must be an unsigned integer.");
                     }
+
                     if (discriminator < 1 || discriminator > 255)
                     {
-                        _errors.Add(new UnexpectedTokenException(TokenKind.Number, indexToken, "A union branch discriminator must be between 1 and 255."));
+                        _errors.Add(new UnexpectedTokenException(TokenKind.Number, indexToken,
+                            "A union branch discriminator must be between 1 and 255."));
                     }
+
                     if (usedDiscriminators.Contains(discriminator))
                     {
                         _errors.Add(new DuplicateUnionDiscriminatorException(indexToken, name));
                     }
+
                     usedDiscriminators.Add(discriminator);
                     // Parse an arrow ("->").
                     Expect(TokenKind.Hyphen, hint: indexHint);
@@ -959,6 +1067,7 @@ namespace Core.Parser
                     SkipAndSkipUntil(new(unionFieldFollowKinds.Concat(_universalFollowKinds)));
                     continue;
                 }
+
                 var definition = ParseDefinition();
                 if (definition is null)
                 {
@@ -966,16 +1075,19 @@ namespace Core.Parser
                     CancelScope();
                     return null;
                 }
+
                 if (definition is not RecordDefinition td)
                 {
                     _errors.Add(new InvalidUnionBranchException(definition));
                     return null;
                 }
+
                 // Parsing can continue if it's a nested union, but the rest of this method depends on it being a top level definition
                 if (definition is UnionDefinition)
                 {
                     _errors.Add(new InvalidUnionBranchException(definition));
                 }
+
                 td.DiscriminatorInParent = (byte)discriminator;
                 Eat(TokenKind.Semicolon);
                 definitionEnd = CurrentToken.Span;
@@ -983,16 +1095,20 @@ namespace Core.Parser
                 {
                     definition.Documentation = documentation;
                 }
+
                 branches.Add(new UnionBranch((byte)discriminator, td));
             }
+
             var definitionSpan = definitionToken.Span.Combine(definitionEnd);
-            var unionDefinition = new UnionDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, branches);
+            var unionDefinition =
+                new UnionDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, branches);
             CloseScope(unionDefinition);
             if (unionDefinition.Branches.Count == 0)
             {
                 _errors.Add(new EmptyUnionException(unionDefinition));
                 // throw new EmptyUnionException(unionDefinition);
             }
+
             return unionDefinition;
         }
 
@@ -1020,6 +1136,7 @@ namespace Core.Parser
                     // No problem parsing past this, just add it to the errors list
                     _errors.Add(new InvalidMapKeyTypeException(keyType));
                 }
+
                 Expect(TokenKind.Comma, hint: mapHint);
                 var valueType = ParseType(definitionToken);
                 span = span.Combine(CurrentToken.Span);
@@ -1053,7 +1170,8 @@ namespace Core.Parser
             while (Eat(TokenKind.OpenBracket))
             {
                 span = span.Combine(CurrentToken.Span);
-                Expect(TokenKind.CloseBracket, hint: "The syntax for array types is T[]. You can't specify a fixed size.");
+                Expect(TokenKind.CloseBracket,
+                    hint: "The syntax for array types is T[]. You can't specify a fixed size.");
                 type = new ArrayType(type, span, $"{type.AsString}[]");
             }
 
@@ -1076,7 +1194,8 @@ namespace Core.Parser
             var output = new Stack<Expression>();
 
             int Precedence(Token token) =>
-                token.Kind switch {
+                token.Kind switch
+                {
                     TokenKind.OpenCaret => 3,
                     TokenKind.Ampersand => 2,
                     TokenKind.VerticalLine => 1,
@@ -1091,6 +1210,7 @@ namespace Core.Parser
                     Expect(TokenKind.OpenCaret, "I was trying to parse a bit-shift left operator (<<).");
                     return true;
                 }
+
                 // & or |
                 return Eat(TokenKind.Ampersand) || Eat(TokenKind.VerticalLine);
             }
@@ -1159,17 +1279,19 @@ namespace Core.Parser
                         PopOperatorStack();
                         if (operatorStack.Count == 0) throw new UnmatchedParenthesisException(token);
                     }
+
                     PopOperatorStack();
                 }
                 else if (EatOperator())
                 {
                     while (operatorStack.Count > 0
-                        && operatorStack.Peek() is Token o2
-                        && o2.Kind != TokenKind.OpenParenthesis
-                        && Precedence(o2) >= Precedence(token))
+                           && operatorStack.Peek() is Token o2
+                           && o2.Kind != TokenKind.OpenParenthesis
+                           && Precedence(o2) >= Precedence(token))
                     {
                         PopOperatorStack();
                     }
+
                     operatorStack.Push(token);
                 }
                 else if (Eat(TokenKind.Identifier))
@@ -1179,6 +1301,7 @@ namespace Core.Parser
                     {
                         throw new UnknownIdentifierException(token);
                     }
+
                     output.Push(new LiteralExpression(token.Span, value));
                 }
                 else
@@ -1193,18 +1316,22 @@ namespace Core.Parser
                 {
                     throw new UnmatchedParenthesisException(operatorStack.Peek());
                 }
+
                 PopOperatorStack();
             }
+
             if (output.Count != 1) throw new MalformedExpressionException(CurrentToken);
             return output.Pop();
         }
+
         private static bool TryParseBigInteger(string lexeme, out BigInteger value)
         {
             return lexeme.ToLowerInvariant().StartsWith("0x")
-                ? BigInteger.TryParse(lexeme.Substring(2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out value)
+                ? BigInteger.TryParse(lexeme.Substring(2), NumberStyles.HexNumber, CultureInfo.InvariantCulture,
+                    out value)
                 : BigInteger.TryParse(lexeme, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
         }
-        
+
         private ConstDefinition MakeFunctionSignature(string serviceName, StructDefinition returnStruct,
             StructDefinition argumentStruct, string functionName, Span functionSpan)
         {
@@ -1212,7 +1339,7 @@ namespace Core.Parser
             TypeSignature(builder, returnStruct);
             TypeSignature(builder, argumentStruct);
             var textSignature = builder.ToString();
-            
+
             var binarySignature = ShortMD5(textSignature);
             var signature = new ConstDefinition(
                 $"_{serviceName.ToPascalCase()}{functionName.ToPascalCase()}Signature",
@@ -1269,15 +1396,17 @@ namespace Core.Parser
             {
                 case StructDefinition sd:
                     builder.Append('{');
-                    
+
                     foreach (var (f, i) in sd.Fields.Enumerated())
                     {
                         if (i > 0)
                         {
                             builder.Append(',');
                         }
+
                         TypeSignature(builder, f.Type);
                     }
+
                     builder.Append('}');
                     break;
                 case MessageDefinition md:
@@ -1288,10 +1417,12 @@ namespace Core.Parser
                         {
                             builder.Append(',');
                         }
+
                         builder.Append(f.ConstantValue);
                         builder.Append(':');
                         TypeSignature(builder, f.Type);
                     }
+
                     builder.Append('}');
                     break;
                 case EnumDefinition ed:
@@ -1306,10 +1437,12 @@ namespace Core.Parser
                         {
                             builder.Append(',');
                         }
+
                         builder.Append(b.Discriminator);
                         builder.Append(':');
                         TypeSignature(builder, b.Definition);
                     }
+
                     builder.Append('>');
                     break;
                 default:

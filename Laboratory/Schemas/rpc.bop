@@ -5,7 +5,9 @@ message Msg {
 }
 
 service Hello {
+    /* Test docs */ 
     1 -> void world();
+    [deprecated("Deprecated for testing")]
     2 -> string[] get_messages(uint32 max);
     4 -> bool check(string name, byte[] hash);
     5 -> Msg respond(Msg input);

@@ -1012,6 +1012,8 @@ namespace Core.Generators.Rust
                     foreach (var b in d.Branches.OrderBy(d => d.Discriminator))
                     {
                         var fn = b.Definition;
+                        WriteDocumentation(bldr, fn.Documentation);
+                        WriteDeprecation(bldr, fn.OpcodeAttribute);
                         var fname = MakeFnIdent(fn.Name);
                         var args = fn.ArgumentStruct.Fields.Select(f =>
                             (MakeFnArgIdent(f.Name), TypeName(f.Type, OwnershipType.Owned))).ToArray();
