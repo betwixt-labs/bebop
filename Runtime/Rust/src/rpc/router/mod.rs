@@ -1,14 +1,11 @@
 use std::future::Future;
-use std::io::Write;
 use std::ops::Deref;
 use std::pin::Pin;
 use std::sync::{Arc, Weak};
 
-use crate::prelude::error::TransportResult;
-use crate::{OwnedRecord, Record};
 pub use context::RouterContext;
 
-use crate::rpc::error::LocalRpcResponse;
+use crate::rpc::error::TransportResult;
 use crate::rpc::transport::TransportProtocol;
 use crate::rpc::Datagram;
 
@@ -25,7 +22,7 @@ pub trait ServiceHandlers {
 
     /// Send a response back over the transport. A secondary version of this will be generated and
     /// pass responsibility onwards.
-    fn _send_response(&self, datagram: &Datagram) -> TransportResult;
+    fn _send_response(&self, datagram: &Datagram) -> Pin<Box<dyn Future<Output = TransportResult>>>;
 
     /// Use opcode to determine which function to call, whether the signature matches,
     /// how to read the buffer, and then convert the returned values and send them as a
@@ -35,10 +32,7 @@ pub trait ServiceHandlers {
     ///
     /// This returns a future instead of being async because it must decode datagram before starting
     /// the async section.
-    fn _recv_call(
-        &self,
-        datagram: &Datagram,
-    ) -> Option<Pin<Box<dyn Future<Output = ()>>>>;
+    fn _recv_call(&self, datagram: &Datagram) -> Option<Pin<Box<dyn Future<Output = ()>>>>;
 }
 
 /// Wrappers around the process of calling remote functions. Implementations are generated from

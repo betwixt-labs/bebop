@@ -6,15 +6,21 @@ use std::num::NonZeroU16;
 use std::time::Duration;
 
 pub use datagram::{
-    RpcDatagram as Datagram, RpcRequestHeader as RequestHeader, RpcResponseHeader as ResponseHeader,
+    owned::{
+        RpcServiceNameArgs as OwnedRpcServiceNameArgs,
+        RpcServiceNameReturn as OwnedRpcServiceNameReturn,
+    },
+    RpcDatagram as Datagram, RpcRequestHeader as RequestHeader,
+    RpcResponseHeader as ResponseHeader, RpcServiceNameArgs, RpcServiceNameReturn,
 };
+pub use error::*;
 pub use router::*;
 pub use transport::{TransportHandler, TransportProtocol};
 
 use crate::rpc::datagram::RpcDatagram;
 
 mod datagram;
-pub mod error;
+mod error;
 mod router;
 mod transport;
 

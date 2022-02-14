@@ -999,6 +999,8 @@ namespace Core.Generators.Rust
             var ident = MakeDefIdent(d.Name);
             var requestsFeat = $"#[cfg(feature = \"{MakeFeatureIdent(ident)}-requests\")]";
             var handlersFeat = $"#[cfg(feature = \"{MakeFeatureIdent(ident)}-handlers\")]";
+            var tlConstraints =
+                "T: 'static + ::bebop::rpc::TransportProtocol, L: 'static + ::bebop::rpc::ServiceHandlers";
 
             WriteDocumentation(bldr, d.Documentation);
             bldr.AppendLine(handlersFeat)
@@ -1006,7 +1008,7 @@ namespace Core.Generators.Rust
                 {
                     bldr.AppendLine("/// Send a response to the transport.")
                         .AppendLine("/// The implementation will *probably* be to call the router context's `send` function.")
-                        .AppendLine($"fn _send_response(&self, datagram: &::bebop::Datagram) -> {DynFutureType()};");
+                        .AppendLine($"fn _send_response(&self, datagram: &::bebop::rpc::Datagram) -> {DynFutureType("::bebop::rpc::TransportResult")};");
                     foreach (var b in d.Branches.OrderBy(d => d.Discriminator))
                     {
                         var fn = b.Definition;
@@ -1021,19 +1023,25 @@ namespace Core.Generators.Rust
                         };
                         var argsStr = string.Join(", ",
                             new[] { "&self" }.Concat(args.Select(i => $"{i.Item1}: {i.Item2}")));
-                        var responseType = $"::bebop::LocalRpcResponse<{retType}>";
+                        var responseType = $"::bebop::rpc::LocalRpcResponse<{retType}>";
                         bldr.AppendLine($"fn {fname}({argsStr}) -> {DynFutureType(responseType)};");
                     }
                 })
                 .AppendLine()
                 .AppendLine(handlersFeat)
-                .AppendLine("#[::async_trait::async_trait]")
-                .CodeBlock($"impl ::bebop::ServiceHandlers<RpcDatagram> for {ident}Handlers", _tab, () =>
+                .CodeBlock($"impl ::bebop::rpc::ServiceHandlers for dyn {ident}Handlers", _tab, () =>
                 {
                     bldr.AppendLine($"const NAME: &'static str = \"{ident}\";")
                         .AppendLine()
-                        .CodeBlock("async fn _recv_call(&self, datagram: RpcDatagram)", _tab, () =>
+                        .CodeBlock($"fn _send_response(&self, datagram: &::bebop::rpc::Datagram) -> {DynFutureType("::bebop::rpc::TransportResult")}", _tab, () =>
                         {
+                            // this is not recursion, it just passes to the user implementation 
+                            bldr.AppendLine("self._send_response(datagram)");
+                        })
+                        .AppendLine()
+                        .CodeBlock($"fn _recv_call(&self, datagram: &::bebop::rpc::Datagram) -> ::core::option::Option<{DynFutureType()}>", _tab, () =>
+                        {
+                            bldr.AppendLine("todo!()");
                             // TODO:
                             //  - Deserialize datagram
                             //  - Signature checks
@@ -1044,34 +1052,33 @@ namespace Core.Generators.Rust
 
             WriteDocumentation(bldr, d.Documentation);
             bldr.AppendLine(requestsFeat)
-                .AppendLine("#[derive(Debug)]")
                 .AppendLine(
-                    $"pub struct {ident}Requests<T, L>(::std::sync::Weak<::bebop::RouterContext<T, L>>);")
+                    $"pub struct {ident}Requests<T, L>(::std::sync::Weak<::bebop::rpc::RouterContext<T, L>>);")
                 .AppendLine()
                 .AppendLine(requestsFeat)
-                .CodeBlock($"impl {ident}Requests<T, L>", _tab, () =>
+                .CodeBlock($"impl<{tlConstraints}> {ident}Requests<T, L>", _tab, () =>
                 {
-                    bldr.CodeBlock("pub async fn service_name(&self) -> ::bebop::RemoteRpcResponse<String>", _tab, () =>
+                    bldr.CodeBlock("pub async fn service_name(&self) -> ::bebop::rpc::RemoteRpcResponse<::std::string::String>", _tab, () =>
                         {
-                            bldr.AppendLine($"self.service_name_timeout(None).await");
+                            bldr.AppendLine("self.service_name_timeout(None).await");
                         })
                         .AppendLine()
                         .CodeBlock(
-                            "pub async fn service_name_timeout(&self, timeout: Option<::core::time::Duration>) -> ::bebop::RemoteRpcResponse<String>",
+                            "pub async fn service_name_timeout(&self, timeout: ::core::option::Option<::core::time::Duration>) -> ::bebop::rpc::RemoteRpcResponse<::std::string::String>",
                             _tab, () =>
                             {
-                                WriteRpcRequest(bldr, 0, "::bebop::RpcServiceNameReturn", "::bebop::RpcServiceArgs {}");
+                                WriteRpcRequest(bldr, 0, "::bebop::rpc::OwnedRpcServiceNameReturn", "::bebop::rpc::RpcServiceNameArgs {}");
                             });
                     // TODO: generate function calls to transport
                 })
                 .AppendLine()
                 .AppendLine(requestsFeat)
-                .CodeBlock($"impl<T, L> ::bebop::ServiceRequests<RpcDatagram, T, L> for {ident}Requests<T, L>", _tab,
+                .CodeBlock($"impl<{tlConstraints}> ::bebop::rpc::ServiceRequests<T, L> for {ident}Requests<T, L>", _tab,
                     () =>
                     {
                         bldr.AppendLine($"const NAME: &'static str = \"{ident}\";")
                             .AppendLine()
-                            .CodeBlock("fn new(ctx: ::std::sync::Weak<::bebop::RouterContext<T, L>>) -> Self", _tab,
+                            .CodeBlock("fn new(ctx: ::std::sync::Weak<::bebop::rpc::RouterContext<T, L>>) -> Self", _tab,
                                 () =>
                                 {
                                     bldr.AppendLine("Self(ctx)");
@@ -1083,17 +1090,22 @@ namespace Core.Generators.Rust
             string argsStruct, bool isVoid = false)
         {
             bldr.Append("self.0.upgrade()")
-                .AppendEnd(".ok_or(::bebop::RemoteRpcError::TransportError(::bebop::TransportError::NotConnected))?")
-                .CodeBlock($".request::<{remoteReturnType}>", _tab, () =>
+                .AppendEnd(".ok_or(::bebop::rpc::RemoteRpcError::TransportError(::bebop::rpc::TransportError::NotConnected))?")
+                .CodeBlock($".request::<_, {remoteReturnType}>", _tab, () =>
                 {
                     bldr.AppendLine($"{opcode},")
-                        .AppendLine("timeout.and_then(|t| ::core::num::NonZeroU16::new(t.as_secs())),")
+                        .CodeBlock("timeout.and_then(|t|", _tab, () =>
+                        {
+                            bldr.AppendLine("let t = t.as_secs();")
+                                .AppendLine("debug_assert!(t < u16::MAX as u64, \"Maximum timeout is 2^16-1 seconds.\");")
+                                .AppendLine("::core::num::NonZeroU16::new(t as u16)");
+                        }, "{", "}),")
                         .AppendLine("0,")
                         .AppendLine($"&{argsStruct}");
                 }, "(", ").await");
             if (!isVoid)
             {
-                bldr.AppendLine(".map(|r| r.value)");
+                bldr.AppendLine(".map(|r| r.value.into())");
             }
         }
 
@@ -1272,7 +1284,7 @@ namespace Core.Generators.Rust
                         {
                             OwnershipType.Borrowed => "&'raw str",
                             OwnershipType.Constant => "&str",
-                            OwnershipType.Owned => "String",
+                            OwnershipType.Owned => "::std::string::String",
                             _ => throw new ArgumentOutOfRangeException(nameof(ot))
                         },
                         BaseType.Guid => "::bebop::Guid",

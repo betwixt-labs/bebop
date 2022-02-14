@@ -1218,7 +1218,7 @@ namespace Core.Parser
                 $"_{serviceName.ToPascalCase()}{functionName.ToPascalCase()}Signature",
                 functionSpan,
                 $"hash(\"{textSignature}\")",
-                new IntegerLiteral(new ScalarType(BaseType.Int32, functionSpan, "signature"), functionSpan,
+                new IntegerLiteral(new ScalarType(BaseType.UInt32, functionSpan, "signature"), functionSpan,
                     $"0x{binarySignature:x8}")
             );
             return signature;

@@ -76,15 +76,16 @@ where
     }
 
     /// Send a request to the remote. This is used by the generated code.
-    pub async fn request<'a, 'b: 'a, R>(
+    pub async fn request<'a, 'b: 'a, I, O>(
         self: &Arc<Self>,
         opcode: u16,
         timeout: Option<NonZeroU16>,
         signature: u32,
-        record: &'a impl Record<'b>,
-    ) -> RemoteRpcResponse<R>
+        record: &'a I,
+    ) -> RemoteRpcResponse<O>
     where
-        R: 'static + OwnedRecord,
+        I: Record<'b>,
+        O: 'static + OwnedRecord,
     {
         self.request_raw(opcode, timeout, signature, &record.serialize_to_vec()?)
             .await
