@@ -469,6 +469,7 @@ dependencies = [
  "async-trait",
  "bebop",
  "static_assertions",
+ "tokio",
 ]
 
 [[package]]

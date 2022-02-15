@@ -20,6 +20,8 @@ use bebop::FixedSized as _;
 use core::convert::TryInto as _;
 use std::io::Write as _;
 
+pub type _DynFut<T> = ::core::pin::Pin<::std::boxed::Box<dyn::core::future::Future<Output = T>>>;
+
 #[repr(u32)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Instrument {
@@ -512,11 +514,14 @@ pub mod owned {
     use core::convert::TryInto as _;
     use std::io::Write as _;
 
+    pub type _DynFut<T> =
+        ::core::pin::Pin<::std::boxed::Box<dyn::core::future::Future<Output = T>>>;
+
     pub use super::Instrument;
 
     #[derive(Clone, Debug, PartialEq)]
     pub struct Performer {
-        pub name: String,
+        pub name: ::std::string::String,
         pub plays: Instrument,
     }
 
@@ -531,7 +536,7 @@ pub mod owned {
 
     impl<'raw> ::bebop::SubRecord<'raw> for Performer {
         const MIN_SERIALIZED_SIZE: usize =
-            <String>::MIN_SERIALIZED_SIZE + <Instrument>::MIN_SERIALIZED_SIZE;
+            <::std::string::String>::MIN_SERIALIZED_SIZE + <Instrument>::MIN_SERIALIZED_SIZE;
 
         #[inline]
         fn serialized_size(&self) -> usize {
@@ -572,7 +577,7 @@ pub mod owned {
     #[derive(Clone, Debug, PartialEq, Default)]
     pub struct Song {
         /// Field 1
-        pub title: ::core::option::Option<String>,
+        pub title: ::core::option::Option<::std::string::String>,
         /// Field 2
         pub year: ::core::option::Option<u16>,
         /// Field 3
@@ -739,7 +744,7 @@ pub mod owned {
             /// Field 1
             tracks: ::core::option::Option<::std::vec::Vec<Song>>,
             /// Field 2
-            venue_name: ::core::option::Option<String>,
+            venue_name: ::core::option::Option<::std::string::String>,
             /// Field 3
             concert_date: ::core::option::Option<::bebop::Date>,
         },
@@ -952,7 +957,7 @@ pub mod owned {
 
     #[derive(Clone, Debug, PartialEq)]
     pub struct Library {
-        pub albums: ::std::collections::HashMap<String, Album>,
+        pub albums: ::std::collections::HashMap<::std::string::String, Album>,
     }
 
     impl<'raw> ::core::convert::From<super::Library<'raw>> for Library {
@@ -969,7 +974,7 @@ pub mod owned {
 
     impl<'raw> ::bebop::SubRecord<'raw> for Library {
         const MIN_SERIALIZED_SIZE: usize =
-            <::std::collections::HashMap<String, Album>>::MIN_SERIALIZED_SIZE;
+            <::std::collections::HashMap<::std::string::String, Album>>::MIN_SERIALIZED_SIZE;
 
         #[inline]
         fn serialized_size(&self) -> usize {

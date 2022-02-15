@@ -162,15 +162,15 @@ namespace Core.Generators.Rust
 
         #region definition_writers
 
-        private void WriteStandardImportsForModule(IndentedStringBuilder builder) =>
-            builder
-                .AppendLine("#![allow(warnings)]")
+        private void WriteStandardImportsForModule(IndentedStringBuilder bldr) =>
+            bldr.AppendLine("#![allow(warnings)]")
                 .AppendLine()
                 .AppendLine("use ::std::io::Write as _;")
                 .AppendLine("use ::core::convert::TryInto as _;") // we can remove this for Rust 2021
                 .AppendLine("use ::bebop::FixedSized as _;")
                 .AppendLine()
-                .AppendLine("pub type _DynFut<T> = ::core::pin::Pin<::std::boxed::Box<dyn ::core::future::Future<Output = T>>>;")
+                .AppendLine(
+                    "pub type _DynFut<T> = ::core::pin::Pin<::std::boxed::Box<dyn ::core::future::Future<Output = T>>>;")
                 .AppendLine();
 
         private void WriteConstDefinition(IndentedStringBuilder builder, ConstDefinition d, CodeRegion region)
@@ -1006,10 +1006,13 @@ namespace Core.Generators.Rust
             bldr.AppendLine(handlersFeat)
                 .CodeBlock($"pub trait {ident}Handlers", _tab, () =>
                 {
-                    bldr.AppendLine("/// Send a response to the transport.")
-                        .AppendLine("/// The implementation will *probably* be to call the router context's `send` function.")
-                        .AppendLine($"fn _send_response(&self, datagram: &::bebop::rpc::Datagram) -> {DynFutureType("::bebop::rpc::TransportResult")};");
-                    foreach (var b in d.Branches.OrderBy(d => d.Discriminator))
+                    bldr.AppendLine("/// Get a handle on which to send a response. This should only use one mpsc setup and make")
+                        .AppendLine("/// a clone of the transmitter each time. We need this because we don't know the lifetime")
+                        .AppendLine("/// of `&self` so it allows us to have an intermediary without resorting to the incomplete")
+                        .AppendLine("/// type `Self` in an `Arc` (which is impossible).")
+                        .AppendLine("/// This does require the feature `tokio/sync`.")
+                        .AppendLine("fn _response_tx(&self) -> ::tokio::sync::mpsc::Sender<&::bebop::rpc::Datagram>;");
+                    foreach (var b in d.Branches.OrderBy(d => d.Discriminator).Skip(1))
                     {
                         var fn = b.Definition;
                         WriteDocumentation(bldr, fn.Documentation);
@@ -1035,21 +1038,52 @@ namespace Core.Generators.Rust
                 {
                     bldr.AppendLine($"const NAME: &'static str = \"{ident}\";")
                         .AppendLine()
-                        .CodeBlock($"fn _send_response(&self, datagram: &::bebop::rpc::Datagram) -> {DynFutureType("::bebop::rpc::TransportResult")}", _tab, () =>
-                        {
-                            // this is not recursion, it just passes to the user implementation 
-                            bldr.AppendLine("self._send_response(datagram)");
-                        })
-                        .AppendLine()
-                        .CodeBlock($"fn _recv_call(&self, datagram: &::bebop::rpc::Datagram) -> ::core::option::Option<{DynFutureType()}>", _tab, () =>
-                        {
-                            bldr.AppendLine("todo!()");
-                            // TODO:
-                            //  - Deserialize datagram
-                            //  - Signature checks
-                            //  - Call appropriate function
-                            //  - Submit return datagram to context 
-                        });
+                        .CodeBlock(
+                            $"fn _recv_call(&self, datagram: &::bebop::rpc::Datagram) -> {DynFutureType()}",
+                            _tab, () =>
+                            {
+                                bldr.CodeBlock(
+                                    "if let ::bebop::rpc::Datagram::RpcRequestDatagram { header, opcode, data } = datagram",
+                                    _tab, () =>
+                                    {
+                                        bldr.AppendLine("let tx = self._response_tx();")
+                                            .AppendLine("let response_header = ::bebop::rpc::ResponseHeader { id: header.id };")
+                                            .CodeBlock("let response = match opcode", _tab, () =>
+                                            {
+                                                // technically should use the response struct, but it is just going to be this anyway and this saves us from copying the data into a temp buffer.
+                                                bldr.AppendLine(
+                                                    "0 => Box::pin(async move { tx.send(&::bebop::rpc::Datagram::RpcResponseOk { header: response_header, data: ::bebop::SliceWrapper::Cooked(Self::NAME.as_bytes()) }).await; }),");
+
+                                                foreach (var b in d.Branches.OrderBy(d => d.Discriminator).Skip(1))
+                                                {
+                                                    bldr.CodeBlock($"{b.Discriminator} =>", _tab, () =>
+                                                    {
+                                                        var fnName = MakeFnIdent(b.Definition.Name);
+                                                        bldr.AppendLine($"let fut = self.{fnName}()"); // TODO: args
+                                                        bldr.CodeBlock("Box::pin ", _tab, () =>
+                                                        {
+                                                            bldr.CodeBlock("let response = match fut.await", _tab, () =>
+                                                                {
+                                                                    // TODO: create correct datagram type
+                                                                    bldr.AppendLine("Ok(_) => ")
+                                                                })
+                                                                .AppendLine("tx.send(response).await;");
+                                                        }, "(async move {", "})");
+                                                    });
+                                                }
+
+                                                bldr.AppendLine(
+                                                    "_ => Box::pin(async move { tx.send(&::bebop::rpc::Datagram::RpcResponseUnknownCall { header: response_header }).await; }),");
+                                            });
+                                    }, "{",
+                                    "} else { unreachable!(\"`_recv_call` Should only ever be provided with Requests.\") }");
+
+                                // TODO:
+                                //  - Deserialize datagram
+                                //  - Signature checks
+                                //  - Call appropriate function
+                                //  - Submit return datagram to context 
+                            });
                 }).AppendLine();
 
             WriteDocumentation(bldr, d.Documentation);
@@ -1060,16 +1094,19 @@ namespace Core.Generators.Rust
                 .AppendLine(requestsFeat)
                 .CodeBlock($"impl<{tlConstraints}> {ident}Requests<T, L>", _tab, () =>
                 {
-                    bldr.CodeBlock("pub async fn service_name(&self) -> ::bebop::rpc::RemoteRpcResponse<::std::string::String>", _tab, () =>
-                        {
-                            bldr.AppendLine("self.service_name_timeout(None).await");
-                        })
+                    bldr.CodeBlock(
+                            "pub async fn service_name(&self) -> ::bebop::rpc::RemoteRpcResponse<::std::string::String>",
+                            _tab, () =>
+                            {
+                                bldr.AppendLine("self.service_name_timeout(None).await");
+                            })
                         .AppendLine()
                         .CodeBlock(
                             "pub async fn service_name_timeout(&self, timeout: ::core::option::Option<::core::time::Duration>) -> ::bebop::rpc::RemoteRpcResponse<::std::string::String>",
                             _tab, () =>
                             {
-                                WriteRpcRequest(bldr, 0, "::bebop::rpc::OwnedRpcServiceNameReturn", "::bebop::rpc::RpcServiceNameArgs {}");
+                                WriteRpcRequest(bldr, 0, "::bebop::rpc::OwnedRpcServiceNameReturn",
+                                    "::bebop::rpc::RpcServiceNameArgs {}");
                             });
                     // TODO: generate function calls to transport
                 })
@@ -1080,7 +1117,8 @@ namespace Core.Generators.Rust
                     {
                         bldr.AppendLine($"const NAME: &'static str = \"{ident}\";")
                             .AppendLine()
-                            .CodeBlock("fn new(ctx: ::std::sync::Weak<::bebop::rpc::RouterContext<T, L>>) -> Self", _tab,
+                            .CodeBlock("fn new(ctx: ::std::sync::Weak<::bebop::rpc::RouterContext<T, L>>) -> Self",
+                                _tab,
                                 () =>
                                 {
                                     bldr.AppendLine("Self(ctx)");
@@ -1092,14 +1130,16 @@ namespace Core.Generators.Rust
             string argsStruct, bool isVoid = false)
         {
             bldr.Append("self.0.upgrade()")
-                .AppendEnd(".ok_or(::bebop::rpc::RemoteRpcError::TransportError(::bebop::rpc::TransportError::NotConnected))?")
+                .AppendEnd(
+                    ".ok_or(::bebop::rpc::RemoteRpcError::TransportError(::bebop::rpc::TransportError::NotConnected))?")
                 .CodeBlock($".request::<_, {remoteReturnType}>", _tab, () =>
                 {
                     bldr.AppendLine($"{opcode},")
                         .CodeBlock("timeout.and_then(|t|", _tab, () =>
                         {
                             bldr.AppendLine("let t = t.as_secs();")
-                                .AppendLine("debug_assert!(t < u16::MAX as u64, \"Maximum timeout is 2^16-1 seconds.\");")
+                                .AppendLine(
+                                    "debug_assert!(t < u16::MAX as u64, \"Maximum timeout is 2^16-1 seconds.\");")
                                 .AppendLine("::core::num::NonZeroU16::new(t as u16)");
                         }, "{", "}),")
                         .AppendLine("0,")

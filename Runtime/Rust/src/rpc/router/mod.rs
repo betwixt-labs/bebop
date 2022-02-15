@@ -20,10 +20,6 @@ mod context;
 pub trait ServiceHandlers {
     const NAME: &'static str;
 
-    /// Send a response back over the transport. A secondary version of this will be generated and
-    /// pass responsibility onwards.
-    fn _send_response(&self, datagram: &Datagram) -> Pin<Box<dyn Future<Output = TransportResult>>>;
-
     /// Use opcode to determine which function to call, whether the signature matches,
     /// how to read the buffer, and then convert the returned values and send them as a
     /// response
@@ -32,7 +28,7 @@ pub trait ServiceHandlers {
     ///
     /// This returns a future instead of being async because it must decode datagram before starting
     /// the async section.
-    fn _recv_call(&self, datagram: &Datagram) -> Option<Pin<Box<dyn Future<Output = ()>>>>;
+    fn _recv_call(&self, datagram: &Datagram) -> Pin<Box<dyn Future<Output = ()>>>;
 }
 
 /// Wrappers around the process of calling remote functions. Implementations are generated from

@@ -63,7 +63,7 @@ where
         self.transport.set_handler(Box::pin(move |datagram| {
             if let Some(ctx) = weak_ctx.upgrade() {
                 if datagram.is_request() {
-                    ctx.recv_request(datagram)
+                    Some(ctx.recv_request(datagram))
                 } else {
                     ctx.recv_response(datagram);
                     None
@@ -144,7 +144,7 @@ where
     fn recv_request<'a, 'b: 'a>(
         &self,
         datagram: &'a Datagram<'b>,
-    ) -> Option<Pin<Box<dyn Future<Output = ()>>>> {
+    ) -> Pin<Box<dyn Future<Output = ()>>> {
         debug_assert!(datagram.is_request(), "Datagram must be a request");
         self.local_service._recv_call(datagram)
     }
