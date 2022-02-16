@@ -168,6 +168,7 @@ namespace Core.Generators.Rust
                 .AppendLine("use ::std::io::Write as _;")
                 .AppendLine("use ::core::convert::TryInto as _;") // we can remove this for Rust 2021
                 .AppendLine("use ::bebop::FixedSized as _;")
+                .AppendLine("use ::bebop::Record as _;")
                 .AppendLine()
                 .AppendLine(
                     "pub type _DynFut<T> = ::core::pin::Pin<::std::boxed::Box<dyn ::core::future::Future<Output = T>>>;")
@@ -1006,12 +1007,16 @@ namespace Core.Generators.Rust
             bldr.AppendLine(handlersFeat)
                 .CodeBlock($"pub trait {ident}Handlers", _tab, () =>
                 {
-                    bldr.AppendLine("/// Get a handle on which to send a response. This should only use one mpsc setup and make")
-                        .AppendLine("/// a clone of the transmitter each time. We need this because we don't know the lifetime")
-                        .AppendLine("/// of `&self` so it allows us to have an intermediary without resorting to the incomplete")
+                    bldr.AppendLine(
+                            "/// Get a handle on which to send a response. This should only use one mpsc setup and make")
+                        .AppendLine(
+                            "/// a clone of the transmitter each time. We need this because we don't know the lifetime")
+                        .AppendLine(
+                            "/// of `&self` so it allows us to have an intermediary without resorting to the incomplete")
                         .AppendLine("/// type `Self` in an `Arc` (which is impossible).")
                         .AppendLine("/// This does require the feature `tokio/sync`.")
-                        .AppendLine("fn _response_tx(&self) -> ::tokio::sync::mpsc::Sender<&::bebop::rpc::Datagram>;");
+                        .AppendLine(
+                            "fn _response_tx(&self) -> ::tokio::sync::mpsc::Sender<::bebop::rpc::OwnedDatagram>;");
                     foreach (var b in d.Branches.OrderBy(d => d.Discriminator).Skip(1))
                     {
                         var fn = b.Definition;
@@ -1043,37 +1048,65 @@ namespace Core.Generators.Rust
                             _tab, () =>
                             {
                                 bldr.CodeBlock(
-                                    "if let ::bebop::rpc::Datagram::RpcRequestDatagram { header, opcode, data } = datagram",
+                                    "if let ::bebop::rpc::Datagram::RpcRequestDatagram { header: req_header, opcode, data } = datagram",
                                     _tab, () =>
                                     {
                                         bldr.AppendLine("let tx = self._response_tx();")
-                                            .AppendLine("let response_header = ::bebop::rpc::ResponseHeader { id: header.id };")
-                                            .CodeBlock("let response = match opcode", _tab, () =>
+                                            .AppendLine(
+                                                "let header = ::bebop::rpc::ResponseHeader { id: req_header.id };")
+                                            .CodeBlock("match opcode", _tab, () =>
                                             {
                                                 // technically should use the response struct, but it is just going to be this anyway and this saves us from copying the data into a temp buffer.
                                                 bldr.AppendLine(
-                                                    "0 => Box::pin(async move { tx.send(&::bebop::rpc::Datagram::RpcResponseOk { header: response_header, data: ::bebop::SliceWrapper::Cooked(Self::NAME.as_bytes()) }).await; }),");
+                                                    "0 => Box::pin(async move { tx.send(::bebop::rpc::OwnedDatagram::RpcResponseOk { header, data: Self::NAME.into() }).await; }),");
 
                                                 foreach (var b in d.Branches.OrderBy(d => d.Discriminator).Skip(1))
                                                 {
                                                     bldr.CodeBlock($"{b.Discriminator} =>", _tab, () =>
                                                     {
                                                         var fnName = MakeFnIdent(b.Definition.Name);
-                                                        bldr.AppendLine($"let fut = self.{fnName}()"); // TODO: args
+                                                        bldr.AppendLine($"let fut = self.{fnName}();"); // TODO: args
                                                         bldr.CodeBlock("Box::pin ", _tab, () =>
                                                         {
-                                                            bldr.CodeBlock("let response = match fut.await", _tab, () =>
+                                                            bldr.AppendLine("let rsp = fut.await;");
+                                                            bldr.CodeBlock("let rsp_dgram = match rsp", _tab, () =>
                                                                 {
-                                                                    // TODO: create correct datagram type
-                                                                    bldr.AppendLine("Ok(_) => ")
-                                                                })
-                                                                .AppendLine("tx.send(response).await;");
+                                                                    bldr.CodeBlock("Ok(value) =>", _tab, () =>
+                                                                        {
+                                                                            if (b.Definition.ReturnStruct.Fields
+                                                                                    .Count == 0)
+                                                                            {
+                                                                                // void return
+                                                                                bldr.AppendLine(
+                                                                                    "let data = Vec::new();");
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                var retName =
+                                                                                    MakeDefIdent(b.Definition
+                                                                                        .ReturnStruct.Name);
+                                                                                // value return
+                                                                                bldr.AppendLine(
+                                                                                        $"let data = ({retName} {{ value }})")
+                                                                                    .AppendLine(
+                                                                                        ".serialize_to_vec()")
+                                                                                    .AppendLine(
+                                                                                        ".expect(\"Error serializing response!\");");
+                                                                            }
+
+                                                                            bldr.AppendLine(
+                                                                                "::bebop::rpc::OwnedDatagram::RpcResponseOk { header, data }");
+                                                                        })
+                                                                        .AppendLine(
+                                                                            "Err(err) => err.as_datagram(header).into(),");
+                                                                }, "{", "};")
+                                                                .AppendLine("tx.send(rsp_dgram).await;");
                                                         }, "(async move {", "})");
                                                     });
                                                 }
 
                                                 bldr.AppendLine(
-                                                    "_ => Box::pin(async move { tx.send(&::bebop::rpc::Datagram::RpcResponseUnknownCall { header: response_header }).await; }),");
+                                                    "_ => Box::pin(async move { tx.send(::bebop::rpc::OwnedDatagram::RpcResponseUnknownCall { header }).await; }),");
                                             });
                                     }, "{",
                                     "} else { unreachable!(\"`_recv_call` Should only ever be provided with Requests.\") }");

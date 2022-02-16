@@ -10,7 +10,7 @@ pub use datagram::{
         RpcServiceNameArgs as OwnedRpcServiceNameArgs,
         RpcServiceNameReturn as OwnedRpcServiceNameReturn,
     },
-    RpcDatagram as Datagram, RpcRequestHeader as RequestHeader,
+    RpcDatagram as Datagram, owned::RpcDatagram as OwnedDatagram, RpcRequestHeader as RequestHeader,
     RpcResponseHeader as ResponseHeader, RpcServiceNameArgs, RpcServiceNameReturn,
 };
 pub use error::*;
