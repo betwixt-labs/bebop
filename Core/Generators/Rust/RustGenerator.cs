@@ -1127,16 +1127,35 @@ namespace Core.Generators.Rust
             //  - Call appropriate function
             var fnName = MakeFnIdent(fnDef.Name);
             var sigName = MakeConstIdent(fnDef.Signature.Name);
+            var argsName = MakeDefIdent(fnDef.ArgumentStruct.Name);
             bldr.CodeBlock($"if req_header.signature != {sigName}", _tab, () =>
+            {
+                bldr.CodeBlock("return Box::pin", _tab, () =>
                 {
-                    bldr.CodeBlock("return Box::pin", _tab, () =>
-                    {
-                        bldr.AppendLine(
-                                $"let rsp_dgram = ::bebop::rpc::OwnedDatagram::RpcResponseInvalidSignature {{ header, signature: {sigName} }};")
-                            .AppendLine("tx.send(rsp_dgram).await;");
-                    }, "(async move {", "});");
-                })
-                .AppendLine($"let fut = self.{fnName}();") // TODO: args
+                    bldr.AppendLine(
+                            $"let rsp_dgram = ::bebop::rpc::OwnedDatagram::RpcResponseInvalidSignature {{ header, signature: {sigName} }};")
+                        .AppendLine("tx.send(rsp_dgram).await;");
+                }, "(async move {", "});");
+            });
+            
+            if (fnDef.ArgumentStruct.Fields.Count > 0)
+            {
+                bldr.CodeBlock($"let args = match {argsName}::deserialize(data)", _tab, () =>
+                {
+                    bldr.AppendLine("Ok(args) => args,")
+                        .CodeBlock("Err(err) => return Box::pin", _tab, () =>
+                        {
+                            bldr.AppendLine(
+                                    "let rsp_dgram = ::bebop::rpc::OwnedDatagram::RpcDecodeError { header, info: err.to_string() };")
+                                .AppendLine("tx.send(rsp_dgram).await;");
+                        }, "(async move {", "}),");
+                }, "{", "};");
+            }
+
+            bldr
+                .Append($"let fut = self.{fnName}(")
+                .AppendMid(string.Join(", ", fnDef.ArgumentStruct.Fields.Select(f => $"args.{MakeAttrIdent(f.Name)}")))
+                .AppendEnd(");")
                 .CodeBlock("Box::pin ", _tab, () =>
                 {
                     bldr.CodeBlock("let rsp_dgram = match fut.await", _tab, () =>
