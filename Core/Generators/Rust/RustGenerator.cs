@@ -1064,44 +1064,7 @@ namespace Core.Generators.Rust
                                                 {
                                                     bldr.CodeBlock($"{b.Discriminator} =>", _tab, () =>
                                                     {
-                                                        var fnName = MakeFnIdent(b.Definition.Name);
-                                                        bldr.AppendLine($"let fut = self.{fnName}();"); // TODO: args
-                                                        bldr.CodeBlock("Box::pin ", _tab, () =>
-                                                        {
-                                                            bldr.AppendLine("let rsp = fut.await;");
-                                                            bldr.CodeBlock("let rsp_dgram = match rsp", _tab, () =>
-                                                                {
-                                                                    bldr.CodeBlock("Ok(value) =>", _tab, () =>
-                                                                        {
-                                                                            if (b.Definition.ReturnStruct.Fields
-                                                                                    .Count == 0)
-                                                                            {
-                                                                                // void return
-                                                                                bldr.AppendLine(
-                                                                                    "let data = Vec::new();");
-                                                                            }
-                                                                            else
-                                                                            {
-                                                                                var retName =
-                                                                                    MakeDefIdent(b.Definition
-                                                                                        .ReturnStruct.Name);
-                                                                                // value return
-                                                                                bldr.AppendLine(
-                                                                                        $"let data = ({retName} {{ value }})")
-                                                                                    .AppendLine(
-                                                                                        ".serialize_to_vec()")
-                                                                                    .AppendLine(
-                                                                                        ".expect(\"Error serializing response!\");");
-                                                                            }
-
-                                                                            bldr.AppendLine(
-                                                                                "::bebop::rpc::OwnedDatagram::RpcResponseOk { header, data }");
-                                                                        })
-                                                                        .AppendLine(
-                                                                            "Err(err) => err.as_datagram(header).into(),");
-                                                                }, "{", "};")
-                                                                .AppendLine("tx.send(rsp_dgram).await;");
-                                                        }, "(async move {", "})");
+                                                        WriteRpcHandlerFnCall(bldr, b.Definition);
                                                     });
                                                 }
 
@@ -1110,12 +1073,6 @@ namespace Core.Generators.Rust
                                             });
                                     }, "{",
                                     "} else { unreachable!(\"`_recv_call` Should only ever be provided with Requests.\") }");
-
-                                // TODO:
-                                //  - Deserialize datagram
-                                //  - Signature checks
-                                //  - Call appropriate function
-                                //  - Submit return datagram to context 
                             });
                 }).AppendLine();
 
@@ -1157,6 +1114,57 @@ namespace Core.Generators.Rust
                                     bldr.AppendLine("Self(ctx)");
                                 });
                     });
+        }
+
+        /// <summary>
+        /// Write the code which unpacks the argument struct, checks the function signature, calls the appropriate
+        /// function, and then packs the return value and submits it to `tx`.
+        /// </summary>
+        private static void WriteRpcHandlerFnCall(IndentedStringBuilder bldr, FunctionDefinition fnDef)
+        {
+            // TODO:
+            //  - Deserialize datagram
+            //  - Call appropriate function
+            var fnName = MakeFnIdent(fnDef.Name);
+            var sigName = MakeConstIdent(fnDef.Signature.Name);
+            bldr.CodeBlock($"if req_header.signature != {sigName}", _tab, () =>
+                {
+                    bldr.CodeBlock("return Box::pin", _tab, () =>
+                    {
+                        bldr.AppendLine(
+                                $"let rsp_dgram = ::bebop::rpc::OwnedDatagram::RpcResponseInvalidSignature {{ header, signature: {sigName} }};")
+                            .AppendLine("tx.send(rsp_dgram).await;");
+                    }, "(async move {", "});");
+                })
+                .AppendLine($"let fut = self.{fnName}();") // TODO: args
+                .CodeBlock("Box::pin ", _tab, () =>
+                {
+                    bldr.CodeBlock("let rsp_dgram = match fut.await", _tab, () =>
+                        {
+                            bldr.CodeBlock("Ok(value) =>", _tab, () =>
+                                {
+                                    if (fnDef.ReturnStruct.Fields
+                                            .Count == 0)
+                                    {
+                                        // void return
+                                        bldr.AppendLine("let data = Vec::new();");
+                                    }
+                                    else
+                                    {
+                                        var retName =
+                                            MakeDefIdent(fnDef.ReturnStruct.Name);
+                                        // value return
+                                        bldr.AppendLine($"let data = ({retName} {{ value }})")
+                                            .AppendLine(".serialize_to_vec()")
+                                            .AppendLine(".expect(\"Error serializing response!\");");
+                                    }
+
+                                    bldr.AppendLine("::bebop::rpc::OwnedDatagram::RpcResponseOk { header, data }");
+                                })
+                                .AppendLine("Err(err) => err.as_datagram(header).into(),");
+                        }, "{", "};")
+                        .AppendLine("tx.send(rsp_dgram).await;");
+                }, "(async move {", "})");
         }
 
         private void WriteRpcRequest(IndentedStringBuilder bldr, ushort opcode, string remoteReturnType,
