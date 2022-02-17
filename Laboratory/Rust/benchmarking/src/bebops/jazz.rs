@@ -17,6 +17,7 @@
 #![allow(warnings)]
 
 use bebop::FixedSized as _;
+use bebop::Record as _;
 use core::convert::TryInto as _;
 use std::io::Write as _;
 
@@ -511,6 +512,7 @@ pub mod owned {
     #![allow(warnings)]
 
     use bebop::FixedSized as _;
+    use bebop::Record as _;
     use core::convert::TryInto as _;
     use std::io::Write as _;
 

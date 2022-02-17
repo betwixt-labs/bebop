@@ -77,7 +77,7 @@ where
 
     /// Send a request to the remote. This is used by the generated code.
     pub async fn request<'a, 'b: 'a, I, O>(
-        self: &Arc<Self>,
+        self: Arc<Self>,
         opcode: u16,
         timeout: Option<NonZeroU16>,
         signature: u32,
@@ -93,7 +93,7 @@ where
 
     /// Send a raw byte request to the remote. This is used by the generated code.
     pub async fn request_raw<R>(
-        self: &Arc<Self>,
+        self: Arc<Self>,
         opcode: u16,
         timeout: Option<NonZeroU16>,
         signature: u32,
@@ -117,7 +117,7 @@ where
 
         if let Some(at) = pending.expires_at() {
             (self.spawn_task)(Box::pin(Self::clean_on_expiration(
-                Arc::downgrade(self),
+                Arc::downgrade(&self),
                 datagram.call_id().unwrap(),
                 at,
             )));

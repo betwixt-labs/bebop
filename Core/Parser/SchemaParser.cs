@@ -877,20 +877,20 @@ namespace Core.Parser
             var definitionSpan = definitionToken.Span.Combine(definitionEnd);
 
             // add the implicit "ServiceName" function
-            var serviceNameReturnStruct = new StructDefinition($"_{name}NameReturn", definitionSpan, "", null,
+            var serviceNameReturnStruct = new StructDefinition($"_{name}ServiceNameReturn", definitionSpan, "", null,
                 new List<Field>()
                 {
-                    new("serviceName", new ScalarType(BaseType.String, definitionSpan, "name"), definitionSpan,
+                    new("value", new ScalarType(BaseType.String, definitionSpan, "name"), definitionSpan,
                         null, 0, "")
                 }, true);
             AddDefinition(serviceNameReturnStruct);
-            var serviceNameArgsStruct = new StructDefinition($"_{name}NameArgs", definitionSpan, "",
+            var serviceNameArgsStruct = new StructDefinition($"_{name}ServiceNameArgs", definitionSpan, "",
                 null, new List<Field>() { }, true);
             AddDefinition(serviceNameArgsStruct);
             var serviceNameSignature =
-                MakeFunctionSignature(name, serviceNameReturnStruct, serviceNameArgsStruct, "name", definitionSpan);
+                MakeFunctionSignature(name, serviceNameReturnStruct, serviceNameArgsStruct, "serviceName", definitionSpan);
             AddDefinition(serviceNameSignature);
-            var serviceNameDefinition = new FunctionDefinition("name", definitionSpan, "", null, serviceNameSignature,
+            var serviceNameDefinition = new FunctionDefinition("serviceName", definitionSpan, "", null, serviceNameSignature,
                 serviceNameArgsStruct, serviceNameReturnStruct);
             branches.Add(new(0, serviceNameDefinition));
 

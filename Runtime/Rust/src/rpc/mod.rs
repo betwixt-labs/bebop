@@ -89,3 +89,12 @@ impl<'raw> DatagramInfo for Datagram<'raw> {
         }
     }
 }
+
+#[inline]
+pub fn convert_timeout(timeout: Option<Duration>) -> Option<NonZeroU16> {
+    timeout.and_then(|t| {
+        let t = t.as_secs();
+        debug_assert!(t < u16::MAX as u64, "Maximum timeout is 2^16-1 seconds.");
+        ::core::num::NonZeroU16::new(t as u16)
+    })
+}
