@@ -1235,7 +1235,8 @@ namespace Core.Generators.Rust
                             {
                                 bldr.AppendLine($"{opcode}, ")
                                     .AppendLine("::bebop::rpc::convert_timeout(timeout),")
-                                    .AppendLine("0, payload");
+                                    .AppendLine($"{sigName},")
+                                    .AppendLine("payload,");
                             }, "(", ");")
                             .AppendLine(fnDef.ReturnStruct.Fields.Count > 0
                                 ? "Ok(async move { fut.await.map(::core::convert::Into::into) })"
