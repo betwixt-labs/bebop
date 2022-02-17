@@ -1,9 +1,11 @@
 [flags]
-enum TestFlags {
+enum TestFlags : int32 {
     None = 0;
     Read = 0x0001;
     Write = 1 << 1;
     ReadWrite = Read | Write;
     SomethingElse = 1 << 2;
     Complex = (Read | Write) | 0xF0 & 0x1F;
+    Eight = 0x8;
+    MinusEight = -0x8;
 }
