@@ -266,20 +266,20 @@ namespace Core.Meta
     /// </summary>
     public class FunctionDefinition : Definition
     {
-        public FunctionDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ConstDefinition signature, StructDefinition argumentStruct, StructDefinition returnStruct, Definition? parent = null)
+        public FunctionDefinition(string name, Span span, string documentation, BaseAttribute? attributes, ConstDefinition signature, StructDefinition argumentStruct, StructDefinition returnStruct, Definition? parent = null)
             : base(name, span, documentation, parent)
         {
             Signature = signature;
             ArgumentStruct = argumentStruct;
             ReturnStruct = returnStruct;
-            OpcodeAttribute = opcodeAttribute;
+            Attributes = attributes;
         }
 
         public ConstDefinition Signature { get; }
         public StructDefinition ArgumentStruct { get; }
         public StructDefinition ReturnStruct { get; }
         
-        public BaseAttribute? OpcodeAttribute { get; }
+        public BaseAttribute? Attributes { get; }
 
         public override IEnumerable<string> Dependencies() =>
             ArgumentStruct.Dependencies().Concat(ReturnStruct.Dependencies());

@@ -1043,7 +1043,7 @@ namespace Core.Generators.Rust
                     {
                         var fn = b.Definition;
                         WriteDocumentation(bldr, fn.Documentation);
-                        WriteDeprecation(bldr, fn.OpcodeAttribute);
+                        WriteDeprecation(bldr, fn.Attributes);
                         var fname = MakeFnIdent(fn.Name);
                         var args = fn.ArgumentStruct.Fields.Select(f =>
                             (MakeFnArgIdent(f.Name), TypeName(f.Type, OwnershipType.Owned))).ToArray();
@@ -1215,6 +1215,8 @@ namespace Core.Generators.Rust
                 ? TypeName(fnDef.ReturnStruct.Fields.First().Type, OwnershipType.Owned)
                 : "()";
 
+            WriteDocumentation(bldr, fnDef.Documentation);
+            WriteDeprecation(bldr, fnDef.Attributes);
             bldr.CodeBlock($"pub async fn {fnName}({argString}) -> ::bebop::rpc::RemoteRpcResponse<{retType}>", _tab,
                     () =>
                     {
@@ -1223,25 +1225,28 @@ namespace Core.Generators.Rust
                             .Append(".await")
                             .AppendEnd(fnDef.ReturnStruct.Fields.Count > 0 ? ".map(|v| v.value)" : "?; Ok(())");
                     })
-                .AppendLine()
-                .CodeBlock(
-                    $"pub fn {fnName}_raw<'data>(&self, {timeoutArg}, payload: &'data super::{argName}) -> ::bebop::rpc::TransportResult<impl 'data + Sized + ::core::future::Future<Output = ::bebop::rpc::RemoteRpcResponse<{retName}>>>",
-                    _tab,
-                    () =>
-                    {
-                        bldr.AppendLine(
-                                "let zelf = self.0.upgrade().ok_or(::bebop::rpc::TransportError::NotConnected)?;")
-                            .CodeBlock($"let fut = zelf.request::<_, {retName}>", _tab, () =>
-                            {
-                                bldr.AppendLine($"{opcode}, ")
-                                    .AppendLine("::bebop::rpc::convert_timeout(timeout),")
-                                    .AppendLine($"{sigName},")
-                                    .AppendLine("payload,");
-                            }, "(", ");")
-                            .AppendLine(fnDef.ReturnStruct.Fields.Count > 0
-                                ? "Ok(async move { fut.await.map(::core::convert::Into::into) })"
-                                : "Ok(fut)");
-                    }).AppendLine();
+                .AppendLine();
+
+            WriteDocumentation(bldr, fnDef.Documentation);
+            WriteDeprecation(bldr, fnDef.Attributes);
+            bldr.CodeBlock(
+                $"pub fn {fnName}_raw<'data>(&self, {timeoutArg}, payload: &'data super::{argName}) -> ::bebop::rpc::TransportResult<impl 'data + Sized + ::core::future::Future<Output = ::bebop::rpc::RemoteRpcResponse<{retName}>>>",
+                _tab,
+                () =>
+                {
+                    bldr.AppendLine(
+                            "let zelf = self.0.upgrade().ok_or(::bebop::rpc::TransportError::NotConnected)?;")
+                        .CodeBlock($"let fut = zelf.request::<_, {retName}>", _tab, () =>
+                        {
+                            bldr.AppendLine($"{opcode}, ")
+                                .AppendLine("::bebop::rpc::convert_timeout(timeout),")
+                                .AppendLine($"{sigName},")
+                                .AppendLine("payload,");
+                        }, "(", ");")
+                        .AppendLine(fnDef.ReturnStruct.Fields.Count > 0
+                            ? "Ok(async move { fut.await.map(::core::convert::Into::into) })"
+                            : "Ok(fut)");
+                }).AppendLine();
         }
 
         #endregion
