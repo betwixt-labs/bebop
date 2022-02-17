@@ -1217,7 +1217,8 @@ namespace Core.Generators.Rust
 
             WriteDocumentation(bldr, fnDef.Documentation);
             WriteDeprecation(bldr, fnDef.Attributes);
-            bldr.CodeBlock($"pub async fn {fnName}({argString}) -> ::bebop::rpc::RemoteRpcResponse<{retType}>", _tab,
+            bldr.AppendLine("#[inline]")
+                .CodeBlock($"pub async fn {fnName}({argString}) -> ::bebop::rpc::RemoteRpcResponse<{retType}>", _tab,
                     () =>
                     {
                         var argsString = string.Join(", ", args.Select(i => i.Item1));
