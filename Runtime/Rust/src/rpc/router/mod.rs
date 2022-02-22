@@ -5,7 +5,6 @@ use std::sync::{Arc, Weak};
 
 pub use context::RouterContext;
 
-use crate::rpc::error::TransportResult;
 use crate::rpc::transport::TransportProtocol;
 use crate::rpc::Datagram;
 
@@ -31,6 +30,14 @@ pub trait ServiceHandlers {
     fn _recv_call(&self, datagram: &Datagram) -> Pin<Box<dyn Future<Output = ()>>>;
 }
 
+impl<T: Deref<Target = S>, S: ServiceHandlers> ServiceHandlers for T {
+    const NAME: &'static str = S::NAME;
+
+    fn _recv_call(&self, datagram: &Datagram) -> Pin<Box<dyn Future<Output = ()>>> {
+        self.deref()._recv_call(datagram)
+    }
+}
+
 /// Wrappers around the process of calling remote functions. Implementations are generated from
 /// bebop service definitions.
 ///
@@ -43,6 +50,20 @@ where
     const NAME: &'static str;
 
     fn new(ctx: Weak<RouterContext<T, L>>) -> Self;
+}
+
+impl<T, L, D, S> ServiceRequests<T, L> for D
+where
+    T: 'static + TransportProtocol,
+    L: 'static + ServiceHandlers,
+    D: Deref<Target = S>,
+    S: ServiceRequests<T, L> + Into<D>,
+{
+    const NAME: &'static str = S::NAME;
+
+    fn new(ctx: Weak<RouterContext<T, L>>) -> Self {
+        S::new(ctx).into()
+    }
 }
 
 /// This is the main structure which represents information about both ends of the connection and
