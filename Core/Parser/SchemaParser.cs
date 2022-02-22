@@ -401,25 +401,24 @@ namespace Core.Parser
             {
                 return ParseUnionDefinition(CurrentToken, definitionDocumentation, opcodeAttribute);
             }
-            else
+            
+            var kind = CurrentToken switch
             {
-                var kind = CurrentToken switch
-                {
-                    _ when Eat(TokenKind.Enum) => AggregateKind.Enum,
-                    _ when Eat(TokenKind.Struct) => AggregateKind.Struct,
-                    _ when Eat(TokenKind.Message) => AggregateKind.Message,
-                    _ => throw new UnexpectedTokenException(TokenKind.Message, CurrentToken)
-                };
-                ExpectAndSkip(TokenKind.Identifier, _universalFollowKinds);
-                if (CurrentToken.Kind != TokenKind.Identifier)
-                {
-                    // Uh oh we skipped ahead due to a missing identifier, get outta there
-                    return null;
-                }
-
-                return ParseNonUnionDefinition(CurrentToken, kind, isReadOnly, definitionDocumentation, opcodeAttribute,
-                    flagsAttribute);
+                _ when Eat(TokenKind.Enum) => AggregateKind.Enum,
+                _ when Eat(TokenKind.Struct) => AggregateKind.Struct,
+                _ when Eat(TokenKind.Message) => AggregateKind.Message,
+                _ => throw new UnexpectedTokenException(TokenKind.Message, CurrentToken)
+            };
+            ExpectAndSkip(TokenKind.Identifier, _universalFollowKinds);
+            if (CurrentToken.Kind != TokenKind.Identifier)
+            {
+                // Uh oh we skipped ahead due to a missing identifier, get outta there
+                return null;
             }
+
+            return ParseNonUnionDefinition(CurrentToken, kind, isReadOnly, definitionDocumentation, opcodeAttribute,
+                flagsAttribute);
+        
         }
 
         private ConstDefinition ParseConstDefinition(string definitionDocumentation)
@@ -861,7 +860,7 @@ namespace Core.Parser
                     continue;
                 }
 
-                var definition = ParseFunctionDefinition(name, fnDocumentation, fnDeprecatedAttribute, indexLexeme);
+                var definition = ParseFunctionDefinition(definitionToken, fnDocumentation, fnDeprecatedAttribute, indexLexeme);
                 if (definition is null)
                 {
                     // Just escape out of there if there's a parsing error in one of the definitions.
@@ -903,14 +902,13 @@ namespace Core.Parser
         /// <summary>
         ///     Parses an rpc function definition and adds its types to the <see cref="_definitions"/> collection.
         /// </summary>
-        /// <param name="serviceName">Name of the service this function is part of.</param>
+        /// <param name="definitionToken">The token that names the type to define.</param>
         /// <para name="serviceIndex">Index of this function within the service.</para>
         /// <returns>The parsed rpc function definition.</returns>
-        private FunctionDefinition? ParseFunctionDefinition(string serviceName, string fnDocs, BaseAttribute? fnAttrs, string serviceIndex)
+        private FunctionDefinition? ParseFunctionDefinition(Token definitionToken, string fnDocs, BaseAttribute? fnAttrs, string serviceIndex)
         {
-            // The start of the function is the definition token of the function
-            var definitionToken = CurrentToken;
             var fnStart = CurrentToken.Span;
+            var serviceName = definitionToken.Lexeme;
 
             var isReadonly = Eat(TokenKind.ReadOnly);
             var retType = EatPseudoKeyword("void") ? null : ParseType(definitionToken);
