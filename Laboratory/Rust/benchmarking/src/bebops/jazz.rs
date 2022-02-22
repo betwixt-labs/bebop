@@ -478,6 +478,20 @@ pub struct Library<'raw> {
     pub albums: ::std::collections::HashMap<&'raw str, Album<'raw>>,
 }
 
+impl<'raw> ::core::ops::Deref for Library<'raw> {
+    type Target = ::std::collections::HashMap<&'raw str, Album<'raw>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.albums
+    }
+}
+
+impl<'raw> ::core::ops::DerefMut for Library<'raw> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.albums
+    }
+}
+
 impl<'raw> ::bebop::SubRecord<'raw> for Library<'raw> {
     const MIN_SERIALIZED_SIZE: usize =
         <::std::collections::HashMap<&'raw str, Album<'raw>>>::MIN_SERIALIZED_SIZE;
@@ -971,6 +985,20 @@ pub mod owned {
                     .map(|(key, value)| (key.into(), value.into()))
                     .collect(),
             }
+        }
+    }
+
+    impl ::core::ops::Deref for Library {
+        type Target = ::std::collections::HashMap<::std::string::String, Album>;
+
+        fn deref(&self) -> &Self::Target {
+            &self.albums
+        }
+    }
+
+    impl ::core::ops::DerefMut for Library {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            &mut self.albums
         }
     }
 
