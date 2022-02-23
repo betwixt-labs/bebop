@@ -1,8 +1,8 @@
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 
-use crate::{DeserializeError, SerializeError};
 use crate::rpc::{Datagram, ResponseHeader};
+use crate::{DeserializeError, SerializeError};
 
 /// Things that could go wrong with the underlying transport, need it to be somewhat generic.
 /// Things like the internet connection dying would fall under this.
@@ -50,8 +50,12 @@ pub enum LocalRpcError {
 impl LocalRpcError {
     pub fn as_datagram(&self, header: ResponseHeader) -> Datagram {
         match *self {
-            LocalRpcError::CustomError(code, ref info) => Datagram::RpcResponseErr {header, code, info},
-            LocalRpcError::CustomErrorStatic(code, info) => Datagram::RpcResponseErr {header, code, info},
+            LocalRpcError::CustomError(code, ref info) => {
+                Datagram::RpcResponseErr { header, code, info }
+            }
+            LocalRpcError::CustomErrorStatic(code, info) => {
+                Datagram::RpcResponseErr { header, code, info }
+            }
             LocalRpcError::NotSupported => Datagram::RpcResponseCallNotSupported { header },
         }
     }

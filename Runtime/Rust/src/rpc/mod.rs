@@ -6,16 +6,20 @@ use std::num::NonZeroU16;
 use std::time::Duration;
 
 pub use datagram::{
+    owned::RpcDatagram as OwnedDatagram,
     owned::{
         RpcServiceNameArgs as OwnedRpcServiceNameArgs,
         RpcServiceNameReturn as OwnedRpcServiceNameReturn,
     },
-    RpcDatagram as Datagram, owned::RpcDatagram as OwnedDatagram, RpcRequestHeader as RequestHeader,
+    RpcDatagram as Datagram, RpcRequestHeader as RequestHeader,
     RpcResponseHeader as ResponseHeader, RpcServiceNameArgs, RpcServiceNameReturn,
 };
 pub use error::*;
 pub use router::*;
 pub use transport::{TransportHandler, TransportProtocol};
+
+pub type DynFuture<'a, T = ()> =
+    std::pin::Pin<Box<dyn 'a + Send + std::future::Future<Output = T>>>;
 
 use crate::rpc::datagram::RpcDatagram;
 

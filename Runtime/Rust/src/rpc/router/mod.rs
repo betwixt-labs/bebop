@@ -1,12 +1,11 @@
-use std::future::Future;
 use std::ops::Deref;
-use std::pin::Pin;
 use std::sync::{Arc, Weak};
 
 pub use context::RouterContext;
 
+use crate::rpc::router::context::{RouterTransport, SpawnTask, UnknownResponseHandler};
 use crate::rpc::transport::TransportProtocol;
-use crate::rpc::Datagram;
+use crate::rpc::{Datagram, DynFuture};
 
 mod call_table;
 pub mod calls;
@@ -16,7 +15,7 @@ mod context;
 /// bebop service definitions.
 ///
 /// You should not implement this by hand but rather the *Handlers traits which are generated.
-pub trait ServiceHandlers {
+pub trait ServiceHandlers: Send + Sync {
     const NAME: &'static str;
 
     /// Use opcode to determine which function to call, whether the signature matches,
@@ -27,14 +26,22 @@ pub trait ServiceHandlers {
     ///
     /// This returns a future instead of being async because it must decode datagram before starting
     /// the async section.
-    fn _recv_call(&self, datagram: &Datagram) -> Pin<Box<dyn Future<Output = ()>>>;
+    fn _recv_call<'a>(
+        &self,
+        datagram: &Datagram,
+        transport: Weak<dyn RouterTransport>,
+    ) -> DynFuture<'a>;
 }
 
-impl<T: Deref<Target = S>, S: ServiceHandlers> ServiceHandlers for T {
+impl<T: Deref<Target = S> + Send + Sync, S: ServiceHandlers> ServiceHandlers for T {
     const NAME: &'static str = S::NAME;
 
-    fn _recv_call(&self, datagram: &Datagram) -> Pin<Box<dyn Future<Output = ()>>> {
-        self.deref()._recv_call(datagram)
+    fn _recv_call<'a>(
+        &self,
+        datagram: &Datagram,
+        transport: Weak<dyn RouterTransport>,
+    ) -> DynFuture<'a> {
+        self.deref()._recv_call(datagram, transport)
     }
 }
 
@@ -42,26 +49,20 @@ impl<T: Deref<Target = S>, S: ServiceHandlers> ServiceHandlers for T {
 /// bebop service definitions.
 ///
 /// You should not implement this by hand.
-pub trait ServiceRequests<T, L>
-where
-    T: 'static + TransportProtocol,
-    L: 'static + ServiceHandlers,
-{
+pub trait ServiceRequests {
     const NAME: &'static str;
 
-    fn new(ctx: Weak<RouterContext<T, L>>) -> Self;
+    fn new(ctx: Weak<dyn RouterTransport>) -> Self;
 }
 
-impl<T, L, D, S> ServiceRequests<T, L> for D
+impl<D, S> ServiceRequests for D
 where
-    T: 'static + TransportProtocol,
-    L: 'static + ServiceHandlers,
     D: Deref<Target = S>,
-    S: ServiceRequests<T, L> + Into<D>,
+    S: ServiceRequests + Into<D>,
 {
     const NAME: &'static str = S::NAME;
 
-    fn new(ctx: Weak<RouterContext<T, L>>) -> Self {
+    fn new(ctx: Weak<dyn RouterTransport>) -> Self {
         S::new(ctx).into()
     }
 }
@@ -69,7 +70,7 @@ where
 /// This is the main structure which represents information about both ends of the connection and
 /// maintains the needed state to make and receive calls. This is the only struct of which an
 /// instance should need to be maintained by the user.
-pub struct Router<Transport, Local, Remote> {
+pub struct Router<Transport: Send + Sync, Local: Send + Sync, Remote> {
     /// Remote service converts requests from us, so this also provides the callable RPC functions.
     _remote_service: Remote,
 
@@ -85,38 +86,38 @@ impl<T, L, R> Router<T, L, R>
 where
     T: 'static + TransportProtocol,
     L: 'static + ServiceHandlers,
-    R: ServiceRequests<T, L>,
+    R: 'static + ServiceRequests,
 {
     /// Create a new router instance.
     ///
     /// - `transport` The underlying transport this router uses.
     /// - `local_service` The service which handles incoming requests.
     /// - `remote_service` The service the remote server provides which we can call.
-    /// - `unknown_response_handler` Optional callback to handle error cases where we do not know
-    /// what the `call_id` is or it is an invalid `call_id`.
     /// - `spawn_task` Run a task in the background. It will know when to stop on its own. This may
     /// not always be called depending on configuration and features.
+    /// - `unknown_response_handler` Optional callback to handle error cases where we do not know
+    /// what the `call_id` is or it is an invalid `call_id`.
     pub fn new(
         transport: T,
         local_service: L,
-        unknown_response_handler: Option<Box<dyn Fn(&Datagram)>>,
-        spawn_task: impl 'static + Fn(Pin<Box<dyn 'static + Future<Output = ()>>>),
+        spawn_task: SpawnTask,
+        unknown_response_handler: Option<UnknownResponseHandler>,
     ) -> Self {
         let ctx = RouterContext::new(
             transport,
             local_service,
-            unknown_response_handler,
             spawn_task,
+            unknown_response_handler,
         );
         Self {
-            _remote_service: R::new(Arc::downgrade(&ctx)),
+            _remote_service: R::new(Arc::downgrade(&ctx) as Weak<dyn RouterTransport>),
             _context: ctx,
         }
     }
 }
 
 /// Allows passthrough of function calls to the remote
-impl<T, L, R> Deref for Router<T, L, R> {
+impl<T: Send + Sync, L: Send + Sync, R> Deref for Router<T, L, R> {
     type Target = R;
 
     fn deref(&self) -> &Self::Target {

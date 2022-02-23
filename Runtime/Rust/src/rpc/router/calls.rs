@@ -14,7 +14,7 @@ use crate::rpc::{RouterContext, TransportProtocol};
 use crate::{OwnedRecord, Record, SliceWrapper};
 
 /// Request handle to allow sending your response to the remote.
-pub struct RequestHandle<T, L> {
+pub struct RequestHandle<T: Send + Sync, L: Send + Sync> {
     /// Weak reference to the context we will need to send datagrams.
     ctx: Weak<RouterContext<T, L>>,
     details: CallDetails,
@@ -165,7 +165,7 @@ struct ResponseHandleImpl<T> {
     details: CallDetails,
 }
 
-pub trait ResponseHandle {
+pub trait ResponseHandle: Send + Sync {
     fn call_id(&self) -> NonZeroU16;
     fn duration(&self) -> Duration;
     fn since(&self) -> Instant;
@@ -181,7 +181,7 @@ pub(super) struct PendingResponse<T> {
     details: CallDetails,
 }
 
-impl<R: OwnedRecord> ResponseHandle for ResponseHandleImpl<R> {
+impl<R: OwnedRecord + Send + Sync> ResponseHandle for ResponseHandleImpl<R> {
     fn call_id(&self) -> NonZeroU16 {
         self.details.call_id
     }

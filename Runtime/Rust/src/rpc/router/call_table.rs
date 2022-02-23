@@ -4,10 +4,10 @@ use std::env;
 use std::num::NonZeroU16;
 use std::time::Duration;
 
-
 use crate::rpc::datagram::RpcDatagram;
 use crate::rpc::error::RemoteRpcError;
 use crate::rpc::router::calls::{new_pending_response, PendingResponse, ResponseHandle};
+use crate::rpc::router::context::UnknownResponseHandler;
 use crate::rpc::{Datagram, DatagramInfo};
 use crate::OwnedRecord;
 
@@ -86,7 +86,7 @@ impl RouterCallTable {
     }
 
     /// Receive a datagram and routes it. This is used by the handler for the TransportProtocol.
-    pub fn resolve(&mut self, urh: &Option<Box<dyn Fn(&Datagram)>>, datagram: &Datagram) {
+    pub fn resolve(&mut self, urh: &Option<UnknownResponseHandler>, datagram: &Datagram) {
         debug_assert!(datagram.is_response(), "Only responses should be resolved.");
         let v = match datagram {
             RpcDatagram::Unknown => None,

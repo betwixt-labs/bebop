@@ -1,5 +1,3 @@
-extern crate core;
-
 pub use bitflags::bitflags;
 
 pub use serialization::*;
@@ -12,8 +10,8 @@ mod types;
 
 pub mod prelude {
     #[cfg(feature = "rpc")]
-    pub use crate::rpc::{OwnedDatagram, Datagram, DatagramInfo};
-    pub use crate::serialization::{FixedSized, Record, OwnedRecord};
+    pub use crate::rpc::{Datagram, DatagramInfo, DynFuture, OwnedDatagram};
+    pub use crate::serialization::{FixedSized, OwnedRecord, Record};
     pub use crate::types::{Date, Guid};
     pub use crate::SliceWrapper;
 }

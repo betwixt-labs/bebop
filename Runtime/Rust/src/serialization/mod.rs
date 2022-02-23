@@ -60,7 +60,7 @@ pub trait Record<'raw>: SubRecord<'raw> {
 }
 
 /// Internal trait used to reduce the amount of code that needs to be generated.
-pub trait SubRecord<'raw>: Sized {
+pub trait SubRecord<'raw>: Sized + Send + Sync {
     const MIN_SERIALIZED_SIZE: usize;
     const EXACT_SERIALIZED_SIZE: Option<usize> = None;
 
