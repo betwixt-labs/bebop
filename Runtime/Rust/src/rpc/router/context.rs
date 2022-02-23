@@ -4,10 +4,9 @@ use std::sync::{Arc, Weak};
 use std::time::Instant;
 
 use parking_lot::Mutex;
-use static_assertions::assert_obj_safe;
 
 use crate::prelude::DynFuture;
-use crate::rpc::datagram::{RpcDatagram, RpcRequestHeader, RpcResponseHeader};
+use crate::rpc::datagram::{RpcRequestHeader, RpcResponseHeader};
 use crate::rpc::error::{RemoteRpcResponse, TransportResult};
 use crate::rpc::router::call_table::RouterCallTable;
 use crate::rpc::router::ServiceHandlers;
@@ -18,18 +17,14 @@ use crate::{OwnedRecord, Record, SliceWrapper};
 pub type UnknownResponseHandler = Pin<Box<dyn Send + Sync + Fn(&Datagram)>>;
 pub type SpawnTask = Pin<Box<dyn Send + Sync + Fn(DynFuture)>>;
 
-pub trait RouterTransport {
-    fn respond<'s, 'b: 's>(&'s self, datagram: &'b Datagram) -> DynFuture<'s, TransportResult>;
-}
-
-pub struct RouterContext<Transport: Send + Sync, Local: Send + Sync> {
+pub struct RouterContext {
     /// Callback that receives any datagrams without a call id.
     unknown_response_handler: Option<UnknownResponseHandler>,
 
     /// Local service handles requests from the remote.
-    local_service: Local,
+    local_service: Box<dyn ServiceHandlers>,
 
-    transport: Transport,
+    transport: Box<dyn TransportProtocol>,
 
     call_table: Mutex<RouterCallTable>,
 
@@ -40,26 +35,20 @@ pub struct RouterContext<Transport: Send + Sync, Local: Send + Sync> {
     spawn_task: SpawnTask,
 }
 
-assert_obj_safe!(RouterTransport);
-
-impl<T, L> RouterContext<T, L>
-where
-    T: 'static + TransportProtocol,
-    L: 'static + ServiceHandlers,
-{
+impl RouterContext {
     pub(super) fn new(
-        mut transport: T,
-        local_service: L,
+        transport: impl 'static + TransportProtocol,
+        local_service: impl 'static + ServiceHandlers,
         spawn_task: SpawnTask,
         unknown_response_handler: Option<UnknownResponseHandler>,
     ) -> Arc<Self> {
         let zelf = Arc::new(Self {
-            unknown_response_handler,
-            local_service,
-            transport,
+            transport: Box::new(transport),
+            local_service: Box::new(local_service),
             call_table: Default::default(),
             // expire_futures: Default::default(),
             spawn_task,
+            unknown_response_handler,
         });
 
         // we need a reference to self, this is safe because even though there is a mutable ref and
@@ -147,7 +136,7 @@ where
     fn recv_request<'a, 'b: 'a>(self: &Arc<Self>, datagram: &'a Datagram<'b>) -> DynFuture<'b> {
         debug_assert!(datagram.is_request(), "Datagram must be a request");
         self.local_service
-            ._recv_call(datagram, Arc::downgrade(self) as Weak<dyn RouterTransport>)
+            ._recv_call(datagram, Arc::downgrade(self))
     }
 
     /// Receive a response datagram and pass it to the call table to resolve the correct future.
@@ -175,24 +164,13 @@ where
         call_id: Option<NonZeroU16>,
         info: Option<&str>,
     ) -> TransportResult {
-        self.send(&RpcDatagram::RpcDecodeError {
+        self.send(&Datagram::RpcDecodeError {
             header: RpcResponseHeader {
                 id: call_id.map(Into::into).unwrap_or(0),
             },
             info: info.unwrap_or(""),
         })
         .await
-    }
-}
-
-impl<T, L> RouterTransport for RouterContext<T, L>
-where
-    T: 'static + TransportProtocol,
-    L: 'static + ServiceHandlers,
-{
-    fn respond<'s, 'b: 's>(&'s self, datagram: &'b Datagram) -> DynFuture<'s, TransportResult> {
-        debug_assert!(datagram.is_response(), "Must send a response!");
-        Box::pin(self.send(datagram))
     }
 }
 

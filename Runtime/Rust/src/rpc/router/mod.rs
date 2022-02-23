@@ -1,9 +1,10 @@
+use static_assertions::assert_obj_safe;
 use std::ops::Deref;
 use std::sync::{Arc, Weak};
 
 pub use context::RouterContext;
 
-use crate::rpc::router::context::{RouterTransport, SpawnTask, UnknownResponseHandler};
+use crate::rpc::router::context::{SpawnTask, UnknownResponseHandler};
 use crate::rpc::transport::TransportProtocol;
 use crate::rpc::{Datagram, DynFuture};
 
@@ -16,7 +17,10 @@ mod context;
 ///
 /// You should not implement this by hand but rather the *Handlers traits which are generated.
 pub trait ServiceHandlers: Send + Sync {
-    const NAME: &'static str;
+    /// The name of this service.
+    /// This is a const for a given implementation, however for dynamic type support it has to be
+    /// provided via a function.
+    fn _name(&self) -> &'static str;
 
     /// Use opcode to determine which function to call, whether the signature matches,
     /// how to read the buffer, and then convert the returned values and send them as a
@@ -26,24 +30,20 @@ pub trait ServiceHandlers: Send + Sync {
     ///
     /// This returns a future instead of being async because it must decode datagram before starting
     /// the async section.
-    fn _recv_call<'a>(
-        &self,
-        datagram: &Datagram,
-        transport: Weak<dyn RouterTransport>,
-    ) -> DynFuture<'a>;
+    fn _recv_call<'a>(&self, datagram: &Datagram, transport: Weak<RouterContext>) -> DynFuture<'a>;
 }
 
 impl<T: Deref<Target = S> + Send + Sync, S: ServiceHandlers> ServiceHandlers for T {
-    const NAME: &'static str = S::NAME;
+    fn _name(&self) -> &'static str {
+        self.deref()._name()
+    }
 
-    fn _recv_call<'a>(
-        &self,
-        datagram: &Datagram,
-        transport: Weak<dyn RouterTransport>,
-    ) -> DynFuture<'a> {
+    fn _recv_call<'a>(&self, datagram: &Datagram, transport: Weak<RouterContext>) -> DynFuture<'a> {
         self.deref()._recv_call(datagram, transport)
     }
 }
+
+assert_obj_safe!(ServiceHandlers);
 
 /// Wrappers around the process of calling remote functions. Implementations are generated from
 /// bebop service definitions.
@@ -52,7 +52,7 @@ impl<T: Deref<Target = S> + Send + Sync, S: ServiceHandlers> ServiceHandlers for
 pub trait ServiceRequests {
     const NAME: &'static str;
 
-    fn new(ctx: Weak<dyn RouterTransport>) -> Self;
+    fn new(ctx: Weak<RouterContext>) -> Self;
 }
 
 impl<D, S> ServiceRequests for D
@@ -62,7 +62,7 @@ where
 {
     const NAME: &'static str = S::NAME;
 
-    fn new(ctx: Weak<dyn RouterTransport>) -> Self {
+    fn new(ctx: Weak<RouterContext>) -> Self {
         S::new(ctx).into()
     }
 }
@@ -70,7 +70,7 @@ where
 /// This is the main structure which represents information about both ends of the connection and
 /// maintains the needed state to make and receive calls. This is the only struct of which an
 /// instance should need to be maintained by the user.
-pub struct Router<Transport: Send + Sync, Local: Send + Sync, Remote> {
+pub struct Router<Remote> {
     /// Remote service converts requests from us, so this also provides the callable RPC functions.
     _remote_service: Remote,
 
@@ -79,13 +79,11 @@ pub struct Router<Transport: Send + Sync, Local: Send + Sync, Remote> {
     ///
     /// **Warning:** always store weak references or the router will have issues shutting down due
     /// to cyclical dependencies.
-    pub _context: Arc<RouterContext<Transport, Local>>,
+    pub _context: Arc<RouterContext>,
 }
 
-impl<T, L, R> Router<T, L, R>
+impl<R> Router<R>
 where
-    T: 'static + TransportProtocol,
-    L: 'static + ServiceHandlers,
     R: 'static + ServiceRequests,
 {
     /// Create a new router instance.
@@ -98,8 +96,8 @@ where
     /// - `unknown_response_handler` Optional callback to handle error cases where we do not know
     /// what the `call_id` is or it is an invalid `call_id`.
     pub fn new(
-        transport: T,
-        local_service: L,
+        transport: impl 'static + TransportProtocol,
+        local_service: impl 'static + ServiceHandlers,
         spawn_task: SpawnTask,
         unknown_response_handler: Option<UnknownResponseHandler>,
     ) -> Self {
@@ -110,14 +108,14 @@ where
             unknown_response_handler,
         );
         Self {
-            _remote_service: R::new(Arc::downgrade(&ctx) as Weak<dyn RouterTransport>),
+            _remote_service: R::new(Arc::downgrade(&ctx)),
             _context: ctx,
         }
     }
 }
 
 /// Allows passthrough of function calls to the remote
-impl<T: Send + Sync, L: Send + Sync, R> Deref for Router<T, L, R> {
+impl<R> Deref for Router<R> {
     type Target = R;
 
     fn deref(&self) -> &Self::Target {

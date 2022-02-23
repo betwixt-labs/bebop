@@ -9,22 +9,17 @@ use tokio::sync::oneshot;
 
 use crate::rpc::datagram::{RpcDatagram, RpcResponseHeader};
 use crate::rpc::error::{RemoteRpcResponse, TransportError, TransportResult};
-use crate::rpc::router::ServiceHandlers;
-use crate::rpc::{RouterContext, TransportProtocol};
+use crate::rpc::RouterContext;
 use crate::{OwnedRecord, Record, SliceWrapper};
 
 /// Request handle to allow sending your response to the remote.
-pub struct RequestHandle<T: Send + Sync, L: Send + Sync> {
+pub struct RequestHandle {
     /// Weak reference to the context we will need to send datagrams.
-    ctx: Weak<RouterContext<T, L>>,
+    ctx: Weak<RouterContext>,
     details: CallDetails,
 }
 
-impl<T, L> RequestHandle<T, L>
-where
-    T: 'static + TransportProtocol,
-    L: 'static + ServiceHandlers,
-{
+impl RequestHandle {
     /// Send a response to a call.
     pub async fn send_response<'a, 'b: 'a>(self, record: &'a impl Record<'b>) -> TransportResult {
         self.send_response_raw(&record.serialize_to_vec()?).await

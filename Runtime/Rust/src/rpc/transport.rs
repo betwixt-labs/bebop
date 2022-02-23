@@ -1,3 +1,4 @@
+use static_assertions::assert_obj_safe;
 use std::pin::Pin;
 
 use crate::rpc::error::TransportResult;
@@ -29,3 +30,5 @@ pub trait TransportProtocol: Send + Sync {
     /// Send a datagram to the remote.
     fn send(&self, datagram: &Datagram) -> DynFuture<TransportResult>;
 }
+
+assert_obj_safe!(TransportProtocol);
