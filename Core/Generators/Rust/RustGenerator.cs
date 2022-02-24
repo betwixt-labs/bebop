@@ -169,9 +169,6 @@ namespace Core.Generators.Rust
                 .AppendLine("use ::core::convert::TryInto as _;") // we can remove this for Rust 2021
                 .AppendLine("use ::bebop::FixedSized as _;")
                 .AppendLine("use ::bebop::Record as _;")
-                .AppendLine()
-                .AppendLine(
-                    "pub type _DynFut<T> = ::core::pin::Pin<::std::boxed::Box<dyn ::core::future::Future<Output = T>>>;")
                 .AppendLine();
 
         private void WriteConstDefinition(IndentedStringBuilder builder, ConstDefinition d, CodeRegion region)
@@ -1021,25 +1018,29 @@ namespace Core.Generators.Rust
             var ident = MakeDefIdent(d.Name);
             var requestsFeat = $"#[cfg(feature = \"{MakeFeatureIdent(ident)}-requests\")]";
             var handlersFeat = $"#[cfg(feature = \"{MakeFeatureIdent(ident)}-handlers\")]";
-            var tlConstraints =
-                "T: 'static + ::bebop::rpc::TransportProtocol, L: 'static + ::bebop::rpc::ServiceHandlers";
             var serviceBranches = d.Branches.OrderBy(d => d.Discriminator).ToImmutableArray();
 
             WriteDocumentation(bldr, d.Documentation);
             bldr.AppendLine(handlersFeat)
-                .CodeBlock($"pub trait {ident}Handlers", _tab, () =>
+                .CodeBlock($"pub trait {ident}Handlers: ::core::marker::Send + ::core::marker::Sync", _tab, () =>
                 {
-                    bldr.AppendLine(
-                            "/// Get a handle on which to send a response. This should only use one mpsc setup and make")
-                        .AppendLine(
-                            "/// a clone of the transmitter each time. We need this because we don't know the lifetime")
-                        .AppendLine(
-                            "/// of `&self` so it allows us to have an intermediary without resorting to the incomplete")
-                        .AppendLine("/// type `Self` in an `Arc` (which is impossible).")
-                        .AppendLine("/// This does require the feature `tokio/sync`.")
-                        .AppendLine(
-                            "fn _response_tx(&self) -> ::tokio::sync::mpsc::Sender<::bebop::rpc::OwnedDatagram>;");
-                    foreach (var b in d.Branches.OrderBy(d => d.Discriminator).Skip(1))
+                    bldr.CodeBlock(
+                            "fn _on_respond_error(&self, fn_name: &'static str, call_id: u16, err: ::bebop::rpc::TransportError)",
+                            _tab,
+                            () =>
+                            {
+                                bldr.AppendLine(
+                                    "eprintln!(\"Error sending response to {fn_name} ({call_id}): {err}\")");
+                            })
+                        .AppendLine()
+                        .CodeBlock(
+                            "fn service_name(&self, _: ::core::option::Option<::std::time::Instant>) -> ::bebop::rpc::DynFuture<::bebop::rpc::LocalRpcResponse<::std::string::String>>",
+                            _tab,
+                            () =>
+                            {
+                                bldr.AppendLine("Box::pin(async move { Ok(\"{ident}\".into()) })");
+                            });
+                    foreach (var (b, i) in d.Branches.OrderBy(d => d.Discriminator).Skip(1).Enumerated())
                     {
                         var fn = b.Definition;
                         WriteDocumentation(bldr, fn.Documentation);
@@ -1054,35 +1055,32 @@ namespace Core.Generators.Rust
                             _ => throw new ArgumentOutOfRangeException(ident, fn.ReturnStruct.Fields, null)
                         };
                         var argsStr = string.Join(", ",
-                            new[] { "&self" }.Concat(args.Select(i => $"{i.Item1}: {i.Item2}")));
+                            new[] { "&self", "deadline: ::core::option::Option<::std::time::Instant>" }
+                                .Concat(args.Select(i => $"{i.Item1}: {i.Item2}")));
                         var responseType = $"::bebop::rpc::LocalRpcResponse<{retType}>";
-                        bldr.AppendLine($"fn {fname}({argsStr}) -> {DynFutureType(responseType)};");
+                        bldr.AppendLine($"fn {fname}({argsStr}) -> {DynFutType(responseType)};");
+                        if (i < d.Branches.Count - 1) bldr.AppendLine();
                     }
                 })
                 .AppendLine()
                 .AppendLine(handlersFeat)
                 .CodeBlock($"impl ::bebop::rpc::ServiceHandlers for dyn {ident}Handlers", _tab, () =>
                 {
-                    bldr.AppendLine($"const NAME: &'static str = \"{ident}\";")
+                    bldr.AppendLine($"fn _name(&self) -> &'static str {{ \"{ident}\" }}")
                         .AppendLine()
                         .CodeBlock(
-                            $"fn _recv_call(&self, datagram: &::bebop::rpc::Datagram) -> {DynFutureType()}",
+                            $"fn _recv_call(&self, datagram: &::bebop::rpc::Datagram, handle: ::bebop::rpc::RequestHandle) -> {DynFutType("()")}",
                             _tab, () =>
                             {
                                 bldr.CodeBlock(
                                     "if let ::bebop::rpc::Datagram::RpcRequestDatagram { header: req_header, opcode, data } = datagram",
                                     _tab, () =>
                                     {
-                                        bldr.AppendLine("let tx = self._response_tx();")
-                                            .AppendLine(
+                                        bldr.AppendLine(
                                                 "let header = ::bebop::rpc::ResponseHeader { id: req_header.id };")
                                             .CodeBlock("match opcode", _tab, () =>
                                             {
-                                                // technically should use the response struct, but it is just going to be this anyway and this saves us from copying the data into a temp buffer.
-                                                bldr.AppendLine(
-                                                    "0 => Box::pin(async move { tx.send(::bebop::rpc::OwnedDatagram::RpcResponseOk { header, data: Self::NAME.into() }).await; }),");
-
-                                                foreach (var b in serviceBranches.Skip(1))
+                                                foreach (var b in serviceBranches)
                                                 {
                                                     bldr.CodeBlock($"{b.Discriminator} =>", _tab,
                                                         () =>
@@ -1091,8 +1089,13 @@ namespace Core.Generators.Rust
                                                         });
                                                 }
 
-                                                bldr.AppendLine(
-                                                    "_ => Box::pin(async move { tx.send(::bebop::rpc::OwnedDatagram::RpcResponseUnknownCall { header }).await; }),");
+                                                bldr.CodeBlock("_ => Box::pin(", _tab, () =>
+                                                {
+                                                    bldr.CodeBlock("if let Err(err) = handle.send_unknown_call_response().await", _tab, () =>
+                                                    {
+                                                        bldr.AppendLine("self._on_respond_error(\"UNKNOWN\", req_header.id, err);");
+                                                    });
+                                                }, "async move {", "})");
                                             });
                                     }, "{",
                                     "} else { unreachable!(\"`_recv_call` Should only ever be provided with Requests.\") }");
@@ -1102,10 +1105,10 @@ namespace Core.Generators.Rust
             WriteDocumentation(bldr, d.Documentation);
             bldr.AppendLine(requestsFeat)
                 .AppendLine(
-                    $"pub struct {ident}Requests<T, L>(::std::sync::Weak<::bebop::rpc::RouterContext<T, L>>);")
+                    $"pub struct {ident}Requests(::std::sync::Weak<::bebop::rpc::RouterContext>);")
                 .AppendLine()
                 .AppendLine(requestsFeat)
-                .CodeBlock($"impl<{tlConstraints}> {ident}Requests<T, L>", _tab, () =>
+                .CodeBlock($"impl {ident}Requests", _tab, () =>
                 {
                     foreach (var b in serviceBranches)
                     {
@@ -1114,12 +1117,12 @@ namespace Core.Generators.Rust
                 })
                 .AppendLine()
                 .AppendLine(requestsFeat)
-                .CodeBlock($"impl<{tlConstraints}> ::bebop::rpc::ServiceRequests<T, L> for {ident}Requests<T, L>", _tab,
+                .CodeBlock($"impl ::bebop::rpc::ServiceRequests for {ident}Requests", _tab,
                     () =>
                     {
                         bldr.AppendLine($"const NAME: &'static str = \"{ident}\";")
                             .AppendLine()
-                            .CodeBlock("fn new(ctx: ::std::sync::Weak<::bebop::rpc::RouterContext<T, L>>) -> Self",
+                            .CodeBlock("fn new(ctx: ::std::sync::Weak<::bebop::rpc::RouterContext>) -> Self",
                                 _tab,
                                 () =>
                                 {
@@ -1134,19 +1137,22 @@ namespace Core.Generators.Rust
         /// </summary>
         private static void WriteRpcHandlerFnCall(IndentedStringBuilder bldr, FunctionDefinition fnDef)
         {
-            // TODO:
-            //  - Deserialize datagram
-            //  - Call appropriate function
             var fnName = MakeFnIdent(fnDef.Name);
             var sigName = MakeConstIdent(fnDef.Signature.Name);
             var argsName = MakeDefIdent(fnDef.ArgumentStruct.Name);
+            var retName = MakeDefIdent(fnDef.ReturnStruct.Name);
+
+            var writeRespond = new Func<string, IndentedStringBuilder>(fnCall =>
+                bldr.CodeBlock($"if let Err(err) = handle.{fnCall}.await", _tab, () =>
+                {
+                    bldr.AppendLine($"self._on_respond_error(\"{fnName}\", req_header.id, err);");
+                }));
+
             bldr.CodeBlock($"if req_header.signature != {sigName}", _tab, () =>
             {
                 bldr.CodeBlock("return Box::pin", _tab, () =>
                 {
-                    bldr.AppendLine(
-                            $"let rsp_dgram = ::bebop::rpc::OwnedDatagram::RpcResponseInvalidSignature {{ header, signature: {sigName} }};")
-                        .AppendLine("tx.send(rsp_dgram).await;");
+                    writeRespond($"send_invalid_sig_response({sigName})");
                 }, "(async move {", "});");
             });
 
@@ -1157,44 +1163,49 @@ namespace Core.Generators.Rust
                     bldr.AppendLine("Ok(args) => args,")
                         .CodeBlock("Err(err) => return Box::pin", _tab, () =>
                         {
-                            bldr.AppendLine(
-                                    "let rsp_dgram = ::bebop::rpc::OwnedDatagram::RpcDecodeError { header, info: err.to_string() };")
-                                .AppendLine("tx.send(rsp_dgram).await;");
+                            writeRespond("send_decode_error_response(Some(&err.to_string()))");
                         }, "(async move {", "}),");
                 }, "{", "};");
             }
 
             bldr
                 .Append($"let fut = self.{fnName}(")
-                .AppendMid(string.Join(", ", fnDef.ArgumentStruct.Fields.Select(f => $"args.{MakeAttrIdent(f.Name)}")))
+                .AppendMid(string.Join(", ",
+                    new[] { "handle.expires_at()" }.Concat(
+                        fnDef.ArgumentStruct.Fields.Select(f => $"args.{MakeAttrIdent(f.Name)}"))))
                 .AppendEnd(");")
                 .CodeBlock("Box::pin ", _tab, () =>
                 {
-                    bldr.CodeBlock("let rsp_dgram = match fut.await", _tab, () =>
-                        {
-                            bldr.CodeBlock("Ok(value) =>", _tab, () =>
-                                {
-                                    if (fnDef.ReturnStruct.Fields
-                                            .Count == 0)
-                                    {
-                                        // void return
-                                        bldr.AppendLine("let data = Vec::new();");
-                                    }
-                                    else
-                                    {
-                                        var retName =
-                                            MakeDefIdent(fnDef.ReturnStruct.Name);
-                                        // value return
-                                        bldr.AppendLine($"let data = ({retName} {{ value }})")
-                                            .AppendLine(".serialize_to_vec()")
-                                            .AppendLine(".expect(\"Error serializing response!\");");
-                                    }
+                    bldr.AppendLine(fnDef.ReturnStruct.Fields.Count > 0
+                        ? $"let value = fut.await.map(|v| {retName} {{ value: v }});"
+                        : $"let value = fut.await.map(|_| {retName} {{ }});");
 
-                                    bldr.AppendLine("::bebop::rpc::OwnedDatagram::RpcResponseOk { header, data }");
-                                })
-                                .AppendLine("Err(err) => err.as_datagram(header).into(),");
-                        }, "{", "};")
-                        .AppendLine("tx.send(rsp_dgram).await;");
+                    writeRespond("send_response(&value)");
+                    // bldr.CodeBlock("let rsp_dgram = match fut.await", _tab, () =>
+                    //     {
+                    //         bldr.CodeBlock("Ok(value) =>", _tab, () =>
+                    //             {
+                    //                 if (fnDef.ReturnStruct.Fields
+                    //                         .Count == 0)
+                    //                 {
+                    //                     // void return
+                    //                     bldr.AppendLine("let data = Vec::new();");
+                    //                 }
+                    //                 else
+                    //                 {
+                    //                     var retName =
+                    //                         MakeDefIdent(fnDef.ReturnStruct.Name);
+                    //                     // value return
+                    //                     bldr.AppendLine($"let data = ({retName} {{ value }})")
+                    //                         .AppendLine(".serialize_to_vec()")
+                    //                         .AppendLine(".expect(\"Error serializing response!\");");
+                    //                 }
+                    //
+                    //                 bldr.AppendLine("::bebop::rpc::OwnedDatagram::RpcResponseOk { header, data }");
+                    //             })
+                    //             .AppendLine("Err(err) => err.as_datagram(header).into(),");
+                    //     }, "{", "};")
+                    //     .AppendLine("tx.send(rsp_dgram).await;");
                 }, "(async move {", "})");
         }
 
@@ -1360,7 +1371,8 @@ namespace Core.Generators.Rust
             }
         }
 
-        private string DynFutureType(string output = "()") => $"_DynFut<{output}>";
+        private string DynFutType(string output) => $"::bebop::rpc::DynFuture<{output}>";
+        private string DynFutType(string lifetime, string output) => $"::bebop::rpc::DynFuture<{lifetime}, {output}>";
 
         #endregion
 

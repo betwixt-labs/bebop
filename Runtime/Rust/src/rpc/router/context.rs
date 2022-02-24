@@ -11,7 +11,7 @@ use crate::rpc::error::{RemoteRpcResponse, TransportResult};
 use crate::rpc::router::call_table::RouterCallTable;
 use crate::rpc::router::ServiceHandlers;
 use crate::rpc::transport::TransportProtocol;
-use crate::rpc::{Datagram, DatagramInfo};
+use crate::rpc::{Datagram, DatagramInfo, RequestHandle};
 use crate::{OwnedRecord, Record, SliceWrapper};
 
 pub type UnknownResponseHandler = Pin<Box<dyn Send + Sync + Fn(&Datagram)>>;
@@ -60,7 +60,8 @@ impl RouterContext {
             (*zelf_ptr).transport.set_handler(Box::pin(move |datagram| {
                 if let Some(ctx) = weak_ctx.upgrade() {
                     if datagram.is_request() {
-                        Some(ctx.recv_request(datagram))
+                        let handle = RequestHandle::new(weak_ctx.clone(), datagram);
+                        Some(ctx.recv_request(datagram, handle))
                     } else {
                         ctx.recv_response(datagram);
                         None
@@ -133,10 +134,9 @@ impl RouterContext {
 
     /// Receive a request datagram and send it to the local service for handling.
     /// This is used by the handler for the TransportProtocol.
-    fn recv_request<'a, 'b: 'a>(self: &Arc<Self>, datagram: &'a Datagram<'b>) -> DynFuture<'b> {
+    fn recv_request<'a, 'b: 'a>(&self, datagram: &'a Datagram<'b>, handle: RequestHandle) -> DynFuture<'b> {
         debug_assert!(datagram.is_request(), "Datagram must be a request");
-        self.local_service
-            ._recv_call(datagram, Arc::downgrade(self))
+        self.local_service._recv_call(datagram, handle)
     }
 
     /// Receive a response datagram and pass it to the call table to resolve the correct future.

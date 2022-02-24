@@ -47,20 +47,6 @@ pub enum LocalRpcError {
     NotSupported,
 }
 
-impl LocalRpcError {
-    pub fn as_datagram(&self, header: ResponseHeader) -> Datagram {
-        match *self {
-            LocalRpcError::CustomError(code, ref info) => {
-                Datagram::RpcResponseErr { header, code, info }
-            }
-            LocalRpcError::CustomErrorStatic(code, info) => {
-                Datagram::RpcResponseErr { header, code, info }
-            }
-            LocalRpcError::NotSupported => Datagram::RpcResponseCallNotSupported { header },
-        }
-    }
-}
-
 impl Display for LocalRpcError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self:?}")

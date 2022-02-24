@@ -7,9 +7,9 @@ use std::time::{Duration, Instant};
 
 use tokio::sync::oneshot;
 
-use crate::rpc::datagram::{RpcDatagram, RpcResponseHeader};
+use crate::rpc::datagram::RpcResponseHeader;
 use crate::rpc::error::{RemoteRpcResponse, TransportError, TransportResult};
-use crate::rpc::RouterContext;
+use crate::rpc::{Datagram, DatagramInfo, LocalRpcError, LocalRpcResponse, RouterContext};
 use crate::{OwnedRecord, Record, SliceWrapper};
 
 /// Request handle to allow sending your response to the remote.
@@ -20,14 +20,53 @@ pub struct RequestHandle {
 }
 
 impl RequestHandle {
-    /// Send a response to a call.
-    pub async fn send_response<'a, 'b: 'a>(self, record: &'a impl Record<'b>) -> TransportResult {
-        self.send_response_raw(&record.serialize_to_vec()?).await
+    pub(crate) fn new(ctx: Weak<RouterContext>, datagram: &Datagram) -> Self {
+        debug_assert!(datagram.is_request(), "Must be a request");
+        Self {
+            ctx,
+            details: CallDetails {
+                timeout: datagram.timeout(),
+                since: Instant::now(),
+                call_id: datagram
+                    .call_id()
+                    .expect("Request datagrams must have a valid call ID"),
+            },
+        }
     }
 
-    pub async fn send_response_raw(self, data: &[u8]) -> TransportResult {
+    pub async fn send_response<'a, 'b: 'a, R: Record<'b>>(
+        self,
+        response: &'a LocalRpcResponse<R>,
+    ) -> TransportResult {
+        match response {
+            Ok(record) => self.send_ok_response(record).await,
+            Err(LocalRpcError::CustomError(code, msg)) => {
+                self.send_error_response(*code, Some(msg)).await
+            }
+            Err(LocalRpcError::CustomErrorStatic(code, msg)) => {
+                let msg = if msg.is_empty() { None } else { Some(*msg) };
+                self.send_error_response(*code, msg).await
+            }
+            Err(LocalRpcError::NotSupported) => self.send_call_not_supported_response().await,
+        }
+    }
+
+    /// Send a response to a call.
+    pub async fn send_ok_response<'a, 'b: 'a>(
+        self,
+        record: &'a impl Record<'b>,
+    ) -> TransportResult {
+        self.send_ok_response_raw(
+            &record
+                .serialize_to_vec()
+                .expect("Attempted to serialize an invalid response record"),
+        )
+        .await
+    }
+
+    pub async fn send_ok_response_raw(self, data: &[u8]) -> TransportResult {
         if let Some(ctx) = self.ctx.upgrade() {
-            ctx.send(&RpcDatagram::RpcResponseOk {
+            ctx.send(&Datagram::RpcResponseOk {
                 header: RpcResponseHeader {
                     id: self.call_id().into(),
                 },
@@ -41,7 +80,7 @@ impl RequestHandle {
 
     pub async fn send_error_response(self, code: u32, msg: Option<&str>) -> TransportResult {
         if let Some(ctx) = self.ctx.upgrade() {
-            ctx.send(&RpcDatagram::RpcResponseErr {
+            ctx.send(&Datagram::RpcResponseErr {
                 header: RpcResponseHeader {
                     id: self.call_id().into(),
                 },
@@ -56,7 +95,7 @@ impl RequestHandle {
 
     pub async fn send_unknown_call_response(self) -> TransportResult {
         if let Some(ctx) = self.ctx.upgrade() {
-            ctx.send(&RpcDatagram::RpcResponseUnknownCall {
+            ctx.send(&Datagram::RpcResponseUnknownCall {
                 header: RpcResponseHeader {
                     id: self.call_id().into(),
                 },
@@ -69,7 +108,7 @@ impl RequestHandle {
 
     pub async fn send_invalid_sig_response(self, expected_sig: u32) -> TransportResult {
         if let Some(ctx) = self.ctx.upgrade() {
-            ctx.send(&RpcDatagram::RpcResponseInvalidSignature {
+            ctx.send(&Datagram::RpcResponseInvalidSignature {
                 header: RpcResponseHeader {
                     id: self.call_id().into(),
                 },
@@ -83,7 +122,7 @@ impl RequestHandle {
 
     pub async fn send_call_not_supported_response(self) -> TransportResult {
         if let Some(ctx) = self.ctx.upgrade() {
-            ctx.send(&RpcDatagram::RpcResponseCallNotSupported {
+            ctx.send(&Datagram::RpcResponseCallNotSupported {
                 header: RpcResponseHeader {
                     id: self.call_id().into(),
                 },
