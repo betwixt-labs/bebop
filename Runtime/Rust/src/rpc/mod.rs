@@ -102,3 +102,13 @@ pub fn convert_timeout(timeout: Option<Duration>) -> Option<NonZeroU16> {
         ::core::num::NonZeroU16::new(t as u16)
     })
 }
+
+/// Less verbose way of declaring `Box::pin(async move {...})`.
+#[macro_export]
+macro_rules! dyn_fut {
+    {$($e:stmt)*} => {
+        ::std::boxed::Box::pin(async move { $(
+            $e
+        )* })
+    };
+}

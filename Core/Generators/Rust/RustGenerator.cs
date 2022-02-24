@@ -1025,21 +1025,12 @@ namespace Core.Generators.Rust
                 .CodeBlock($"pub trait {ident}Handlers: ::core::marker::Send + ::core::marker::Sync", _tab, () =>
                 {
                     bldr.CodeBlock(
-                            "fn _on_respond_error(&self, fn_name: &'static str, call_id: u16, err: ::bebop::rpc::TransportError)",
-                            _tab,
-                            () =>
-                            {
-                                bldr.AppendLine(
-                                    "eprintln!(\"Error sending response to {fn_name} ({call_id}): {err}\")");
-                            })
-                        .AppendLine()
-                        .CodeBlock(
-                            "fn service_name(&self, _: ::core::option::Option<::std::time::Instant>) -> ::bebop::rpc::DynFuture<::bebop::rpc::LocalRpcResponse<::std::string::String>>",
-                            _tab,
-                            () =>
-                            {
-                                bldr.AppendLine("Box::pin(async move { Ok(\"{ident}\".into()) })");
-                            });
+                        $"fn service_name<'f>(&self, _: ::core::option::Option<::std::time::Instant>) -> {DynFutType("::bebop::rpc::LocalRpcResponse<::std::string::String>")}",
+                        _tab,
+                        () =>
+                        {
+                            bldr.AppendLine("::bebop::dyn_fut! { Ok(\"{ident}\".into()) }");
+                        });
                     foreach (var (b, i) in d.Branches.OrderBy(d => d.Discriminator).Skip(1).Enumerated())
                     {
                         var fn = b.Definition;
@@ -1058,7 +1049,7 @@ namespace Core.Generators.Rust
                             new[] { "&self", "deadline: ::core::option::Option<::std::time::Instant>" }
                                 .Concat(args.Select(i => $"{i.Item1}: {i.Item2}")));
                         var responseType = $"::bebop::rpc::LocalRpcResponse<{retType}>";
-                        bldr.AppendLine($"fn {fname}({argsStr}) -> {DynFutType(responseType)};");
+                        bldr.AppendLine($"fn {fname}<'f>({argsStr}) -> {DynFutType(responseType)};");
                         if (i < d.Branches.Count - 1) bldr.AppendLine();
                     }
                 })
@@ -1069,15 +1060,15 @@ namespace Core.Generators.Rust
                     bldr.AppendLine($"fn _name(&self) -> &'static str {{ \"{ident}\" }}")
                         .AppendLine()
                         .CodeBlock(
-                            $"fn _recv_call(&self, datagram: &::bebop::rpc::Datagram, handle: ::bebop::rpc::RequestHandle) -> {DynFutType("()")}",
+                            $"fn _recv_call<'f>(&self, datagram: &::bebop::rpc::Datagram, handle: ::bebop::rpc::RequestHandle) -> {DynFutType("()")}",
                             _tab, () =>
                             {
                                 bldr.CodeBlock(
                                     "if let ::bebop::rpc::Datagram::RpcRequestDatagram { header: req_header, opcode, data } = datagram",
                                     _tab, () =>
                                     {
-                                        bldr.AppendLine(
-                                                "let header = ::bebop::rpc::ResponseHeader { id: req_header.id };")
+                                        bldr.AppendLine("let call_id = req_header.id;")
+                                            .AppendLine("let opcode = *opcode;")
                                             .CodeBlock("match opcode", _tab, () =>
                                             {
                                                 foreach (var b in serviceBranches)
@@ -1089,13 +1080,8 @@ namespace Core.Generators.Rust
                                                         });
                                                 }
 
-                                                bldr.CodeBlock("_ => Box::pin(", _tab, () =>
-                                                {
-                                                    bldr.CodeBlock("if let Err(err) = handle.send_unknown_call_response().await", _tab, () =>
-                                                    {
-                                                        bldr.AppendLine("self._on_respond_error(\"UNKNOWN\", req_header.id, err);");
-                                                    });
-                                                }, "async move {", "})");
+                                                bldr.AppendLine(
+                                                    $"_ => ::bebop::dyn_fut! {{ ::bebop::handle_respond_error!(handle.send_unknown_call_response(), \"{ident}\", \"UNKNOWN\", opcode, call_id); }},");
                                             });
                                     }, "{",
                                     "} else { unreachable!(\"`_recv_call` Should only ever be provided with Requests.\") }");
@@ -1137,23 +1123,16 @@ namespace Core.Generators.Rust
         /// </summary>
         private static void WriteRpcHandlerFnCall(IndentedStringBuilder bldr, FunctionDefinition fnDef)
         {
+            var serviceName = MakeDefIdent(fnDef.Parent!.Name);
             var fnName = MakeFnIdent(fnDef.Name);
             var sigName = MakeConstIdent(fnDef.Signature.Name);
             var argsName = MakeDefIdent(fnDef.ArgumentStruct.Name);
             var retName = MakeDefIdent(fnDef.ReturnStruct.Name);
 
-            var writeRespond = new Func<string, IndentedStringBuilder>(fnCall =>
-                bldr.CodeBlock($"if let Err(err) = handle.{fnCall}.await", _tab, () =>
-                {
-                    bldr.AppendLine($"self._on_respond_error(\"{fnName}\", req_header.id, err);");
-                }));
-
             bldr.CodeBlock($"if req_header.signature != {sigName}", _tab, () =>
             {
-                bldr.CodeBlock("return Box::pin", _tab, () =>
-                {
-                    writeRespond($"send_invalid_sig_response({sigName})");
-                }, "(async move {", "});");
+                bldr.AppendLine(
+                    $"return ::bebop::dyn_fut! {{ ::bebop::handle_respond_error!(handle.send_invalid_sig_response({sigName}), \"{serviceName}\", \"{fnName}\", opcode, call_id); }}");
             });
 
             if (fnDef.ArgumentStruct.Fields.Count > 0)
@@ -1161,10 +1140,8 @@ namespace Core.Generators.Rust
                 bldr.CodeBlock($"let args = match {argsName}::deserialize(data)", _tab, () =>
                 {
                     bldr.AppendLine("Ok(args) => args,")
-                        .CodeBlock("Err(err) => return Box::pin", _tab, () =>
-                        {
-                            writeRespond("send_decode_error_response(Some(&err.to_string()))");
-                        }, "(async move {", "}),");
+                        .AppendLine(
+                            $"Err(err) => return ::bebop::dyn_fut! {{ ::bebop::handle_respond_error!(handle.send_decode_error_response(Some(&err.to_string())), \"{serviceName}\", \"{fnName}\", opcode, call_id) }}");
                 }, "{", "};");
             }
 
@@ -1174,39 +1151,15 @@ namespace Core.Generators.Rust
                     new[] { "handle.expires_at()" }.Concat(
                         fnDef.ArgumentStruct.Fields.Select(f => $"args.{MakeAttrIdent(f.Name)}"))))
                 .AppendEnd(");")
-                .CodeBlock("Box::pin ", _tab, () =>
+                .CodeBlock("::bebop::dyn_fut!", _tab, () =>
                 {
                     bldr.AppendLine(fnDef.ReturnStruct.Fields.Count > 0
-                        ? $"let value = fut.await.map(|v| {retName} {{ value: v }});"
-                        : $"let value = fut.await.map(|_| {retName} {{ }});");
-
-                    writeRespond("send_response(&value)");
-                    // bldr.CodeBlock("let rsp_dgram = match fut.await", _tab, () =>
-                    //     {
-                    //         bldr.CodeBlock("Ok(value) =>", _tab, () =>
-                    //             {
-                    //                 if (fnDef.ReturnStruct.Fields
-                    //                         .Count == 0)
-                    //                 {
-                    //                     // void return
-                    //                     bldr.AppendLine("let data = Vec::new();");
-                    //                 }
-                    //                 else
-                    //                 {
-                    //                     var retName =
-                    //                         MakeDefIdent(fnDef.ReturnStruct.Name);
-                    //                     // value return
-                    //                     bldr.AppendLine($"let data = ({retName} {{ value }})")
-                    //                         .AppendLine(".serialize_to_vec()")
-                    //                         .AppendLine(".expect(\"Error serializing response!\");");
-                    //                 }
-                    //
-                    //                 bldr.AppendLine("::bebop::rpc::OwnedDatagram::RpcResponseOk { header, data }");
-                    //             })
-                    //             .AppendLine("Err(err) => err.as_datagram(header).into(),");
-                    //     }, "{", "};")
-                    //     .AppendLine("tx.send(rsp_dgram).await;");
-                }, "(async move {", "})");
+                            ? $"let value = fut.await.map(|v| {retName} {{ value: v }});"
+                            : $"let value = fut.await.map(|_| {retName} {{ }});")
+                        .AppendLine("let fut = handle.send_response(&value);")
+                        .AppendLine(
+                            $"::bebop::handle_respond_error!(fut, \"{serviceName}\", \"{fnName}\", opcode, call_id);");
+                });
         }
 
         private void WriteRpcRequesterFn(IndentedStringBuilder bldr, ushort opcode, FunctionDefinition fnDef)
@@ -1371,7 +1324,7 @@ namespace Core.Generators.Rust
             }
         }
 
-        private string DynFutType(string output) => $"::bebop::rpc::DynFuture<{output}>";
+        private string DynFutType(string output) => DynFutType("'f", output);
         private string DynFutType(string lifetime, string output) => $"::bebop::rpc::DynFuture<{lifetime}, {output}>";
 
         #endregion

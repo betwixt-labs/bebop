@@ -21,8 +21,6 @@ use bebop::Record as _;
 use core::convert::TryInto as _;
 use std::io::Write as _;
 
-pub type _DynFut<T> = ::core::pin::Pin<::std::boxed::Box<dyn::core::future::Future<Output = T>>>;
-
 #[repr(u32)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Instrument {
@@ -529,9 +527,6 @@ pub mod owned {
     use bebop::Record as _;
     use core::convert::TryInto as _;
     use std::io::Write as _;
-
-    pub type _DynFut<T> =
-        ::core::pin::Pin<::std::boxed::Box<dyn::core::future::Future<Output = T>>>;
 
     pub use super::Instrument;
 

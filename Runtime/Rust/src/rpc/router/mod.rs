@@ -1,4 +1,3 @@
-use std::num::NonZeroU16;
 use static_assertions::assert_obj_safe;
 use std::ops::Deref;
 use std::sync::{Arc, Weak};
@@ -7,7 +6,7 @@ pub use context::RouterContext;
 
 use crate::rpc::router::context::{SpawnTask, UnknownResponseHandler};
 use crate::rpc::transport::TransportProtocol;
-use crate::rpc::{Datagram, DynFuture, TransportError};
+use crate::rpc::{Datagram, DynFuture};
 pub use crate::rpc::calls::RequestHandle;
 
 mod call_table;
@@ -32,7 +31,7 @@ pub trait ServiceHandlers: Send + Sync {
     ///
     /// This returns a future instead of being async because it must decode datagram before starting
     /// the async section.
-    fn _recv_call<'a>(&self, datagram: &Datagram, handle: RequestHandle) -> DynFuture<'a>;
+    fn _recv_call<'f>(&self, datagram: &Datagram, handle: RequestHandle) -> DynFuture<'f>;
 }
 
 impl<T: Deref<Target = S> + Send + Sync, S: ServiceHandlers> ServiceHandlers for T {
@@ -40,7 +39,7 @@ impl<T: Deref<Target = S> + Send + Sync, S: ServiceHandlers> ServiceHandlers for
         self.deref()._name()
     }
 
-    fn _recv_call<'a>(&self, datagram: &Datagram, transport: RequestHandle) -> DynFuture<'a> {
+    fn _recv_call<'f>(&self, datagram: &Datagram, transport: RequestHandle) -> DynFuture<'f> {
         self.deref()._recv_call(datagram, transport)
     }
 }

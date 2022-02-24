@@ -1,7 +1,8 @@
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
+use std::pin::Pin;
+use std::sync::Once;
 
-use crate::rpc::{Datagram, ResponseHeader};
 use crate::{DeserializeError, SerializeError};
 
 /// Things that could go wrong with the underlying transport, need it to be somewhat generic.
@@ -100,3 +101,61 @@ impl Error for RemoteRpcError {}
 
 /// A response on the channel from the remote.
 pub type RemoteRpcResponse<T> = Result<T, RemoteRpcError>;
+
+/// Macro for the generated code to handle errors when responding to requests by forwarding
+/// to the registered callback.
+#[macro_export]
+macro_rules! handle_respond_error {
+    ($fut:expr, $service:literal, $function:literal, $opcode:expr, $call_id:expr) => {
+        if let ::core::result::Result::Err(err) = $fut.await {
+            if let ::core::option::Option::Some(cb) = ::bebop::rpc::get_on_respond_error() {
+                cb(
+                    ::bebop::rpc::ServiceContext {
+                        service: $service,
+                        function: $function,
+                        opcode: $opcode,
+                        call_id: $call_id,
+                    },
+                    err,
+                );
+            }
+        }
+    };
+}
+
+type OnRespondError = dyn Fn(ServiceContext, TransportError);
+
+static mut ON_RESPOND_ERROR: Option<Pin<Box<OnRespondError>>> = None;
+
+pub struct ServiceContext {
+    pub service: &'static str,
+    pub function: &'static str,
+    pub opcode: u16,
+    pub call_id: u16,
+}
+
+/// Get the `on_respond_error` function pointer.
+/// This should be used by generated code only.
+#[inline(always)]
+pub fn get_on_respond_error() -> Option<&'static OnRespondError> {
+    unsafe {
+        ON_RESPOND_ERROR.as_deref().map(|f| {
+            // we can cast as static since we prevent it ever being dropped.
+            std::mem::transmute::<&OnRespondError, &'static OnRespondError>(f)
+        })
+    }
+}
+
+/// One-time initialization. Returns true if the provided value has been set. False if it was
+/// already initialized.
+pub fn set_on_respond_error(cb: Pin<Box<OnRespondError>>) -> bool {
+    static ON_RESPOND_ERROR_INIT: Once = Once::new();
+    let mut initialized = false;
+    ON_RESPOND_ERROR_INIT.call_once(|| {
+        unsafe {
+            ON_RESPOND_ERROR = Some(cb);
+        }
+        initialized = true;
+    });
+    initialized
+}

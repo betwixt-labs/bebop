@@ -27,14 +27,12 @@ impl ChannelTransport {
     }
 }
 
-// TODO: remove async_trait requirement?
-#[async_trait]
 impl TransportProtocol for ChannelTransport {
     fn set_handler(&self, recv: TransportHandler) {
         self.handler.write().insert(recv);
     }
 
-    async fn send(&self, datagram: &Datagram) -> TransportResult {
+    fn send(&self, datagram: &Datagram) -> DynFuture<TransportResult> {
         todo!()
     }
 }
