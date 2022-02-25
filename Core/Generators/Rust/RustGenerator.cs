@@ -1022,7 +1022,7 @@ namespace Core.Generators.Rust
 
             WriteDocumentation(bldr, d.Documentation);
             bldr.AppendLine(handlersFeat)
-                .CodeBlock($"pub trait {ident}Handlers: ::core::marker::Send + ::core::marker::Sync", _tab, () =>
+                .CodeBlock($"pub trait {ident}HandlersDef: ::core::marker::Send + ::core::marker::Sync", _tab, () =>
                 {
                     bldr.CodeBlock(
                         $"fn service_name<'f>(&self, _: ::core::option::Option<::std::time::Instant>) -> {DynFutType("::bebop::rpc::LocalRpcResponse<::std::string::String>")}",
@@ -1055,7 +1055,25 @@ namespace Core.Generators.Rust
                 })
                 .AppendLine()
                 .AppendLine(handlersFeat)
-                .CodeBlock($"impl ::bebop::rpc::ServiceHandlers for dyn {ident}Handlers", _tab, () =>
+                .AppendLine("#[repr(transparent)]")
+                .AppendLine($"pub struct {ident}Handlers<_Def: {ident}HandlersDef>(_Def);")
+                .AppendLine()
+                .AppendLine(handlersFeat)
+                .CodeBlock($"impl<_Def: {ident}HandlersDef> ::core::convert::From<_Def> for {ident}Handlers<_Def>", _tab, () =>
+                {
+                    bldr.AppendLine("fn from(def: _Def) -> Self { Self(def) }");
+                })
+                .AppendLine()
+                .AppendLine(handlersFeat)
+                .CodeBlock($"impl<_Def: {ident}HandlersDef> ::core::ops::Deref for {ident}Handlers<_Def>", _tab, () =>
+                {
+                    bldr.AppendLine("type Target = _Def;")
+                        .AppendLine()
+                        .AppendLine("fn deref(&self) -> &Self::Target { &self.0 }");
+                })
+                .AppendLine()
+                .AppendLine(handlersFeat)
+                .CodeBlock($"impl<_Def: {ident}HandlersDef> ::bebop::rpc::ServiceHandlers for {ident}Handlers<_Def>", _tab, () =>
                 {
                     bldr.AppendLine($"fn _name(&self) -> &'static str {{ \"{ident}\" }}")
                         .AppendLine()

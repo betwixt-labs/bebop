@@ -112,3 +112,45 @@ macro_rules! dyn_fut {
         )* })
     };
 }
+
+/// Define a timeout value for RPC.
+/// This creates an Option<Duration> value which is what RPC requests expect.
+#[macro_export]
+macro_rules! timeout {
+    (0) => {
+        timeout!(None)
+    };
+    (0 $t:ident) => {
+        timeout!(None)
+    };
+    (None) => {
+        None
+    };
+    ($dur:literal ms) => {
+        timeout!($dur milliseconds)
+    };
+    ($dur:literal milli) => {
+        timeout!($dur milliseconds)
+    };
+    ($dur:literal milliseconds) => {
+        Some(::core::time::Duration::from_millis($dur))
+    };
+    ($dur:literal s) => {
+        timeout!($dur seconds)
+    };
+    ($dur:literal sec) => {
+        timeout!($dur seconds)
+    };
+    ($dur:literal seconds) => {
+        Some(::core::time::Duration::from_secs($dur))
+    };
+    ($dur:literal m) => {
+        timeout!($dur minutes)
+    };
+    ($dur:literal min) => {
+        timeout!($dur minutes)
+    };
+    ($dur:literal minutes) => {
+        Some(::core::time::Duration::from_secs($dur * 60))
+    };
+}

@@ -4,10 +4,10 @@ use std::sync::{Arc, Weak};
 
 pub use context::RouterContext;
 
+pub use crate::rpc::calls::RequestHandle;
 use crate::rpc::router::context::{SpawnTask, UnknownResponseHandler};
 use crate::rpc::transport::TransportProtocol;
 use crate::rpc::{Datagram, DynFuture};
-pub use crate::rpc::calls::RequestHandle;
 
 mod call_table;
 pub mod calls;
@@ -34,15 +34,15 @@ pub trait ServiceHandlers: Send + Sync {
     fn _recv_call<'f>(&self, datagram: &Datagram, handle: RequestHandle) -> DynFuture<'f>;
 }
 
-impl<T: Deref<Target = S> + Send + Sync, S: ServiceHandlers> ServiceHandlers for T {
-    fn _name(&self) -> &'static str {
-        self.deref()._name()
-    }
-
-    fn _recv_call<'f>(&self, datagram: &Datagram, transport: RequestHandle) -> DynFuture<'f> {
-        self.deref()._recv_call(datagram, transport)
-    }
-}
+// impl<T: Deref<Target = S> + Send + Sync, S: ServiceHandlers> ServiceHandlers for T {
+//     fn _name(&self) -> &'static str {
+//         self.deref()._name()
+//     }
+//
+//     fn _recv_call<'f>(&self, datagram: &Datagram, transport: RequestHandle) -> DynFuture<'f> {
+//         self.deref()._recv_call(datagram, transport)
+//     }
+// }
 
 assert_obj_safe!(ServiceHandlers);
 

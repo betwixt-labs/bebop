@@ -1,26 +1,28 @@
-use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::time::Instant;
 
-use async_trait::async_trait;
 use bebop::prelude::*;
-use bebop::rpc::{
-    LocalRpcResponse, Router, ServiceHandlers, TransportHandler, TransportProtocol, TransportResult,
-};
-use parking_lot::RwLock;
-use tokio::sync::mpsc::Sender;
+use bebop::rpc::{LocalRpcResponse, TransportHandler, TransportProtocol, TransportResult};
+use bebop::timeout;
 
 pub use crate::generated::rpc::owned::NullServiceRequests;
-use crate::generated::rpc::owned::{KVStoreHandlers, KVStoreRequests, _DynFut, KV};
+use crate::generated::rpc::owned::{KVStoreHandlersDef, KVStoreRequests, NullServiceHandlers, KV};
 
 struct ChannelTransport {
-    handler: RwLock<Option<TransportHandler>>,
+    handler: Option<Pin<Box<dyn TransportHandler>>>,
 }
 
 impl ChannelTransport {
+    fn new() -> (Self, Self) {
+        (Self { handler: None }, Self { handler: None })
+    }
+
     // TODO: call this function when a datagram is received
-    async fn recv(&self, datagram: OwnedDatagram) {
-        if let Some(fut) = self.handler.read().unwrap()(datagram) {
+    async fn recv<'a, 'b: 'a>(&self, datagram: &'a Datagram<'b>) {
+        debug_assert!(self.handler.is_some());
+        let handler = unsafe { self.handler.as_deref().unwrap_unchecked() };
+        if let Some(fut) = handler.handle(&datagram) {
             // awaiting here allows for backpressure on requests, could just spawn instead.
             fut.await
         }
@@ -28,8 +30,8 @@ impl ChannelTransport {
 }
 
 impl TransportProtocol for ChannelTransport {
-    fn set_handler(&self, recv: TransportHandler) {
-        self.handler.write().insert(recv);
+    fn set_handler(&mut self, recv: Pin<Box<dyn TransportHandler>>) {
+        self.handler = Some(recv);
     }
 
     fn send(&self, datagram: &Datagram) -> DynFuture<TransportResult> {
@@ -37,85 +39,113 @@ impl TransportProtocol for ChannelTransport {
     }
 }
 
-struct MemBackedKVStore {
-    transport: Arc<ChannelTransport>,
-}
+struct MemBackedKVStore();
 
-impl KVStoreHandlers for MemBackedKVStore {
-    fn _response_tx(&self) -> Sender<OwnedDatagram> {
-        todo!()
-    }
-
-    fn ping(&self) -> _DynFut<LocalRpcResponse<()>> {
-        todo!()
-    }
-
-    fn entries(&self, page: u64, page_size: u16) -> _DynFut<LocalRpcResponse<Vec<KV>>> {
-        todo!()
-    }
-
-    fn keys(&self, page: u64, page_size: u16) -> _DynFut<LocalRpcResponse<Vec<String>>> {
-        todo!()
-    }
-
-    fn values(&self, page: u64, page_size: u16) -> _DynFut<LocalRpcResponse<Vec<String>>> {
-        todo!()
-    }
-
-    fn insert(&self, key: String, value: String) -> _DynFut<LocalRpcResponse<bool>> {
-        todo!()
-    }
-
-    fn insert_many(&self, entries: Vec<KV>) -> _DynFut<LocalRpcResponse<Vec<String>>> {
-        todo!()
-    }
-
-    fn get(&self, key: String) -> _DynFut<LocalRpcResponse<String>> {
-        todo!()
-    }
-
-    fn count(&self) -> _DynFut<LocalRpcResponse<u64>> {
-        todo!()
+impl MemBackedKVStore {
+    fn new() -> Arc<Self> {
+        Arc::new(Self())
     }
 }
 
-struct NullServiceHandlers;
-impl crate::generated::rpc::owned::NullServiceHandlers for NullServiceHandlers {
-    fn _response_tx(&self) -> Sender<OwnedDatagram> {
+// impl for Arc so that we can create weak references that we pass to the futures without capturing
+// the lifetime of the self reference.
+impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
+    fn ping<'f>(&self, deadline: Option<Instant>) -> DynFuture<'f, LocalRpcResponse<()>> {
+        todo!()
+    }
+
+    fn entries<'f>(
+        &self,
+        deadline: Option<Instant>,
+        page: u64,
+        page_size: u16,
+    ) -> DynFuture<'f, LocalRpcResponse<Vec<KV>>> {
+        todo!()
+    }
+
+    fn keys<'f>(
+        &self,
+        deadline: Option<Instant>,
+        page: u64,
+        page_size: u16,
+    ) -> DynFuture<'f, LocalRpcResponse<Vec<String>>> {
+        todo!()
+    }
+
+    fn values<'f>(
+        &self,
+        deadline: Option<Instant>,
+        page: u64,
+        page_size: u16,
+    ) -> DynFuture<'f, LocalRpcResponse<Vec<String>>> {
+        todo!()
+    }
+
+    fn insert<'f>(
+        &self,
+        deadline: Option<Instant>,
+        key: String,
+        value: String,
+    ) -> DynFuture<'f, LocalRpcResponse<bool>> {
+        todo!()
+    }
+
+    fn insert_many<'f>(
+        &self,
+        deadline: Option<Instant>,
+        entries: Vec<KV>,
+    ) -> DynFuture<'f, LocalRpcResponse<Vec<String>>> {
+        todo!()
+    }
+
+    fn get<'f>(
+        &self,
+        deadline: Option<Instant>,
+        key: String,
+    ) -> DynFuture<'f, LocalRpcResponse<String>> {
+        todo!()
+    }
+
+    fn count<'f>(&self, deadline: Option<Instant>) -> DynFuture<'f, LocalRpcResponse<u64>> {
         todo!()
     }
 }
 
-// TODO: this should be automatic and not require this impl
-impl ServiceHandlers for MemBackedKVStore {
-    const NAME: &'static str = <dyn KVStoreHandlers>::NAME;
-
-    fn _recv_call(&self, datagram: &Datagram) -> Pin<Box<dyn Future<Output = ()>>> {
-        (self as &dyn KVStoreHandlers)._recv_call(datagram)
-    }
-}
+struct NullServiceHandlersImpl;
+impl crate::generated::rpc::owned::NullServiceHandlersDef for NullServiceHandlersImpl {}
 
 #[tokio::test]
 async fn main() {
-    let kv_store = Arc::new(MemBackedKVStore);
-    let server = Router::<
-        ChannelTransport,
-        Arc<MemBackedKVStore>,
-        NullServiceRequests<ChannelTransport, Arc<MemBackedKVStore>>,
-    >::new(ChannelTransport, kv_store, None, |fut| tokio::spawn(fut));
+    let kv_store = MemBackedKVStore::new();
+    let kv_store_handlers = KVStoreHandlers::from(kv_store);
 
-    let client = Router::<
-        ChannelTransport,
-        NullServiceHandlers,
-        KVStoreRequests<ChannelTransport, Arc<MemBackedKVStore>>,
-    >::new(ChannelTransport, NullServiceHandlers, None, |fut| {
-        tokio::spawn(fut)
-    });
+    let (transport_a, transport_b) = ChannelTransport::new();
+
+    let server = Router::<NullServiceRequests>::new(
+        transport_a,
+        kv_store_handlers,
+        Box::pin(|f| {
+            tokio::spawn(f);
+        }),
+        None,
+    );
+
+    let client = Router::<KVStoreRequests>::new(
+        transport_b,
+        NullServiceHandlers::from(NullServiceHandlersImpl),
+        Box::pin(|f| {
+            tokio::spawn(f);
+        }),
+        None,
+    );
 
     client
-        .insert("Mykey".into(), "Myvalue".into())
+        .insert(timeout!(1 s), "Mykey", "Myvalue")
         .await
         .unwrap();
-    assert_eq!(client.count().await.unwrap(), 1);
-    assert_eq!(&client.get("Mykey".into()).await.unwrap(), "Myvalue");
+    assert_eq!(client.count(timeout!(5 sec)).await.unwrap(), 1);
+    assert_eq!(
+        &client.get(timeout!(100 ms), "Mykey").await.unwrap(),
+        "Myvalue"
+    );
 }

@@ -11,11 +11,11 @@ use crate::rpc::error::{RemoteRpcResponse, TransportResult};
 use crate::rpc::router::call_table::RouterCallTable;
 use crate::rpc::router::ServiceHandlers;
 use crate::rpc::transport::TransportProtocol;
-use crate::rpc::{Datagram, DatagramInfo, RequestHandle};
+use crate::rpc::{Datagram, DatagramInfo, RequestHandle, TransportHandler};
 use crate::{OwnedRecord, Record, SliceWrapper};
 
 pub type UnknownResponseHandler = Pin<Box<dyn Send + Sync + Fn(&Datagram)>>;
-pub type SpawnTask = Pin<Box<dyn Send + Sync + Fn(DynFuture)>>;
+pub type SpawnTask = Pin<Box<dyn Send + Sync + Fn(DynFuture<'static>)>>;
 
 pub struct RouterContext {
     /// Callback that receives any datagrams without a call id.
@@ -33,6 +33,24 @@ pub struct RouterContext {
     // expire_futures: Mutex<HashMap<NonZeroU16, tokio::task::JoinHandle<()>>>,
     /// Callback we should use to spawn futures for cleanup.
     spawn_task: SpawnTask,
+}
+
+struct Handler(Weak<RouterContext>);
+impl TransportHandler for Handler {
+    fn handle<'a, 'b: 'a>(&self, datagram: &'a Datagram<'b>) -> Option<DynFuture<'a>> {
+        if let Some(ctx) = self.0.upgrade() {
+            if datagram.is_request() {
+                let handle = RequestHandle::new(self.0.clone(), datagram);
+                Some(ctx.recv_request(datagram, handle))
+            } else {
+                ctx.recv_response(datagram);
+                None
+            }
+        } else {
+            // No more router, just ignore
+            None
+        }
+    }
 }
 
 impl RouterContext {
@@ -56,21 +74,7 @@ impl RouterContext {
         // before the const ref (or any other ref) can be used.
         unsafe {
             let zelf_ptr = Arc::as_ptr(&zelf) as *mut Self;
-            let weak_ctx = Arc::downgrade(&zelf);
-            (*zelf_ptr).transport.set_handler(Box::pin(move |datagram| {
-                if let Some(ctx) = weak_ctx.upgrade() {
-                    if datagram.is_request() {
-                        let handle = RequestHandle::new(weak_ctx.clone(), datagram);
-                        Some(ctx.recv_request(datagram, handle))
-                    } else {
-                        ctx.recv_response(datagram);
-                        None
-                    }
-                } else {
-                    // No more router, just ignore
-                    None
-                }
-            }));
+            (*zelf_ptr).transport.set_handler(Box::pin(Handler(Arc::downgrade(&zelf))));
         }
 
         zelf

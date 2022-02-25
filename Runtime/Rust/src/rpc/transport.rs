@@ -4,8 +4,14 @@ use std::pin::Pin;
 use crate::rpc::error::TransportResult;
 use crate::rpc::{Datagram, DynFuture};
 
-pub type TransportHandler<'a> =
-    Pin<Box<dyn Send + Sync + Fn(&'a Datagram<'a>) -> Option<DynFuture<'a>>>>;
+/// Function-like trait for handling a datagram being received.
+///
+/// TODO: use function traits when available.
+pub trait TransportHandler: Send + Sync {
+    fn handle<'a, 'b: 'a>(&self, datagram: &'a Datagram<'b>) -> Option<DynFuture<'a>>;
+}
+
+assert_obj_safe!(TransportHandler);
 
 /// Transport protocol has a few main responsibilities:
 /// 1. interpreting the raw stream as datagrams
@@ -25,7 +31,7 @@ pub trait TransportProtocol: Send + Sync {
     /// be ignored. Make sure that you are careful about awaiting these promises or spawning them
     /// on the runtime. Ideally if too many requests are being handled the transport can send
     /// some sort of error response to reject additional work.
-    fn set_handler(&mut self, recv: TransportHandler);
+    fn set_handler(&mut self, recv: Pin<Box<dyn TransportHandler>>);
 
     /// Send a datagram to the remote.
     fn send(&self, datagram: &Datagram) -> DynFuture<TransportResult>;
