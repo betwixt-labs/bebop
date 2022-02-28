@@ -1,20 +1,19 @@
 use std::collections::hash_map::Entry;
-use std::collections::{HashMap, HashSet};
-use std::pin::Pin;
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
 use bebop::prelude::*;
-use bebop::rpc::{TransportHandler, LocalRpcError, LocalRpcResponse, Router, TransportProtocol, TransportResult};
-use bebop::{dyn_fut, timeout};
+use bebop::rpc::{
+    LocalRpcError, LocalRpcResponse, TransportHandler, TransportProtocol, TransportResult,
+};
+use bebop::timeout;
 // Usually I would use parking lot, but since we are simulating a database I think this will give
 // a better impression of what the operations will look like with the required awaits.
 use tokio::sync::RwLock;
 
 pub use crate::generated::rpc::owned::NullServiceRequests;
-use crate::generated::rpc::owned::{
-    KVStoreHandlers, KVStoreHandlersDef, KVStoreRequests, NullServiceHandlers, KV,
-};
+use crate::generated::rpc::owned::{KVStoreHandlersDef, KVStoreRequests, NullServiceHandlers, KV};
 
 struct ChannelTransport {
     handler: Option<TransportHandler>,
@@ -31,11 +30,20 @@ impl ChannelTransport {
         tokio::spawn(async move {
             while let Some(packet) = rx.recv().await {
                 if let Some(zelf) = weak.upgrade() {
-                    let datagram = Datagram::deserialize(&packet).unwrap();
-                    zelf.handler
-                        .as_ref()
-                        .unwrap()
-                        .handle(&datagram);
+                    // We spawn here so that requests don't block each other; this would be a good
+                    // place to return a "too many requests" error if the server is overloaded
+                    // rather than spawning the request.
+                    tokio::spawn(async move {
+                        let datagram = Datagram::deserialize(&packet).unwrap();
+                        debug_assert!(zelf.handler.is_some());
+                        let handler = unsafe { zelf.handler.as_ref().unwrap_unchecked() };
+                        if let Some(fut) = handler.handle(&datagram) {
+                            fut.await;
+                        }
+                        // not sure why exactly, but we need to explicitly drop datagram for
+                        // lifetime compliance reasons.
+                        drop(datagram);
+                    });
                 } else {
                     break;
                 }
@@ -229,6 +237,9 @@ impl crate::generated::rpc::owned::NullServiceHandlersDef for NullServiceHandler
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 // #[tokio::test]
 async fn main() {
+    use crate::generated::rpc::owned::KVStoreHandlers;
+    use bebop::rpc::Router;
+
     let kv_store = MemBackedKVStore::new();
     let kv_store_handlers = KVStoreHandlers::from(kv_store);
 
