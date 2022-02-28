@@ -7,13 +7,12 @@ use bebop::prelude::*;
 use bebop::rpc::{
     LocalRpcError, LocalRpcResponse, TransportHandler, TransportProtocol, TransportResult,
 };
-use bebop::timeout;
 // Usually I would use parking lot, but since we are simulating a database I think this will give
 // a better impression of what the operations will look like with the required awaits.
 use tokio::sync::RwLock;
 
 pub use crate::generated::rpc::owned::NullServiceRequests;
-use crate::generated::rpc::owned::{KVStoreHandlersDef, KVStoreRequests, NullServiceHandlers, KV};
+use crate::generated::rpc::owned::{KVStoreHandlersDef, KV};
 
 struct ChannelTransport {
     handler: Option<TransportHandler>,
@@ -21,6 +20,7 @@ struct ChannelTransport {
 }
 
 impl ChannelTransport {
+    #[allow(dead_code)]
     fn make(
         tx: tokio::sync::mpsc::Sender<Vec<u8>>,
         mut rx: tokio::sync::mpsc::Receiver<Vec<u8>>,
@@ -52,6 +52,7 @@ impl ChannelTransport {
         zelf
     }
 
+    #[allow(dead_code)]
     pub fn new() -> (Arc<Self>, Arc<Self>) {
         let (tx_a, rx_a) = tokio::sync::mpsc::channel(16);
         let (tx_b, rx_b) = tokio::sync::mpsc::channel(16);
@@ -62,7 +63,7 @@ impl ChannelTransport {
         (a, b)
     }
 
-    // TODO: call this function when a datagram is received
+    #[allow(dead_code)]
     async fn recv<'a, 'b: 'a>(&self, datagram: &'a Datagram<'b>) {
         debug_assert!(self.handler.is_some());
         let handler = unsafe { self.handler.as_ref().unwrap_unchecked() };
@@ -82,7 +83,9 @@ impl TransportProtocol for ChannelTransport {
         let tx = self.tx.clone();
         let raw = datagram.serialize_to_vec().unwrap();
         Box::pin(async move {
-            tx.send(raw).await;
+            if let Err(err) = tx.send(raw).await {
+                println!("Warning, channel send error: {err}")
+            }
             Ok(())
         })
     }
@@ -91,6 +94,7 @@ impl TransportProtocol for ChannelTransport {
 struct MemBackedKVStore(RwLock<HashMap<String, String>>);
 
 impl MemBackedKVStore {
+    #[allow(dead_code)]
     fn new() -> Arc<Self> {
         Arc::new(Self(RwLock::default()))
     }
@@ -235,10 +239,10 @@ struct NullServiceHandlersImpl;
 impl crate::generated::rpc::owned::NullServiceHandlersDef for NullServiceHandlersImpl {}
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-// #[tokio::test]
 async fn main() {
-    use crate::generated::rpc::owned::KVStoreHandlers;
+    use crate::generated::rpc::owned::{KVStoreHandlers, KVStoreRequests, NullServiceHandlers};
     use bebop::rpc::Router;
+    use bebop::timeout;
 
     let kv_store = MemBackedKVStore::new();
     let kv_store_handlers = KVStoreHandlers::from(kv_store);
@@ -246,7 +250,7 @@ async fn main() {
     let (transport_a, transport_b) = ChannelTransport::new();
 
     let runtime = tokio::runtime::Handle::current();
-    let server = Router::<NullServiceRequests>::new(
+    let _server = Router::<NullServiceRequests>::new(
         transport_a,
         kv_store_handlers,
         Box::pin(move |f| {

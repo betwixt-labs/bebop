@@ -3,8 +3,8 @@ use std::sync::{Arc, Weak};
 
 use static_assertions::assert_obj_safe;
 
-pub use context::TransportHandler;
 pub use context::RouterContext;
+pub use context::TransportHandler;
 
 pub use crate::rpc::calls::RequestHandle;
 use crate::rpc::router::context::{SpawnTask, UnknownResponseHandler};

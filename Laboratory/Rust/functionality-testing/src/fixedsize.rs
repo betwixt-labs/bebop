@@ -8,9 +8,21 @@ fn validate_memory_logic() {
 }
 
 const ARRAY: [FixedSizeStruct; 3] = [
-    FixedSizeStruct { a: 31, b: 896, c: 98623 },
-    FixedSizeStruct { a: 37, b: 8123, c: 2345 },
-    FixedSizeStruct { a: 123, b: 23947, c: 2631 },
+    FixedSizeStruct {
+        a: 31,
+        b: 896,
+        c: 98623,
+    },
+    FixedSizeStruct {
+        a: 37,
+        b: 8123,
+        c: 2345,
+    },
+    FixedSizeStruct {
+        a: 123,
+        b: 23947,
+        c: 2631,
+    },
 ];
 
 #[test]
