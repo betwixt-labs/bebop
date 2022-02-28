@@ -10,14 +10,6 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@v2
-      - name: Setup Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-      - name: Runtime Tests
-        run: cargo test
-        working-directory: ./Runtime/Rust
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
         with:
@@ -26,6 +18,14 @@ jobs:
         run: |
           dotnet build Compiler
           mv bin/compiler/Debug bin/compiler/Linux-Debug
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+      - name: Runtime Tests
+        run: cargo test
+        working-directory: ./Runtime/Rust
       - name: Generator Compiliation Tests
         run: cargo check -p auto-testing
         working-directory: ./Laboratory/Rust
