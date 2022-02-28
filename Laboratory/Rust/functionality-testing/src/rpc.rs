@@ -265,7 +265,7 @@ async fn main() {
     );
 
     client
-        .insert(timeout!(10 m), "Mykey", "Myvalue")
+        .insert(timeout!(1 s), "Mykey", "Myvalue")
         .await
         .unwrap();
     assert_eq!(client.count(timeout!(5 sec)).await.unwrap(), 1);
