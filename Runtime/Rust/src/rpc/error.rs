@@ -43,8 +43,17 @@ pub type TransportResult<T = ()> = Result<T, TransportError>;
 /// Errors that the local may return when sending or responding to a request.
 #[derive(Debug)]
 pub enum LocalRpcError {
+    /// Custom error code with a dynamic message.
     CustomError(u32, String),
+    /// Custom error code with a static message.
     CustomErrorStatic(u32, &'static str),
+    /// This may be returned if the deadline provided to the function has been exceeded, however, it
+    /// is also acceptable to return any other error OR okay value instead and a best-effort will be
+    /// made to return it.
+    ///
+    /// Warning: Do not return this if there was no deadline provided to the function.
+    DeadlineExceded,
+    /// Indicates a given operation has not been implemented for the given server.
     NotSupported,
 }
 

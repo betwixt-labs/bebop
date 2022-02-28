@@ -12,7 +12,7 @@ service KVStore {
     3 -> string[] keys(uint64 page, uint16 pageSize);
     4 -> string[] values(uint64 page, uint16 pageSize);
 
-    /** Returns true if it was inserted, false if the key was a duplicate */
+    /** Returns true if it was inserted, false if the key was a duplicate and was not inserted. */
     5 -> bool insert(string key, string value);
     /** Add multiple entries and return any keys which where already there */
     6 -> string[] insertMany(KV[] entries);

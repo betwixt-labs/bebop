@@ -40,6 +40,10 @@ impl RequestHandle {
     ) -> TransportResult {
         match response {
             Ok(record) => self.send_ok_response(record).await,
+            Err(LocalRpcError::DeadlineExceded) => {
+                // do nothing, no response needed as the remote should forget automatically.
+                Ok(())
+            }
             Err(LocalRpcError::CustomError(code, msg)) => {
                 self.send_error_response(*code, Some(msg)).await
             }

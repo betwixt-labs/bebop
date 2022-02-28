@@ -1,5 +1,7 @@
 use static_assertions::assert_obj_safe;
+use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
+use std::sync::Arc;
 
 use crate::rpc::error::TransportResult;
 use crate::rpc::{Datagram, DynFuture};
@@ -35,6 +37,18 @@ pub trait TransportProtocol: Send + Sync {
 
     /// Send a datagram to the remote.
     fn send(&self, datagram: &Datagram) -> DynFuture<TransportResult>;
+}
+
+impl<T: TransportProtocol> TransportProtocol for Arc<T> {
+    fn set_handler(&mut self, recv: Pin<Box<dyn TransportHandler>>) {
+        Arc::get_mut(self)
+            .expect("Cannot set handler when there are multiple references")
+            .set_handler(recv)
+    }
+
+    fn send(&self, datagram: &Datagram) -> DynFuture<TransportResult> {
+        self.deref().send(datagram)
+    }
 }
 
 assert_obj_safe!(TransportProtocol);
