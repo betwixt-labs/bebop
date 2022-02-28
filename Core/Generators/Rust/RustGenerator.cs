@@ -249,7 +249,7 @@ namespace Core.Generators.Rust
                                 }
 
                                 builder.AppendLine(
-                                    "d => Err(::bebop::DeserializeError::InvalidEnumDiscriminator(d.into())),");
+                                    "d => Err(::bebop::DeserializeError::InvalidEnumDiscriminator(d as i128)),");
                             });
                         });
                 }).AppendLine();
