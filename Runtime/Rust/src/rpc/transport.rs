@@ -1,19 +1,19 @@
-use static_assertions::assert_obj_safe;
-use std::ops::{Deref, DerefMut};
-use std::pin::Pin;
+use std::ops::Deref;
 use std::sync::Arc;
 
+use static_assertions::assert_obj_safe;
+
 use crate::rpc::error::TransportResult;
-use crate::rpc::{Datagram, DynFuture};
+use crate::rpc::{Datagram, DynFuture, TransportHandler};
 
-/// Function-like trait for handling a datagram being received.
-///
-/// TODO: use function traits when available.
-pub trait TransportHandler: Send + Sync {
-    fn handle<'a, 'b: 'a>(&self, datagram: &'a Datagram<'b>) -> Option<DynFuture<'a>>;
-}
-
-assert_obj_safe!(TransportHandler);
+// /// Function-like trait for handling a datagram being received.
+// ///
+// /// TODO: use function traits when available.
+// pub trait TransportHandler: Send + Sync {
+//     fn handle<'a, 'b: 'a>(&self, datagram: &'a Datagram<'b>) -> Option<DynFuture<'a>>;
+// }
+//
+// assert_obj_safe!(TransportHandler);
 
 /// Transport protocol has a few main responsibilities:
 /// 1. interpreting the raw stream as datagrams
@@ -33,17 +33,21 @@ pub trait TransportProtocol: Send + Sync {
     /// be ignored. Make sure that you are careful about awaiting these promises or spawning them
     /// on the runtime. Ideally if too many requests are being handled the transport can send
     /// some sort of error response to reject additional work.
-    fn set_handler(&mut self, recv: Pin<Box<dyn TransportHandler>>);
+    fn set_handler(&mut self, recv: TransportHandler);
 
     /// Send a datagram to the remote.
     fn send(&self, datagram: &Datagram) -> DynFuture<TransportResult>;
 }
 
 impl<T: TransportProtocol> TransportProtocol for Arc<T> {
-    fn set_handler(&mut self, recv: Pin<Box<dyn TransportHandler>>) {
-        Arc::get_mut(self)
-            .expect("Cannot set handler when there are multiple references")
-            .set_handler(recv)
+    fn set_handler(&mut self, recv: TransportHandler) {
+        // avert thine eyes
+        // we are the only ones who call this, so we are just going to have to make sure our code is
+        // only doing it once at initialization and before anything calls send.
+        unsafe {
+            let ptr = Arc::as_ptr(self) as *mut T;
+            (&mut *ptr).set_handler(recv)
+        }
     }
 
     fn send(&self, datagram: &Datagram) -> DynFuture<TransportResult> {

@@ -1222,7 +1222,7 @@ namespace Core.Generators.Rust
                         .CodeBlock($"let fut = zelf.request::<_, {retName}>", _tab, () =>
                         {
                             bldr.AppendLine($"{opcode}, ")
-                                .AppendLine("::bebop::rpc::convert_timeout(timeout),")
+                                .AppendLine("timeout,")
                                 .AppendLine($"{sigName},")
                                 .AppendLine("payload,");
                         }, "(", ");")

@@ -16,7 +16,7 @@ bebop-tools = { path = "../../../Tools/cargo", default-features = false, feature
 
 [features]
 default = ["bebop-owned-all", "rpc"]
-rpc = ["kvstore-requests", "kvstore-handlers", "null-service-handlers", "null-service-requests", "bebop-owned-all", "bebop/rpc", "async-trait", "tokio/rt", "tokio/sync", "tokio/macros", "parking_lot"]
+rpc = ["kvstore-requests", "kvstore-handlers", "null-service-handlers", "null-service-requests", "bebop-owned-all", "bebop/rpc", "async-trait", "tokio/rt", "tokio/rt-multi-thread", "tokio/sync", "tokio/macros", "parking_lot"]
 null-service-handlers = []
 null-service-requests = []
 kvstore-requests = []

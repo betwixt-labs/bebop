@@ -1,7 +1,9 @@
-use static_assertions::assert_obj_safe;
 use std::ops::Deref;
 use std::sync::{Arc, Weak};
 
+use static_assertions::assert_obj_safe;
+
+pub use context::TransportHandler;
 pub use context::RouterContext;
 
 pub use crate::rpc::calls::RequestHandle;

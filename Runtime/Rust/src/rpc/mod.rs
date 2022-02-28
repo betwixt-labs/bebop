@@ -16,12 +16,12 @@ pub use datagram::{
 };
 pub use error::*;
 pub use router::*;
-pub use transport::{TransportHandler, TransportProtocol};
+pub use transport::TransportProtocol;
+
+use crate::rpc::datagram::RpcDatagram;
 
 pub type DynFuture<'a, T = ()> =
     std::pin::Pin<Box<dyn 'a + Send + std::future::Future<Output = T>>>;
-
-use crate::rpc::datagram::RpcDatagram;
 
 mod datagram;
 mod error;
@@ -126,15 +126,6 @@ macro_rules! timeout {
     (None) => {
         None
     };
-    ($dur:literal ms) => {
-        timeout!($dur milliseconds)
-    };
-    ($dur:literal milli) => {
-        timeout!($dur milliseconds)
-    };
-    ($dur:literal milliseconds) => {
-        Some(::core::time::Duration::from_millis($dur))
-    };
     ($dur:literal s) => {
         timeout!($dur seconds)
     };
@@ -152,5 +143,11 @@ macro_rules! timeout {
     };
     ($dur:literal minutes) => {
         Some(::core::time::Duration::from_secs($dur * 60))
+    };
+    ($dur:literal h) => {
+        timeout!($dur hours)
+    };
+    ($dur:literal hours) => {
+        Some(::core::time::Duration::from_secs($dur * 60 * 60))
     };
 }

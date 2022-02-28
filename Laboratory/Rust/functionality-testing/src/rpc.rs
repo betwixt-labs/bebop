@@ -5,9 +5,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use bebop::prelude::*;
-use bebop::rpc::{
-    LocalRpcError, LocalRpcResponse, Router, TransportHandler, TransportProtocol, TransportResult,
-};
+use bebop::rpc::{TransportHandler, LocalRpcError, LocalRpcResponse, Router, TransportProtocol, TransportResult};
 use bebop::{dyn_fut, timeout};
 // Usually I would use parking lot, but since we are simulating a database I think this will give
 // a better impression of what the operations will look like with the required awaits.
@@ -19,7 +17,7 @@ use crate::generated::rpc::owned::{
 };
 
 struct ChannelTransport {
-    handler: Option<Pin<Box<dyn TransportHandler>>>,
+    handler: Option<TransportHandler>,
     tx: tokio::sync::mpsc::Sender<Vec<u8>>,
 }
 
@@ -34,7 +32,10 @@ impl ChannelTransport {
             while let Some(packet) = rx.recv().await {
                 if let Some(zelf) = weak.upgrade() {
                     let datagram = Datagram::deserialize(&packet).unwrap();
-                    zelf.handler.as_deref().unwrap().handle(&datagram);
+                    zelf.handler
+                        .as_ref()
+                        .unwrap()
+                        .handle(&datagram);
                 } else {
                     break;
                 }
@@ -56,7 +57,7 @@ impl ChannelTransport {
     // TODO: call this function when a datagram is received
     async fn recv<'a, 'b: 'a>(&self, datagram: &'a Datagram<'b>) {
         debug_assert!(self.handler.is_some());
-        let handler = unsafe { self.handler.as_deref().unwrap_unchecked() };
+        let handler = unsafe { self.handler.as_ref().unwrap_unchecked() };
         if let Some(fut) = handler.handle(&datagram) {
             // awaiting here allows for backpressure on requests, could just spawn instead.
             fut.await
@@ -65,7 +66,7 @@ impl ChannelTransport {
 }
 
 impl TransportProtocol for ChannelTransport {
-    fn set_handler(&mut self, recv: Pin<Box<dyn TransportHandler>>) {
+    fn set_handler(&mut self, recv: TransportHandler) {
         self.handler = Some(recv);
     }
 
@@ -225,18 +226,20 @@ impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
 struct NullServiceHandlersImpl;
 impl crate::generated::rpc::owned::NullServiceHandlersDef for NullServiceHandlersImpl {}
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+// #[tokio::test]
 async fn main() {
     let kv_store = MemBackedKVStore::new();
     let kv_store_handlers = KVStoreHandlers::from(kv_store);
 
     let (transport_a, transport_b) = ChannelTransport::new();
 
+    let runtime = tokio::runtime::Handle::current();
     let server = Router::<NullServiceRequests>::new(
         transport_a,
         kv_store_handlers,
-        Box::pin(|f| {
-            tokio::spawn(f);
+        Box::pin(move |f| {
+            runtime.spawn(f);
         }),
         None,
     );
@@ -251,12 +254,12 @@ async fn main() {
     );
 
     client
-        .insert(timeout!(1 s), "Mykey", "Myvalue")
+        .insert(timeout!(10 m), "Mykey", "Myvalue")
         .await
         .unwrap();
     assert_eq!(client.count(timeout!(5 sec)).await.unwrap(), 1);
     assert_eq!(
-        &client.get(timeout!(100 ms), "Mykey").await.unwrap(),
+        &client.get(timeout!(10 s), "Mykey").await.unwrap(),
         "Myvalue"
     );
 }

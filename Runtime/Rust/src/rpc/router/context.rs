@@ -1,7 +1,7 @@
 use std::num::NonZeroU16;
 use std::pin::Pin;
 use std::sync::{Arc, Weak};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use parking_lot::Mutex;
 
@@ -11,7 +11,7 @@ use crate::rpc::error::{RemoteRpcResponse, TransportResult};
 use crate::rpc::router::call_table::RouterCallTable;
 use crate::rpc::router::ServiceHandlers;
 use crate::rpc::transport::TransportProtocol;
-use crate::rpc::{Datagram, DatagramInfo, RequestHandle, TransportHandler};
+use crate::rpc::{convert_timeout, Datagram, DatagramInfo, RequestHandle};
 use crate::{OwnedRecord, Record, SliceWrapper};
 
 pub type UnknownResponseHandler = Pin<Box<dyn Send + Sync + Fn(&Datagram)>>;
@@ -35,9 +35,10 @@ pub struct RouterContext {
     spawn_task: SpawnTask,
 }
 
-struct Handler(Weak<RouterContext>);
-impl TransportHandler for Handler {
-    fn handle<'a, 'b: 'a>(&self, datagram: &'a Datagram<'b>) -> Option<DynFuture<'a>> {
+#[derive(Clone)]
+pub struct TransportHandler(Weak<RouterContext>);
+impl TransportHandler {
+    pub fn handle<'a, 'b: 'a>(&self, datagram: &'a Datagram<'b>) -> Option<DynFuture<'a>> {
         if let Some(ctx) = self.0.upgrade() {
             if datagram.is_request() {
                 let handle = RequestHandle::new(self.0.clone(), datagram);
@@ -74,7 +75,9 @@ impl RouterContext {
         // before the const ref (or any other ref) can be used.
         unsafe {
             let zelf_ptr = Arc::as_ptr(&zelf) as *mut Self;
-            (*zelf_ptr).transport.set_handler(Box::pin(Handler(Arc::downgrade(&zelf))));
+            (*zelf_ptr)
+                .transport
+                .set_handler(TransportHandler(Arc::downgrade(&zelf)));
         }
 
         zelf
@@ -84,7 +87,7 @@ impl RouterContext {
     pub async fn request<'a, 'b: 'a, I, O>(
         self: Arc<Self>,
         opcode: u16,
-        timeout: Option<NonZeroU16>,
+        timeout: Option<Duration>,
         signature: u32,
         record: &'a I,
     ) -> RemoteRpcResponse<O>
@@ -92,8 +95,13 @@ impl RouterContext {
         I: Record<'b>,
         O: 'static + OwnedRecord,
     {
-        self.request_raw(opcode, timeout, signature, &record.serialize_to_vec()?)
-            .await
+        self.request_raw(
+            opcode,
+            convert_timeout(timeout),
+            signature,
+            &record.serialize_to_vec()?,
+        )
+        .await
     }
 
     /// Send a raw byte request to the remote. This is used by the generated code.
@@ -138,7 +146,11 @@ impl RouterContext {
 
     /// Receive a request datagram and send it to the local service for handling.
     /// This is used by the handler for the TransportProtocol.
-    fn recv_request<'a, 'b: 'a>(&self, datagram: &'a Datagram<'b>, handle: RequestHandle) -> DynFuture<'b> {
+    fn recv_request<'a, 'b: 'a>(
+        &self,
+        datagram: &'a Datagram<'b>,
+        handle: RequestHandle,
+    ) -> DynFuture<'b> {
         debug_assert!(datagram.is_request(), "Datagram must be a request");
         self.local_service._recv_call(datagram, handle)
     }
