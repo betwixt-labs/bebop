@@ -1025,7 +1025,7 @@ namespace Core.Generators.Rust
                 .CodeBlock($"pub trait {ident}HandlersDef: ::core::marker::Send + ::core::marker::Sync", _tab, () =>
                 {
                     bldr.CodeBlock(
-                        $"fn service_name<'f>(&self, _: ::core::option::Option<::std::time::Instant>) -> {DynFutType("::bebop::rpc::LocalRpcResponse<::std::string::String>")}",
+                        $"fn service_name<'f>(&self, _: ::bebop::rpc::Deadline) -> {DynFutType("::bebop::rpc::LocalRpcResponse<::std::string::String>")}",
                         _tab,
                         () =>
                         {
@@ -1046,7 +1046,7 @@ namespace Core.Generators.Rust
                             _ => throw new ArgumentOutOfRangeException(ident, fn.ReturnStruct.Fields, null)
                         };
                         var argsStr = string.Join(", ",
-                            new[] { "&self", "deadline: ::core::option::Option<::std::time::Instant>" }
+                            new[] { "&self", "deadline: ::bebop::rpc::Deadline" }
                                 .Concat(args.Select(i => $"{i.Item1}: {i.Item2}")));
                         var responseType = $"::bebop::rpc::LocalRpcResponse<{retType}>";
                         bldr.AppendLine($"fn {fname}<'f>({argsStr}) -> {DynFutType(responseType)};");
@@ -1081,7 +1081,8 @@ namespace Core.Generators.Rust
                             $"fn _recv_call<'f>(&self, datagram: &::bebop::rpc::Datagram, handle: ::bebop::rpc::RequestHandle) -> {DynFutType("()")}",
                             _tab, () =>
                             {
-                                bldr.CodeBlock(
+                                bldr.AppendLine("use ::bebop::rpc::CallDetails as _;")
+                                    .CodeBlock(
                                     "if let ::bebop::rpc::Datagram::RpcRequestDatagram { header: req_header, opcode, data } = datagram",
                                     _tab, () =>
                                     {
@@ -1163,10 +1164,9 @@ namespace Core.Generators.Rust
                 }, "{", "};");
             }
 
-            bldr
-                .Append($"let fut = self.{fnName}(")
+            bldr.Append($"let fut = self.{fnName}(")
                 .AppendMid(string.Join(", ",
-                    new[] { "handle.expires_at()" }.Concat(
+                    new[] { "handle.deadline()" }.Concat(
                         fnDef.ArgumentStruct.Fields.Select(f => $"args.{MakeAttrIdent(f.Name)}"))))
                 .AppendEnd(");")
                 .CodeBlock("::bebop::dyn_fut!", _tab, () =>

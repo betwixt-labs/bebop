@@ -3,7 +3,7 @@
 //! TODO: write an example of setting up RPC.
 
 use std::num::NonZeroU16;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 pub use datagram::{
     owned::RpcDatagram as OwnedDatagram,
@@ -93,6 +93,33 @@ impl<'raw> DatagramInfo for Datagram<'raw> {
         }
     }
 }
+
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+pub struct Deadline(Option<Instant>);
+
+impl Deadline {
+    pub fn has_passed(&self) -> bool {
+        if let Some(v) = self.0 {
+            Instant::now() > v
+        } else {
+            false
+        }
+    }
+}
+
+impl From<Option<Instant>> for Deadline {
+    fn from(v: Option<Instant>) -> Self {
+        Self(v)
+    }
+}
+
+impl From<Instant> for Deadline {
+    fn from(v: Instant) -> Self {
+        Self(Some(v))
+    }
+}
+
 
 #[inline]
 pub fn convert_timeout(timeout: Option<Duration>) -> Option<NonZeroU16> {

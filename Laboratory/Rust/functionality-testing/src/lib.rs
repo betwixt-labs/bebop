@@ -12,5 +12,5 @@ mod flags;
 #[cfg(test)]
 mod jazz;
 
-#[cfg(feature = "rpc")]
+#[cfg(all(test, feature = "rpc"))]
 pub mod rpc;

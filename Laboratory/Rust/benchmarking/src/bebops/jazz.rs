@@ -42,7 +42,7 @@ impl ::core::convert::TryFrom<u32> for Instrument {
             3 => Ok(Instrument::Piano),
             4 => Ok(Instrument::Cello),
             d => Err(::bebop::DeserializeError::InvalidEnumDiscriminator(
-                d.into(),
+                d as i128,
             )),
         }
     }

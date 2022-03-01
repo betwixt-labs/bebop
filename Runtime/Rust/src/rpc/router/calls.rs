@@ -9,7 +9,9 @@ use tokio::sync::oneshot;
 
 use crate::rpc::datagram::RpcResponseHeader;
 use crate::rpc::error::{RemoteRpcResponse, TransportError, TransportResult};
-use crate::rpc::{Datagram, DatagramInfo, LocalRpcError, LocalRpcResponse, RouterContext};
+use crate::rpc::{
+    Datagram, DatagramInfo, Deadline, LocalRpcError, LocalRpcResponse, RouterContext,
+};
 use crate::{OwnedRecord, Record, SliceWrapper};
 
 /// Request handle to allow sending your response to the remote.
@@ -145,29 +147,11 @@ impl RequestHandle {
             Err(TransportError::NotConnected)
         }
     }
+}
 
-    pub fn call_id(&self) -> NonZeroU16 {
-        self.details.call_id
-    }
-
-    pub fn duration(&self) -> Duration {
-        self.details.duration()
-    }
-
-    pub fn received_at(&self) -> Instant {
-        self.details.since
-    }
-
-    pub fn timeout(&self) -> Option<Duration> {
-        self.details.timeout
-    }
-
-    pub fn is_expired(&self) -> bool {
-        self.details.is_expired()
-    }
-
-    pub fn expires_at(&self) -> Option<Instant> {
-        self.details.expires_at()
+impl AsRef<InnerCallDetails> for RequestHandle {
+    fn as_ref(&self) -> &InnerCallDetails {
+        &self.details
     }
 }
 
@@ -269,20 +253,35 @@ pub struct InnerCallDetails {
 
 pub trait CallDetails {
     fn call_id(&self) -> NonZeroU16;
-    fn duration(&self) -> Duration;
+
+    fn duration(&self) -> Duration {
+        Instant::now() - self.since()
+    }
+
     fn since(&self) -> Instant;
+
     fn timeout(&self) -> Option<Duration>;
-    fn is_expired(&self) -> bool;
-    fn expires_at(&self) -> Option<Instant>;
+
+    fn is_expired(&self) -> bool {
+        if let Some(timeout) = self.timeout() {
+            self.duration() >= timeout
+        } else {
+            false
+        }
+    }
+
+    fn expires_at(&self) -> Option<Instant> {
+        self.timeout().map(|t| self.since() + t)
+    }
+
+    fn deadline(&self) -> Deadline {
+        self.expires_at().into()
+    }
 }
 
 impl CallDetails for InnerCallDetails {
     fn call_id(&self) -> NonZeroU16 {
         self.call_id
-    }
-
-    fn duration(&self) -> Duration {
-        Instant::now() - self.since
     }
 
     fn since(&self) -> Instant {
@@ -292,27 +291,11 @@ impl CallDetails for InnerCallDetails {
     fn timeout(&self) -> Option<Duration> {
         self.timeout
     }
-
-    fn is_expired(&self) -> bool {
-        if let Some(timeout) = self.timeout {
-            self.duration() >= timeout
-        } else {
-            false
-        }
-    }
-
-    fn expires_at(&self) -> Option<Instant> {
-        self.timeout.map(|t| self.since + t)
-    }
 }
 
 impl<T: AsRef<InnerCallDetails>> CallDetails for T {
     fn call_id(&self) -> NonZeroU16 {
         self.as_ref().call_id()
-    }
-
-    fn duration(&self) -> Duration {
-        self.as_ref().duration()
     }
 
     fn since(&self) -> Instant {
@@ -321,14 +304,6 @@ impl<T: AsRef<InnerCallDetails>> CallDetails for T {
 
     fn timeout(&self) -> Option<Duration> {
         self.as_ref().timeout()
-    }
-
-    fn is_expired(&self) -> bool {
-        self.as_ref().is_expired()
-    }
-
-    fn expires_at(&self) -> Option<Instant> {
-        self.as_ref().expires_at()
     }
 }
 

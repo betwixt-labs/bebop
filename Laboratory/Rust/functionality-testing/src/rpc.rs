@@ -1,17 +1,21 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration};
 
 use bebop::prelude::*;
+use bebop::rpc::LocalRpcError::DeadlineExceded;
 use bebop::rpc::{
-    LocalRpcError, LocalRpcResponse, TransportHandler, TransportProtocol, TransportResult,
+    Deadline, LocalRpcError, LocalRpcResponse, TransportHandler, TransportProtocol, TransportResult,
 };
+use bebop::rpc::{RemoteRpcError, Router};
+use bebop::timeout;
 // Usually I would use parking lot, but since we are simulating a database I think this will give
 // a better impression of what the operations will look like with the required awaits.
 use tokio::sync::RwLock;
 
 pub use crate::generated::rpc::owned::NullServiceRequests;
+use crate::generated::rpc::owned::{KVStoreHandlers, KVStoreRequests, NullServiceHandlers};
 use crate::generated::rpc::owned::{KVStoreHandlersDef, KV};
 
 struct ChannelTransport {
@@ -20,7 +24,6 @@ struct ChannelTransport {
 }
 
 impl ChannelTransport {
-    #[allow(dead_code)]
     fn make(
         tx: tokio::sync::mpsc::Sender<Vec<u8>>,
         mut rx: tokio::sync::mpsc::Receiver<Vec<u8>>,
@@ -52,7 +55,6 @@ impl ChannelTransport {
         zelf
     }
 
-    #[allow(dead_code)]
     pub fn new() -> (Arc<Self>, Arc<Self>) {
         let (tx_a, rx_a) = tokio::sync::mpsc::channel(16);
         let (tx_b, rx_b) = tokio::sync::mpsc::channel(16);
@@ -63,7 +65,6 @@ impl ChannelTransport {
         (a, b)
     }
 
-    #[allow(dead_code)]
     async fn recv<'a, 'b: 'a>(&self, datagram: &'a Datagram<'b>) {
         debug_assert!(self.handler.is_some());
         let handler = unsafe { self.handler.as_ref().unwrap_unchecked() };
@@ -94,7 +95,6 @@ impl TransportProtocol for ChannelTransport {
 struct MemBackedKVStore(RwLock<HashMap<String, String>>);
 
 impl MemBackedKVStore {
-    #[allow(dead_code)]
     fn new() -> Arc<Self> {
         Arc::new(Self(RwLock::default()))
     }
@@ -103,13 +103,13 @@ impl MemBackedKVStore {
 // impl for Arc so that we can create weak references that we pass to the futures without capturing
 // the lifetime of the self reference.
 impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
-    fn ping<'f>(&self, _deadline: Option<Instant>) -> DynFuture<'f, LocalRpcResponse<()>> {
-        Box::pin(async move { Ok(()) })
+    fn ping<'f>(&self, _deadline: Deadline) -> DynFuture<'f, LocalRpcResponse<()>> {
+        Box::pin(async move { Err(LocalRpcError::CustomErrorStatic(4, "some error")) })
     }
 
     fn entries<'f>(
         &self,
-        _deadline: Option<Instant>,
+        _deadline: Deadline,
         page: u64,
         page_size: u16,
     ) -> DynFuture<'f, LocalRpcResponse<Vec<KV>>> {
@@ -135,7 +135,7 @@ impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
 
     fn keys<'f>(
         &self,
-        _deadline: Option<Instant>,
+        _deadline: Deadline,
         page: u64,
         page_size: u16,
     ) -> DynFuture<'f, LocalRpcResponse<Vec<String>>> {
@@ -155,7 +155,7 @@ impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
 
     fn values<'f>(
         &self,
-        _deadline: Option<Instant>,
+        _deadline: Deadline,
         page: u64,
         page_size: u16,
     ) -> DynFuture<'f, LocalRpcResponse<Vec<String>>> {
@@ -175,7 +175,7 @@ impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
 
     fn insert<'f>(
         &self,
-        _deadline: Option<Instant>,
+        _deadline: Deadline,
         key: String,
         value: String,
     ) -> DynFuture<'f, LocalRpcResponse<bool>> {
@@ -193,7 +193,7 @@ impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
 
     fn insert_many<'f>(
         &self,
-        _deadline: Option<Instant>,
+        _deadline: Deadline,
         entries: Vec<KV>,
     ) -> DynFuture<'f, LocalRpcResponse<Vec<String>>> {
         let zelf = self.clone();
@@ -213,11 +213,7 @@ impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
         })
     }
 
-    fn get<'f>(
-        &self,
-        _deadline: Option<Instant>,
-        key: String,
-    ) -> DynFuture<'f, LocalRpcResponse<String>> {
+    fn get<'f>(&self, _deadline: Deadline, key: String) -> DynFuture<'f, LocalRpcResponse<String>> {
         let zelf = self.clone();
         Box::pin(async move {
             zelf.0
@@ -229,45 +225,56 @@ impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
         })
     }
 
-    fn count<'f>(&self, _deadline: Option<Instant>) -> DynFuture<'f, LocalRpcResponse<u64>> {
+    fn count<'f>(&self, _deadline: Deadline) -> DynFuture<'f, LocalRpcResponse<u64>> {
         let zelf = self.clone();
         Box::pin(async move { Ok(zelf.0.read().await.len() as u64) })
+    }
+
+    fn wait<'f>(&self, deadline: Deadline, secs: u16) -> DynFuture<'f, LocalRpcResponse<()>> {
+        let zelf = self.clone();
+        Box::pin(async move {
+            let _lock = zelf.0.write().await;
+            tokio::time::sleep(Duration::from_secs(secs as u64)).await;
+            if deadline.has_passed() {
+                Err(DeadlineExceded)
+            } else {
+                Ok(())
+            }
+        })
     }
 }
 
 struct NullServiceHandlersImpl;
 impl crate::generated::rpc::owned::NullServiceHandlersDef for NullServiceHandlersImpl {}
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn main() {
-    use crate::generated::rpc::owned::{KVStoreHandlers, KVStoreRequests, NullServiceHandlers};
-    use bebop::rpc::Router;
-    use bebop::timeout;
-
+fn setup() -> (Router<NullServiceRequests>, Router<KVStoreRequests>) {
     let kv_store = MemBackedKVStore::new();
     let kv_store_handlers = KVStoreHandlers::from(kv_store);
-
     let (transport_a, transport_b) = ChannelTransport::new();
-
     let runtime = tokio::runtime::Handle::current();
-    let _server = Router::<NullServiceRequests>::new(
-        transport_a,
-        kv_store_handlers,
-        Box::pin(move |f| {
-            runtime.spawn(f);
-        }),
-        None,
-    );
+    (
+        Router::new(
+            transport_a,
+            kv_store_handlers,
+            Box::pin(move |f| {
+                runtime.spawn(f);
+            }),
+            None,
+        ),
+        Router::new(
+            transport_b,
+            NullServiceHandlers::from(NullServiceHandlersImpl),
+            Box::pin(|f| {
+                tokio::spawn(f);
+            }),
+            None,
+        ),
+    )
+}
 
-    let client = Router::<KVStoreRequests>::new(
-        transport_b,
-        NullServiceHandlers::from(NullServiceHandlersImpl),
-        Box::pin(|f| {
-            tokio::spawn(f);
-        }),
-        None,
-    );
-
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn can_request_and_receive() {
+    let (_server, client) = setup();
     client
         .insert(timeout!(1 s), "Mykey", "Myvalue")
         .await
@@ -277,4 +284,11 @@ async fn main() {
         &client.get(timeout!(10 s), "Mykey").await.unwrap(),
         "Myvalue"
     );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn handles_custom_errors() {
+    let (_server, client) = setup();
+    let res = client.ping(timeout!(None)).await;
+    assert!(matches!(res, Err(RemoteRpcError::CustomError(4, Some(_)))));
 }
