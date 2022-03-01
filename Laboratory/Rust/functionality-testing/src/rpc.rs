@@ -1,15 +1,16 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
-use std::future::Future;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use bebop::prelude::*;
 use bebop::rpc::LocalRpcError::DeadlineExceded;
-use bebop::rpc::{Deadline, LocalRpcError, LocalRpcResponse, TransportError, TransportHandler, TransportProtocol, TransportResult};
+use bebop::rpc::{
+    Deadline, LocalRpcError, LocalRpcResponse, TransportError, TransportHandler, TransportProtocol,
+    TransportResult,
+};
 use bebop::rpc::{RemoteRpcError, Router};
 use bebop::timeout;
-use tokio::select;
 // Usually I would use parking lot, but since we are simulating a database I think this will give
 // a better impression of what the operations will look like with the required awaits.
 use tokio::sync::RwLock;
@@ -236,7 +237,7 @@ impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
             if let Some(deadline) = deadline.as_ref() {
                 if *deadline - Instant::now() >= Duration::from_secs(secs as u64) {
                     // we will eventually time out, so just do it now
-                    return Err(DeadlineExceded)
+                    return Err(DeadlineExceded);
                 }
             }
             let _lock = zelf.0.write().await;
@@ -305,7 +306,10 @@ async fn handles_remote_timeout_error() {
     let start = Instant::now();
     let res = client.wait(timeout!(1 s), 10).await;
     assert!(Instant::now() - start < Duration::from_millis(1100));
-    assert!(matches!(res, Err(RemoteRpcError::TransportError(TransportError::Timeout))));
+    assert!(matches!(
+        res,
+        Err(RemoteRpcError::TransportError(TransportError::Timeout))
+    ));
 }
 
 static_assertions::assert_impl_all!(Router<KVStoreRequests>: Send, Sync, Clone);
@@ -328,7 +332,10 @@ async fn handles_local_timeout_error() {
 
     let res = res.expect("Count should have completed first");
     assert!(Instant::now() - start < Duration::from_millis(1100));
-    assert!(matches!(res, Err(RemoteRpcError::TransportError(TransportError::Timeout))));
+    assert!(matches!(
+        res,
+        Err(RemoteRpcError::TransportError(TransportError::Timeout))
+    ));
     // make sure that when we get the message back (since it does not check if past the deadline) it
     // does not cause any errors.
     tokio::time::sleep(Duration::from_secs(2)).await;
