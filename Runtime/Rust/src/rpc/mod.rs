@@ -154,8 +154,8 @@ macro_rules! timeout {
 
 #[cfg(test)]
 pub(crate) mod test_struct {
-    use std::io::Write;
     use crate::{DeResult, FixedSized, Record, SeResult, SubRecord};
+    use std::io::Write;
 
     #[derive(Copy, Clone, PartialEq, Eq, Debug)]
     pub struct TestStruct {

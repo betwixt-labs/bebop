@@ -407,6 +407,9 @@ mod test {
     async fn resolves_dropped() {
         // when the handle gets dropped but it has not timed out
         let (_, pending) = new_pending_response::<TestStruct>(1.try_into().unwrap(), None);
-        assert!(matches!(pending.await, Err(RemoteRpcError::TransportError(TransportError::CallDropped))));
+        assert!(matches!(
+            pending.await,
+            Err(RemoteRpcError::TransportError(TransportError::CallDropped))
+        ));
     }
 }
