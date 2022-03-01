@@ -150,7 +150,7 @@ mod test {
     use std::time::Duration;
 
     use crate::prelude::Datagram;
-    use crate::rpc::calls::new_pending_response;
+    use crate::rpc::calls::{CallDetails, new_pending_response};
     use crate::rpc::datagram::{RpcRequestHeader, RpcResponseHeader};
     use crate::rpc::error::{RemoteRpcError, TransportError};
     use crate::rpc::DatagramInfo;

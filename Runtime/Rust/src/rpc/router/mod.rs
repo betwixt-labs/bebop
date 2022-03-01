@@ -6,8 +6,8 @@ use static_assertions::assert_obj_safe;
 pub use context::RouterContext;
 pub use context::TransportHandler;
 
-pub use crate::rpc::calls::RequestHandle;
-use crate::rpc::router::context::{SpawnTask, UnknownResponseHandler};
+pub use self::calls::{RequestHandle, CallDetails};
+use self::context::{SpawnTask, UnknownResponseHandler};
 use crate::rpc::transport::TransportProtocol;
 use crate::rpc::{Datagram, DynFuture};
 

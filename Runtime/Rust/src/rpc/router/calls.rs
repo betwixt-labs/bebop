@@ -16,7 +16,7 @@ use crate::{OwnedRecord, Record, SliceWrapper};
 pub struct RequestHandle {
     /// Weak reference to the context we will need to send datagrams.
     ctx: Weak<RouterContext>,
-    details: CallDetails,
+    details: InnerCallDetails,
 }
 
 impl RequestHandle {
@@ -24,7 +24,7 @@ impl RequestHandle {
         debug_assert!(datagram.is_request(), "Must be a request");
         Self {
             ctx,
-            details: CallDetails {
+            details: InnerCallDetails {
                 timeout: datagram.timeout(),
                 since: Instant::now(),
                 call_id: datagram
@@ -179,7 +179,7 @@ where
     R: 'static + OwnedRecord,
 {
     let (tx, rx) = oneshot::channel::<RemoteRpcResponse<R>>();
-    let details = CallDetails {
+    let details = InnerCallDetails {
         timeout,
         since: Instant::now(),
         call_id,
@@ -200,50 +200,20 @@ where
 /// an owned copy and _then_ send.
 struct ResponseHandleImpl<T> {
     tx: Option<oneshot::Sender<RemoteRpcResponse<T>>>,
-    details: CallDetails,
+    details: InnerCallDetails,
 }
 
-pub trait ResponseHandle: Send + Sync {
-    fn call_id(&self) -> NonZeroU16;
-    fn duration(&self) -> Duration;
-    fn since(&self) -> Instant;
-    fn timeout(&self) -> Option<Duration>;
-    fn is_expired(&self) -> bool;
-    fn expires_at(&self) -> Option<Instant>;
+impl<T> AsRef<InnerCallDetails> for ResponseHandleImpl<T> {
+    fn as_ref(&self) -> &InnerCallDetails {
+        &self.details
+    }
+}
+
+pub trait ResponseHandle: Send + Sync + CallDetails {
     fn resolve(&mut self, value: RemoteRpcResponse<&[u8]>);
 }
 
-/// A pending response from the remote which will resolve once you receive their reply.
-pub(super) struct PendingResponse<T> {
-    rx: oneshot::Receiver<RemoteRpcResponse<T>>,
-    details: CallDetails,
-}
-
 impl<R: OwnedRecord + Send + Sync> ResponseHandle for ResponseHandleImpl<R> {
-    fn call_id(&self) -> NonZeroU16 {
-        self.details.call_id
-    }
-
-    fn duration(&self) -> Duration {
-        self.details.duration()
-    }
-
-    fn since(&self) -> Instant {
-        self.details.since
-    }
-
-    fn timeout(&self) -> Option<Duration> {
-        self.details.timeout
-    }
-
-    fn is_expired(&self) -> bool {
-        self.details.is_expired()
-    }
-
-    fn expires_at(&self) -> Option<Instant> {
-        self.details.expires_at()
-    }
-
     fn resolve(&mut self, value: RemoteRpcResponse<&[u8]>) {
         let res = value.and_then(|v| Ok(R::deserialize(v)?));
         if let Some(tx) = self.tx.take() {
@@ -254,29 +224,15 @@ impl<R: OwnedRecord + Send + Sync> ResponseHandle for ResponseHandleImpl<R> {
     }
 }
 
-impl<T> PendingResponse<T> {
-    pub fn call_id(&self) -> NonZeroU16 {
-        self.details.call_id
-    }
+/// A pending response from the remote which will resolve once you receive their reply.
+pub(super) struct PendingResponse<T> {
+    rx: oneshot::Receiver<RemoteRpcResponse<T>>,
+    details: InnerCallDetails,
+}
 
-    pub fn duration(&self) -> Duration {
-        self.details.duration()
-    }
-
-    pub fn since(&self) -> Instant {
-        self.details.since
-    }
-
-    pub fn timeout(&self) -> Option<Duration> {
-        self.details.timeout
-    }
-
-    pub fn is_expired(&self) -> bool {
-        self.details.is_expired()
-    }
-
-    pub fn expires_at(&self) -> Option<Instant> {
-        self.details.expires_at()
+impl<T> AsRef<InnerCallDetails> for PendingResponse<T> {
+    fn as_ref(&self) -> &InnerCallDetails {
+        &self.details
     }
 }
 
@@ -297,7 +253,7 @@ impl<T> Future for PendingResponse<T> {
 }
 
 #[derive(Copy, Clone, Debug)]
-struct CallDetails {
+pub struct InnerCallDetails {
     /// How long this call is allowed to be pending for. If None, no timeout is specified.
     ///
     /// Warning: No timeout will lead to memory leaks if the transport does not notify the router
@@ -311,12 +267,33 @@ struct CallDetails {
     call_id: NonZeroU16,
 }
 
-impl CallDetails {
-    pub fn duration(&self) -> Duration {
+pub trait CallDetails {
+    fn call_id(&self) -> NonZeroU16;
+    fn duration(&self) -> Duration;
+    fn since(&self) -> Instant;
+    fn timeout(&self) -> Option<Duration>;
+    fn is_expired(&self) -> bool;
+    fn expires_at(&self) -> Option<Instant>;
+}
+
+impl CallDetails for InnerCallDetails {
+    fn call_id(&self) -> NonZeroU16 {
+        self.call_id
+    }
+
+    fn duration(&self) -> Duration {
         Instant::now() - self.since
     }
 
-    pub fn is_expired(&self) -> bool {
+    fn since(&self) -> Instant {
+        self.since
+    }
+
+    fn timeout(&self) -> Option<Duration> {
+        self.timeout
+    }
+
+    fn is_expired(&self) -> bool {
         if let Some(timeout) = self.timeout {
             self.duration() >= timeout
         } else {
@@ -324,8 +301,34 @@ impl CallDetails {
         }
     }
 
-    pub fn expires_at(&self) -> Option<Instant> {
+    fn expires_at(&self) -> Option<Instant> {
         self.timeout.map(|t| self.since + t)
+    }
+}
+
+impl<T: AsRef<InnerCallDetails>> CallDetails for T {
+    fn call_id(&self) -> NonZeroU16 {
+        self.as_ref().call_id()
+    }
+
+    fn duration(&self) -> Duration {
+        self.as_ref().duration()
+    }
+
+    fn since(&self) -> Instant {
+        self.as_ref().since()
+    }
+
+    fn timeout(&self) -> Option<Duration> {
+        self.as_ref().timeout()
+    }
+
+    fn is_expired(&self) -> bool {
+        self.as_ref().is_expired()
+    }
+
+    fn expires_at(&self) -> Option<Instant> {
+        self.as_ref().expires_at()
     }
 }
 
