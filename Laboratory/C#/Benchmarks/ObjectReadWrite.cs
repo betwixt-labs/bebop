@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -17,7 +17,7 @@ namespace Benchmarks
     [MaxColumn]
     [MemoryDiagnoser]
     //[SimpleJob(RuntimeMoniker.Net472)]
-    [SimpleJob(RuntimeMoniker.NetCoreApp50)]
+    [SimpleJob(RuntimeMoniker.Net60)]
     public class ObjectReadWrite
     {
         private readonly Library _library;

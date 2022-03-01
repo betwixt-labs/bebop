@@ -130,13 +130,12 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: "5.0.x" # SDK Version to use; x will use the latest version of the 5.0 channel
+          dotnet-version: "6.0.x" # SDK Version to use; x will use the latest version of the 5.0 channel
 
       - name: Test .NET Runtime
         run: |
-          dotnet test -c Release -f net5.0
-          dotnet test -c Release -f net48
-          dotnet test -c Release -f net472
+          dotnet run --project ../../../Compiler/ --cs "../GeneratedTestCode/Output.g.cs" --namespace Bebop.Codegen --files $(ls -p ../../Schemas/Valid/*.bop | tr '\n' ' ')
+          dotnet test -c Release -f net6.0
         working-directory: ${{env.NET_TEST_ROOT}}
 
       - name: Build .NET Runtime
@@ -314,7 +313,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: "5.0.x" # SDK Version to use; x will use the latest version of the 5.0 channel
+          dotnet-version: "6.0.x" # SDK Version to use; x will use the latest version of the 5.0 channel
           
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
@@ -358,8 +357,10 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
 
       - name: Stage Website
-        run: mkdir -p homepage/repl && cp -a bebop-repl-${{ steps.dotenv.outputs.version }}/. homepage/repl
-
+        run: |
+          mkdir -p homepage/repl && cp -a bebop-repl-${{ steps.dotenv.outputs.version }}/. homepage/repl
+          sed 's/0.0.0/${{ steps.dotenv.outputs.version }}/' ${{env.TOOLS_ROOT}}/bash/install.sh > homepage/install.sh
+          
       - name: Publish Website
         uses: jakejarvis/s3-sync-action@master
         env:

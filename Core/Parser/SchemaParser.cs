@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -401,7 +401,7 @@ namespace Core.Parser
             {
                 return ParseUnionDefinition(CurrentToken, definitionDocumentation, opcodeAttribute);
             }
-            
+
             var kind = CurrentToken switch
             {
                 _ when Eat(TokenKind.Enum) => AggregateKind.Enum,
@@ -418,7 +418,7 @@ namespace Core.Parser
 
             return ParseNonUnionDefinition(CurrentToken, kind, isReadOnly, definitionDocumentation, opcodeAttribute,
                 flagsAttribute);
-        
+
         }
 
         private ConstDefinition ParseConstDefinition(string definitionDocumentation)
@@ -814,7 +814,7 @@ namespace Core.Parser
                 var fnDocumentation = ConsumeBlockComments();
                 var fnDeprecatedAttribute = EatAttribute();
                 if (fnDeprecatedAttribute is not DeprecatedAttribute) fnDeprecatedAttribute = null;
-                
+
                 // if we've reached the end of the definition after parsing documentation we need to exit.
                 if (Eat(TokenKind.CloseBrace))
                 {
@@ -1324,10 +1324,13 @@ namespace Core.Parser
 
         private static bool TryParseBigInteger(string lexeme, out BigInteger value)
         {
-            return lexeme.ToLowerInvariant().StartsWith("0x")
-                ? BigInteger.TryParse(lexeme.Substring(2), NumberStyles.HexNumber, CultureInfo.InvariantCulture,
-                    out value)
+            var negative = lexeme.StartsWith('-');
+            lexeme = lexeme.TrimStart('-');
+            var success = lexeme.ToLowerInvariant().StartsWith("0x")
+                ? BigInteger.TryParse("0" + lexeme.Substring(2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out value)
                 : BigInteger.TryParse(lexeme, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
+            if (success && negative) value = -value;
+            return success;
         }
 
         private ConstDefinition MakeFunctionSignature(string serviceName, StructDefinition returnStruct,
