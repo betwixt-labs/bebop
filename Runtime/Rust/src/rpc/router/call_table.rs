@@ -145,7 +145,6 @@ impl RouterCallTable {
 
 #[cfg(test)]
 mod test {
-    use std::io::Write;
     use std::num::NonZeroU16;
     use std::time::Duration;
 
@@ -154,29 +153,10 @@ mod test {
     use crate::rpc::datagram::{RpcRequestHeader, RpcResponseHeader};
     use crate::rpc::error::{RemoteRpcError, TransportError};
     use crate::rpc::DatagramInfo;
-    use crate::{DeResult, FixedSized, Record, SeResult, SliceWrapper, SubRecord};
+    use crate::{FixedSized, Record, SliceWrapper, SubRecord};
+    use crate::rpc::test_struct::TestStruct;
 
     use super::RouterCallTable;
-
-    #[derive(Copy, Clone)]
-    struct TestStruct {
-        v: u8,
-    }
-    impl FixedSized for TestStruct {}
-    impl Record<'_> for TestStruct {}
-    impl SubRecord<'_> for TestStruct {
-        const MIN_SERIALIZED_SIZE: usize = 0;
-        fn serialized_size(&self) -> usize {
-            0
-        }
-        fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
-            dest.write_all(&[self.v])?;
-            Ok(1)
-        }
-        fn _deserialize_chained(raw: &[u8]) -> DeResult<(usize, Self)> {
-            Ok((1, Self { v: raw[0] }))
-        }
-    }
 
     #[test]
     fn gets_next_id() {

@@ -151,3 +151,29 @@ macro_rules! timeout {
         Some(::core::time::Duration::from_secs($dur * 60 * 60))
     };
 }
+
+#[cfg(test)]
+pub(crate) mod test_struct {
+    use std::io::Write;
+    use crate::{DeResult, FixedSized, Record, SeResult, SubRecord};
+
+    #[derive(Copy, Clone)]
+    pub struct TestStruct {
+        v: u8,
+    }
+    impl FixedSized for TestStruct {}
+    impl Record<'_> for TestStruct {}
+    impl SubRecord<'_> for TestStruct {
+        const MIN_SERIALIZED_SIZE: usize = 0;
+        fn serialized_size(&self) -> usize {
+            0
+        }
+        fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+            dest.write_all(&[self.v])?;
+            Ok(1)
+        }
+        fn _deserialize_chained(raw: &[u8]) -> DeResult<(usize, Self)> {
+            Ok((1, Self { v: raw[0] }))
+        }
+    }
+}
