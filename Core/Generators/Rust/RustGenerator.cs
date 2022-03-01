@@ -27,7 +27,7 @@ namespace Core.Generators.Rust
         // The main code region, home to constants and the main (borrowed of fixed-sized) type definitions
         Main,
 
-        // The owned code region, home to owned type definitions (no lifetimes) and re-exports of main which conform. 
+        // The owned code region, home to owned type definitions (no lifetimes) and re-exports of main which conform.
         Owned
     }
 
@@ -176,9 +176,12 @@ namespace Core.Generators.Rust
 
             if (d.IsBitFlags)
             {
-                builder.CodeBlock("::bebop::bitflags!", _tab, () =>
+                builder
+                    .CodeBlock("::bebop::bitflags!", _tab, () =>
                 {
-                    builder.CodeBlock($"pub struct {name}: {type}", _tab, () =>
+                    builder
+                        .AppendLine("#[repr(transparent)]")
+                        .CodeBlock($"pub struct {name}: {type}", _tab, () =>
                     {
                         foreach (var m in d.Members)
                         {
