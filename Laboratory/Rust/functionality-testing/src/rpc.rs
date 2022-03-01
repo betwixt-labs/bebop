@@ -315,7 +315,7 @@ async fn handles_local_timeout_error() {
     let (_server, client) = setup();
     let start = Instant::now();
 
-    let wait_fut = client.wait(None, 5);
+    let wait_fut = client.wait(None, 2);
     let count_fut = async {
         // make sure the wait future always is processed first
         tokio::time::sleep(Duration::from_millis(10)).await;
@@ -329,5 +329,7 @@ async fn handles_local_timeout_error() {
     let res = res.expect("Count should have completed first");
     assert!(Instant::now() - start < Duration::from_millis(1100));
     assert!(matches!(res, Err(RemoteRpcError::TransportError(TransportError::Timeout))));
+    // make sure that when we get the message back (since it does not check if past the deadline) it
+    // does not cause any errors.
+    tokio::time::sleep(Duration::from_secs(2)).await;
 }
-
