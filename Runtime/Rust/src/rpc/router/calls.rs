@@ -332,80 +332,81 @@ impl<T: AsRef<InnerCallDetails>> CallDetails for T {
     }
 }
 
-// #[cfg(test)]
-// mod test {
-//     use crate::rpc::error::TransportError;
-//     use crate::rpc::router::response::new_pending_response;
-//     use std::num::NonZeroU16;
-//     use std::time::Duration;
-//
-//     #[tokio::test]
-//     async fn resolves() {
-//         // happy path
-//         let (handle1, pending1) =
-//             new_pending_response(1.try_into().unwrap(), None);
-//         let (handle2, pending2) = new_pending_response(
-//             2.try_into().unwrap(),
-//             Some(Duration::from_secs(10)),
-//         );
-//
-//         let response1 = TestOwnedDatagram {
-//             timeout: None,
-//             call_id: NonZeroU16::new(1),
-//             is_request: false,
-//             is_ok: true,
-//         };
-//         let response2 = TestOwnedDatagram {
-//             timeout: None, // responses never have timeouts, even when the request had one
-//             call_id: NonZeroU16::new(2),
-//             is_request: false,
-//             is_ok: true,
-//         };
-//
-//         assert_eq!(pending1.call_id(), NonZeroU16::new(1).unwrap());
-//         assert_eq!(pending1.timeout(), None);
-//         assert_eq!(pending2.timeout(), Some(Duration::from_secs(10)));
-//         assert!(!pending1.is_expired());
-//         assert!(!pending2.is_expired());
-//
-//         handle1.resolve(Ok(response1));
-//         handle2.resolve(Ok(response2));
-//
-//         assert_eq!(pending1.await.unwrap(), response1);
-//         assert_eq!(pending2.await.unwrap(), response2);
-//     }
-//
-//     #[tokio::test]
-//     async fn resolves_err() {
-//         // when there is a transport error
-//         let (handle, pending) =
-//             new_pending_response(1.try_into().unwrap(), None);
-//         handle.resolve(Err(TransportError::CallDropped));
-//         assert!(matches!(pending.await, Err(TransportError::CallDropped)));
-//     }
-//
-//     #[tokio::test]
-//     async fn resolves_timeout() {
-//         // when the handle gets dropped due to a timeout
-//         let (handle, pending) = new_pending_response(
-//             1.try_into().unwrap(),
-//             Some(Duration::from_millis(10)),
-//         );
-//         assert!(!handle.is_expired());
-//         assert!(!pending.is_expired());
-//
-//         tokio::time::sleep(Duration::from_millis(10)).await;
-//         assert!(handle.is_expired());
-//         assert!(pending.is_expired());
-//         drop(handle);
-//         let r = pending.await;
-//         assert!(matches!(r, Err(TransportError::Timeout)), "{r:?}");
-//     }
-//
-//     #[tokio::test]
-//     async fn resolves_dropped() {
-//         // when the handle gets dropped but it has not timed out
-//         let (_, pending) = new_pending_response(1.try_into().unwrap(), None);
-//         assert!(matches!(pending.await, Err(TransportError::CallDropped)));
-//     }
-// }
+#[cfg(test)]
+mod test {
+    use std::num::NonZeroU16;
+    use std::time::Duration;
+
+    use crate::rpc::calls::new_pending_response;
+    use crate::rpc::test_struct::TestStruct;
+    use crate::rpc::{CallDetails, RemoteRpcError, TransportError};
+    use crate::timeout;
+
+    #[tokio::test]
+    async fn resolves() {
+        // happy path
+        let (mut handle1, pending1) =
+            new_pending_response::<TestStruct>(1.try_into().unwrap(), None);
+        let (mut handle2, pending2) =
+            new_pending_response::<TestStruct>(2.try_into().unwrap(), timeout!(10 s));
+
+        let data1 = [65];
+        let data2 = [223];
+
+        assert_eq!(pending1.call_id(), NonZeroU16::new(1).unwrap());
+        assert_eq!(pending1.timeout(), None);
+        assert_eq!(pending2.timeout(), Some(Duration::from_secs(10)));
+        assert!(!pending1.is_expired());
+        assert!(!pending2.is_expired());
+
+        handle1.resolve(Ok(&data1));
+        handle2.resolve(Ok(&data2));
+
+        assert_eq!(pending1.await.unwrap(), TestStruct { v: data1[0] });
+        assert_eq!(pending2.await.unwrap(), TestStruct { v: data2[0] });
+    }
+
+    #[tokio::test]
+    async fn resolves_err() {
+        // when there is a transport error
+        let (mut handle, pending) = new_pending_response::<TestStruct>(1.try_into().unwrap(), None);
+        handle.resolve(Err(RemoteRpcError::TransportError(
+            TransportError::CallDropped,
+        )));
+        assert!(matches!(
+            pending.await,
+            Err(RemoteRpcError::TransportError(TransportError::CallDropped))
+        ));
+    }
+
+    #[tokio::test]
+    async fn resolves_timeout() {
+        // when the handle gets dropped due to a timeout
+        let (handle, pending) = new_pending_response::<TestStruct>(
+            1.try_into().unwrap(),
+            Some(Duration::from_millis(10)),
+        );
+        assert!(!handle.is_expired());
+        assert!(!pending.is_expired());
+
+        tokio::time::sleep(Duration::from_millis(10)).await;
+        assert!(handle.is_expired());
+        assert!(pending.is_expired());
+        drop(handle);
+        let r = pending.await;
+        assert!(
+            matches!(
+                r,
+                Err(RemoteRpcError::TransportError(TransportError::Timeout))
+            ),
+            "{r:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn resolves_dropped() {
+        // when the handle gets dropped but it has not timed out
+        let (_, pending) = new_pending_response::<TestStruct>(1.try_into().unwrap(), None);
+        assert!(matches!(pending.await, Err(RemoteRpcError::TransportError(TransportError::CallDropped))));
+    }
+}

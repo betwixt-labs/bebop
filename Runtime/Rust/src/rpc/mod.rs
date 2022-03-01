@@ -157,14 +157,16 @@ pub(crate) mod test_struct {
     use std::io::Write;
     use crate::{DeResult, FixedSized, Record, SeResult, SubRecord};
 
-    #[derive(Copy, Clone)]
+    #[derive(Copy, Clone, PartialEq, Eq, Debug)]
     pub struct TestStruct {
-        v: u8,
+        pub v: u8,
     }
     impl FixedSized for TestStruct {}
     impl Record<'_> for TestStruct {}
     impl SubRecord<'_> for TestStruct {
-        const MIN_SERIALIZED_SIZE: usize = 0;
+        const MIN_SERIALIZED_SIZE: usize = 1;
+        const EXACT_SERIALIZED_SIZE: Option<usize> = Some(1);
+
         fn serialized_size(&self) -> usize {
             0
         }

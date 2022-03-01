@@ -153,7 +153,7 @@ mod test {
     use crate::rpc::datagram::{RpcRequestHeader, RpcResponseHeader};
     use crate::rpc::error::{RemoteRpcError, TransportError};
     use crate::rpc::DatagramInfo;
-    use crate::{FixedSized, Record, SliceWrapper, SubRecord};
+    use crate::{FixedSized, Record, SliceWrapper, SubRecord, timeout};
     use crate::rpc::test_struct::TestStruct;
 
     use super::RouterCallTable;
@@ -183,7 +183,7 @@ mod test {
     #[test]
     fn registers_requests() {
         let mut ct = RouterCallTable::default();
-        let timeout = Some(Duration::from_secs(10));
+        let timeout = timeout!(10 s);
         let data = vec![];
         let d = Datagram::RpcRequestDatagram {
             header: RpcRequestHeader {
