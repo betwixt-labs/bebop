@@ -143,92 +143,133 @@ impl RouterCallTable {
     }
 }
 
-// #[cfg(test)]
-// mod test {
-//     use std::num::NonZeroU16;
-//     use std::time::Duration;
-//
-//     use crate::rpc::error::TransportError;
-//     use crate::rpc::router::response::new_pending_response;
-//     use crate::rpc::Datagram;
-//
-//     use super::RouterCallTable;
-//
-//     #[test]
-//     fn gets_next_id() {
-//         let mut ct = RouterCallTable::default();
-//         assert_eq!(ct.next_call_id().get(), 1u16);
-//         assert_eq!(ct.next_call_id().get(), 2u16);
-//         ct.next_id = u16::MAX;
-//         assert_eq!(ct.next_call_id().get(), u16::MAX);
-//         assert_eq!(ct.next_call_id().get(), 1u16);
-//     }
-//
-//     #[test]
-//     fn get_next_id_avoids_duplicates() {
-//         let mut ct = RouterCallTable::default();
-//         let (h1, _p1) = new_pending_response(1.try_into().unwrap(), None);
-//         ct.call_table.insert(h1.call_id(), h1);
-//         let (h2, _p2) = new_pending_response(2.try_into().unwrap(), None);
-//         ct.call_table.insert(h2.call_id(), h2);
-//         ct.next_id = u16::MAX;
-//         assert_eq!(ct.next_call_id().get(), u16::MAX);
-//         assert_eq!(ct.next_call_id().get(), 3u16);
-//     }
-//
-//     #[test]
-//     fn registers_requests() {
-//         let mut ct = RouterCallTable::default();
-//         let timeout = Some(Duration::from_millis(100));
-//         let mut d = TestOwnedDatagram {
-//             timeout,
-//             call_id: None,
-//             is_request: true,
-//             is_ok: true,
-//         };
-//         let pending = ct.register(&mut d);
-//         assert_eq!(pending.timeout(), timeout);
-//         assert_eq!(d.call_id, NonZeroU16::new(1));
-//         assert_eq!(pending.call_id(), d.call_id.unwrap());
-//         assert_eq!(ct.next_id, 2);
-//         assert!(ct.call_table.contains_key(&(1.try_into().unwrap())));
-//     }
-//
-//     #[tokio::test]
-//     async fn forwards_responses() {
-//         let mut ct = RouterCallTable::default();
-//         let mut request = TestOwnedDatagram {
-//             timeout: None,
-//             call_id: None,
-//             is_request: true,
-//             is_ok: true,
-//         };
-//         let pending = ct.register(&mut request);
-//         let response = TestOwnedDatagram {
-//             timeout: None,
-//             call_id: NonZeroU16::new(1),
-//             is_request: false,
-//             is_ok: true,
-//         };
-//         ct.resolve(&None, response);
-//         let d = pending.await.unwrap();
-//         assert_eq!(d.call_id, NonZeroU16::new(1));
-//         assert!(d.is_response());
-//         assert!(d.is_ok);
-//     }
-//
-//     #[tokio::test]
-//     async fn drops_expired_entry() {
-//         let mut ct = RouterCallTable::default();
-//         let mut request = TestOwnedDatagram {
-//             timeout: Some(Duration::from_millis(10)),
-//             call_id: None,
-//             is_request: true,
-//             is_ok: true,
-//         };
-//         let pending = ct.register(&mut request);
-//         tokio::time::sleep(Duration::from_millis(10)).await;
-//         ct.drop_expired(1.try_into().unwrap());
-//         assert!(matches!(pending.await, Err(TransportError::Timeout)));
-//     }
-// }
+#[cfg(test)]
+mod test {
+    use std::io::Write;
+    use std::num::NonZeroU16;
+    use std::time::Duration;
+
+    use crate::prelude::Datagram;
+    use crate::rpc::calls::new_pending_response;
+    use crate::rpc::datagram::{RpcRequestHeader, RpcResponseHeader};
+    use crate::rpc::error::{RemoteRpcError, TransportError};
+    use crate::rpc::DatagramInfo;
+    use crate::{DeResult, FixedSized, Record, SeResult, SliceWrapper, SubRecord};
+
+    use super::RouterCallTable;
+
+    #[derive(Copy, Clone)]
+    struct TestStruct {
+        v: u8,
+    }
+    impl FixedSized for TestStruct {}
+    impl Record<'_> for TestStruct {}
+    impl SubRecord<'_> for TestStruct {
+        const MIN_SERIALIZED_SIZE: usize = 0;
+        fn serialized_size(&self) -> usize {
+            0
+        }
+        fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+            dest.write_all(&[self.v])?;
+            Ok(1)
+        }
+        fn _deserialize_chained(raw: &[u8]) -> DeResult<(usize, Self)> {
+            Ok((1, Self { v: raw[0] }))
+        }
+    }
+
+    #[test]
+    fn gets_next_id() {
+        let mut ct = RouterCallTable::default();
+        assert_eq!(ct.next_call_id().get(), 1u16);
+        assert_eq!(ct.next_call_id().get(), 2u16);
+        ct.next_id = u16::MAX;
+        assert_eq!(ct.next_call_id().get(), u16::MAX);
+        assert_eq!(ct.next_call_id().get(), 1u16);
+    }
+
+    #[test]
+    fn get_next_id_avoids_duplicates() {
+        let mut ct = RouterCallTable::default();
+        let (h1, _p1) = new_pending_response::<TestStruct>(1.try_into().unwrap(), None);
+        ct.call_table.insert(h1.call_id(), h1);
+        let (h2, _p2) = new_pending_response::<TestStruct>(2.try_into().unwrap(), None);
+        ct.call_table.insert(h2.call_id(), h2);
+        ct.next_id = u16::MAX;
+        assert_eq!(ct.next_call_id().get(), u16::MAX);
+        assert_eq!(ct.next_call_id().get(), 3u16);
+    }
+
+    #[test]
+    fn registers_requests() {
+        let mut ct = RouterCallTable::default();
+        let timeout = Some(Duration::from_secs(10));
+        let data = vec![];
+        let d = Datagram::RpcRequestDatagram {
+            header: RpcRequestHeader {
+                id: ct.next_call_id().get(),
+                timeout: timeout.unwrap().as_secs() as u16,
+                signature: 0,
+            },
+            opcode: 0,
+            data: SliceWrapper::Cooked(&data),
+        };
+        let pending = ct.register::<TestStruct>(&d);
+        assert_eq!(pending.timeout(), timeout);
+        assert_eq!(d.call_id(), NonZeroU16::new(1));
+        assert_eq!(pending.call_id(), d.call_id().unwrap());
+        assert_eq!(ct.next_id, 2);
+        assert!(ct.call_table.contains_key(&(1.try_into().unwrap())));
+    }
+
+    #[tokio::test]
+    async fn forwards_responses() {
+        let mut ct = RouterCallTable::default();
+        let data_a = vec![12];
+        let id = ct.next_call_id().get();
+        let request = Datagram::RpcRequestDatagram {
+            header: RpcRequestHeader {
+                id,
+                timeout: 0,
+                signature: 0,
+            },
+            opcode: 0,
+            data: SliceWrapper::Cooked(&data_a),
+        };
+        let pending = ct.register::<TestStruct>(&request);
+        let data_b = vec![15];
+        let response = Datagram::RpcResponseOk {
+            header: RpcResponseHeader { id },
+            data: SliceWrapper::Cooked(&data_b),
+        };
+        ct.resolve(&None, &response);
+        let d = pending.await.unwrap();
+        assert_eq!(d.v, 15);
+        assert!(!ct.call_table.contains_key(&id.try_into().unwrap()));
+    }
+
+    #[tokio::test]
+    async fn drops_expired_entry() {
+        let mut ct = RouterCallTable::default();
+        let data = vec![];
+        let id = NonZeroU16::new(1).unwrap();
+        let request = Datagram::RpcRequestDatagram {
+            header: RpcRequestHeader {
+                timeout: 1,
+                id: id.get(),
+                signature: 0,
+            },
+            opcode: 0,
+            data: SliceWrapper::Cooked(&data),
+        };
+        let pending = ct.register::<TestStruct>(&request);
+        tokio::time::sleep(Duration::from_secs(1)).await;
+
+        ct.drop_expired(id);
+        assert!(!ct.call_table.contains_key(&id));
+        assert!(matches!(
+            pending.await,
+            Err(RemoteRpcError::TransportError(TransportError::Timeout))
+        ));
+    }
+}
