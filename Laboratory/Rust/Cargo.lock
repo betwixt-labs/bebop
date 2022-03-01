@@ -333,6 +333,7 @@ dependencies = [
  "bebop",
  "bebop-tools",
  "parking_lot 0.12.0",
+ "static_assertions",
  "tokio",
 ]
 

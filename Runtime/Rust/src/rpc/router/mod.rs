@@ -52,7 +52,7 @@ assert_obj_safe!(ServiceHandlers);
 /// bebop service definitions.
 ///
 /// You should not implement this by hand.
-pub trait ServiceRequests {
+pub trait ServiceRequests: Send + Sync {
     const NAME: &'static str;
 
     fn new(ctx: Weak<RouterContext>) -> Self;
@@ -60,7 +60,7 @@ pub trait ServiceRequests {
 
 impl<D, S> ServiceRequests for D
 where
-    D: Deref<Target = S>,
+    D: Deref<Target = S> + Send + Sync,
     S: ServiceRequests + Into<D>,
 {
     const NAME: &'static str = S::NAME;
@@ -113,6 +113,15 @@ where
         Self {
             _remote_service: R::new(Arc::downgrade(&ctx)),
             _context: ctx,
+        }
+    }
+}
+
+impl<R: Clone> Clone for Router<R> {
+    fn clone(&self) -> Self {
+        Self {
+            _remote_service: self._remote_service.clone(),
+            _context: self._context.clone()
         }
     }
 }

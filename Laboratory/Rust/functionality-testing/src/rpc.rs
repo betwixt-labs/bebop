@@ -1,15 +1,15 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use std::future::Future;
 use std::sync::Arc;
-use std::time::{Duration};
+use std::time::{Duration, Instant};
 
 use bebop::prelude::*;
 use bebop::rpc::LocalRpcError::DeadlineExceded;
-use bebop::rpc::{
-    Deadline, LocalRpcError, LocalRpcResponse, TransportHandler, TransportProtocol, TransportResult,
-};
+use bebop::rpc::{Deadline, LocalRpcError, LocalRpcResponse, TransportError, TransportHandler, TransportProtocol, TransportResult};
 use bebop::rpc::{RemoteRpcError, Router};
 use bebop::timeout;
+use tokio::select;
 // Usually I would use parking lot, but since we are simulating a database I think this will give
 // a better impression of what the operations will look like with the required awaits.
 use tokio::sync::RwLock;
@@ -233,6 +233,12 @@ impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
     fn wait<'f>(&self, deadline: Deadline, secs: u16) -> DynFuture<'f, LocalRpcResponse<()>> {
         let zelf = self.clone();
         Box::pin(async move {
+            if let Some(deadline) = deadline.as_ref() {
+                if *deadline - Instant::now() >= Duration::from_secs(secs as u64) {
+                    // we will eventually time out, so just do it now
+                    return Err(DeadlineExceded)
+                }
+            }
             let _lock = zelf.0.write().await;
             tokio::time::sleep(Duration::from_secs(secs as u64)).await;
             if deadline.has_passed() {
@@ -292,3 +298,36 @@ async fn handles_custom_errors() {
     let res = client.ping(timeout!(None)).await;
     assert!(matches!(res, Err(RemoteRpcError::CustomError(4, Some(_)))));
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn handles_remote_timeout_error() {
+    let (_server, client) = setup();
+    let start = Instant::now();
+    let res = client.wait(timeout!(1 s), 10).await;
+    assert!(Instant::now() - start < Duration::from_millis(1100));
+    assert!(matches!(res, Err(RemoteRpcError::TransportError(TransportError::Timeout))));
+}
+
+static_assertions::assert_impl_all!(Router<KVStoreRequests>: Send, Sync, Clone);
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn handles_local_timeout_error() {
+    let (_server, client) = setup();
+    let start = Instant::now();
+
+    let wait_fut = client.wait(None, 5);
+    let count_fut = async {
+        // make sure the wait future always is processed first
+        tokio::time::sleep(Duration::from_millis(10)).await;
+        client.count(timeout!(1 s)).await
+    };
+    let res = tokio::select! {
+        res1 = wait_fut => { res1.unwrap(); None },
+        res2 = count_fut => Some(res2),
+    };
+
+    let res = res.expect("Count should have completed first");
+    assert!(Instant::now() - start < Duration::from_millis(1100));
+    assert!(matches!(res, Err(RemoteRpcError::TransportError(TransportError::Timeout))));
+}
+

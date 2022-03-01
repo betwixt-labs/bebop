@@ -120,6 +120,18 @@ impl From<Instant> for Deadline {
     }
 }
 
+impl From<Deadline> for Option<Instant> {
+    fn from(v: Deadline) -> Self {
+        v.0
+    }
+}
+
+impl AsRef<Option<Instant>> for Deadline {
+    fn as_ref(&self) -> &Option<Instant> {
+        &self.0
+    }
+}
+
 
 #[inline]
 pub fn convert_timeout(timeout: Option<Duration>) -> Option<NonZeroU16> {

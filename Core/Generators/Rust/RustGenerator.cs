@@ -1109,6 +1109,7 @@ namespace Core.Generators.Rust
 
             WriteDocumentation(bldr, d.Documentation);
             bldr.AppendLine(requestsFeat)
+                .AppendLine("#[derive(Clone)]")
                 .AppendLine(
                     $"pub struct {ident}Requests(::std::sync::Weak<::bebop::rpc::RouterContext>);")
                 .AppendLine()
