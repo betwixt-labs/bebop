@@ -132,7 +132,6 @@ impl AsRef<Option<Instant>> for Deadline {
     }
 }
 
-
 #[inline]
 pub fn convert_timeout(timeout: Option<Duration>) -> Option<NonZeroU16> {
     timeout.and_then(|t| {

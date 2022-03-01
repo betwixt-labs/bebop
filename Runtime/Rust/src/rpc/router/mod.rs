@@ -121,7 +121,7 @@ impl<R: Clone> Clone for Router<R> {
     fn clone(&self) -> Self {
         Self {
             _remote_service: self._remote_service.clone(),
-            _context: self._context.clone()
+            _context: self._context.clone(),
         }
     }
 }
