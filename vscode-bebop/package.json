@@ -1,0 +1,72 @@
+{
+  "name": "vscode-bebop",
+  "publisher": "rainway",
+  "displayName": "Bebop",
+  "description": "VSCode extension for Bebop. Bebop is a schema-based binary serialization technology, similar to Protocol Buffers or MessagePack. In particular, Bebop tries to be a good fit for client–server or distributed web apps that need something faster, more concise, and more type-safe than JSON or MessagePack, while also avoiding some of the complexity of Protocol Buffers, FlatBuffers and the like.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RainwayApp/bebop"
+  },
+  "icon": "icon.png",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.64.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:bebop"
+  ],
+  "main": "./out/main.js",
+  "contributes": {
+    "configurationDefaults": {
+      "[bebop]": {
+        "editor.semanticHighlighting.enabled": true
+      }
+    },
+    "languages": [
+      {
+        "id": "bebop",
+        "aliases": [
+          "Bebop",
+          "bebop"
+        ],
+        "extensions": [
+          ".bop"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "bebop",
+        "scopeName": "source.bebop",
+        "path": "./syntaxes/bebop.tmLanguage.json"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run esbuild-base -- --minify",
+    "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
+    "esbuild": "npm run esbuild-base -- --sourcemap",
+    "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
+    "test-compile": "tsc -p ./"
+  },
+  "devDependencies": {
+    "@types/glob": "^7.2.0",
+    "@types/mocha": "^9.1.0",
+    "@types/node": "14.x",
+    "@types/vscode": "^1.64.0",
+    "@typescript-eslint/eslint-plugin": "^5.12.1",
+    "@typescript-eslint/parser": "^5.12.1",
+    "@vscode/test-electron": "^2.1.2",
+    "esbuild": "^0.14.27",
+    "eslint": "^8.9.0",
+    "glob": "^7.2.0",
+    "mocha": "^9.2.1",
+    "typescript": "^4.5.5",
+    "vscode-jsonrpc": "^4.0.0",
+    "vscode-languageclient": "^7.0.0"
+  }
+}

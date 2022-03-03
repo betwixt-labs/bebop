@@ -1,8 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
+using Compiler.LangServer;
 using Core.Exceptions;
 using Core.Generators;
 using Core.Logging;
@@ -39,6 +42,21 @@ namespace Compiler
                 return Err;
             }
 
+            if (_flags.Debug)
+            {
+                var process = Process.GetCurrentProcess().Id;
+                await Lager.StandardOut($"Waiting for debugger to attach (PID={process})...");
+
+                // Wait 5 minutes for a debugger to attach
+                var timeoutToken = new CancellationTokenSource(TimeSpan.FromMinutes(5)).Token;
+                while (!Debugger.IsAttached)
+                {
+                    await Task.Delay(100, timeoutToken);
+                }
+
+                Debugger.Break();
+            }
+
             if (_flags.Version)
             {
                 await Lager.StandardOut($"{ReservedWords.CompilerName} {DotEnv.Generated.Environment.Version}");
@@ -48,6 +66,12 @@ namespace Compiler
             if (_flags.Help)
             {
                 await WriteHelpText();
+                return Ok;
+            }
+
+            if (_flags.LanguageServer)
+            {
+                await BebopLangServer.RunAsync();
                 return Ok;
             }
 

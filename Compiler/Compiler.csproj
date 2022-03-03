@@ -20,6 +20,10 @@
     <Configurations>Debug;Release</Configurations>
   </PropertyGroup>
 
+	<ItemGroup>
+		<PackageReference Include="OmniSharp.Extensions.LanguageServer" Version="0.19.5" />
+	</ItemGroup>
+
    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
      <DebugSymbols>true</DebugSymbols>
       <Optimize>false</Optimize>

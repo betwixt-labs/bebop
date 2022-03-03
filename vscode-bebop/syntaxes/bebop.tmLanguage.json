@@ -1,0 +1,48 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "scopeName": "source.bebop",
+	"patterns": [
+		{
+            "comment": "line comments",
+            "name": "comment.line.double-slash.bebop",
+            "match": "\\s*//.*"
+		},
+		{
+			"include": "#block-comments"
+		},
+		{
+			"comment": "Strings",
+			"name": "string.quoted.double.bebop",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.bebop",
+					"match": "\\\\."
+				}
+			]
+		}
+	],
+	"repository": {
+		"block-comments": {
+			"patterns": [
+				{
+					"comment": "empty block comments",
+					"name": "comment.block.bebop",
+					"match": "/\\*\\*/"
+				},
+				{
+					"comment": "block comments",
+					"name": "comment.block.bebop",
+					"begin": "/\\**(?!\\*)",
+					"end": "\\*/",
+					"patterns": [
+						{
+							"include": "#block-comments"
+						}
+					]
+				}
+			]
+		}
+	}
+}

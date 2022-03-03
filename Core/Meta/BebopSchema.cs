@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -18,16 +18,21 @@ namespace Core.Meta
         private List<SpanException> _parsingErrors;
         private List<SpanException> _validationErrors;
         private List<SpanException> _validationWarnings;
+
         /// <summary>
         /// Errors found while validating this schema.
         /// </summary>
         public List<SpanException> Errors => _parsingErrors.Concat(_validationErrors).ToList();
         public List<SpanException> Warnings => _validationWarnings;
 
-        public BebopSchema(string nameSpace, Dictionary<string, Definition> definitions, HashSet<(Token, Token)> typeReferences, List<SpanException>? parsingErrors = null)
+        public List<string> Imports { get; }
+
+        public BebopSchema(string nameSpace, Dictionary<string, Definition> definitions, HashSet<(Token, Token)> typeReferences, List<SpanException>? parsingErrors = null, List<string>? imports = null)
         {
             Namespace = nameSpace;
             Definitions = definitions;
+            Imports = imports ?? new List<string>();
+
             _sortedDefinitions = null;
             _validationErrors = new();
             _validationWarnings = new();
