@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using Core.Meta;
@@ -207,19 +208,19 @@ namespace Core.Generators.Rust
             {
                 builder
                     .CodeBlock("::bebop::bitflags!", _tab, () =>
-                {
-                    builder
-                        .AppendLine("#[repr(transparent)]")
-                        .CodeBlock($"pub struct {name}: {type}", _tab, () =>
                     {
-                        foreach (var m in d.Members)
-                        {
-                            WriteDocumentation(builder, m.Documentation);
-                            WriteDeprecation(builder, m.DeprecatedAttribute);
-                            builder.AppendLine($"const {MakeConstIdent(m.Name)} = {m.ConstantValue};");
-                        }
-                    });
-                }).AppendLine();
+                        builder
+                            .AppendLine("#[repr(transparent)]")
+                            .CodeBlock($"pub struct {name}: {type}", _tab, () =>
+                            {
+                                foreach (var m in d.Members)
+                                {
+                                    WriteDocumentation(builder, m.Documentation);
+                                    WriteDeprecation(builder, m.DeprecatedAttribute);
+                                    builder.AppendLine($"const {MakeConstIdent(m.Name)} = {m.ConstantValue};");
+                                }
+                            });
+                    }).AppendLine();
             }
             else
             {
@@ -1068,11 +1069,13 @@ namespace Core.Generators.Rust
                 .CodeBlock($"pub trait {ident}HandlersDef: ::core::marker::Send + ::core::marker::Sync", _tab, () =>
                 {
                     bldr.CodeBlock(
-                        $"fn service_name<'f>(&self, _: ::bebop::rpc::Deadline) -> {DynFutType("::bebop::rpc::LocalRpcResponse<::std::string::String>")}",
+                        $"fn service_name<'f>(&self, handle: ::bebop::rpc::TypedRequestHandle<'f, super::{ident}ServiceNameReturn<'f>>) -> {DynFutType("()")}",
                         _tab,
                         () =>
                         {
-                            bldr.AppendLine($"::bebop::dyn_fut! {{ Ok(\"{ident}\".into()) }}");
+                            bldr.AppendLine("use ::bebop::rpc::CallDetails as _;")
+                                .AppendLine("let call_id = handle.call_id().get();")
+                                .AppendLine($"::bebop::dyn_fut! {{ ::bebop::handle_respond_error!(handle.send_ok_response(&super::{ident}ServiceNameReturn {{ value: \"{ident}\" }}), \"{ident}\", \"service_name\", 0, call_id); }}");
                         });
                     foreach (var (b, i) in d.Branches.OrderBy(d => d.Discriminator).Skip(1).Enumerated())
                     {
@@ -1082,17 +1085,15 @@ namespace Core.Generators.Rust
                         var fname = MakeFnIdent(fn.Name);
                         var args = fn.ArgumentStruct.Fields.Select(f =>
                             (MakeFnArgIdent(f.Name), TypeName(f.Type, OwnershipType.Owned))).ToArray();
-                        var retType = fn.ReturnStruct.Fields.Count switch
-                        {
-                            0 => "()",
-                            1 => TypeName(fn.ReturnStruct.Fields.First().Type, OwnershipType.Owned),
-                            _ => throw new ArgumentOutOfRangeException(ident, fn.ReturnStruct.Fields, null)
-                        };
+                        var retType = MakeDefIdent(fn.ReturnStruct.Name);
+                        var lt = NeedsLifetime(fn.ReturnStruct) ? "<'f>" : "";
                         var argsStr = string.Join(", ",
-                            new[] { "&self", "deadline: ::bebop::rpc::Deadline" }
+                            new[]
+                                {
+                                    "&self", $"handle: ::bebop::rpc::TypedRequestHandle<'f, super::{retType}{lt}>"
+                                }
                                 .Concat(args.Select(i => $"{i.Item1}: {i.Item2}")));
-                        var responseType = $"::bebop::rpc::LocalRpcResponse<{retType}>";
-                        bldr.AppendLine($"fn {fname}<'f>({argsStr}) -> {DynFutType(responseType)};");
+                        bldr.AppendLine($"fn {fname}<'f>({argsStr}) -> {DynFutType("()")};");
                         if (i < d.Branches.Count - 1) bldr.AppendLine();
                     }
                 })
@@ -1102,10 +1103,11 @@ namespace Core.Generators.Rust
                 .AppendLine($"pub struct {ident}Handlers<_Def: {ident}HandlersDef>(_Def);")
                 .AppendLine()
                 .AppendLine(handlersFeat)
-                .CodeBlock($"impl<_Def: {ident}HandlersDef> ::core::convert::From<_Def> for {ident}Handlers<_Def>", _tab, () =>
-                {
-                    bldr.AppendLine("fn from(def: _Def) -> Self { Self(def) }");
-                })
+                .CodeBlock($"impl<_Def: {ident}HandlersDef> ::core::convert::From<_Def> for {ident}Handlers<_Def>",
+                    _tab, () =>
+                    {
+                        bldr.AppendLine("fn from(def: _Def) -> Self { Self(def) }");
+                    })
                 .AppendLine()
                 .AppendLine(handlersFeat)
                 .CodeBlock($"impl<_Def: {ident}HandlersDef> ::core::ops::Deref for {ident}Handlers<_Def>", _tab, () =>
@@ -1116,39 +1118,40 @@ namespace Core.Generators.Rust
                 })
                 .AppendLine()
                 .AppendLine(handlersFeat)
-                .CodeBlock($"impl<_Def: {ident}HandlersDef> ::bebop::rpc::ServiceHandlers for {ident}Handlers<_Def>", _tab, () =>
-                {
-                    bldr.AppendLine($"fn _name(&self) -> &'static str {{ \"{ident}\" }}")
-                        .AppendLine()
-                        .CodeBlock(
-                            $"fn _recv_call<'f>(&self, datagram: &::bebop::rpc::Datagram, handle: ::bebop::rpc::RequestHandle) -> {DynFutType("()")}",
-                            _tab, () =>
-                            {
-                                bldr.AppendLine("use ::bebop::rpc::CallDetails as _;")
-                                    .CodeBlock(
-                                    "if let ::bebop::rpc::Datagram::RpcRequestDatagram { header: req_header, opcode, data } = datagram",
-                                    _tab, () =>
-                                    {
-                                        bldr.AppendLine("let call_id = req_header.id;")
-                                            .AppendLine("let opcode = *opcode;")
-                                            .CodeBlock("match opcode", _tab, () =>
+                .CodeBlock($"impl<_Def: {ident}HandlersDef> ::bebop::rpc::ServiceHandlers for {ident}Handlers<_Def>",
+                    _tab, () =>
+                    {
+                        bldr.AppendLine($"fn _name(&self) -> &'static str {{ \"{ident}\" }}")
+                            .AppendLine()
+                            .CodeBlock(
+                                $"fn _recv_call<'f>(&self, datagram: &::bebop::rpc::Datagram, handle: ::bebop::rpc::RequestHandle) -> {DynFutType("()")}",
+                                _tab, () =>
+                                {
+                                    bldr.AppendLine("use ::bebop::rpc::CallDetails as _;")
+                                        .CodeBlock(
+                                            "if let ::bebop::rpc::Datagram::RpcRequestDatagram { header: req_header, opcode, data } = datagram",
+                                            _tab, () =>
                                             {
-                                                foreach (var b in serviceBranches)
-                                                {
-                                                    bldr.CodeBlock($"{b.Discriminator} =>", _tab,
-                                                        () =>
+                                                bldr.AppendLine("let call_id = req_header.id;")
+                                                    .AppendLine("let opcode = *opcode;")
+                                                    .CodeBlock("match opcode", _tab, () =>
+                                                    {
+                                                        foreach (var b in serviceBranches)
                                                         {
-                                                            WriteRpcHandlerFnCall(bldr, b.Definition);
-                                                        });
-                                                }
+                                                            bldr.CodeBlock($"{b.Discriminator} =>", _tab,
+                                                                () =>
+                                                                {
+                                                                    WriteRpcHandlerFnCall(bldr, b.Definition);
+                                                                });
+                                                        }
 
-                                                bldr.AppendLine(
-                                                    $"_ => ::bebop::dyn_fut! {{ ::bebop::handle_respond_error!(handle.send_unknown_call_response(), \"{ident}\", \"UNKNOWN\", opcode, call_id); }},");
-                                            });
-                                    }, "{",
-                                    "} else { unreachable!(\"`_recv_call` Should only ever be provided with Requests.\") }");
-                            });
-                }).AppendLine();
+                                                        bldr.AppendLine(
+                                                            $"_ => ::bebop::dyn_fut! {{ ::bebop::handle_respond_error!(handle.send_unknown_call_response(), \"{ident}\", \"UNKNOWN\", opcode, call_id); }},");
+                                                    });
+                                            }, "{",
+                                            "} else { unreachable!(\"`_recv_call` Should only ever be provided with Requests.\") }");
+                                });
+                    }).AppendLine();
 
             WriteDocumentation(bldr, d.Documentation);
             bldr.AppendLine(requestsFeat)
@@ -1208,20 +1211,11 @@ namespace Core.Generators.Rust
                 }, "{", "};");
             }
 
-            bldr.Append($"let fut = self.{fnName}(")
+            bldr.Append($"self.{fnName}(")
                 .AppendMid(string.Join(", ",
-                    new[] { "handle.deadline()" }.Concat(
+                    new[] { "handle.into()" }.Concat(
                         fnDef.ArgumentStruct.Fields.Select(f => $"args.{MakeAttrIdent(f.Name)}"))))
-                .AppendEnd(");")
-                .CodeBlock("::bebop::dyn_fut!", _tab, () =>
-                {
-                    bldr.AppendLine(fnDef.ReturnStruct.Fields.Count > 0
-                            ? $"let value = fut.await.map(|v| {retName} {{ value: v }});"
-                            : $"let value = fut.await.map(|_| {retName} {{ }});")
-                        .AppendLine("let fut = handle.send_response(&value);")
-                        .AppendLine(
-                            $"::bebop::handle_respond_error!(fut, \"{serviceName}\", \"{fnName}\", opcode, call_id);");
-                });
+                .AppendEnd(")");
         }
 
         private void WriteRpcRequesterFn(IndentedStringBuilder bldr, ushort opcode, FunctionDefinition fnDef)

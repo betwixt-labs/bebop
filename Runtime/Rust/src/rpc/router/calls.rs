@@ -1,4 +1,5 @@
 use std::future::Future;
+use std::marker::PhantomData;
 use std::num::NonZeroU16;
 use std::pin::Pin;
 use std::sync::Weak;
@@ -14,11 +15,67 @@ use crate::rpc::{
 };
 use crate::{OwnedRecord, Record, SliceWrapper};
 
+pub struct TypedRequestHandle<'r, R>
+    where R: Record<'r>
+{
+    _ret_type: PhantomData<&'r R>,
+    inner: RequestHandle,
+}
+
 /// Request handle to allow sending your response to the remote.
 pub struct RequestHandle {
     /// Weak reference to the context we will need to send datagrams.
     ctx: Weak<RouterContext>,
     details: InnerCallDetails,
+}
+
+impl<'r, R> From<RequestHandle> for TypedRequestHandle<'r, R>
+    where R: Record<'r>
+{
+    fn from(inner: RequestHandle) -> Self {
+        Self {
+            inner,
+            _ret_type: PhantomData::default(),
+        }
+    }
+}
+
+impl<'r, R> TypedRequestHandle<'r, R>
+    where R: Record<'r>
+{
+    pub async fn send_response(
+        self,
+        response: &LocalRpcResponse<R>,
+    ) -> TransportResult {
+        match response {
+            Ok(record) => self.send_ok_response(record).await,
+            Err(LocalRpcError::DeadlineExceded) => {
+                // do nothing, no response needed as the remote should forget automatically.
+                Ok(())
+            }
+            Err(LocalRpcError::CustomError(code, msg)) => {
+                self.inner.send_error_response(*code, Some(msg)).await
+            }
+            Err(LocalRpcError::CustomErrorStatic(code, msg)) => {
+                let msg = if msg.is_empty() { None } else { Some(*msg) };
+                self.inner.send_error_response(*code, msg).await
+            }
+            Err(LocalRpcError::NotSupported) => self.inner.send_call_not_supported_response().await,
+        }
+    }
+
+    /// Send a response to a call.
+    pub async fn send_ok_response<'a, 'b: 'a>(
+        self,
+        record: &R,
+    ) -> TransportResult {
+        self.inner.send_ok_response_raw(
+            &record
+                .serialize_to_vec()
+                .expect("Attempted to serialize an invalid response record"),
+        )
+            .await
+    }
 }
 
 impl RequestHandle {
@@ -36,47 +93,13 @@ impl RequestHandle {
         }
     }
 
-    pub async fn send_response<'a, 'b: 'a, R: Record<'b>>(
-        self,
-        response: &'a LocalRpcResponse<R>,
-    ) -> TransportResult {
-        match response {
-            Ok(record) => self.send_ok_response(record).await,
-            Err(LocalRpcError::DeadlineExceded) => {
-                // do nothing, no response needed as the remote should forget automatically.
-                Ok(())
-            }
-            Err(LocalRpcError::CustomError(code, msg)) => {
-                self.send_error_response(*code, Some(msg)).await
-            }
-            Err(LocalRpcError::CustomErrorStatic(code, msg)) => {
-                let msg = if msg.is_empty() { None } else { Some(*msg) };
-                self.send_error_response(*code, msg).await
-            }
-            Err(LocalRpcError::NotSupported) => self.send_call_not_supported_response().await,
-        }
-    }
-
-    /// Send a response to a call.
-    pub async fn send_ok_response<'a, 'b: 'a>(
-        self,
-        record: &'a impl Record<'b>,
-    ) -> TransportResult {
-        self.send_ok_response_raw(
-            &record
-                .serialize_to_vec()
-                .expect("Attempted to serialize an invalid response record"),
-        )
-        .await
-    }
-
     pub async fn send_ok_response_raw(self, data: &[u8]) -> TransportResult {
         if let Some(ctx) = self.ctx.upgrade() {
             ctx.send(&Datagram::RpcResponseOk {
                 header: RpcResponseHeader {
                     id: self.call_id().into(),
                 },
-                data: SliceWrapper::Cooked(&data),
+                data: SliceWrapper::Cooked(data),
             })
             .await
         } else {
@@ -149,6 +172,14 @@ impl RequestHandle {
     }
 }
 
+impl<'r, R> AsRef<InnerCallDetails> for TypedRequestHandle<'r, R>
+    where R: Record<'r>
+{
+    fn as_ref(&self) -> &InnerCallDetails {
+        &self.inner.details
+    }
+}
+
 impl AsRef<InnerCallDetails> for RequestHandle {
     fn as_ref(&self) -> &InnerCallDetails {
         &self.details
@@ -201,7 +232,7 @@ impl<R: OwnedRecord + Send + Sync> ResponseHandle for ResponseHandleImpl<R> {
     fn resolve(&mut self, value: RemoteRpcResponse<&[u8]>) {
         let res = value.and_then(|v| Ok(R::deserialize(v)?));
         if let Some(tx) = self.tx.take() {
-            if let Err(_) = tx.send(res) {
+            if tx.send(res).is_err() {
                 // TODO: log this? Receiver stopped listening.
             }
         }
