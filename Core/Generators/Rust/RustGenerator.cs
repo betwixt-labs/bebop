@@ -366,6 +366,46 @@ namespace Core.Generators.Rust
                 }).AppendLine();
             }
 
+            if (d.Fields.Count <= 4)
+            {
+                // impl From as long as it has no more than 4 values. Over that and people really should use the names
+                // to prevent mistakes.
+                var typeName = d.Fields.Count switch
+                {
+                    0 => "()",
+                    1 => TypeName(d.Fields.First().Type, ot),
+                    _ => $"({string.Join(", ", d.Fields.Select(f => TypeName(f.Type, ot)))})",
+                };
+
+                bldr.CodeBlock($"impl<{lifetime}> ::core::convert::From<{typeName}> for {name}", _tab, () =>
+                {
+                    bldr.CodeBlock($"fn from(value: {typeName}) -> Self", _tab, () =>
+                    {
+                        bldr.AppendLine(d.Fields.Count switch
+                        {
+                            0 => "Self {}",
+                            1 => $"Self {{ {MakeAttrIdent(d.Fields.First().Name)}: value }}",
+                            _ =>
+                                $"Self {{ {string.Join(", ", d.Fields.Enumerated().Select(itr => $"{MakeAttrIdent(itr.value.Name)}: value.{itr.index}"))} }}"
+                        });
+                    });
+                }).AppendLine();
+            }
+
+            if (d.Fields.Count <= 1)
+            {
+                // impl reverse From
+                var typeName = d.Fields.Count == 0 ? "()" : TypeName(d.Fields.First().Type, ot);
+
+                bldr.CodeBlock($"impl<{lifetime}> ::core::convert::From<{name}> for {typeName}", _tab, () =>
+                {
+                    bldr.CodeBlock($"fn from(value: {name}) -> Self", _tab, () =>
+                    {
+                        bldr.AppendLine(d.Fields.Count == 0 ? "()" : $"value.{MakeAttrIdent(d.Fields.First().Name)}");
+                    });
+                }).AppendLine();
+            }
+
             if (d.Fields.Count == 1)
             {
                 // impl Deref for structs with only one value
