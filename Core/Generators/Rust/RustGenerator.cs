@@ -1032,7 +1032,7 @@ namespace Core.Generators.Rust
                         _tab,
                         () =>
                         {
-                            bldr.AppendLine("::bebop::dyn_fut! { Ok(\"{ident}\".into()) }");
+                            bldr.AppendLine($"::bebop::dyn_fut! {{ Ok(\"{ident}\".into()) }}");
                         });
                     foreach (var (b, i) in d.Branches.OrderBy(d => d.Discriminator).Skip(1).Enumerated())
                     {

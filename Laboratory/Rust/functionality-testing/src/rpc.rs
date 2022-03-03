@@ -281,7 +281,9 @@ fn setup() -> (Router<NullServiceRequests>, Router<KVStoreRequests>) {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn can_request_and_receive() {
-    let (_server, client) = setup();
+    let (server, client) = setup();
+    assert_eq!(client.service_name(timeout!(0)).await.unwrap(), "KVStore");
+    assert_eq!(server.service_name(timeout!(0)).await.unwrap(), "NullService");
     client
         .insert(timeout!(1 s), "Mykey", "Myvalue")
         .await
