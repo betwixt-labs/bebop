@@ -6,8 +6,8 @@ use std::time::{Duration, Instant};
 use bebop::prelude::*;
 use bebop::rpc::LocalRpcError::DeadlineExceded;
 use bebop::rpc::{
-    Deadline, LocalRpcError, LocalRpcResponse, TransportError, TransportHandler, TransportProtocol,
-    TransportResult,
+    CallDetails, Deadline, LocalRpcError, LocalRpcResponse, TransportError, TransportHandler,
+    TransportProtocol, TransportResult, TypedRequestHandle,
 };
 use bebop::rpc::{RemoteRpcError, Router};
 use bebop::timeout;
@@ -15,9 +15,14 @@ use bebop::timeout;
 // a better impression of what the operations will look like with the required awaits.
 use tokio::sync::RwLock;
 
+use crate::generated::rpc as rtype;
 pub use crate::generated::rpc::owned::NullServiceRequests;
 use crate::generated::rpc::owned::{KVStoreHandlers, KVStoreRequests, NullServiceHandlers};
 use crate::generated::rpc::owned::{KVStoreHandlersDef, KV};
+use crate::generated::rpc::{
+    KVStoreCountReturn, KVStoreEntriesReturn, KVStoreGetReturn, KVStoreInsertManyReturn,
+    KVStoreInsertReturn, KVStoreKeysReturn, KVStoreValuesReturn, KVStoreWaitReturn,
+};
 
 struct ChannelTransport {
     handler: Option<TransportHandler>,
@@ -104,151 +109,236 @@ impl MemBackedKVStore {
 // impl for Arc so that we can create weak references that we pass to the futures without capturing
 // the lifetime of the self reference.
 impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
-    fn ping<'f>(&self, _deadline: Deadline) -> DynFuture<'f, LocalRpcResponse<()>> {
-        Box::pin(async move { Err(LocalRpcError::CustomErrorStatic(4, "some error")) })
+    fn ping<'f>(&self, handle: TypedRequestHandle<'f, rtype::KVStorePingReturn>) -> DynFuture<'f> {
+        let call_id = handle.call_id().get();
+        Box::pin(async move {
+            bebop::handle_respond_error!(
+                handle.send_response(Err(LocalRpcError::CustomErrorStatic(4, "some error"))),
+                "KVStore",
+                "ping",
+                1,
+                call_id
+            )
+        })
     }
+
+    // #[handler]
+    // fn ping<'f>(&self, details: &dyn CallDetails) -> DynFut<'f, LocalRpcResponse<()>> {
+    //     Box::pin(async move {
+    //         Err(LocalRpcError::CustomErrorStatic(4, "some error"))
+    //     })
+    // }
+
+    // #[handler] // < async like this only works when impl for Arc<T>
+    // async fn ping(&self, details: &dyn CallDetails) -> LocalRpcResponse<()> {
+    //     Err(LocalRpcError::CustomErrorStatic(4, "some error"))
+    // }
 
     fn entries<'f>(
         &self,
-        _deadline: Deadline,
+        handle: TypedRequestHandle<'f, KVStoreEntriesReturn<'f>>,
         page: u64,
         page_size: u16,
-    ) -> DynFuture<'f, LocalRpcResponse<Vec<KV>>> {
-        // NOTE: it is not valid to capture `self` in the future! This is enforced by lifetime
-        // constraints.
-
-        let zelf = self.clone();
-        Box::pin(async move {
-            Ok(zelf
-                .0
-                .read()
-                .await
-                .iter()
-                .skip(page as usize * page_size as usize)
-                .take(page_size as usize)
-                .map(|(k, v)| KV {
-                    key: k.clone(),
-                    value: v.clone(),
-                })
-                .collect())
-        })
+    ) -> DynFuture<'f, ()> {
+        todo!()
     }
 
     fn keys<'f>(
         &self,
-        _deadline: Deadline,
+        handle: TypedRequestHandle<'f, KVStoreKeysReturn<'f>>,
         page: u64,
         page_size: u16,
-    ) -> DynFuture<'f, LocalRpcResponse<Vec<String>>> {
-        let zelf = self.clone();
-        Box::pin(async move {
-            Ok(zelf
-                .0
-                .read()
-                .await
-                .keys()
-                .skip(page as usize * page_size as usize)
-                .take(page_size as usize)
-                .cloned()
-                .collect())
-        })
+    ) -> DynFuture<'f, ()> {
+        todo!()
     }
 
     fn values<'f>(
         &self,
-        _deadline: Deadline,
+        handle: TypedRequestHandle<'f, KVStoreValuesReturn<'f>>,
         page: u64,
         page_size: u16,
-    ) -> DynFuture<'f, LocalRpcResponse<Vec<String>>> {
-        let zelf = self.clone();
-        Box::pin(async move {
-            Ok(zelf
-                .0
-                .read()
-                .await
-                .values()
-                .skip(page as usize * page_size as usize)
-                .take(page_size as usize)
-                .cloned()
-                .collect())
-        })
+    ) -> DynFuture<'f, ()> {
+        todo!()
     }
 
     fn insert<'f>(
         &self,
-        _deadline: Deadline,
+        handle: TypedRequestHandle<'f, KVStoreInsertReturn>,
         key: String,
         value: String,
-    ) -> DynFuture<'f, LocalRpcResponse<bool>> {
-        let zelf = self.clone();
-        Box::pin(async move {
-            Ok(match zelf.0.write().await.entry(key) {
-                Entry::Occupied(_) => false,
-                Entry::Vacant(entry) => {
-                    entry.insert(value);
-                    true
-                }
-            })
-        })
+    ) -> DynFuture<'f, ()> {
+        todo!()
     }
 
     fn insert_many<'f>(
         &self,
-        _deadline: Deadline,
+        handle: TypedRequestHandle<'f, KVStoreInsertManyReturn<'f>>,
         entries: Vec<KV>,
-    ) -> DynFuture<'f, LocalRpcResponse<Vec<String>>> {
-        let zelf = self.clone();
-        Box::pin(async move {
-            let mut lock = zelf.0.write().await;
-            let preexisting = entries
-                .into_iter()
-                .filter_map(|KV { key, value }| match lock.entry(key) {
-                    Entry::Occupied(entry) => Some(entry.key().clone()),
-                    Entry::Vacant(entry) => {
-                        entry.insert(value);
-                        None
-                    }
-                })
-                .collect();
-            Ok(preexisting)
-        })
+    ) -> DynFuture<'f, ()> {
+        todo!()
     }
 
-    fn get<'f>(&self, _deadline: Deadline, key: String) -> DynFuture<'f, LocalRpcResponse<String>> {
-        let zelf = self.clone();
-        Box::pin(async move {
-            zelf.0
-                .read()
-                .await
-                .get(&key)
-                .cloned()
-                .ok_or(LocalRpcError::CustomErrorStatic(1, "Unknown key"))
-        })
+    fn get<'f>(
+        &self,
+        handle: TypedRequestHandle<'f, KVStoreGetReturn<'f>>,
+        key: String,
+    ) -> DynFuture<'f, ()> {
+        todo!()
     }
 
-    fn count<'f>(&self, _deadline: Deadline) -> DynFuture<'f, LocalRpcResponse<u64>> {
-        let zelf = self.clone();
-        Box::pin(async move { Ok(zelf.0.read().await.len() as u64) })
+    fn count<'f>(&self, handle: TypedRequestHandle<'f, KVStoreCountReturn>) -> DynFuture<'f, ()> {
+        todo!()
     }
 
-    fn wait<'f>(&self, deadline: Deadline, secs: u16) -> DynFuture<'f, LocalRpcResponse<()>> {
-        let zelf = self.clone();
-        Box::pin(async move {
-            if let Some(deadline) = deadline.as_ref() {
-                if *deadline - Instant::now() >= Duration::from_secs(secs as u64) {
-                    // we will eventually time out, so just do it now
-                    return Err(DeadlineExceded);
-                }
-            }
-            let _lock = zelf.0.write().await;
-            tokio::time::sleep(Duration::from_secs(secs as u64)).await;
-            if deadline.has_passed() {
-                Err(DeadlineExceded)
-            } else {
-                Ok(())
-            }
-        })
+    fn wait<'f>(
+        &self,
+        handle: TypedRequestHandle<'f, KVStoreWaitReturn>,
+        secs: u16,
+    ) -> DynFuture<'f, ()> {
+        todo!()
     }
+
+    // fn entries<'f>(
+    //     &self,
+    //     _deadline: Deadline,
+    //     page: u64,
+    //     page_size: u16,
+    // ) -> DynFuture<'f, LocalRpcResponse<Vec<KV>>> {
+    //     // NOTE: it is not valid to capture `self` in the future! This is enforced by lifetime
+    //     // constraints.
+    //
+    //     let zelf = self.clone();
+    //     Box::pin(async move {
+    //         Ok(zelf
+    //             .0
+    //             .read()
+    //             .await
+    //             .iter()
+    //             .skip(page as usize * page_size as usize)
+    //             .take(page_size as usize)
+    //             .map(|(k, v)| KV {
+    //                 key: k.clone(),
+    //                 value: v.clone(),
+    //             })
+    //             .collect())
+    //     })
+    // }
+    //
+    // fn keys<'f>(
+    //     &self,
+    //     _deadline: Deadline,
+    //     page: u64,
+    //     page_size: u16,
+    // ) -> DynFuture<'f, LocalRpcResponse<Vec<String>>> {
+    //     let zelf = self.clone();
+    //     Box::pin(async move {
+    //         Ok(zelf
+    //             .0
+    //             .read()
+    //             .await
+    //             .keys()
+    //             .skip(page as usize * page_size as usize)
+    //             .take(page_size as usize)
+    //             .cloned()
+    //             .collect())
+    //     })
+    // }
+    //
+    // fn values<'f>(
+    //     &self,
+    //     _deadline: Deadline,
+    //     page: u64,
+    //     page_size: u16,
+    // ) -> DynFuture<'f, LocalRpcResponse<Vec<String>>> {
+    //     let zelf = self.clone();
+    //     Box::pin(async move {
+    //         Ok(zelf
+    //             .0
+    //             .read()
+    //             .await
+    //             .values()
+    //             .skip(page as usize * page_size as usize)
+    //             .take(page_size as usize)
+    //             .cloned()
+    //             .collect())
+    //     })
+    // }
+    //
+    // fn insert<'f>(
+    //     &self,
+    //     _deadline: Deadline,
+    //     key: String,
+    //     value: String,
+    // ) -> DynFuture<'f, LocalRpcResponse<bool>> {
+    //     let zelf = self.clone();
+    //     Box::pin(async move {
+    //         Ok(match zelf.0.write().await.entry(key) {
+    //             Entry::Occupied(_) => false,
+    //             Entry::Vacant(entry) => {
+    //                 entry.insert(value);
+    //                 true
+    //             }
+    //         })
+    //     })
+    // }
+    //
+    // fn insert_many<'f>(
+    //     &self,
+    //     _deadline: Deadline,
+    //     entries: Vec<KV>,
+    // ) -> DynFuture<'f, LocalRpcResponse<Vec<String>>> {
+    //     let zelf = self.clone();
+    //     Box::pin(async move {
+    //         let mut lock = zelf.0.write().await;
+    //         let preexisting = entries
+    //             .into_iter()
+    //             .filter_map(|KV { key, value }| match lock.entry(key) {
+    //                 Entry::Occupied(entry) => Some(entry.key().clone()),
+    //                 Entry::Vacant(entry) => {
+    //                     entry.insert(value);
+    //                     None
+    //                 }
+    //             })
+    //             .collect();
+    //         Ok(preexisting)
+    //     })
+    // }
+    //
+    // fn get<'f>(&self, _deadline: Deadline, key: String) -> DynFuture<'f, LocalRpcResponse<String>> {
+    //     let zelf = self.clone();
+    //     Box::pin(async move {
+    //         zelf.0
+    //             .read()
+    //             .await
+    //             .get(&key)
+    //             .cloned()
+    //             .ok_or(LocalRpcError::CustomErrorStatic(1, "Unknown key"))
+    //     })
+    // }
+    //
+    // fn count<'f>(&self, _deadline: Deadline) -> DynFuture<'f, LocalRpcResponse<u64>> {
+    //     let zelf = self.clone();
+    //     Box::pin(async move { Ok(zelf.0.read().await.len() as u64) })
+    // }
+    //
+    // fn wait<'f>(&self, deadline: Deadline, secs: u16) -> DynFuture<'f, LocalRpcResponse<()>> {
+    //     let zelf = self.clone();
+    //     Box::pin(async move {
+    //         if let Some(deadline) = deadline.as_ref() {
+    //             if *deadline - Instant::now() >= Duration::from_secs(secs as u64) {
+    //                 // we will eventually time out, so just do it now
+    //                 return Err(DeadlineExceded);
+    //             }
+    //         }
+    //         let _lock = zelf.0.write().await;
+    //         tokio::time::sleep(Duration::from_secs(secs as u64)).await;
+    //         if deadline.has_passed() {
+    //             Err(DeadlineExceded)
+    //         } else {
+    //             Ok(())
+    //         }
+    //     })
+    // }
 }
 
 struct NullServiceHandlersImpl;
@@ -283,7 +373,10 @@ fn setup() -> (Router<NullServiceRequests>, Router<KVStoreRequests>) {
 async fn can_request_and_receive() {
     let (server, client) = setup();
     assert_eq!(client.service_name(timeout!(0)).await.unwrap(), "KVStore");
-    assert_eq!(server.service_name(timeout!(0)).await.unwrap(), "NullService");
+    assert_eq!(
+        server.service_name(timeout!(0)).await.unwrap(),
+        "NullService"
+    );
     client
         .insert(timeout!(1 s), "Mykey", "Myvalue")
         .await

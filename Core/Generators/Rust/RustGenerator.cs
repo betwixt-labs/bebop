@@ -1075,7 +1075,8 @@ namespace Core.Generators.Rust
                         {
                             bldr.AppendLine("use ::bebop::rpc::CallDetails as _;")
                                 .AppendLine("let call_id = handle.call_id().get();")
-                                .AppendLine($"::bebop::dyn_fut! {{ ::bebop::handle_respond_error!(handle.send_ok_response(&super::{ident}ServiceNameReturn {{ value: \"{ident}\" }}), \"{ident}\", \"service_name\", 0, call_id); }}");
+                                .AppendLine(
+                                    $"::bebop::dyn_fut! {{ ::bebop::handle_respond_error!(handle.send_ok_response(&super::{ident}ServiceNameReturn {{ value: \"{ident}\" }}), \"{ident}\", \"service_name\", 0, call_id); }}");
                         });
                     foreach (var (b, i) in d.Branches.OrderBy(d => d.Discriminator).Skip(1).Enumerated())
                     {
@@ -1088,10 +1089,7 @@ namespace Core.Generators.Rust
                         var retType = MakeDefIdent(fn.ReturnStruct.Name);
                         var lt = NeedsLifetime(fn.ReturnStruct) ? "<'f>" : "";
                         var argsStr = string.Join(", ",
-                            new[]
-                                {
-                                    "&self", $"handle: ::bebop::rpc::TypedRequestHandle<'f, super::{retType}{lt}>"
-                                }
+                            new[] { "&self", $"_handle: ::bebop::rpc::TypedRequestHandle<'f, super::{retType}{lt}>" }
                                 .Concat(args.Select(i => $"{i.Item1}: {i.Item2}")));
                         bldr.AppendLine($"fn {fname}<'f>({argsStr}) -> {DynFutType("()")};");
                         if (i < d.Branches.Count - 1) bldr.AppendLine();

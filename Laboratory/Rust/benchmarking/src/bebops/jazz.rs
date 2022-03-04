@@ -3,7 +3,7 @@
 //
 //
 //   bebopc version:
-//       2.3.1
+//       2.4.1
 //
 //
 //   bebopc source:
@@ -89,6 +89,15 @@ impl ::bebop::FixedSized for Instrument {
 pub struct Performer<'raw> {
     pub name: &'raw str,
     pub plays: Instrument,
+}
+
+impl<'raw> ::core::convert::From<(&'raw str, Instrument)> for Performer<'raw> {
+    fn from(value: (&'raw str, Instrument)) -> Self {
+        Self {
+            name: value.0,
+            plays: value.1,
+        }
+    }
 }
 
 impl<'raw> ::bebop::SubRecord<'raw> for Performer<'raw> {
@@ -476,6 +485,22 @@ pub struct Library<'raw> {
     pub albums: ::std::collections::HashMap<&'raw str, Album<'raw>>,
 }
 
+impl<'raw> ::core::convert::From<::std::collections::HashMap<&'raw str, Album<'raw>>>
+    for Library<'raw>
+{
+    fn from(value: ::std::collections::HashMap<&'raw str, Album<'raw>>) -> Self {
+        Self { albums: value }
+    }
+}
+
+impl<'raw> ::core::convert::From<Library<'raw>>
+    for ::std::collections::HashMap<&'raw str, Album<'raw>>
+{
+    fn from(value: Library<'raw>) -> Self {
+        value.albums
+    }
+}
+
 impl<'raw> ::core::ops::Deref for Library<'raw> {
     type Target = ::std::collections::HashMap<&'raw str, Album<'raw>>;
 
@@ -541,6 +566,15 @@ pub mod owned {
             Self {
                 name: value.name.into(),
                 plays: value.plays,
+            }
+        }
+    }
+
+    impl ::core::convert::From<(::std::string::String, Instrument)> for Performer {
+        fn from(value: (::std::string::String, Instrument)) -> Self {
+            Self {
+                name: value.0,
+                plays: value.1,
             }
         }
     }
@@ -980,6 +1014,18 @@ pub mod owned {
                     .map(|(key, value)| (key.into(), value.into()))
                     .collect(),
             }
+        }
+    }
+
+    impl ::core::convert::From<::std::collections::HashMap<::std::string::String, Album>> for Library {
+        fn from(value: ::std::collections::HashMap<::std::string::String, Album>) -> Self {
+            Self { albums: value }
+        }
+    }
+
+    impl ::core::convert::From<Library> for ::std::collections::HashMap<::std::string::String, Album> {
+        fn from(value: Library) -> Self {
+            value.albums
         }
     }
 
