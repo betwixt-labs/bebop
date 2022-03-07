@@ -112,8 +112,11 @@ impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
     fn ping<'f>(&self, handle: TypedRequestHandle<'f, rtype::KVStorePingReturn>) -> DynFuture<'f> {
         let call_id = handle.call_id().get();
         Box::pin(async move {
+            let response = async {
+                Err(LocalRpcError::CustomErrorStatic(4, "some error"))
+            }.await;
             bebop::handle_respond_error!(
-                handle.send_response(Err(LocalRpcError::CustomErrorStatic(4, "some error"))),
+                handle.send_response(response),
                 "KVStore",
                 "ping",
                 1,
@@ -122,15 +125,8 @@ impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
         })
     }
 
-    // #[handler]
-    // fn ping<'f>(&self, details: &dyn CallDetails) -> DynFut<'f, LocalRpcResponse<()>> {
-    //     Box::pin(async move {
-    //         Err(LocalRpcError::CustomErrorStatic(4, "some error"))
-    //     })
-    // }
-
     // #[handler] // < async like this only works when impl for Arc<T>
-    // async fn ping(&self, details: &dyn CallDetails) -> LocalRpcResponse<()> {
+    // async fn ping(self, details: &dyn CallDetails) -> LocalRpcResponse<()> {
     //     Err(LocalRpcError::CustomErrorStatic(4, "some error"))
     // }
 
