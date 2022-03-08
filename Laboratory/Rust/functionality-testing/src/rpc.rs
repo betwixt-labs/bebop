@@ -5,11 +5,11 @@ use std::time::{Duration, Instant};
 
 use bebop::prelude::*;
 use bebop::rpc::LocalRpcError::DeadlineExceded;
+use bebop::rpc::{handlers, RemoteRpcError, Router};
 use bebop::rpc::{
     CallDetails, Deadline, LocalRpcError, LocalRpcResponse, TransportError, TransportHandler,
     TransportProtocol, TransportResult, TypedRequestHandle,
 };
-use bebop::rpc::{RemoteRpcError, Router};
 use bebop::timeout;
 // Usually I would use parking lot, but since we are simulating a database I think this will give
 // a better impression of what the operations will look like with the required awaits.
@@ -108,27 +108,28 @@ impl MemBackedKVStore {
 
 // impl for Arc so that we can create weak references that we pass to the futures without capturing
 // the lifetime of the self reference.
+#[handlers]
 impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
-    fn ping<'f>(&self, handle: TypedRequestHandle<'f, rtype::KVStorePingReturn>) -> DynFuture<'f> {
-        let call_id = handle.call_id().get();
-        Box::pin(async move {
-            let response = async {
-                Err(LocalRpcError::CustomErrorStatic(4, "some error"))
-            }.await;
-            bebop::handle_respond_error!(
-                handle.send_response(response),
-                "KVStore",
-                "ping",
-                1,
-                call_id
-            )
-        })
-    }
-
-    // #[handler] // < async like this only works when impl for Arc<T>
-    // async fn ping(self, details: &dyn CallDetails) -> LocalRpcResponse<()> {
-    //     Err(LocalRpcError::CustomErrorStatic(4, "some error"))
+    // fn ping<'f>(&self, handle: TypedRequestHandle<'f, rtype::KVStorePingReturn>) -> DynFuture<'f> {
+    //     let call_id = handle.call_id().get();
+    //     Box::pin(async move {
+    //         let response = async {
+    //             Err(LocalRpcError::CustomErrorStatic(4, "some error"))
+    //         }.await;
+    //         bebop::handle_respond_error!(
+    //             handle.send_response(response),
+    //             "KVStore",
+    //             "ping",
+    //             1,
+    //             call_id
+    //         )
+    //     })
     // }
+
+    #[handler] // < async like this only works when impl for Arc<T>
+    async fn ping(self, details: &dyn CallDetails) -> LocalRpcResponse<()> {
+        Err(LocalRpcError::CustomErrorStatic(4, "some error"))
+    }
 
     fn entries<'f>(
         &self,

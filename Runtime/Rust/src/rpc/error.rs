@@ -122,7 +122,6 @@ macro_rules! handle_respond_error {
                     ::bebop::rpc::ServiceContext {
                         service: $service,
                         function: $function,
-                        opcode: $opcode,
                         call_id: $call_id,
                     },
                     err,
@@ -139,7 +138,6 @@ static mut ON_RESPOND_ERROR: Option<Pin<Box<OnRespondError>>> = None;
 pub struct ServiceContext {
     pub service: &'static str,
     pub function: &'static str,
-    pub opcode: u16,
     pub call_id: u16,
 }
 

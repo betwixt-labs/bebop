@@ -1,14 +1,9 @@
 use proc_macro::TokenStream;
-use proc_macro_error::{abort, abort_if_dirty, emit_error, emit_warning};
+
+use proc_macro_error::{abort, abort_if_dirty, emit_error, emit_warning, proc_macro_error};
 use quote::{format_ident, quote, quote_spanned};
-use syn::parse::{Parse, ParseStream};
-use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
-use syn::token::RArrow;
-use syn::{
-    Attribute, GenericArgument, Ident, ImplItem, ImplItemMethod, ItemFn, ItemImpl, PathArguments,
-    ReturnType, Token, Type, TypePath,
-};
+use syn::{parse_quote, FnArg, Ident, ImplItem, ImplItemMethod, ItemImpl, Pat, ReturnType, Type};
 
 /// Allows converting a function which "returns a value" to one which actually calls a callback.
 /// This allows submitting a borrowed value which is owned by the function scope and preventing
@@ -17,16 +12,25 @@ use syn::{
 
 const HANDLERS_POSTFIX: &str = "HandlersDef";
 
-#[proc_macro_attribute]
-pub fn handlers(args: TokenStream, input: TokenStream) -> TokenStream {
-    let mut item = syn::parse_macro_input!(args as ItemImpl);
+/// Put quotes around a string to create a string literal.
+macro_rules! quoted {
+    ($name:expr) => {{
+        let name = $name.to_string();
+        if name.starts_with('"') && name.ends_with('"') {
+            name
+        } else {
+            format!("\"{}\"", $name)
+        }
+    }};
+}
 
+fn handlers_2(mut item: ItemImpl) -> proc_macro2::TokenStream {
     // extract the service name from the trait that is being implemented
     let service_name = {
         let tr = if let Some(tr) = &item.trait_ {
             tr
         } else {
-            abort!(item.span(), "Must be applied to a handler impl")
+            panic!("{:?}, Must be applied to a handler impl", item.span())
         };
         let ident = &tr.1.segments.last().expect("Path must be defined").ident;
         let mut ident_str = ident.to_string();
@@ -60,7 +64,33 @@ pub fn handlers(args: TokenStream, input: TokenStream) -> TokenStream {
     }
 
     abort_if_dirty();
-    TokenStream::from(quote!(#item))
+    proc_macro2::TokenStream::from(quote!(#item))
+}
+
+#[cfg(test)]
+mod test {
+    use super::handlers_2;
+    use quote::quote;
+    use syn::{parse_quote, ItemImpl};
+
+    #[test]
+    fn basic_sync() {
+        let item = parse_quote! {
+            impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
+                async fn ping(&self, details: &dyn CallDetails) -> LocalRpcResponse<()> {
+                    Err(LocalRpcError::CustomErrorStatic(4, "some error"))
+                }
+            }
+        };
+        let out = handlers_2(item);
+        println!("{out}");
+    }
+}
+
+#[proc_macro_attribute]
+pub fn handlers(_args: TokenStream, input: TokenStream) -> TokenStream {
+    let item = syn::parse_macro_input!(input as ItemImpl);
+    TokenStream::from(handlers_2(item))
 }
 
 fn process_method(service_name: &Ident, item: &mut ImplItemMethod) {
@@ -71,34 +101,108 @@ fn process_method(service_name: &Ident, item: &mut ImplItemMethod) {
     if !item.sig.asyncness.is_some() {
         emit_error!(item.sig.asyncness.span(), "Function must be async")
     }
+    item.sig.asyncness = None;
+    item.sig.generics.params.insert(0, parse_quote! { '__fut });
 
     let method_name = &item.sig.ident;
-    let return_type = if let Some(t) = extract_method_return_type(item) {
-        t
+    if let Some(orig_type) = extract_method_return_type(item) {
+        let new_type = quote_spanned! {item.sig.output.span()=>
+            -> ::bebop::rpc::DynFuture<'__fut, #orig_type>
+        };
+        item.sig.output = parse_quote! { #new_type };
     } else {
-        return
+        return;
     };
 
-    // let h = quote_spanned! {span=>
-    //     fn #ident<'f>(&self, __handle: ::bebop::rpc::TypedRequestHandle<'f, #return_struct>, #args) ->
-    //         ::bebop::rpc::DynFuture<'f, #ret>
+    let mut args_iter = item.sig.inputs.iter_mut();
+    if let Some(FnArg::Receiver(_a)) = args_iter.next() {
+        // nothing for now
+    } else {
+        drop(args_iter);
+        emit_error!(item.sig.inputs.span(), "Function must have self argument");
+        return;
+    };
+
+    let arg_call_details_ident = if let Some(FnArg::Typed(a)) = args_iter.next() {
+        let ident = if let Pat::Ident(ident) = a.pat.as_ref() {
+            ident.clone()
+        } else {
+            emit_error!(a.span(), "Unexpected pattern type, expected ident");
+            return;
+        };
+        let ret_struct = format!(
+            "{}{}Return",
+            service_name,
+            pascal_case(&method_name.to_string())
+        );
+        let pat = quote_spanned! {a.pat.span()=>
+            __handle
+        };
+        let ty = quote_spanned! { a.ty.span()=>
+            ::bebop::rpc::TypedRequestHandle<'__fut, #ret_struct>
+        };
+        a.pat = parse_quote! { #pat };
+        a.ty = parse_quote! { #ty };
+        ident
+    } else {
+        drop(args_iter);
+        emit_error!(item.sig.inputs.span(), "Function must receive call details");
+        return;
+    };
+    drop(args_iter);
+
+    let old_body_statements = &item.block.stmts;
+    let quoted_service_name = quoted!(service_name);
+    let quoted_method_name = quoted!(method_name);
+
+    // let block = quote_spanned! {item.block.span()=>
     //     {
     //         let __call_id = __handle.call_id().get();
     //         let __self = self.clone(); // only do if there is a reference to self in the block
+    //         let #arg_call_details_ident: &dyn ::bebop::rpc::CallDetails = __handle.as_ref();
     //         Box::pin(async move {
     //             let details: &dyn ::bebop::rpc::CallDetails = &__handle;
     //             let __response = async {
-    //                 #body
+    //                 #(#old_body_statements)*
     //             }.await;
-    //             ::bebop::handle_respone_error!(
+    //             ::bebop::handle_respond_error!(
     //                 __handle.send_response(__response),
-    //                 #quoted_service,
-    //                 #quoted_fn_name,
+    //                 #quoted_service_name,
+    //                 #quoted_method_name,
     //                 __call_id,
     //             )
     //         })
     //     }
     // };
+    // item.block = parse_quote! { #block };
+}
+
+fn pascal_case(s: &str) -> String {
+    let mut r = String::new();
+
+    // allow leading underscores
+    s.chars().take_while(|&c| c == '_').for_each(|c| r.push(c));
+
+    // capitalize the first char
+    if let Some(c) = s.chars().next() {
+        c.to_uppercase().for_each(|c| r.push(c));
+    }
+
+    let mut cap_next = false;
+    for cur in s.chars().skip(1) {
+        if cur == '_' || cur == '-' {
+            cap_next = true;
+        } else if cur.is_digit(10) {
+            cap_next = true;
+            r.push(cur);
+        } else if cap_next {
+            cap_next = false;
+            cur.to_uppercase().for_each(|c| r.push(c));
+        } else {
+            r.push(cur);
+        }
+    }
+    r
 }
 
 fn process_method_attrs(item: &mut ImplItemMethod) -> bool {
@@ -128,43 +232,44 @@ fn process_method_attrs(item: &mut ImplItemMethod) -> bool {
 
 fn extract_method_return_type(item: &ImplItemMethod) -> Option<&Type> {
     if let ReturnType::Type(_arrow, ty) = &item.sig.output {
-        if let Type::Path(p) = ty.as_ref() {
-            let segment = p.path.segments.last().unwrap();
-            if segment.ident != "LocalRpcResponse" {
-                emit_error!(
-                    item.sig.output.span(),
-                    "Output must be a LocalRpcResponse type"
-                );
-                return None;
-            }
-            if let PathArguments::AngleBracketed(generic_args) = &segment.arguments {
-                if generic_args.args.len() != 1 {
-                    emit_error!(
-                        generic_args.args.span(),
-                        "Expected exactly one generic type argument"
-                    );
-                    return None;
-                }
-                if let GenericArgument::Type(inner_ty) = generic_args.args.first().unwrap() {
-                    Some(inner_ty)
-                } else {
-                    emit_error!(
-                        generic_args.args.first().unwrap().span(),
-                        "Expected a type argument"
-                    );
-                    None
-                }
-            } else {
-                emit_error!(segment.arguments.span(), "Missing template type");
-                None
-            }
-        } else {
-            emit_error!(
-                item.sig.output.span(),
-                "Output must be a LocalRpcResponse type"
-            );
-            None
-        }
+        Some(ty)
+        // if let Type::Path(p) = ty.as_ref() {
+        //     let segment = p.path.segments.last().unwrap();
+        //     if segment.ident != "LocalRpcResponse" {
+        //         emit_error!(
+        //             item.sig.output.span(),
+        //             "Output must be a LocalRpcResponse type"
+        //         );
+        //         return None;
+        //     }
+        //     if let PathArguments::AngleBracketed(generic_args) = &segment.arguments {
+        //         if generic_args.args.len() != 1 {
+        //             emit_error!(
+        //                 generic_args.args.span(),
+        //                 "Expected exactly one generic type argument"
+        //             );
+        //             return None;
+        //         }
+        //         if let GenericArgument::Type(inner_ty) = generic_args.args.first().unwrap() {
+        //             Some(inner_ty)
+        //         } else {
+        //             emit_error!(
+        //                 generic_args.args.first().unwrap().span(),
+        //                 "Expected a type argument"
+        //             );
+        //             None
+        //         }
+        //     } else {
+        //         emit_error!(segment.arguments.span(), "Missing template type");
+        //         None
+        //     }
+        // } else {
+        //     emit_error!(
+        //         item.sig.output.span(),
+        //         "Output must be a LocalRpcResponse type"
+        //     );
+        //     None
+        // }
     } else {
         emit_error!(
             item.sig.output.span(),

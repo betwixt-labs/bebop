@@ -28,6 +28,8 @@ mod error;
 mod router;
 mod transport;
 
+pub use bebop_handler_macro::handlers;
+
 /// Utility for parsing information about a datagram without having to match all cases.
 pub trait DatagramInfo {
     fn call_id(&self) -> Option<NonZeroU16>;
