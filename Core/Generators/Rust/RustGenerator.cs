@@ -1076,7 +1076,7 @@ namespace Core.Generators.Rust
                             bldr.AppendLine("use ::bebop::rpc::CallDetails as _;")
                                 .AppendLine("let call_id = handle.call_id().get();")
                                 .AppendLine(
-                                    $"::bebop::dyn_fut! {{ ::bebop::handle_respond_error!(handle.send_ok_response(&super::{ident}ServiceNameReturn {{ value: \"{ident}\" }}), \"{ident}\", \"service_name\", 0, call_id); }}");
+                                    $"::bebop::dyn_fut! {{ ::bebop::handle_respond_error!(handle.send_ok_response(&super::{ident}ServiceNameReturn {{ value: \"{ident}\" }}), \"{ident}\", \"service_name\", call_id); }}");
                         });
                     foreach (var (b, i) in d.Branches.OrderBy(d => d.Discriminator).Skip(1).Enumerated())
                     {
@@ -1144,7 +1144,7 @@ namespace Core.Generators.Rust
                                                         }
 
                                                         bldr.AppendLine(
-                                                            $"_ => ::bebop::dyn_fut! {{ ::bebop::handle_respond_error!(handle.send_unknown_call_response(), \"{ident}\", \"UNKNOWN\", opcode, call_id); }},");
+                                                            $"_ => ::bebop::dyn_fut! {{ ::bebop::handle_respond_error!(handle.send_unknown_call_response(), \"{ident}\", \"UNKNOWN\", call_id); }},");
                                                     });
                                             }, "{",
                                             "} else { unreachable!(\"`_recv_call` Should only ever be provided with Requests.\") }");
@@ -1196,7 +1196,7 @@ namespace Core.Generators.Rust
             bldr.CodeBlock($"if req_header.signature != {sigName}", _tab, () =>
             {
                 bldr.AppendLine(
-                    $"return ::bebop::dyn_fut! {{ ::bebop::handle_respond_error!(handle.send_invalid_sig_response({sigName}), \"{serviceName}\", \"{fnName}\", opcode, call_id); }}");
+                    $"return ::bebop::dyn_fut! {{ ::bebop::handle_respond_error!(handle.send_invalid_sig_response({sigName}), \"{serviceName}\", \"{fnName}\", call_id); }}");
             });
 
             if (fnDef.ArgumentStruct.Fields.Count > 0)
@@ -1205,7 +1205,7 @@ namespace Core.Generators.Rust
                 {
                     bldr.AppendLine("Ok(args) => args,")
                         .AppendLine(
-                            $"Err(err) => return ::bebop::dyn_fut! {{ ::bebop::handle_respond_error!(handle.send_decode_error_response(Some(&err.to_string())), \"{serviceName}\", \"{fnName}\", opcode, call_id) }}");
+                            $"Err(err) => return ::bebop::dyn_fut! {{ ::bebop::handle_respond_error!(handle.send_decode_error_response(Some(&err.to_string())), \"{serviceName}\", \"{fnName}\", call_id) }}");
                 }, "{", "};");
             }
 

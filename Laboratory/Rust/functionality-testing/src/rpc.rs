@@ -106,6 +106,7 @@ impl MemBackedKVStore {
     }
 }
 
+// TODO: allow passing the path to the return types so they do not have to be in scope.
 use rtype::KVStorePingReturn;
 
 // impl for Arc so that we can create weak references that we pass to the futures without capturing
@@ -114,10 +115,32 @@ use rtype::KVStorePingReturn;
 impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
     // fn ping<'f>(&self, _handle: ::bebop::rpc::TypedRequestHandle<'f, super::KVStorePingReturn>) -> ::bebop::rpc::DynFuture<'f, ()>;
 
-    #[handler] // < async like this only works when impl for Arc<T>
-    async fn ping(self, details: &dyn CallDetails) -> LocalRpcResponse<()> {
+    #[handler]
+    async fn ping(self, _details: &dyn CallDetails) -> LocalRpcResponse<()> {
         Err(LocalRpcError::CustomErrorStatic(4, "some error"))
     }
+
+    // fn ping<'__fut>(
+    //     &self,
+    //     __handle: ::bebop::rpc::TypedRequestHandle<'__fut, KVStorePingReturn>,
+    // ) -> ::bebop::rpc::DynFuture<'__fut> {
+    //     let __call_id = __handle.call_id().get();
+    //     let __self = self.clone();
+    //     Box::pin(async move {
+    //         let __response: ::bebop::rpc::LocalRpcResponse<KVStorePingReturn> = async {
+    //             let _details = &__handle;
+    //             Err(LocalRpcError::CustomErrorStatic(4, "some error"))
+    //         }
+    //         .await
+    //         .map(|v: ()| v.into());
+    //         ::bebop::handle_respond_error!(
+    //             __handle.send_response(__response.as_ref()),
+    //             "KVStore",
+    //             "ping",
+    //             __call_id
+    //         )
+    //     })
+    // }
 
     fn entries<'f>(
         &self,

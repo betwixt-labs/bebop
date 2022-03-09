@@ -3,10 +3,7 @@ use proc_macro2::TokenTree;
 
 use quote::{format_ident, quote, quote_spanned, ToTokens};
 use syn::spanned::Spanned;
-use syn::{
-    parse_quote, FnArg, Ident, ImplItem, ImplItemMethod, ItemImpl, Pat, ReturnType, Stmt, Token,
-    Type,
-};
+use syn::{parse_quote, FnArg, Ident, ImplItem, ImplItemMethod, ItemImpl, Pat, ReturnType, Stmt, Token, Type, PathArguments, GenericArgument};
 
 const HANDLERS_POSTFIX: &str = "HandlersDef";
 
@@ -63,17 +60,31 @@ fn handlers_2(mut item: ItemImpl) -> proc_macro2::TokenStream {
 #[cfg(test)]
 mod test {
     use super::handlers_2;
-    use quote::quote;
-    use syn::{parse_quote, ItemImpl};
+    use syn::{parse_quote};
 
     #[test]
-    fn basic_sync() {
+    fn basic_err_sync() {
         let item = parse_quote! {
             #[handlers]
             impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
                 #[handler]
-                async fn ping(self, details: &dyn CallDetails) -> LocalRpcResponse<()> {
+                async fn ping(self, _details: &dyn CallDetails) -> LocalRpcResponse<()> {
                     Err(LocalRpcError::CustomErrorStatic(4, "some error"))
+                }
+            }
+        };
+        println!("{}", handlers_2(item));
+    }
+
+    #[test]
+    fn basic_ok_sync() {
+        // ok case is harder because of borrowing requirements
+        let item = parse_quote! {
+            #[handlers]
+            impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
+                #[handler]
+                async fn ping(self, _details: &dyn CallDetails) -> LocalRpcResponse<()> {
+                    Ok(())
                 }
             }
         };
@@ -103,7 +114,7 @@ fn process_method(service_name: &Ident, item: &mut ImplItemMethod) {
     item.sig.generics.params.insert(0, parse_quote! { '__fut });
 
     let method_name = &item.sig.ident;
-    // let request_handle_type = extract_method_return_type(item).expect("Missing return type!").clone();
+    let block_return_type = extract_method_return_type(item).expect("Missing return type!").clone();
     let ret_type = quote_spanned! {item.sig.output.span()=>
         -> ::bebop::rpc::DynFuture<'__fut>
     };
@@ -121,17 +132,18 @@ fn process_method(service_name: &Ident, item: &mut ImplItemMethod) {
         panic!("Function must have self argument")
     };
 
+    let ret_struct = format_ident!(
+            "{}{}Return",
+            service_name,
+            pascal_case(&method_name.to_string())
+        );
+
     let arg_call_details_ident = if let Some(FnArg::Typed(a)) = args_iter.next() {
         let ident = if let Pat::Ident(ident) = a.pat.as_ref() {
             ident.clone()
         } else {
             panic!("Unexpected pattern type, expected ident")
         };
-        let ret_struct = format_ident!(
-            "{}{}Return",
-            service_name,
-            pascal_case(&method_name.to_string())
-        );
         let pat = quote_spanned! {a.pat.span()=>
             __handle
         };
@@ -180,12 +192,13 @@ fn process_method(service_name: &Ident, item: &mut ImplItemMethod) {
             let __call_id = __handle.call_id().get();
             let __self = self.clone(); // only do if there is a reference to self in the block
             Box::pin(async move {
-                let __response = async {
+                let __response: ::bebop::rpc::LocalRpcResponse<#ret_struct> = async {
                     let #arg_call_details_ident = &__handle;
                     #(#old_body_statements)*
-                }.await;
+                }.await.map(|v: #block_return_type| v.into());
+
                 ::bebop::handle_respond_error!(
-                    __handle.send_response(__response),
+                    __handle.send_response(__response.as_ref()),
                     #quoted_service_name,
                     #quoted_method_name,
                     __call_id
@@ -251,44 +264,26 @@ fn process_method_attrs(item: &mut ImplItemMethod) -> bool {
 
 fn extract_method_return_type(item: &ImplItemMethod) -> Option<&Type> {
     if let ReturnType::Type(_arrow, ty) = &item.sig.output {
-        Some(ty)
-        // if let Type::Path(p) = ty.as_ref() {
-        //     let segment = p.path.segments.last().unwrap();
-        //     if segment.ident != "LocalRpcResponse" {
-        //         emit_error!(
-        //             item.sig.output.span(),
-        //             "Output must be a LocalRpcResponse type"
-        //         );
-        //         return None;
-        //     }
-        //     if let PathArguments::AngleBracketed(generic_args) = &segment.arguments {
-        //         if generic_args.args.len() != 1 {
-        //             emit_error!(
-        //                 generic_args.args.span(),
-        //                 "Expected exactly one generic type argument"
-        //             );
-        //             return None;
-        //         }
-        //         if let GenericArgument::Type(inner_ty) = generic_args.args.first().unwrap() {
-        //             Some(inner_ty)
-        //         } else {
-        //             emit_error!(
-        //                 generic_args.args.first().unwrap().span(),
-        //                 "Expected a type argument"
-        //             );
-        //             None
-        //         }
-        //     } else {
-        //         emit_error!(segment.arguments.span(), "Missing template type");
-        //         None
-        //     }
-        // } else {
-        //     emit_error!(
-        //         item.sig.output.span(),
-        //         "Output must be a LocalRpcResponse type"
-        //     );
-        //     None
-        // }
+        if let Type::Path(p) = ty.as_ref() {
+            let segment = p.path.segments.last().unwrap();
+            if segment.ident != "LocalRpcResponse" {
+                panic!("Output must be a LocalRpcResponse type")
+            }
+            if let PathArguments::AngleBracketed(generic_args) = &segment.arguments {
+                if generic_args.args.len() != 1 {
+                    panic!("Expected exactly one generic type argument")
+                }
+                if let GenericArgument::Type(inner_ty) = generic_args.args.first().unwrap() {
+                    Some(inner_ty)
+                } else {
+                    panic!("Expected a type argument")
+                }
+            } else {
+                panic!("Missing template type")
+            }
+        } else {
+            panic!("Output must be a LocalRpcResponse type")
+        }
     } else {
         panic!("Output must be a LocalRpcResponse type")
     }

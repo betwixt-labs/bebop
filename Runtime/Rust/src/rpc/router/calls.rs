@@ -45,7 +45,7 @@ impl<'r, R> TypedRequestHandle<'r, R>
 {
     pub async fn send_response(
         self,
-        response: LocalRpcResponse<&R>,
+        response: Result<&R, &LocalRpcError>,
     ) -> TransportResult {
         match response {
             Ok(record) => self.send_ok_response(record).await,
@@ -54,9 +54,9 @@ impl<'r, R> TypedRequestHandle<'r, R>
                 Ok(())
             }
             Err(LocalRpcError::CustomError(code, msg)) => {
-                self.inner.send_error_response(code, Some(&msg)).await
+                self.inner.send_error_response(*code, Some(msg)).await
             }
-            Err(LocalRpcError::CustomErrorStatic(code, msg)) => {
+            Err(&LocalRpcError::CustomErrorStatic(code, msg)) => {
                 let msg = if msg.is_empty() { None } else { Some(msg) };
                 self.inner.send_error_response(code, msg).await
             }
