@@ -1,9 +1,12 @@
 use proc_macro::TokenStream;
-use proc_macro2::TokenTree;
 
+use proc_macro2::TokenTree;
 use quote::{format_ident, quote, quote_spanned, ToTokens};
 use syn::spanned::Spanned;
-use syn::{parse_quote, FnArg, Ident, ImplItem, ImplItemMethod, ItemImpl, Pat, ReturnType, Stmt, Token, Type, PathArguments, GenericArgument};
+use syn::{
+    parse_quote, FnArg, GenericArgument, Ident, ImplItem, ImplItemMethod, ItemImpl, Pat,
+    PathArguments, ReturnType, Stmt, Token, Type,
+};
 
 const HANDLERS_POSTFIX: &str = "HandlersDef";
 
@@ -59,8 +62,9 @@ fn handlers_2(mut item: ItemImpl) -> proc_macro2::TokenStream {
 
 #[cfg(test)]
 mod test {
+    use syn::parse_quote;
+
     use super::handlers_2;
-    use syn::{parse_quote};
 
     #[test]
     fn basic_err_sync() {
@@ -114,7 +118,9 @@ fn process_method(service_name: &Ident, item: &mut ImplItemMethod) {
     item.sig.generics.params.insert(0, parse_quote! { '__fut });
 
     let method_name = &item.sig.ident;
-    let block_return_type = extract_method_return_type(item).expect("Missing return type!").clone();
+    let block_return_type = extract_method_return_type(item)
+        .expect("Missing return type!")
+        .clone();
     let ret_type = quote_spanned! {item.sig.output.span()=>
         -> ::bebop::rpc::DynFuture<'__fut>
     };
@@ -133,10 +139,10 @@ fn process_method(service_name: &Ident, item: &mut ImplItemMethod) {
     };
 
     let ret_struct = format_ident!(
-            "{}{}Return",
-            service_name,
-            pascal_case(&method_name.to_string())
-        );
+        "{}{}Return",
+        service_name,
+        pascal_case(&method_name.to_string())
+    );
 
     let arg_call_details_ident = if let Some(FnArg::Typed(a)) = args_iter.next() {
         let ident = if let Pat::Ident(ident) = a.pat.as_ref() {
@@ -163,25 +169,7 @@ fn process_method(service_name: &Ident, item: &mut ImplItemMethod) {
         .block
         .stmts
         .drain(0..item.block.stmts.len())
-        .map(|stmt| {
-            // convert self to __self
-            let t: proc_macro2::TokenStream = stmt
-                .into_token_stream()
-                .into_iter()
-                .map(|tok| {
-                    match tok {
-                        TokenTree::Ident(mut i) => {
-                            if i == "self" {
-                                i = format_ident!("__self");
-                            }
-                            TokenTree::Ident(i)
-                        },
-                        tok => tok
-                    }
-                })
-                .collect();
-            t
-        })
+        .map(process_method_statement)
         .collect();
 
     let quoted_service_name = service_name.to_string();
@@ -209,32 +197,20 @@ fn process_method(service_name: &Ident, item: &mut ImplItemMethod) {
     item.block = parse_quote! { #block };
 }
 
-fn pascal_case(s: &str) -> String {
-    let mut r = String::new();
-
-    // allow leading underscores
-    s.chars().take_while(|&c| c == '_').for_each(|c| r.push(c));
-
-    // capitalize the first char
-    if let Some(c) = s.chars().next() {
-        c.to_uppercase().for_each(|c| r.push(c));
-    }
-
-    let mut cap_next = false;
-    for cur in s.chars().skip(1) {
-        if cur == '_' || cur == '-' {
-            cap_next = true;
-        } else if cur.is_digit(10) {
-            cap_next = true;
-            r.push(cur);
-        } else if cap_next {
-            cap_next = false;
-            cur.to_uppercase().for_each(|c| r.push(c));
-        } else {
-            r.push(cur);
-        }
-    }
-    r
+fn process_method_statement(stmt: Stmt) -> proc_macro2::TokenStream {
+    // convert self to __self
+    stmt.into_token_stream()
+        .into_iter()
+        .map(|tok| match tok {
+            TokenTree::Ident(mut i) => {
+                if i == "self" {
+                    i = format_ident!("__self");
+                }
+                TokenTree::Ident(i)
+            }
+            tok => tok,
+        })
+        .collect()
 }
 
 fn process_method_attrs(item: &mut ImplItemMethod) -> bool {
@@ -287,4 +263,32 @@ fn extract_method_return_type(item: &ImplItemMethod) -> Option<&Type> {
     } else {
         panic!("Output must be a LocalRpcResponse type")
     }
+}
+
+fn pascal_case(s: &str) -> String {
+    let mut r = String::new();
+
+    // allow leading underscores
+    s.chars().take_while(|&c| c == '_').for_each(|c| r.push(c));
+
+    // capitalize the first char
+    if let Some(c) = s.chars().next() {
+        c.to_uppercase().for_each(|c| r.push(c));
+    }
+
+    let mut cap_next = false;
+    for cur in s.chars().skip(1) {
+        if cur == '_' || cur == '-' {
+            cap_next = true;
+        } else if cur.is_digit(10) {
+            cap_next = true;
+            r.push(cur);
+        } else if cap_next {
+            cap_next = false;
+            cur.to_uppercase().for_each(|c| r.push(c));
+        } else {
+            r.push(cur);
+        }
+    }
+    r
 }
