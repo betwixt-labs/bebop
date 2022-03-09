@@ -16,9 +16,10 @@ use bebop::timeout;
 use tokio::sync::RwLock;
 
 use crate::generated::rpc as rtype;
+use crate::generated::rpc::owned::KVStoreHandlersDef;
 pub use crate::generated::rpc::owned::NullServiceRequests;
 use crate::generated::rpc::owned::{KVStoreHandlers, KVStoreRequests, NullServiceHandlers};
-use crate::generated::rpc::owned::{KVStoreHandlersDef, KV};
+use crate::generated::rpc::KV;
 use crate::generated::rpc::{
     KVStoreCountReturn, KVStoreEntriesReturn, KVStoreGetReturn, KVStoreInsertManyReturn,
     KVStoreInsertReturn, KVStoreKeysReturn, KVStoreValuesReturn, KVStoreWaitReturn,
@@ -107,11 +108,11 @@ impl MemBackedKVStore {
 }
 
 // TODO: allow passing the path to the return types so they do not have to be in scope.
-use rtype::KVStorePingReturn;
+use crate::generated;
 
 // impl for Arc so that we can create weak references that we pass to the futures without capturing
 // the lifetime of the self reference.
-#[handlers]
+#[handlers(crate::generated::rpc)]
 impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
     // fn ping<'f>(&self, _handle: ::bebop::rpc::TypedRequestHandle<'f, super::KVStorePingReturn>) -> ::bebop::rpc::DynFuture<'f, ()>;
 
@@ -127,16 +128,29 @@ impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
 
     fn entries<'sup>(
         &self,
-        __handle: ::bebop::rpc::TypedRequestHandle<'sup, KVStoreEntriesReturn<'sup>>,
+        __handle: ::bebop::rpc::TypedRequestHandle<
+            'sup,
+            crate::generated::rpc::KVStoreEntriesReturn<'sup>,
+        >,
         page: u64,
         page_size: u16,
     ) -> ::bebop::rpc::DynFuture<'sup> {
         let __call_id = __handle.call_id().get();
         let __self = self.clone();
         Box::pin(async move {
-            let __response: ::bebop::rpc::LocalRpcResponse<KVStoreEntriesReturn<'sup>> = async {
+            let __response: ::bebop::rpc::LocalRpcResponse<
+                crate::generated::rpc::KVStoreEntriesReturn<'sup>,
+            > = async {
                 let _details = &__handle;
-                Err(LocalRpcError::NotSupported)
+                Ok(__self
+                    .0
+                    .read()
+                    .await
+                    .iter()
+                    .skip(page as usize * page_size as usize)
+                    .take(page_size as usize)
+                    .map(|(k, v)| KV { key: k, value: v })
+                    .collect())
             }
             .await
             .map(|v: Vec<KV<'sup>>| v.into());
@@ -179,7 +193,7 @@ impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
     fn insert_many<'f>(
         &self,
         handle: TypedRequestHandle<'f, KVStoreInsertManyReturn<'f>>,
-        entries: Vec<KV>,
+        entries: Vec<crate::generated::rpc::owned::KV>,
     ) -> DynFuture<'f, ()> {
         todo!()
     }

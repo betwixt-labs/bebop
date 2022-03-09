@@ -1,16 +1,16 @@
 use proc_macro::TokenStream;
 
-use proc_macro2::TokenTree;
+use proc_macro2::{Group, TokenTree};
 use quote::{format_ident, quote, quote_spanned, ToTokens};
 use syn::spanned::Spanned;
 use syn::{
     parse_quote, FnArg, GenericArgument, GenericParam, Ident, ImplItem, ImplItemMethod, ItemImpl,
-    Pat, PathArguments, ReturnType, Stmt, Type,
+    Pat, Path, PathArguments, ReturnType, Stmt, Type, TypePath,
 };
 
 const HANDLERS_POSTFIX: &str = "HandlersDef";
 
-fn handlers_2(mut item: ItemImpl) -> proc_macro2::TokenStream {
+fn handlers_2(mut item: ItemImpl, generated_path: Path) -> proc_macro2::TokenStream {
     // extract the service name from the trait that is being implemented
     let service_name = {
         let tr = if let Some(tr) = &item.trait_ {
@@ -41,64 +41,11 @@ fn handlers_2(mut item: ItemImpl) -> proc_macro2::TokenStream {
 
     for item in item.items.iter_mut() {
         if let ImplItem::Method(method) = item {
-            process_method(&service_name, method);
+            process_method(&service_name, method, &generated_path);
         }
     }
 
     quote!(#item)
-}
-
-#[cfg(test)]
-mod test {
-    use syn::parse_quote;
-
-    use super::handlers_2;
-
-    #[test]
-    fn basic_err_sync() {
-        let item = parse_quote! {
-            #[handlers]
-            impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
-                #[handler]
-                async fn ping(self, _details: &dyn CallDetails) -> LocalRpcResponse<()> {
-                    Err(LocalRpcError::CustomErrorStatic(4, "some error"))
-                }
-            }
-        };
-        println!("{}", handlers_2(item));
-    }
-
-    #[test]
-    fn basic_ok_sync() {
-        // ok case is harder because of borrowing requirements
-        let item = parse_quote! {
-            #[handlers]
-            impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
-                #[handler]
-                async fn ping(self, _details: &dyn CallDetails) -> LocalRpcResponse<()> {
-                    Ok(())
-                }
-            }
-        };
-        println!("{}", handlers_2(item));
-    }
-
-    #[test]
-    fn borrowed_return_err_sync() {
-        let item = parse_quote! {
-            #[handlers]
-            impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
-                #[handler]
-                async fn entries<'sup>(self, _details: &dyn CallDetails, page: u64, page_size: u16) -> LocalRpcResponse<Vec<KV<'sup>>> {
-                    Err(LocalRpcError::NotSupported)
-                }
-            }
-        };
-        println!("{}", handlers_2(item));
-    }
-
-    #[test]
-    fn borrowed_return_ok_async() {}
 }
 
 /// Allows converting a function which "returns a value" to one which actually calls a callback.
@@ -106,12 +53,13 @@ mod test {
 /// extra copies of the data in some cases, such as serialization where we need to write it to a
 /// buffer immediately anyway.
 #[proc_macro_attribute]
-pub fn handlers(_args: TokenStream, input: TokenStream) -> TokenStream {
+pub fn handlers(args: TokenStream, input: TokenStream) -> TokenStream {
+    let generated_path = syn::parse_macro_input!(args as Path);
     let item = syn::parse_macro_input!(input as ItemImpl);
-    TokenStream::from(handlers_2(item))
+    TokenStream::from(handlers_2(item, generated_path))
 }
 
-fn process_method(service_name: &Ident, item: &mut ImplItemMethod) {
+fn process_method(service_name: &Ident, item: &mut ImplItemMethod, generated_path: &Path) {
     if !process_method_attrs(item) {
         return;
     }
@@ -195,9 +143,9 @@ fn process_method(service_name: &Ident, item: &mut ImplItemMethod) {
         pascal_case(&method_name.to_string())
     );
     let ret_struct: Type = if custom_lifetime {
-        parse_quote!(#ret_struct_ident<#lifetime>)
+        parse_quote!(#generated_path::#ret_struct_ident<#lifetime>)
     } else {
-        parse_quote!(#ret_struct_ident)
+        parse_quote!(#generated_path::#ret_struct_ident)
     };
 
     // let ret_struct_needs_lt = item.span().unwrap().source_file()
@@ -255,20 +203,33 @@ fn process_method(service_name: &Ident, item: &mut ImplItemMethod) {
     item.block = parse_quote! { #block };
 }
 
-fn process_method_statement(stmt: Stmt) -> proc_macro2::TokenStream {
-    // convert self to __self
-    stmt.into_token_stream()
+fn replace_ident_token(
+    stream: proc_macro2::TokenStream,
+    old: &str,
+    new: &Ident,
+) -> proc_macro2::TokenStream {
+    stream
         .into_iter()
         .map(|tok| match tok {
-            TokenTree::Ident(mut i) => {
-                if i == "self" {
-                    i = format_ident!("__self");
+            TokenTree::Ident(i) => {
+                if i == old {
+                    TokenTree::Ident(new.clone())
+                } else {
+                    TokenTree::Ident(i)
                 }
-                TokenTree::Ident(i)
+            }
+            TokenTree::Group(g) => {
+                let ts = replace_ident_token(g.stream(), old, new);
+                TokenTree::Group(Group::new(g.delimiter(), ts))
             }
             tok => tok,
         })
         .collect()
+}
+
+fn process_method_statement(stmt: Stmt) -> proc_macro2::TokenStream {
+    // convert self to __self
+    replace_ident_token(stmt.into_token_stream(), "self", &format_ident!("__self"))
 }
 
 fn process_method_attrs(item: &mut ImplItemMethod) -> bool {
@@ -349,4 +310,79 @@ fn pascal_case(s: &str) -> String {
         }
     }
     r
+}
+
+#[cfg(test)]
+mod test {
+    use syn::parse_quote;
+
+    use super::handlers_2;
+
+    #[test]
+    fn basic_err_sync() {
+        let item = parse_quote! {
+            #[handlers(crate::generated::rpc)]
+            impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
+                #[handler]
+                async fn ping(self, _details: &dyn CallDetails) -> LocalRpcResponse<()> {
+                    Err(LocalRpcError::CustomErrorStatic(4, "some error"))
+                }
+            }
+        };
+        println!("{}", handlers_2(item, parse_quote!(crate::generated::rpc)));
+    }
+
+    #[test]
+    fn basic_ok_sync() {
+        // ok case is harder because of borrowing requirements
+        let item = parse_quote! {
+            #[handlers(crate::generated::rpc)]
+            impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
+                #[handler]
+                async fn ping(self, _details: &dyn CallDetails) -> LocalRpcResponse<()> {
+                    Ok(())
+                }
+            }
+        };
+        println!("{}", handlers_2(item, parse_quote!(crate::generated::rpc)));
+    }
+
+    #[test]
+    fn borrowed_return_err_sync() {
+        let item = parse_quote! {
+            #[handlers(crate::generated::rpc)]
+            impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
+                #[handler]
+                async fn entries<'sup>(self, _details: &dyn CallDetails, page: u64, page_size: u16) -> LocalRpcResponse<Vec<KV<'sup>>> {
+                    Err(LocalRpcError::NotSupported)
+                }
+            }
+        };
+        println!("{}", handlers_2(item, parse_quote!(crate::generated::rpc)));
+    }
+
+    #[test]
+    fn borrowed_return_ok_async() {
+        let item = parse_quote! {
+            #[handlers(crate::generated::rpc)]
+            impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
+                #[handler]
+                async fn entries<'sup>(self, _details: &dyn CallDetails, page: u64, page_size: u16) -> LocalRpcResponse<Vec<KV<'sup>>> {
+                    Ok(self
+                        .0
+                        .read()
+                        .await
+                        .iter()
+                        .skip(page as usize * page_size as usize)
+                        .take(page_size as usize)
+                        .map(|(k, v)| KV {
+                            key: k,
+                            value: v,
+                        })
+                        .collect())
+                }
+            }
+        };
+        println!("{}", handlers_2(item, parse_quote!(crate::generated::rpc)));
+    }
 }
