@@ -1,14 +1,12 @@
 use proc_macro::TokenStream;
+use proc_macro2::TokenTree;
 
-use proc_macro_error::{abort, abort_if_dirty, emit_error, emit_warning, proc_macro_error};
-use quote::{format_ident, quote, quote_spanned};
+use quote::{format_ident, quote, quote_spanned, ToTokens};
 use syn::spanned::Spanned;
-use syn::{parse_quote, FnArg, Ident, ImplItem, ImplItemMethod, ItemImpl, Pat, ReturnType, Type};
-
-/// Allows converting a function which "returns a value" to one which actually calls a callback.
-/// This allows submitting a borrowed value which is owned by the function scope and preventing
-/// extra copies of the data in some cases, such as serialization where we need to write it to a
-/// buffer immediately anyway.
+use syn::{
+    parse_quote, FnArg, Ident, ImplItem, ImplItemMethod, ItemImpl, Pat, ReturnType, Stmt, Token,
+    Type,
+};
 
 const HANDLERS_POSTFIX: &str = "HandlersDef";
 
@@ -35,10 +33,7 @@ fn handlers_2(mut item: ItemImpl) -> proc_macro2::TokenStream {
         let ident = &tr.1.segments.last().expect("Path must be defined").ident;
         let mut ident_str = ident.to_string();
         if !ident_str.ends_with(HANDLERS_POSTFIX) {
-            abort!(
-                ident.span(),
-                "Must be applied to a Handlers Definition implementation"
-            )
+            panic!("Must be applied to a Handlers Definition implementation")
         }
         ident_str.truncate(ident_str.len() - HANDLERS_POSTFIX.len());
         format_ident!("{}", ident_str, span = ident.span())
@@ -47,14 +42,13 @@ fn handlers_2(mut item: ItemImpl) -> proc_macro2::TokenStream {
     // ensure that this is being implemented for Arc<_>
     if let Type::Path(ty) = item.self_ty.as_ref() {
         if ty.path.segments.last().unwrap().ident != "Arc" {
-            emit_warning!(
-                ty.span(),
+            panic!(
                 "Handlers should be implemented for an Arc<{}> to reduce cloning",
                 service_name.to_string()
             )
         }
     } else {
-        emit_error!(item.self_ty.span(), "Unknown self type");
+        panic!("Unknown self type");
     }
 
     for item in item.items.iter_mut() {
@@ -63,8 +57,7 @@ fn handlers_2(mut item: ItemImpl) -> proc_macro2::TokenStream {
         }
     }
 
-    abort_if_dirty();
-    proc_macro2::TokenStream::from(quote!(#item))
+    quote!(#item)
 }
 
 #[cfg(test)]
@@ -76,17 +69,22 @@ mod test {
     #[test]
     fn basic_sync() {
         let item = parse_quote! {
+            #[handlers]
             impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
-                async fn ping(&self, details: &dyn CallDetails) -> LocalRpcResponse<()> {
+                #[handler]
+                async fn ping(self, details: &dyn CallDetails) -> LocalRpcResponse<()> {
                     Err(LocalRpcError::CustomErrorStatic(4, "some error"))
                 }
             }
         };
-        let out = handlers_2(item);
-        println!("{out}");
+        println!("{}", handlers_2(item));
     }
 }
 
+/// Allows converting a function which "returns a value" to one which actually calls a callback.
+/// This allows submitting a borrowed value which is owned by the function scope and preventing
+/// extra copies of the data in some cases, such as serialization where we need to write it to a
+/// buffer immediately anyway.
 #[proc_macro_attribute]
 pub fn handlers(_args: TokenStream, input: TokenStream) -> TokenStream {
     let item = syn::parse_macro_input!(input as ItemImpl);
@@ -98,39 +96,38 @@ fn process_method(service_name: &Ident, item: &mut ImplItemMethod) {
         return;
     }
 
-    if !item.sig.asyncness.is_some() {
-        emit_error!(item.sig.asyncness.span(), "Function must be async")
+    if item.sig.asyncness.is_none() {
+        panic!("Function must be async")
     }
     item.sig.asyncness = None;
     item.sig.generics.params.insert(0, parse_quote! { '__fut });
 
     let method_name = &item.sig.ident;
-    if let Some(orig_type) = extract_method_return_type(item) {
-        let new_type = quote_spanned! {item.sig.output.span()=>
-            -> ::bebop::rpc::DynFuture<'__fut, #orig_type>
-        };
-        item.sig.output = parse_quote! { #new_type };
-    } else {
-        return;
+    // let request_handle_type = extract_method_return_type(item).expect("Missing return type!").clone();
+    let ret_type = quote_spanned! {item.sig.output.span()=>
+        -> ::bebop::rpc::DynFuture<'__fut>
     };
+    item.sig.output = parse_quote! { #ret_type };
 
     let mut args_iter = item.sig.inputs.iter_mut();
-    if let Some(FnArg::Receiver(_a)) = args_iter.next() {
-        // nothing for now
+    if let Some(FnArg::Receiver(a)) = args_iter.next() {
+        if a.reference.is_some() || a.mutability.is_some() {
+            panic!("Expected receiver of type `self`");
+        }
+        let mut n = parse_quote! { &self };
+        std::mem::swap(&mut n, a);
     } else {
         drop(args_iter);
-        emit_error!(item.sig.inputs.span(), "Function must have self argument");
-        return;
+        panic!("Function must have self argument")
     };
 
     let arg_call_details_ident = if let Some(FnArg::Typed(a)) = args_iter.next() {
         let ident = if let Pat::Ident(ident) = a.pat.as_ref() {
             ident.clone()
         } else {
-            emit_error!(a.span(), "Unexpected pattern type, expected ident");
-            return;
+            panic!("Unexpected pattern type, expected ident")
         };
-        let ret_struct = format!(
+        let ret_struct = format_ident!(
             "{}{}Return",
             service_name,
             pascal_case(&method_name.to_string())
@@ -146,35 +143,57 @@ fn process_method(service_name: &Ident, item: &mut ImplItemMethod) {
         ident
     } else {
         drop(args_iter);
-        emit_error!(item.sig.inputs.span(), "Function must receive call details");
-        return;
+        panic!("Function must receive call details")
     };
     drop(args_iter);
 
-    let old_body_statements = &item.block.stmts;
-    let quoted_service_name = quoted!(service_name);
-    let quoted_method_name = quoted!(method_name);
+    let old_body_statements: Vec<proc_macro2::TokenStream> = item
+        .block
+        .stmts
+        .drain(0..item.block.stmts.len())
+        .map(|stmt| {
+            // convert self to __self
+            let t: proc_macro2::TokenStream = stmt
+                .into_token_stream()
+                .into_iter()
+                .map(|tok| {
+                    match tok {
+                        TokenTree::Ident(mut i) => {
+                            if i == "self" {
+                                i = format_ident!("__self");
+                            }
+                            TokenTree::Ident(i)
+                        },
+                        tok => tok
+                    }
+                })
+                .collect();
+            t
+        })
+        .collect();
 
-    // let block = quote_spanned! {item.block.span()=>
-    //     {
-    //         let __call_id = __handle.call_id().get();
-    //         let __self = self.clone(); // only do if there is a reference to self in the block
-    //         let #arg_call_details_ident: &dyn ::bebop::rpc::CallDetails = __handle.as_ref();
-    //         Box::pin(async move {
-    //             let details: &dyn ::bebop::rpc::CallDetails = &__handle;
-    //             let __response = async {
-    //                 #(#old_body_statements)*
-    //             }.await;
-    //             ::bebop::handle_respond_error!(
-    //                 __handle.send_response(__response),
-    //                 #quoted_service_name,
-    //                 #quoted_method_name,
-    //                 __call_id,
-    //             )
-    //         })
-    //     }
-    // };
-    // item.block = parse_quote! { #block };
+    let quoted_service_name = service_name.to_string();
+    let quoted_method_name = method_name.to_string();
+
+    let block = quote_spanned! {item.block.span()=>
+        {
+            let __call_id = __handle.call_id().get();
+            let __self = self.clone(); // only do if there is a reference to self in the block
+            Box::pin(async move {
+                let __response = async {
+                    let #arg_call_details_ident = &__handle;
+                    #(#old_body_statements)*
+                }.await;
+                ::bebop::handle_respond_error!(
+                    __handle.send_response(__response),
+                    #quoted_service_name,
+                    #quoted_method_name,
+                    __call_id
+                )
+            })
+        }
+    };
+    item.block = parse_quote! { #block };
 }
 
 fn pascal_case(s: &str) -> String {
@@ -222,7 +241,7 @@ fn process_method_attrs(item: &mut ImplItemMethod) -> bool {
         // remote the attribute since we are handling it
         let attr = item.attrs.remove(idx);
         if !attr.tokens.is_empty() {
-            emit_error!(attr.tokens, "Unexpected token in handler attribute")
+            panic!("Unexpected token in handler attribute")
         }
         true
     } else {
@@ -271,10 +290,6 @@ fn extract_method_return_type(item: &ImplItemMethod) -> Option<&Type> {
         //     None
         // }
     } else {
-        emit_error!(
-            item.sig.output.span(),
-            "Output must be a LocalRpcResponse type"
-        );
-        None
+        panic!("Output must be a LocalRpcResponse type")
     }
 }

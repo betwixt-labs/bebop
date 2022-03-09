@@ -115,7 +115,7 @@ pub type RemoteRpcResponse<T> = Result<T, RemoteRpcError>;
 /// to the registered callback.
 #[macro_export]
 macro_rules! handle_respond_error {
-    ($fut:expr, $service:literal, $function:literal, $opcode:expr, $call_id:expr) => {
+    ($fut:expr, $service:literal, $function:literal, $call_id:expr) => {
         if let ::core::result::Result::Err(err) = $fut.await {
             if let ::core::option::Option::Some(cb) = ::bebop::rpc::get_on_respond_error() {
                 cb(

@@ -106,30 +106,39 @@ impl MemBackedKVStore {
     }
 }
 
+use rtype::KVStorePingReturn;
+
 // impl for Arc so that we can create weak references that we pass to the futures without capturing
 // the lifetime of the self reference.
-#[handlers]
+// #[handlers]
 impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
-    // fn ping<'f>(&self, handle: TypedRequestHandle<'f, rtype::KVStorePingReturn>) -> DynFuture<'f> {
-    //     let call_id = handle.call_id().get();
-    //     Box::pin(async move {
-    //         let response = async {
-    //             Err(LocalRpcError::CustomErrorStatic(4, "some error"))
-    //         }.await;
-    //         bebop::handle_respond_error!(
-    //             handle.send_response(response),
-    //             "KVStore",
-    //             "ping",
-    //             1,
-    //             call_id
-    //         )
-    //     })
-    // }
+    // fn ping<'f>(&self, _handle: ::bebop::rpc::TypedRequestHandle<'f, super::KVStorePingReturn>) -> ::bebop::rpc::DynFuture<'f, ()>;
 
-    #[handler] // < async like this only works when impl for Arc<T>
-    async fn ping(self, details: &dyn CallDetails) -> LocalRpcResponse<()> {
-        Err(LocalRpcError::CustomErrorStatic(4, "some error"))
+    fn ping<'__fut>(
+        &self,
+        __handle: ::bebop::rpc::TypedRequestHandle<'__fut, KVStorePingReturn>,
+    ) -> ::bebop::rpc::DynFuture<'__fut> {
+        let __call_id = __handle.call_id().get();
+        let __self = self.clone();
+        Box::pin(async move {
+            let __response = async {
+                let details = &__handle;
+                Err(LocalRpcError::CustomErrorStatic(4, "some error"))
+            }
+            .await;
+            ::bebop::handle_respond_error!(
+                __handle.send_response(__response),
+                "KVStore",
+                "ping",
+                __call_id
+            )
+        })
     }
+
+    // #[handler] // < async like this only works when impl for Arc<T>
+    // async fn ping(self, details: &dyn CallDetails) -> LocalRpcResponse<()> {
+    //     Err(LocalRpcError::CustomErrorStatic(4, "some error"))
+    // }
 
     fn entries<'f>(
         &self,
