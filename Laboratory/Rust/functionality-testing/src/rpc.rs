@@ -120,35 +120,33 @@ impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
         Err(LocalRpcError::CustomErrorStatic(4, "some error"))
     }
 
-    // fn ping<'__fut>(
-    //     &self,
-    //     __handle: ::bebop::rpc::TypedRequestHandle<'__fut, KVStorePingReturn>,
-    // ) -> ::bebop::rpc::DynFuture<'__fut> {
-    //     let __call_id = __handle.call_id().get();
-    //     let __self = self.clone();
-    //     Box::pin(async move {
-    //         let __response: ::bebop::rpc::LocalRpcResponse<KVStorePingReturn> = async {
-    //             let _details = &__handle;
-    //             Err(LocalRpcError::CustomErrorStatic(4, "some error"))
-    //         }
-    //         .await
-    //         .map(|v: ()| v.into());
-    //         ::bebop::handle_respond_error!(
-    //             __handle.send_response(__response.as_ref()),
-    //             "KVStore",
-    //             "ping",
-    //             __call_id
-    //         )
-    //     })
+    // #[handler]
+    // async fn entries<'sup>(self, _details: &dyn CallDetails, page: u64, page_size: u16) -> LocalRpcResponse<Vec<KV<'sup>> {
+    //     Err(LocalRpcError::NotSupported)
     // }
 
-    fn entries<'f>(
+    fn entries<'sup>(
         &self,
-        handle: TypedRequestHandle<'f, KVStoreEntriesReturn<'f>>,
+        __handle: ::bebop::rpc::TypedRequestHandle<'sup, KVStoreEntriesReturn<'sup>>,
         page: u64,
         page_size: u16,
-    ) -> DynFuture<'f, ()> {
-        todo!()
+    ) -> ::bebop::rpc::DynFuture<'sup> {
+        let __call_id = __handle.call_id().get();
+        let __self = self.clone();
+        Box::pin(async move {
+            let __response: ::bebop::rpc::LocalRpcResponse<KVStoreEntriesReturn<'sup>> = async {
+                let _details = &__handle;
+                Err(LocalRpcError::NotSupported)
+            }
+            .await
+            .map(|v: Vec<KV<'sup>>| v.into());
+            ::bebop::handle_respond_error!(
+                __handle.send_response(__response.as_ref()),
+                "KVStore",
+                "entries",
+                __call_id
+            )
+        })
     }
 
     fn keys<'f>(

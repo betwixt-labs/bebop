@@ -4,23 +4,11 @@ use proc_macro2::TokenTree;
 use quote::{format_ident, quote, quote_spanned, ToTokens};
 use syn::spanned::Spanned;
 use syn::{
-    parse_quote, FnArg, GenericArgument, Ident, ImplItem, ImplItemMethod, ItemImpl, Pat,
-    PathArguments, ReturnType, Stmt, Token, Type,
+    parse_quote, FnArg, GenericArgument, GenericParam, Ident, ImplItem, ImplItemMethod, ItemImpl,
+    Pat, PathArguments, ReturnType, Stmt, Type,
 };
 
 const HANDLERS_POSTFIX: &str = "HandlersDef";
-
-/// Put quotes around a string to create a string literal.
-macro_rules! quoted {
-    ($name:expr) => {{
-        let name = $name.to_string();
-        if name.starts_with('"') && name.ends_with('"') {
-            name
-        } else {
-            format!("\"{}\"", $name)
-        }
-    }};
-}
 
 fn handlers_2(mut item: ItemImpl) -> proc_macro2::TokenStream {
     // extract the service name from the trait that is being implemented
@@ -94,6 +82,23 @@ mod test {
         };
         println!("{}", handlers_2(item));
     }
+
+    #[test]
+    fn borrowed_return_err_sync() {
+        let item = parse_quote! {
+            #[handlers]
+            impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
+                #[handler]
+                async fn entries<'sup>(self, _details: &dyn CallDetails, page: u64, page_size: u16) -> LocalRpcResponse<Vec<KV<'sup>>> {
+                    Err(LocalRpcError::NotSupported)
+                }
+            }
+        };
+        println!("{}", handlers_2(item));
+    }
+
+    #[test]
+    fn borrowed_return_ok_async() {}
 }
 
 /// Allows converting a function which "returns a value" to one which actually calls a callback.
@@ -115,14 +120,60 @@ fn process_method(service_name: &Ident, item: &mut ImplItemMethod) {
         panic!("Function must be async")
     }
     item.sig.asyncness = None;
-    item.sig.generics.params.insert(0, parse_quote! { '__fut });
+    let (lifetime, custom_lifetime) = {
+        let maybe_g = item
+            .sig
+            .generics
+            .params
+            .iter()
+            .filter_map(|g| {
+                if let GenericParam::Lifetime(ldef) = g {
+                    if ldef.lifetime.ident == "sup"
+                        || ldef.lifetime.ident == "fut"
+                        || ldef.lifetime.ident == "__fut"
+                    {
+                        Some(g.clone())
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .next();
+        if let Some(g) = maybe_g {
+            (g, true)
+        } else {
+            let lt: GenericParam = parse_quote! { '__fut };
+            item.sig.generics.params.insert(0, lt.clone());
+            (lt, false)
+        }
+    };
+    let lifetime_str = if let GenericParam::Lifetime(lt) = &lifetime {
+        lt.lifetime.ident.to_string()
+    } else {
+        unreachable!()
+    };
 
     let method_name = &item.sig.ident;
     let block_return_type = extract_method_return_type(item)
         .expect("Missing return type!")
         .clone();
+
+    if custom_lifetime {
+        // verify the block return does use the custom lifetime, otherwise, it probably is a bug
+        let contains_lt = block_return_type
+            .to_token_stream()
+            .into_iter()
+            .any(|tok| tok.to_string() == lifetime_str);
+        assert!(
+            contains_lt,
+            "Return type does not use defined lifetime '{lifetime_str}"
+        );
+    }
+
     let ret_type = quote_spanned! {item.sig.output.span()=>
-        -> ::bebop::rpc::DynFuture<'__fut>
+        -> ::bebop::rpc::DynFuture<#lifetime>
     };
     item.sig.output = parse_quote! { #ret_type };
 
@@ -138,11 +189,18 @@ fn process_method(service_name: &Ident, item: &mut ImplItemMethod) {
         panic!("Function must have self argument")
     };
 
-    let ret_struct = format_ident!(
+    let ret_struct_ident = format_ident!(
         "{}{}Return",
         service_name,
         pascal_case(&method_name.to_string())
     );
+    let ret_struct: Type = if custom_lifetime {
+        parse_quote!(#ret_struct_ident<#lifetime>)
+    } else {
+        parse_quote!(#ret_struct_ident)
+    };
+
+    // let ret_struct_needs_lt = item.span().unwrap().source_file()
 
     let arg_call_details_ident = if let Some(FnArg::Typed(a)) = args_iter.next() {
         let ident = if let Pat::Ident(ident) = a.pat.as_ref() {
@@ -154,7 +212,7 @@ fn process_method(service_name: &Ident, item: &mut ImplItemMethod) {
             __handle
         };
         let ty = quote_spanned! { a.ty.span()=>
-            ::bebop::rpc::TypedRequestHandle<'__fut, #ret_struct>
+            ::bebop::rpc::TypedRequestHandle<#lifetime, #ret_struct>
         };
         a.pat = parse_quote! { #pat };
         a.ty = parse_quote! { #ty };
