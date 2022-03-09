@@ -110,35 +110,14 @@ use rtype::KVStorePingReturn;
 
 // impl for Arc so that we can create weak references that we pass to the futures without capturing
 // the lifetime of the self reference.
-// #[handlers]
+#[handlers]
 impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
     // fn ping<'f>(&self, _handle: ::bebop::rpc::TypedRequestHandle<'f, super::KVStorePingReturn>) -> ::bebop::rpc::DynFuture<'f, ()>;
 
-    fn ping<'__fut>(
-        &self,
-        __handle: ::bebop::rpc::TypedRequestHandle<'__fut, KVStorePingReturn>,
-    ) -> ::bebop::rpc::DynFuture<'__fut> {
-        let __call_id = __handle.call_id().get();
-        let __self = self.clone();
-        Box::pin(async move {
-            let __response = async {
-                let details = &__handle;
-                Err(LocalRpcError::CustomErrorStatic(4, "some error"))
-            }
-            .await;
-            ::bebop::handle_respond_error!(
-                __handle.send_response(__response),
-                "KVStore",
-                "ping",
-                __call_id
-            )
-        })
+    #[handler] // < async like this only works when impl for Arc<T>
+    async fn ping(self, details: &dyn CallDetails) -> LocalRpcResponse<()> {
+        Err(LocalRpcError::CustomErrorStatic(4, "some error"))
     }
-
-    // #[handler] // < async like this only works when impl for Arc<T>
-    // async fn ping(self, details: &dyn CallDetails) -> LocalRpcResponse<()> {
-    //     Err(LocalRpcError::CustomErrorStatic(4, "some error"))
-    // }
 
     fn entries<'f>(
         &self,
