@@ -5,7 +5,7 @@ use quote::{format_ident, quote, quote_spanned, ToTokens};
 use syn::spanned::Spanned;
 use syn::{
     parse_quote, FnArg, GenericArgument, GenericParam, Ident, ImplItem, ImplItemMethod, ItemImpl,
-    Pat, Path, PathArguments, ReturnType, Stmt, Type, TypePath,
+    Pat, Path, PathArguments, ReturnType, Stmt, Type,
 };
 
 const HANDLERS_POSTFIX: &str = "HandlersDef";
@@ -104,7 +104,7 @@ fn process_method(service_name: &Ident, item: &mut ImplItemMethod, generated_pat
     };
 
     let method_name = &item.sig.ident;
-    let block_return_type = extract_method_return_type(item)
+    let mut block_return_type = extract_method_return_type(item)
         .expect("Missing return type!")
         .clone();
 
@@ -119,6 +119,8 @@ fn process_method(service_name: &Ident, item: &mut ImplItemMethod, generated_pat
             "Return type does not use defined lifetime '{lifetime_str}"
         );
     }
+
+    replace_lifetime(&mut block_return_type, &lifetime_str, &format_ident!("_"));
 
     let ret_type = quote_spanned! {item.sig.output.span()=>
         -> ::bebop::rpc::DynFuture<#lifetime>
@@ -181,6 +183,9 @@ fn process_method(service_name: &Ident, item: &mut ImplItemMethod, generated_pat
     let quoted_service_name = service_name.to_string();
     let quoted_method_name = method_name.to_string();
 
+    let mut ret_struct = ret_struct;
+    replace_lifetime(&mut ret_struct, &lifetime_str, &format_ident!("_"));
+
     let block = quote_spanned! {item.block.span()=>
         {
             let __call_id = __handle.call_id().get();
@@ -201,6 +206,28 @@ fn process_method(service_name: &Ident, item: &mut ImplItemMethod, generated_pat
         }
     };
     item.block = parse_quote! { #block };
+}
+
+fn replace_lifetime(ty: &mut Type, old: &str, new: &Ident) {
+    if let Type::Path(p) = ty {
+        if let Some(last) = p.path.segments.last_mut() {
+            if let PathArguments::AngleBracketed(generics) = &mut last.arguments {
+                for a in generics.args.iter_mut() {
+                    match a {
+                        GenericArgument::Lifetime(lt) => {
+                            if lt.ident == old {
+                                lt.ident = new.clone();
+                            }
+                        }
+                        GenericArgument::Type(ty) => {
+                            replace_lifetime(ty, old, new);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+    }
 }
 
 fn replace_ident_token(
@@ -230,6 +257,8 @@ fn replace_ident_token(
 fn process_method_statement(stmt: Stmt) -> proc_macro2::TokenStream {
     // convert self to __self
     replace_ident_token(stmt.into_token_stream(), "self", &format_ident!("__self"))
+
+    // TODO: modify return statement to be mapped and assigned to __response
 }
 
 fn process_method_attrs(item: &mut ImplItemMethod) -> bool {
