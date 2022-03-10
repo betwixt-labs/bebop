@@ -74,7 +74,6 @@ pub enum RemoteRpcError {
     // do we ever use this?
     TransportError(TransportError),
     CustomError(u32, Option<String>),
-    NotSupported,
     UnknownCall,
     UnknownResponse,
     InvalidSignature(u32),

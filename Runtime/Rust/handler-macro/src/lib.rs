@@ -339,6 +339,7 @@ fn process_method_statements(
 }
 
 fn process_method_attrs(item: &mut ImplItemMethod) -> bool {
+    item.attrs.insert(0, parse_quote! { #[allow(clippy::suspicious_else_formatting)] });
     if let Some(idx) = item
         .attrs
         .iter()
@@ -543,21 +544,27 @@ mod test {
         let item = parse_quote! {
             #[handlers(crate::generated::rpc)]
             impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
-                #[handler]
-                async fn keys<'sup>(
-                    self,
-                    _details: &dyn CallDetails,
-                    page: u64,
-                    page_size: u16,
-                ) -> LocalRpcResponse<::std::vec::Vec<&'sup str>> {
-                    let lock = self.0.read().await;
-                    Ok(lock
-                        .keys()
-                        .skip(page as usize * page_size as usize)
-                        .take(page_size as usize)
-                        .map(|k| k.as_str())
-                        .collect())
-                }
+                    #[handler]
+                    async fn insert_many<'sup>(
+                        self,
+                        _details: &dyn CallDetails,
+                        entries: Vec<generated::rpc::owned::KV>,
+                    ) -> LocalRpcResponse<Vec<&'sup str>> {
+                        let mut lock = self.0.write().await;
+                        let preexisting: Vec<_> = entries
+                            .into_iter()
+                            .filter_map(|KV { key, value }| {
+                                match lock.entry(key.to_owned()) {
+                                    Entry::Occupied(entry) => Some(entry.key()),
+                                    Entry::Vacant(entry) => {
+                                        entry.insert(value.to_owned());
+                                        None
+                                    }
+                                }
+                            })
+                            .collect();
+                        Ok(preexisting)
+                    }
             }
         };
         println!("{}", handlers_2(item, parse_quote!(crate::generated::rpc)));
