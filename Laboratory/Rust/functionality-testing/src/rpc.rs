@@ -123,87 +123,18 @@ impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
     }
 
     // #[handler]
-    // async fn entries<'sup>(self, _details: &dyn CallDetails, page: u64, page_size: u16) -> LocalRpcResponse<Vec<KV<'sup>> {
-    //         #[hoist]
-    //         let lock = self
-    //             .0
-    //             .read()
-    //             .await;
-    //         let t = lock.iter()
-    //             .skip(page as usize * page_size as usize)
-    //             .take(page_size as usize)
-    //             .map(|(k, v)| KV { key: k, value: v })
-    //             .collect();
-    //         Ok(t)
-    // }
-
-    // fn entries<'sup>(
-    //     &self,
-    //     __handle: ::bebop::rpc::TypedRequestHandle<
-    //         'sup,
-    //         crate::generated::rpc::KVStoreEntriesReturn<'sup>,
-    //     >,
-    //     page: u64,
-    //     page_size: u16,
-    // ) -> ::bebop::rpc::DynFuture<'sup> {
-    //     let __call_id = __handle.call_id().get();
-    //     let __self = self.clone();
-    //
-    //     Box::pin(async move {
-    //         // let __self2 = unsafe { std::mem::transmute::<&Self, &'static Self>(&__self) };
-    //         // let lock2: &'static RwLockReadGuard<HashMap<String, String>> =
-    //         //     unsafe { std::mem::transmute::<&_, &'static _>(&lock) };
-    //
-    //         // let __response: ::bebop::rpc::LocalRpcResponse<
-    //         //     crate::generated::rpc::KVStoreEntriesReturn<'_>,
-    //         // > = {
-    //         //     let lock = __self.0.read().await;
-    //         //     // let _details = &__handle;
-    //         //     let t = lock
-    //         //         .iter()
-    //         //         .skip(page as usize * page_size as usize)
-    //         //         .take(page_size as usize)
-    //         //         .map(|(k, v)| KV { key: k, value: v })
-    //         //         .collect();
-    //         //     Ok(t)
-    //         // }
-    //         // .map(|v: Vec<KV<'_>>| v.into());
-    //
-    //         let _details = &__handle;
-    //         let lock = __self.0.read().await;
-    //         let t = lock
-    //             .iter()
-    //             .skip(page as usize * page_size as usize)
-    //             .take(page_size as usize)
-    //             .map(|(k, v)| KV { key: k, value: v })
-    //             .collect();
-    //
-    //         let __response: ::bebop::rpc::LocalRpcResponse<
-    //             crate::generated::rpc::KVStoreEntriesReturn<'_>,
-    //         > = { Ok(t) }.map(|v: Vec<KV<'_>>| v.into());
-    //
-    //         // ::bebop::handle_respond_error!(
-    //         //     __handle.send_response(__response.as_ref()),
-    //         //     "KVStore",
-    //         //     "entries",
-    //         //     __call_id
-    //         // );
-    //
-    //         let send_resp = (__handle.send_response(__response.as_ref())).await;
-    //
-    //         if let ::core::result::Result::Err(err) = send_resp {
-    //             if let ::core::option::Option::Some(cb) = ::bebop::rpc::get_on_respond_error() {
-    //                 cb(
-    //                     ::bebop::rpc::ServiceContext {
-    //                         service: "KVStore",
-    //                         function: "entries",
-    //                         call_id: __call_id,
-    //                     },
-    //                     err,
-    //                 );
-    //             }
-    //         }
-    //     })
+    // async fn entries<'sup>(self, _details: &dyn CallDetails, page: u64, page_size: u16) -> LocalRpcResponse<Vec<KV<'sup>>> {
+    //     let lock = self.0.read().await;
+    //     Ok(lock
+    //         .iter()
+    //         .skip(page as usize * page_size as usize)
+    //         .take(page_size as usize)
+    //         .map(|(k, v)| KV {
+    //             key: k,
+    //             value: v,
+    //         })
+    //         .collect()
+    //     )
     // }
 
     fn entries<'sup>(
@@ -218,21 +149,18 @@ impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
         let __call_id = __handle.call_id().get();
         let __self = self.clone();
         Box::pin(async move {
+            let _details = &__handle;
+            let lock = __self.0.read().await;
             let __response: ::bebop::rpc::LocalRpcResponse<
                 crate::generated::rpc::KVStoreEntriesReturn<'_>,
-            > = async {
-                let _details = &__handle;
-                Ok(__self
-                    .0
-                    .read()
-                    .await
+            > = {
+                Ok(lock
                     .iter()
                     .skip(page as usize * page_size as usize)
                     .take(page_size as usize)
                     .map(|(k, v)| KV { key: k, value: v })
                     .collect())
             }
-            .await
             .map(|v: Vec<KV<'_>>| v.into());
             ::bebop::handle_respond_error!(
                 __handle.send_response(__response.as_ref()),

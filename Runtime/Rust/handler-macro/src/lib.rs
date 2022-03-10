@@ -1,6 +1,4 @@
-use proc_macro::TokenStream;
-
-use proc_macro2::{Group, TokenTree};
+use proc_macro2::{Group, TokenStream, TokenTree};
 use quote::{format_ident, quote, quote_spanned, ToTokens};
 use syn::spanned::Spanned;
 use syn::{
@@ -10,7 +8,7 @@ use syn::{
 
 const HANDLERS_POSTFIX: &str = "HandlersDef";
 
-fn handlers_2(mut item: ItemImpl, generated_path: Path) -> proc_macro2::TokenStream {
+fn handlers_2(mut item: ItemImpl, generated_path: Path) -> TokenStream {
     // extract the service name from the trait that is being implemented
     let service_name = {
         let tr = if let Some(tr) = &item.trait_ {
@@ -53,10 +51,13 @@ fn handlers_2(mut item: ItemImpl, generated_path: Path) -> proc_macro2::TokenStr
 /// extra copies of the data in some cases, such as serialization where we need to write it to a
 /// buffer immediately anyway.
 #[proc_macro_attribute]
-pub fn handlers(args: TokenStream, input: TokenStream) -> TokenStream {
+pub fn handlers(
+    args: proc_macro::TokenStream,
+    input: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
     let generated_path = syn::parse_macro_input!(args as Path);
     let item = syn::parse_macro_input!(input as ItemImpl);
-    TokenStream::from(handlers_2(item, generated_path))
+    proc_macro::TokenStream::from(handlers_2(item, generated_path))
 }
 
 fn process_method(service_name: &Ident, item: &mut ImplItemMethod, generated_path: &Path) {
@@ -110,12 +111,8 @@ fn process_method(service_name: &Ident, item: &mut ImplItemMethod, generated_pat
 
     if custom_lifetime {
         // verify the block return does use the custom lifetime, otherwise, it probably is a bug
-        let contains_lt = block_return_type
-            .to_token_stream()
-            .into_iter()
-            .any(|tok| tok.to_string() == lifetime_str);
         assert!(
-            contains_lt,
+            stream_contains_ident(block_return_type.to_token_stream(), &lifetime_str),
             "Return type does not use defined lifetime '{lifetime_str}"
         );
     }
@@ -173,28 +170,26 @@ fn process_method(service_name: &Ident, item: &mut ImplItemMethod, generated_pat
     };
     drop(args_iter);
 
-    let old_body_statements: Vec<proc_macro2::TokenStream> = item
-        .block
-        .stmts
-        .drain(0..item.block.stmts.len())
-        .map(process_method_statement)
-        .collect();
+    let old_body_statements: Vec<TokenStream> = {
+        let mut ret_struct = ret_struct;
+        replace_lifetime(&mut ret_struct, &lifetime_str, &format_ident!("_"));
+        process_method_statements(
+            item.block.stmts.drain(0..item.block.stmts.len()).collect(),
+            ret_struct,
+            block_return_type,
+        )
+    };
 
     let quoted_service_name = service_name.to_string();
     let quoted_method_name = method_name.to_string();
-
-    let mut ret_struct = ret_struct;
-    replace_lifetime(&mut ret_struct, &lifetime_str, &format_ident!("_"));
 
     let block = quote_spanned! {item.block.span()=>
         {
             let __call_id = __handle.call_id().get();
             let __self = self.clone(); // only do if there is a reference to self in the block
             Box::pin(async move {
-                let __response: ::bebop::rpc::LocalRpcResponse<#ret_struct> = async {
-                    let #arg_call_details_ident = &__handle;
-                    #(#old_body_statements)*
-                }.await.map(|v: #block_return_type| v.into());
+                let #arg_call_details_ident = &__handle;
+                #(#old_body_statements)*
 
                 ::bebop::handle_respond_error!(
                     __handle.send_response(__response.as_ref()),
@@ -230,11 +225,7 @@ fn replace_lifetime(ty: &mut Type, old: &str, new: &Ident) {
     }
 }
 
-fn replace_ident_token(
-    stream: proc_macro2::TokenStream,
-    old: &str,
-    new: &Ident,
-) -> proc_macro2::TokenStream {
+fn replace_ident_token(stream: TokenStream, old: &str, new: &Ident) -> TokenStream {
     stream
         .into_iter()
         .map(|tok| match tok {
@@ -254,11 +245,66 @@ fn replace_ident_token(
         .collect()
 }
 
-fn process_method_statement(stmt: Stmt) -> proc_macro2::TokenStream {
-    // convert self to __self
-    replace_ident_token(stmt.into_token_stream(), "self", &format_ident!("__self"))
+fn stream_contains_ident(stream: TokenStream, ident: &str) -> bool {
+    for tok in stream.into_iter() {
+        match tok {
+            TokenTree::Group(g) => {
+                if stream_contains_ident(g.stream(), ident) {
+                    return true;
+                }
+            }
+            TokenTree::Ident(i) => {
+                if i == ident {
+                    return true;
+                }
+            }
+            _ => {}
+        }
+    }
+    false
+}
 
-    // TODO: modify return statement to be mapped and assigned to __response
+fn process_method_statements(
+    stmts: Vec<Stmt>,
+    ret_struct: Type,
+    block_return_type: Type,
+) -> Vec<TokenStream> {
+    if stmts.is_empty() {
+        // if they did not specify anything, just return a `NotSupported` error by default
+        return vec![parse_quote! {
+            let __response: ::bebop::rpc::LocalRpcResponse<#ret_struct> = Err(::bebop::rpc::LocalRpcError::NotSupported);
+        }];
+    }
+
+    // for all but the beginning of the last statement, ensure the keyword `return` never occurs.
+    for stmt in stmts.iter() {
+        assert!(
+            !stream_contains_ident(stmt.to_token_stream(), "return"),
+            "Return statements within `handler` functions are not supported"
+        );
+    }
+    assert!(
+        matches!(stmts.last(), Some(Stmt::Expr(_))),
+        "Last statement must be an expression!"
+    );
+
+    let stmt_count = stmts.len();
+    stmts
+        .into_iter()
+        .enumerate()
+        .map(|(i, mut stmt)| {
+            if i + 1 == stmt_count {
+                // modify return statement to be mapped and assigned to __response
+                stmt = parse_quote! {
+                    let __response: ::bebop::rpc::LocalRpcResponse<#ret_struct> =
+                        { #stmt }.map(|v: #block_return_type| v.into());
+                };
+            }
+
+            // convert self to __self
+            replace_ident_token(stmt.into_token_stream(), "self", &format_ident!("__self"))
+        })
+        .collect()
 }
 
 fn process_method_attrs(item: &mut ImplItemMethod) -> bool {
@@ -397,10 +443,8 @@ mod test {
             impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
                 #[handler]
                 async fn entries<'sup>(self, _details: &dyn CallDetails, page: u64, page_size: u16) -> LocalRpcResponse<Vec<KV<'sup>>> {
-                    Ok(self
-                        .0
-                        .read()
-                        .await
+                    let lock = self.0.read().await;
+                    Ok(lock
                         .iter()
                         .skip(page as usize * page_size as usize)
                         .take(page_size as usize)
@@ -408,10 +452,58 @@ mod test {
                             key: k,
                             value: v,
                         })
-                        .collect())
+                        .collect()
+                    )
                 }
             }
         };
         println!("{}", handlers_2(item, parse_quote!(crate::generated::rpc)));
+    }
+
+    #[test]
+    #[should_panic]
+    fn return_type_must_use_sup() {
+        let item = parse_quote! {
+            #[handlers(crate::generated::rpc)]
+            impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
+                #[handler]
+                async fn entries<'sup>(self, _details: &dyn CallDetails) -> LocalRpcResponse<()> {
+                    Ok(())
+                }
+            }
+        };
+        handlers_2(item, parse_quote!(crate::generated::rpc));
+    }
+
+    #[test]
+    #[should_panic]
+    fn does_not_allow_return_statements() {
+        let item = parse_quote! {
+            #[handlers(crate::generated::rpc)]
+            impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
+                #[handler]
+                async fn entries(self, _details: &dyn CallDetails) -> LocalRpcResponse<()> {
+                    if true {
+                       return Err(LocalRpcError::NotSupported);
+                    }
+                    Ok(())
+                }
+            }
+        };
+        handlers_2(item, parse_quote!(crate::generated::rpc));
+    }
+
+    #[test]
+    fn defaults_to_not_supported() {
+        let item = parse_quote! {
+            #[handlers(crate::generated::rpc)]
+            impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
+                #[handler]
+                async fn entries(self, _details: &dyn CallDetails) -> LocalRpcResponse<()> {}
+            }
+        };
+        assert!(handlers_2(item, parse_quote!(crate::generated::rpc))
+            .to_string()
+            .contains("NotSupported"));
     }
 }
