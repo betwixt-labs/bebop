@@ -191,7 +191,9 @@ fn process_method(service_name: &Ident, item: &mut ImplItemMethod, generated_pat
                 let #arg_call_details_ident = &__handle;
                 #(#old_body_statements)*
 
-                if __handle.deadline().has_passed() {
+                if !matches!(__response, Err(::bebop::rpc::LocalRpcError::DeadlineExceded))
+                    && __handle.deadline().has_passed()
+                {
                     __handle.send_response(
                         Err(&::bebop::rpc::LocalRpcError::DeadlineExceded)
                     ).await.unwrap();

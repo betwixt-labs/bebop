@@ -122,62 +122,68 @@ impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
         Err(LocalRpcError::CustomErrorStatic(4, "some error"))
     }
 
-    // #[handler]
-    // async fn entries<'sup>(self, _details: &dyn CallDetails, page: u64, page_size: u16) -> LocalRpcResponse<Vec<KV<'sup>>> {
-    //     let lock = self.0.read().await;
-    //     Ok(lock
-    //         .iter()
-    //         .skip(page as usize * page_size as usize)
-    //         .take(page_size as usize)
-    //         .map(|(k, v)| KV {
-    //             key: k,
-    //             value: v,
-    //         })
-    //         .collect()
-    //     )
-    // }
-
-    fn entries<'sup>(
-        &self,
-        __handle: ::bebop::rpc::TypedRequestHandle<
-            'sup,
-            crate::generated::rpc::KVStoreEntriesReturn<'sup>,
-        >,
+    #[handler]
+    async fn entries<'sup>(
+        self,
+        _details: &dyn CallDetails,
         page: u64,
         page_size: u16,
-    ) -> ::bebop::rpc::DynFuture<'sup> {
-        let __call_id = __handle.call_id().get();
-        let __self = self.clone();
-        Box::pin(async move {
-            let _details = &__handle;
-            let lock = __self.0.read().await;
-            let __response: ::bebop::rpc::LocalRpcResponse<
-                crate::generated::rpc::KVStoreEntriesReturn<'_>,
-            > = {
-                Ok(lock
-                    .iter()
-                    .skip(page as usize * page_size as usize)
-                    .take(page_size as usize)
-                    .map(|(k, v)| KV { key: k, value: v })
-                    .collect())
-            }
-            .map(|v: Vec<KV<'_>>| v.into());
-            ::bebop::handle_respond_error!(
-                __handle.send_response(__response.as_ref()),
-                "KVStore",
-                "entries",
-                __call_id
-            )
-        })
+    ) -> LocalRpcResponse<Vec<KV<'sup>>> {
+        // I know it looks like this lock could be done inline, but we need it here because it must
+        // outlive the returned value. If you don't do this you will get a lifetime error which
+        // might seem cryptic but is easily fixed. (Sorry, line numbers will be wrong).
+        //
+        // Example Error:
+        // error[E0716]: temporary value dropped while borrowed
+        //    --> functionality-testing\src\rpc.rs:116:1
+        //     |
+        // 116 |   #[handlers(crate::generated::rpc)]
+        //     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+        //     |   |                                |
+        //     |   |                                temporary value is freed at the end of this statement
+        //     |   creates a temporary which is freed while still in use
+        //     |   in this procedural macro expansion
+        // ...
+        // 126 |       async fn entries<'sup>(self, _details: &dyn CallDetails, page: u64, page_size: u16) -> LocalRpcResponse<Vec<KV<'sup>>> {
+        //     |  ____________________________________________________________________________________________________________________________-
+        // ...   |
+        // 140 | |         )
+        // 141 | |     }
+        //     | |_____- borrow later used here
+        //     |
+        //    ::: C:\Users\Matthew\workspace\bebop\Runtime\Rust\handler-macro\src\lib.rs:54:1
+        //     |
+        // 54  | / pub fn handlers(
+        // 55  | |     args: proc_macro::TokenStream,
+        // 56  | |     input: proc_macro::TokenStream,
+        // 57  | | ) -> proc_macro::TokenStream {
+        //     | |____________________________- in this expansion of `#[handlers]`
+        //     |
+        //     = note: consider using a `let` binding to create a longer lived value
+
+        let lock = self.0.read().await;
+        Ok(lock
+            .iter()
+            .skip(page as usize * page_size as usize)
+            .take(page_size as usize)
+            .map(|(k, v)| KV { key: k, value: v })
+            .collect())
     }
 
-    fn keys<'f>(
-        &self,
-        handle: TypedRequestHandle<'f, KVStoreKeysReturn<'f>>,
+    #[handler]
+    async fn keys<'sup>(
+        self,
+        _details: &dyn CallDetails,
         page: u64,
         page_size: u16,
-    ) -> DynFuture<'f, ()> {
-        todo!()
+    ) -> LocalRpcResponse<::std::vec::Vec<&'sup str>> {
+        let lock = self.0.read().await;
+        Ok(lock
+            .keys()
+            .skip(page as usize * page_size as usize)
+            .take(page_size as usize)
+            .map(|k| k.as_str())
+            .collect())
     }
 
     fn values<'f>(
