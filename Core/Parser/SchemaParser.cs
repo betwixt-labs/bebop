@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -795,6 +796,7 @@ namespace Core.Parser
 
             StartScope();
             var name = definitionToken.Lexeme;
+
             var branches = new List<ServiceBranch>();
             var usedDiscriminators = new HashSet<uint>() { 0 };
 
@@ -895,6 +897,11 @@ namespace Core.Parser
 
             // make the service itself
             var serviceDefinition = new ServiceDefinition(name, definitionSpan, definitionDocumentation, branches);
+
+            if (_definitions.ContainsKey(name))
+            {
+                _errors.Add(new MultipleDefinitionsException(serviceDefinition));
+            }
             CloseScope(serviceDefinition);
             return serviceDefinition;
         }

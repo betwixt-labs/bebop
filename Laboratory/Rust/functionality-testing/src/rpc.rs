@@ -108,8 +108,6 @@ use crate::generated;
 // the lifetime of the self reference.
 #[handlers(crate::generated::rpc)]
 impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
-    // fn ping<'f>(&self, _handle: ::bebop::rpc::TypedRequestHandle<'f, super::KVStorePingReturn>) -> ::bebop::rpc::DynFuture<'f, ()>;
-
     #[handler]
     async fn ping(self, _details: &dyn CallDetails) -> LocalRpcResponse<()> {
         Err(LocalRpcError::CustomErrorStatic(4, "some error"))
