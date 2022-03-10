@@ -3,7 +3,7 @@ use quote::{format_ident, quote, quote_spanned, ToTokens};
 use syn::spanned::Spanned;
 use syn::{
     parse_quote, FnArg, GenericArgument, GenericParam, Ident, ImplItem, ImplItemMethod, ItemImpl,
-    Pat, Path, PathArguments, ReturnType, Stmt, Type,
+    Lifetime, Pat, Path, PathArguments, ReturnType, Stmt, Type, TypeParamBound,
 };
 
 const HANDLERS_POSTFIX: &str = "HandlersDef";
@@ -186,17 +186,23 @@ fn process_method(service_name: &Ident, item: &mut ImplItemMethod, generated_pat
     let block = quote_spanned! {item.block.span()=>
         {
             let __call_id = __handle.call_id().get();
-            let __self = self.clone(); // only do if there is a reference to self in the block
+            let __self = self.clone();
             Box::pin(async move {
                 let #arg_call_details_ident = &__handle;
                 #(#old_body_statements)*
 
-                ::bebop::handle_respond_error!(
-                    __handle.send_response(__response.as_ref()),
-                    #quoted_service_name,
-                    #quoted_method_name,
-                    __call_id
-                )
+                if __handle.deadline().has_passed() {
+                    __handle.send_response(
+                        Err(&::bebop::rpc::LocalRpcError::DeadlineExceded)
+                    ).await.unwrap();
+                } else {
+                    ::bebop::handle_respond_error!(
+                        __handle.send_response(__response.as_ref()),
+                        #quoted_service_name,
+                        #quoted_method_name,
+                        __call_id
+                    )
+                }
             })
         }
     };
@@ -204,24 +210,47 @@ fn process_method(service_name: &Ident, item: &mut ImplItemMethod, generated_pat
 }
 
 fn replace_lifetime(ty: &mut Type, old: &str, new: &Ident) {
-    if let Type::Path(p) = ty {
-        if let Some(last) = p.path.segments.last_mut() {
-            if let PathArguments::AngleBracketed(generics) = &mut last.arguments {
-                for a in generics.args.iter_mut() {
-                    match a {
-                        GenericArgument::Lifetime(lt) => {
-                            if lt.ident == old {
-                                lt.ident = new.clone();
-                            }
+    let update = |lt: &mut Lifetime| {
+        if lt.ident == old {
+            lt.ident = new.clone()
+        }
+    };
+    match ty {
+        Type::Path(p) => {
+            for segment in p.path.segments.iter_mut() {
+                if let PathArguments::AngleBracketed(generics) = &mut segment.arguments {
+                    for a in generics.args.iter_mut() {
+                        match a {
+                            GenericArgument::Lifetime(lt) => update(lt),
+                            GenericArgument::Type(ty) => replace_lifetime(ty, old, new),
+                            _ => {}
                         }
-                        GenericArgument::Type(ty) => {
-                            replace_lifetime(ty, old, new);
-                        }
-                        _ => {}
                     }
                 }
             }
         }
+        Type::Reference(r) => {
+            if let Some(ref mut lt) = r.lifetime {
+                update(lt)
+            }
+            replace_lifetime(&mut r.elem, old, new)
+        }
+        Type::Array(a) => replace_lifetime(a.elem.as_mut(), old, new),
+        Type::Slice(s) => replace_lifetime(&mut s.elem, old, new),
+        Type::Group(g) => replace_lifetime(&mut g.elem, old, new),
+        Type::ImplTrait(t) => {
+            for b in t.bounds.iter_mut() {
+                if let TypeParamBound::Lifetime(ref mut lt) = b {
+                    update(lt)
+                }
+            }
+        }
+        Type::Paren(p) => replace_lifetime(&mut p.elem, old, new),
+        Type::Tuple(t) => t
+            .elems
+            .iter_mut()
+            .for_each(|e| replace_lifetime(e, old, new)),
+        _ => todo!("I guess we actually need another case"),
     }
 }
 
@@ -505,5 +534,30 @@ mod test {
         assert!(handlers_2(item, parse_quote!(crate::generated::rpc))
             .to_string()
             .contains("NotSupported"));
+    }
+
+    #[test]
+    fn one_off_testing() {
+        let item = parse_quote! {
+            #[handlers(crate::generated::rpc)]
+            impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
+                #[handler]
+                async fn keys<'sup>(
+                    self,
+                    _details: &dyn CallDetails,
+                    page: u64,
+                    page_size: u16,
+                ) -> LocalRpcResponse<::std::vec::Vec<&'sup str>> {
+                    let lock = self.0.read().await;
+                    Ok(lock
+                        .keys()
+                        .skip(page as usize * page_size as usize)
+                        .take(page_size as usize)
+                        .map(|k| k.as_str())
+                        .collect())
+                }
+            }
+        };
+        println!("{}", handlers_2(item, parse_quote!(crate::generated::rpc)));
     }
 }
