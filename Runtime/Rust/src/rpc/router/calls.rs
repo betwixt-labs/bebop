@@ -10,13 +10,12 @@ use tokio::sync::oneshot;
 
 use crate::rpc::datagram::RpcResponseHeader;
 use crate::rpc::error::{RemoteRpcResponse, TransportError, TransportResult};
-use crate::rpc::{
-    Datagram, DatagramInfo, Deadline, LocalRpcError, LocalRpcResponse, RouterContext,
-};
+use crate::rpc::{Datagram, DatagramInfo, Deadline, LocalRpcError, RouterContext};
 use crate::{OwnedRecord, Record, SliceWrapper};
 
 pub struct TypedRequestHandle<'r, R>
-    where R: Record<'r>
+where
+    R: Record<'r>,
 {
     _ret_type: PhantomData<&'r R>,
     inner: RequestHandle,
@@ -30,7 +29,8 @@ pub struct RequestHandle {
 }
 
 impl<'r, R> From<RequestHandle> for TypedRequestHandle<'r, R>
-    where R: Record<'r>
+where
+    R: Record<'r>,
 {
     fn from(inner: RequestHandle) -> Self {
         Self {
@@ -41,12 +41,10 @@ impl<'r, R> From<RequestHandle> for TypedRequestHandle<'r, R>
 }
 
 impl<'r, R> TypedRequestHandle<'r, R>
-    where R: Record<'r>
+where
+    R: Record<'r>,
 {
-    pub async fn send_response(
-        self,
-        response: Result<&R, &LocalRpcError>,
-    ) -> TransportResult {
+    pub async fn send_response(self, response: Result<&R, &LocalRpcError>) -> TransportResult {
         match response {
             Ok(record) => self.send_ok_response(record).await,
             Err(LocalRpcError::DeadlineExceded) => {
@@ -65,15 +63,13 @@ impl<'r, R> TypedRequestHandle<'r, R>
     }
 
     /// Send a response to a call.
-    pub async fn send_ok_response<'a, 'b: 'a>(
-        self,
-        record: &R,
-    ) -> TransportResult {
-        self.inner.send_ok_response_raw(
-            &record
-                .serialize_to_vec()
-                .expect("Attempted to serialize an invalid response record"),
-        )
+    pub async fn send_ok_response<'a, 'b: 'a>(self, record: &R) -> TransportResult {
+        self.inner
+            .send_ok_response_raw(
+                &record
+                    .serialize_to_vec()
+                    .expect("Attempted to serialize an invalid response record"),
+            )
             .await
     }
 }
@@ -173,7 +169,8 @@ impl RequestHandle {
 }
 
 impl<'r, R> AsRef<InnerCallDetails> for TypedRequestHandle<'r, R>
-    where R: Record<'r>
+where
+    R: Record<'r>,
 {
     fn as_ref(&self) -> &InnerCallDetails {
         &self.inner.details

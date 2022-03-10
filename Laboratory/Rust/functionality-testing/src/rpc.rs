@@ -354,7 +354,10 @@ async fn can_request_and_receive() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn defaults_to_not_supported() {
     let (_server, client) = setup();
-    assert!(matches!(client.values(timeout!(None), 1, 0).await, Err(RemoteRpcError::CallNotSupported)));
+    assert!(matches!(
+        client.values(timeout!(None), 1, 0).await,
+        Err(RemoteRpcError::CallNotSupported)
+    ));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
