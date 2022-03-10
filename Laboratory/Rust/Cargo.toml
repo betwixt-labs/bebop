@@ -4,5 +4,5 @@ members = [
     "auto-testing",
     "functionality-testing",
     "benchmarking",
-    "manual-testing"
+#    "manual-testing"
 ]
