@@ -5,10 +5,11 @@ use std::num::NonZeroU16;
 use std::time::Duration;
 
 use crate::rpc::datagram::RpcDatagram;
+use crate::rpc::datagram_info::DatagramInfo;
 use crate::rpc::error::RemoteRpcError;
 use crate::rpc::router::calls::{new_pending_response, PendingResponse, ResponseHandle};
 use crate::rpc::router::context::UnknownResponseHandler;
-use crate::rpc::{Datagram, DatagramInfo};
+use crate::rpc::Datagram;
 use crate::OwnedRecord;
 
 /// The call table which can be kept private and needs to get locked all together.
@@ -151,9 +152,9 @@ mod test {
     use crate::prelude::Datagram;
     use crate::rpc::calls::{new_pending_response, CallDetails};
     use crate::rpc::datagram::{RpcRequestHeader, RpcResponseHeader};
+    use crate::rpc::datagram_info::DatagramInfo;
     use crate::rpc::error::{RemoteRpcError, TransportError};
     use crate::rpc::test_struct::TestStruct;
-    use crate::rpc::DatagramInfo;
     use crate::{timeout, SliceWrapper};
 
     use super::RouterCallTable;

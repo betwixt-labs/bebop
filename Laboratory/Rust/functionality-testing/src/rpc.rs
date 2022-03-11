@@ -101,8 +101,6 @@ impl MemBackedKVStore {
     }
 }
 
-// TODO: allow passing the path to the return types so they do not have to be in scope.
-use crate::generated;
 
 // impl for Arc so that we can create weak references that we pass to the futures without capturing
 // the lifetime of the self reference.
@@ -222,13 +220,13 @@ impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
     async fn insert_many<'sup>(
         self,
         _details: &dyn CallDetails,
-        entries: Vec<generated::rpc::owned::KV>,
+        entries: Vec<crate::generated::rpc::owned::KV>,
     ) -> LocalRpcResponse<Vec<&'sup str>> {
         let mut lock = self.0.write().await;
         let preexisting: Vec<&'sup str> = entries
             .into_iter()
             .filter_map(
-                |generated::rpc::owned::KV { key, value }| match lock.entry(key) {
+                |crate::generated::rpc::owned::KV { key, value }| match lock.entry(key) {
                     Entry::Occupied(entry) => Some(unsafe {
                         // Okay, so this looks bad, but hear me out, we know it will live this long
                         // because we hold a lock for the entire duration; for a purely safe option
@@ -252,7 +250,7 @@ impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
 
     fn get<'f>(
         &self,
-        handle: TypedRequestHandle<'f, generated::rpc::KVStoreGetReturn<'f>>,
+        handle: TypedRequestHandle<'f, crate::generated::rpc::KVStoreGetReturn<'f>>,
         key: String,
     ) -> DynFuture<'f, ()> {
         // if you really really want to, you can do it by hand as well.
@@ -262,7 +260,7 @@ impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
             let response = lock
                 .get(&key)
                 .ok_or(LocalRpcError::CustomErrorStatic(1, "Unknown key"))
-                .map(|value| generated::rpc::KVStoreGetReturn { value });
+                .map(|value| crate::generated::rpc::KVStoreGetReturn { value });
             let call_id = handle.call_id().get();
 
             // this way does allow you to write a custom error handler instead of using the default

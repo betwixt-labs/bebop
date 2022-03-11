@@ -9,8 +9,10 @@ use std::time::{Duration, Instant};
 use tokio::sync::oneshot;
 
 use crate::rpc::datagram::RpcResponseHeader;
+use crate::rpc::datagram_info::DatagramInfo;
+use crate::rpc::deadlines::Deadline;
 use crate::rpc::error::{RemoteRpcResponse, TransportError, TransportResult};
-use crate::rpc::{Datagram, DatagramInfo, Deadline, LocalRpcError, RouterContext};
+use crate::rpc::{Datagram, LocalRpcError, RouterContext};
 use crate::{OwnedRecord, Record, SliceWrapper};
 
 pub struct TypedRequestHandle<'r, R>
