@@ -6,15 +6,6 @@ use static_assertions::assert_obj_safe;
 use crate::rpc::error::TransportResult;
 use crate::rpc::{Datagram, DynFuture, TransportHandler};
 
-// /// Function-like trait for handling a datagram being received.
-// ///
-// /// TODO: use function traits when available.
-// pub trait TransportHandler: Send + Sync {
-//     fn handle<'a, 'b: 'a>(&self, datagram: &'a Datagram<'b>) -> Option<DynFuture<'a>>;
-// }
-//
-// assert_obj_safe!(TransportHandler);
-
 /// Transport protocol has a few main responsibilities:
 /// 1. interpreting the raw stream as datagrams
 /// 2. automatically reconnecting and dealing with network issues

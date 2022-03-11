@@ -86,6 +86,7 @@ impl RouterContext {
     }
 
     /// Send a request to the remote. This is used by the generated code.
+    #[doc(hidden)]
     pub async fn request<'a, 'b: 'a, I, O>(
         self: Arc<Self>,
         opcode: u16,
@@ -107,6 +108,7 @@ impl RouterContext {
     }
 
     /// Send a raw byte request to the remote. This is used by the generated code.
+    #[doc(hidden)]
     pub async fn request_raw<R>(
         self: Arc<Self>,
         opcode: u16,

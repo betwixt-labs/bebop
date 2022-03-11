@@ -109,7 +109,7 @@ impl RouterCallTable {
                 Some((header.id, Err(RemoteRpcError::CallNotSupported)))
             }
             RpcDatagram::RpcResponseUnknownCall { header, .. } => {
-                Some((header.id, Err(RemoteRpcError::UnknownResponse)))
+                Some((header.id, Err(RemoteRpcError::UnknownCall)))
             }
             RpcDatagram::RpcResponseInvalidSignature {
                 header, signature, ..

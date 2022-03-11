@@ -173,7 +173,7 @@ impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
         // response is sent.
 
         if details.deadline().has_passed() {
-            Err(LocalRpcError::DeadlineExceded)
+            Err(LocalRpcError::DeadlineExceeded)
         } else {
             // Note that if this operation takes a long time, it might still result in a
             // DeadlineExceeded error being returned in the end.
@@ -291,7 +291,7 @@ impl KVStoreHandlersDef for Arc<MemBackedKVStore> {
 
         if will_timeout {
             // we will eventually time out, so just do it now
-            Err(LocalRpcError::DeadlineExceded)
+            Err(LocalRpcError::DeadlineExceeded)
         } else {
             let _lock = self.0.write().await;
             tokio::time::sleep(Duration::from_secs(secs as u64)).await;

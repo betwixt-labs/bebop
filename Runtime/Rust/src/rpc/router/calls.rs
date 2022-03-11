@@ -49,7 +49,7 @@ where
     pub async fn send_response(self, response: Result<&R, &LocalRpcError>) -> TransportResult {
         match response {
             Ok(record) => self.send_ok_response(record).await,
-            Err(LocalRpcError::DeadlineExceded) => {
+            Err(LocalRpcError::DeadlineExceeded) => {
                 // do nothing, no response needed as the remote should forget automatically.
                 Ok(())
             }
@@ -281,6 +281,7 @@ pub struct InnerCallDetails {
     call_id: NonZeroU16,
 }
 
+/// A trait to provide information about a call.
 pub trait CallDetails {
     fn call_id(&self) -> NonZeroU16;
 

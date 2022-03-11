@@ -6,10 +6,11 @@ use static_assertions::assert_obj_safe;
 pub use context::RouterContext;
 pub use context::TransportHandler;
 
-pub use self::calls::{CallDetails, RequestHandle, TypedRequestHandle};
-use self::context::{SpawnTask, UnknownResponseHandler};
 use crate::rpc::transport::TransportProtocol;
 use crate::rpc::{Datagram, DynFuture};
+
+pub use self::calls::{CallDetails, RequestHandle, TypedRequestHandle};
+use self::context::{SpawnTask, UnknownResponseHandler};
 
 mod call_table;
 pub mod calls;
@@ -21,6 +22,7 @@ mod context;
 /// You should not implement this by hand but rather the *Handlers traits which are generated.
 pub trait ServiceHandlers: Send + Sync {
     /// The name of this service.
+    ///
     /// This is a const for a given implementation, however for dynamic type support it has to be
     /// provided via a function.
     fn _name(&self) -> &'static str;
@@ -33,6 +35,7 @@ pub trait ServiceHandlers: Send + Sync {
     ///
     /// This returns a future instead of being async because it must decode datagram before starting
     /// the async section.
+    #[doc(hidden)]
     fn _recv_call<'f>(&self, datagram: &Datagram, handle: RequestHandle) -> DynFuture<'f>;
 }
 
@@ -82,6 +85,7 @@ pub struct Router<Remote> {
     ///
     /// **Warning:** always store weak references or the router will have issues shutting down due
     /// to cyclical dependencies.
+    #[doc(hidden)]
     pub _context: Arc<RouterContext>,
 }
 
@@ -93,7 +97,6 @@ where
     ///
     /// - `transport` The underlying transport this router uses.
     /// - `local_service` The service which handles incoming requests.
-    /// - `remote_service` The service the remote server provides which we can call.
     /// - `spawn_task` Run a task in the background. It will know when to stop on its own. This may
     /// not always be called depending on configuration and features.
     /// - `unknown_response_handler` Optional callback to handle error cases where we do not know
