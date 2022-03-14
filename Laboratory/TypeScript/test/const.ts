@@ -1,4 +1,3 @@
-import { BebopView } from 'bebop';
 import * as G from './generated/gen';
 
 it("Constants are generated", () => {

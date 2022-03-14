@@ -15,7 +15,6 @@
     "benchmark": "^2.1.4"
   },
   "dependencies": {
-    "bebop": "file:../../Runtime/TypeScript",
-    "pbf": "^3.2.1"
+    "bebop": "file:../../Runtime/TypeScript"
   }
 }

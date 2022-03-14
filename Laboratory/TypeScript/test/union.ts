@@ -1,6 +1,4 @@
-import { BebopView } from 'bebop';
 import { IU, U, IWeirdOrder, WeirdOrder } from './generated/gen';
-import * as assert from "assert";
 
 it("Union roundtrip", () => {
     const obj: IU = {
