@@ -11,12 +11,22 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "prepare": "tsc",
-    "build": "tsc"
+    "generate": "ts-node gen.ts",
+    "lint": "eslint src --ext .ts",
+    "fmt": "prettier --write src/**.ts",
+    "build": "rimraf dist && npm run generate && tsc"
   },
   "author": "The Bebop Authors",
   "license": "Apache-2.0",
-  "dependencies": {
-    "@types/node": "^14.14.7"
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^5.10.1",
+    "@typescript-eslint/parser": "^5.10.1",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-prettier": "^4.0.0",
+    "ts-node": "^10.7.0",
+    "typescript": "^4.6.2",
+    "@types/node": "^17.0.21",
+    "prettier": "^2.5.1",
+    "rimraf": "^3.0.2"
   }
 }
