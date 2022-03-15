@@ -63,7 +63,7 @@ namespace Core.Generators.TypeScript
         }
 
         private string CompileEncodeMessage(MessageDefinition definition)
-        { 
+        {
             var builder = new IndentedStringBuilder(6);
             builder.AppendLine($"const pos = view.reserveMessageLength();");
             builder.AppendLine($"const start = view.length;");
@@ -207,7 +207,7 @@ namespace Core.Generators.TypeScript
             builder.AppendLine("}");
             return builder.ToString();
         }
-        
+
         private string CompileDecodeStruct(StructDefinition definition)
         {
             var builder = new IndentedStringBuilder(4);
@@ -462,8 +462,7 @@ namespace Core.Generators.TypeScript
                     }
                     if (td.DiscriminatorInParent != null)
                     {
-                        // We codegen "1 as 1", "2 as 2"... because TypeScript otherwise infers the type "number" for this field, whereas a literal type is necessary to discriminate unions.
-                        builder.AppendLine($"  discriminator: {td.DiscriminatorInParent} as {td.DiscriminatorInParent},");
+                        builder.AppendLine($"  discriminator: {td.DiscriminatorInParent},");
                     }
                     builder.AppendLine($"  encode(message: I{td.Name}): Uint8Array {{");
                     builder.AppendLine("    const view = BebopView.getInstance();");
@@ -488,7 +487,8 @@ namespace Core.Generators.TypeScript
                     builder.AppendLine($"  readFrom(view: BebopView): I{td.Name} {{");
                     builder.AppendLine(CompileDecode(td));
                     builder.AppendLine("  },");
-                    builder.AppendLine("};");
+                    // need `as const` to use the most strict types such as `1` instead of `number`. Also makes fields readonly.
+                    builder.AppendLine("} as const;");
                     builder.AppendLine("");
                 }
                 else if (definition is ConstDefinition cd)
