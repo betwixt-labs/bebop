@@ -13,5 +13,5 @@
     "no-console": 1, // Means warning
     "prettier/prettier": 2 // Means error
   },
-  "ignorePatterns": ["src/generated/**/*.ts"]
+  "ignorePatterns": ["src/generated/**/*.ts", "dist/**"]
 }
