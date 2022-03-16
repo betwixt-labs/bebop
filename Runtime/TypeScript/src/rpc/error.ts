@@ -151,7 +151,7 @@ export enum LocalRpcErrorVariants {
 export type LocalRpcErrorCustom = {
   readonly discriminator: LocalRpcErrorVariants.Custom;
   readonly code: number;
-  readonly message: string;
+  readonly info: string;
 };
 
 /**
@@ -185,7 +185,7 @@ export class LocalRpcError extends BebopRuntimeError {
         super("Deadline exceeded");
         break;
       case LocalRpcErrorVariants.Custom:
-        super(`Custom (${inner.code}) ${inner.message}`);
+        super(`Custom (${inner.code}) ${inner.info}`);
         break;
       case LocalRpcErrorVariants.NotSupported:
         super("Not supported");
@@ -218,7 +218,7 @@ export type RemoteRpcErrorTransport = {
 export type RemoteRpcErrorCustom = {
   readonly discriminator: RemoteRpcErrorVariants.Custom;
   readonly code: number;
-  readonly message?: string;
+  readonly info?: string;
 };
 
 /**
@@ -235,7 +235,7 @@ export type RemoteRpcErrorUnknownCall = {
  */
 export type RemoteRpcErrorInvalidSignature = {
   readonly discriminator: RemoteRpcErrorVariants.InvalidSignature;
-  readonly expected: number;
+  readonly signature: number;
 };
 
 /** There is no implementation for this call on the remote at this time. */
@@ -246,7 +246,7 @@ export type RemoteRpcErrorCallNotSupported = {
 /** Remote was not able to decode our message. */
 export type RemoteRpcErrorRemoteDecode = {
   readonly discriminator: RemoteRpcErrorVariants.RemoteDecode;
-  readonly message?: string;
+  readonly info?: string;
 };
 
 export type RemoteRpcErrorInner =
@@ -268,7 +268,7 @@ export class RemoteRpcError extends BebopRuntimeError {
         super(inner.error.message);
         break;
       case RemoteRpcErrorVariants.Custom:
-        super(`Custom (${inner.code}) ${inner.message}`);
+        super(`Custom (${inner.code}) ${inner.info}`);
         break;
       case RemoteRpcErrorVariants.InvalidSignature:
         super("Invalid signature");
@@ -277,7 +277,7 @@ export class RemoteRpcError extends BebopRuntimeError {
         super("Call not supported");
         break;
       case RemoteRpcErrorVariants.RemoteDecode:
-        super(`Remote decode ${inner.message}`);
+        super(`Remote decode ${inner.info}`);
         break;
       default:
         super("Unknown remote rpc error");

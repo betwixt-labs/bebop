@@ -10,7 +10,6 @@ import { IDatagram } from "../index";
 import DatagramInfo from "../datagram-info";
 import { UnknownResponseHandler } from "./context";
 import {
-  IRpcDecodeError,
   RpcDecodeError,
   RpcRequestDatagram,
   RpcResponseCallNotSupported,
@@ -19,9 +18,8 @@ import {
   RpcResponseOk,
   RpcResponseUnknownCall,
 } from "../../generated/datagram";
-import { BebopRuntimeError } from "../../index";
 import { isUint8Array } from "util/types";
-import { AssertionError } from "assert";
+import { RemoteRpcError, RemoteRpcErrorVariants } from "../error";
 
 const U16_MAX = 1 << 16;
 
@@ -102,7 +100,7 @@ export class RouterCallTable {
       DatagramInfo.isResponse(datagram),
       "Only responses should be resolved."
     );
-    let v: { id: number; res: Uint8Array | BebopRuntimeError } | undefined;
+    let v: { id: number; res: Uint8Array | RemoteRpcError } | undefined;
     switch (datagram.discriminator) {
       case RpcResponseOk.discriminator:
         v = { id: datagram.value.header.id, res: datagram.value.data };
@@ -110,36 +108,45 @@ export class RouterCallTable {
       case RpcResponseErr.discriminator:
         v = {
           id: datagram.value.header.id,
-          res: new BebopRuntimeError(
-            `Custom Error (${datagram.value.code}): ${datagram.value.info}`
-          ),
+          res: new RemoteRpcError({
+            discriminator: RemoteRpcErrorVariants.Custom,
+            code: datagram.value.code,
+            info: datagram.value.info,
+          }),
         };
         break;
       case RpcResponseCallNotSupported.discriminator:
         v = {
           id: datagram.value.header.id,
-          res: new BebopRuntimeError("Call not supported"),
+          res: new RemoteRpcError({
+            discriminator: RemoteRpcErrorVariants.CallNotSupported,
+          }),
         };
         break;
       case RpcResponseUnknownCall.discriminator:
         v = {
           id: datagram.value.header.id,
-          res: new BebopRuntimeError("Unknown call"),
+          res: new RemoteRpcError({
+            discriminator: RemoteRpcErrorVariants.UnknownCall,
+          }),
         };
         break;
       case RpcResponseInvalidSignature.discriminator:
         v = {
           id: datagram.value.header.id,
-          res: new BebopRuntimeError("Invalid signature"),
+          res: new RemoteRpcError({
+            discriminator: RemoteRpcErrorVariants.InvalidSignature,
+            signature: datagram.value.signature,
+          }),
         };
         break;
       case RpcDecodeError.discriminator:
-        const msg = datagram.value.info
-          ? `Decode error: ${datagram.value.info}`
-          : "Decode error";
         v = {
           id: datagram.value.header.id,
-          res: new BebopRuntimeError(msg),
+          res: new RemoteRpcError({
+            discriminator: RemoteRpcErrorVariants.RemoteDecode,
+            info: datagram.value.info,
+          }),
         };
         break;
       case RpcRequestDatagram.discriminator:

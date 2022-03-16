@@ -129,9 +129,13 @@ impl RouterCallTable {
         if let Some((Some(id), res)) = v {
             if let Some(mut call) = self.call_table.remove(&id) {
                 call.resolve(res);
+            } else {
+                // already handled (probably?)
             }
         } else if let Some(cb) = urh {
             cb(datagram)
+        } else {
+            // we don't know what it is and there's no handler for that case
         }
     }
 
