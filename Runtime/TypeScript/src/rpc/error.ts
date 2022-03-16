@@ -1,4 +1,4 @@
-import { BebopRuntimeError } from "../index";
+import { assertUnreachable, BebopRuntimeError } from "../index";
 
 /** Information about where an error came from. */
 export interface ServiceContext {
@@ -134,7 +134,7 @@ export class TransportError extends BebopRuntimeError {
         super(inner.message);
         break;
       default:
-        super("Unknown transport error");
+        assertUnreachable(inner);
     }
   }
 }
@@ -191,7 +191,7 @@ export class LocalRpcError extends BebopRuntimeError {
         super("Not supported");
         break;
       default:
-        super("Unknown local rpc error");
+        assertUnreachable(inner);
     }
   }
 }
@@ -280,7 +280,7 @@ export class RemoteRpcError extends BebopRuntimeError {
         super(`Remote decode ${inner.info}`);
         break;
       default:
-        super("Unknown remote rpc error");
+        assertUnreachable(inner);
     }
   }
 }

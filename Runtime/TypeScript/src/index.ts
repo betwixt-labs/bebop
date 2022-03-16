@@ -14,3 +14,12 @@ export class BebopRuntimeError extends Error {
 export { BebopView } from "./view";
 export { BebopRecordImpl, BebopUnionRecordImpl } from "./record";
 export * as rpc from "./rpc";
+
+/**
+ * Use this in the `default` statement of a switch to ensure all cases are handled.
+ *
+ * @ignore
+ */
+export function assertUnreachable(x: never): never {
+  throw new Error("Didn't expect to get here");
+}
