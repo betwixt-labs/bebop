@@ -1,11 +1,14 @@
 import { IDatagram } from "./index";
+import { RpcRequestDatagram, RpcResponseOk } from "../generated/datagram";
 
 function callId(d: IDatagram): number {
   return d.value?.header?.id ?? 0;
 }
 
 function timeoutS(d: IDatagram): number | undefined {
-  return d.discriminator == 1 ? d.value.header.timeout : undefined;
+  return d.discriminator == RpcRequestDatagram.discriminator
+    ? d.value.header.timeout
+    : undefined;
 }
 
 function timeoutMs(d: IDatagram): number | undefined {
@@ -15,7 +18,10 @@ function timeoutMs(d: IDatagram): number | undefined {
 }
 
 function isOk(d: IDatagram): boolean {
-  return d.discriminator == 1 || d.discriminator == 2;
+  return (
+    d.discriminator == RpcRequestDatagram.discriminator ||
+    d.discriminator == RpcResponseOk.discriminator
+  );
 }
 
 function isErr(d: IDatagram): boolean {
@@ -23,7 +29,7 @@ function isErr(d: IDatagram): boolean {
 }
 
 function isRequest(d: IDatagram): boolean {
-  return d.discriminator == 1;
+  return d.discriminator == RpcRequestDatagram.discriminator;
 }
 
 function isResponse(d: IDatagram): boolean {
@@ -32,8 +38,8 @@ function isResponse(d: IDatagram): boolean {
 
 function data(d: IDatagram): Uint8Array | undefined {
   switch (d.discriminator) {
-    case 1:
-    case 2:
+    case RpcRequestDatagram.discriminator:
+    case RpcResponseOk.discriminator:
       return d.value.data;
     default:
       return undefined;
