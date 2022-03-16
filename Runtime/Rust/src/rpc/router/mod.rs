@@ -56,6 +56,7 @@ assert_obj_safe!(ServiceHandlers);
 ///
 /// You should not implement this by hand.
 pub trait ServiceRequests: Send + Sync {
+    /// The name of this service.
     const NAME: &'static str;
 
     fn new(ctx: Weak<RouterContext>) -> Self;
@@ -100,7 +101,7 @@ where
     /// - `spawn_task` Run a task in the background. It will know when to stop on its own. This may
     /// not always be called depending on configuration and features.
     /// - `unknown_response_handler` Optional callback to handle error cases where we do not know
-    /// what the `call_id` is or it is an invalid `call_id`.
+    /// what the `call_id` is or when it is an invalid `call_id`.
     pub fn new(
         transport: impl 'static + TransportProtocol,
         local_service: impl 'static + ServiceHandlers,

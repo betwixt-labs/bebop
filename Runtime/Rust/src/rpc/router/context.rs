@@ -37,6 +37,9 @@ pub struct RouterContext {
     spawn_task: SpawnTask,
 }
 
+/// A connector between the Router and the Handlers. This is set up internally.
+///
+/// TODO: Replace with Fn traits when available
 #[derive(Clone)]
 pub struct TransportHandler(Weak<RouterContext>);
 impl TransportHandler {

@@ -2,6 +2,9 @@ export class Deadline {
   /** JS Epoch time at which this deadline will occur (in ms) */
   private readonly epoch?: number;
 
+  /**
+   * @param epoch The JS Epoch time at which this deadline occurs.
+   */
   constructor(epoch?: number) {
     this.epoch = epoch;
   }
