@@ -12,4 +12,5 @@ export class BebopRuntimeError extends Error {
 }
 
 export { BebopView } from "./view";
-// export * as rpc from "./rpc";
+export { BebopRecordImpl, BebopUnionRecordImpl } from "./record";
+export * as rpc from "./rpc";
