@@ -40,6 +40,7 @@ export function set_on_respond_error(cb: OnRespondError): boolean {
 }
 
 export enum TransportErrorVariants {
+  ResponseAlreadySent,
   DatagramTooLarge,
   SerializationError,
   DeserializationError,
@@ -47,6 +48,13 @@ export enum TransportErrorVariants {
   Timeout,
   CallDropped,
   Other,
+}
+
+/**
+ * A response can only be sent once.
+ */
+export type TransportErrorResponseAlreadySent = {
+  readonly discriminator: TransportErrorVariants.ResponseAlreadySent;
 }
 
 /**
@@ -97,6 +105,7 @@ export type TransportErrorOther = {
 };
 
 export type TransportErrorInner =
+  | TransportErrorResponseAlreadySent
   | TransportErrorDatagramTooLarge
   | TransportErrorSerializationError
   | TransportErrorDeserializationError
@@ -112,6 +121,9 @@ export type TransportErrorInner =
 export class TransportError extends BebopRuntimeError {
   constructor(public readonly inner: TransportErrorInner) {
     switch (inner.discriminator) {
+      case TransportErrorVariants.ResponseAlreadySent:
+        super("Response already sent");
+        break;
       case TransportErrorVariants.DatagramTooLarge:
         super("Datagram too large");
         break;
