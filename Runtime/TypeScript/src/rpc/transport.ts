@@ -1,4 +1,5 @@
 import { IDatagram } from "./index";
+import { TransportHandler } from "./router/context";
 
 /**
  * Transport protocol has a few main responsibilities:
@@ -21,8 +22,10 @@ export abstract class TransportProtocol {
    * be ignored. Make sure that you are careful about awaiting these promises or spawning them
    * on the runtime. Ideally if too many requests are being handled the transport can send
    * some sort of error response to reject additional work.
+   *
+   * @ignore
    */
-  abstract set_handler(recv: TransportHandler): void;
+  abstract setHandler(recv: TransportHandler): void;
 
   /** Send a datagram to the remote. */
   abstract send(datagram: IDatagram): Promise<void>;

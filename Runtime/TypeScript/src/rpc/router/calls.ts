@@ -27,57 +27,37 @@ import DatagramInfo from "../datagram-info";
 import * as assert from "assert";
 
 /** Request handle to allow sending your response to the remote. */
-export class RequestHandle<RI extends BebopRecordImpl> implements CallDetails {
+export class RequestHandle implements CallDetails {
   private responseSent = false;
   readonly callDetails: CallDetailsInner;
   private readonly ctx: WeakRef<RouterContext>;
-  private readonly recordImpl: RI;
 
   /** @ignore */
-  constructor(recordImpl: RI, ctx: WeakRef<RouterContext>, dgram: IDatagram) {
-    this.recordImpl = recordImpl;
-    this.ctx = ctx;
-    this.callDetails = {
-      timeout: DatagramInfo.timeoutS(dgram),
-      since: Date.now(),
-      callId: DatagramInfo.callId(dgram),
-    };
-  }
-
-  async sendResponse(
-    response: RecordTypeOf<RI> | Uint8Array | Error
-  ): Promise<void> {
-    if (response instanceof LocalRpcError) {
-      const e = response.inner;
-      switch (e.discriminator) {
-        case LocalRpcErrorVariants.DeadlineExceeded:
-          // do nothing, no response needed as the remote should forget automatically.
-          break;
-        case LocalRpcErrorVariants.Custom:
-          await this.sendErrorResponse(e.code, e.info);
-          break;
-        case LocalRpcErrorVariants.NotSupported:
-          await this.sendCallNotSupportedResponse();
-          break;
-        default:
-          assertUnreachable(e);
-      }
-    } else if (isNativeError(response)) {
-      console.error("Unhandled exception: ", response);
-      await this.sendErrorResponse(
-        0xffffffff,
-        `Unhandled internal exception: ${response.message}`
-      );
+  constructor(ctx: WeakRef<RouterContext>, dgram: IDatagram);
+  /** @ignore */
+  constructor(rh: RequestHandle);
+  constructor(...args: unknown[]) {
+    const targs = args as
+      | [rh: RequestHandle]
+      | [ctx: WeakRef<RouterContext>, dgram: IDatagram];
+    if (targs[0] instanceof RequestHandle) {
+      const [rh] = targs;
+      this.responseSent = rh.responseSent;
+      this.callDetails = rh.callDetails;
+      this.ctx = rh.ctx;
     } else {
-      await this.sendOkResponse(response);
+      const [ctx, dgram] = [targs[0], targs[1]!];
+      this.ctx = ctx;
+      this.callDetails = {
+        timeout: DatagramInfo.timeoutS(dgram),
+        since: Date.now(),
+        callId: DatagramInfo.callId(dgram),
+      };
     }
   }
 
-  async sendOkResponse(record: RecordTypeOf<RI> | Uint8Array): Promise<void> {
+  async sendOkResponseRaw(record: Uint8Array): Promise<void> {
     const ctx = this.$ctx;
-    if (!isUint8Array(record)) {
-      return await this.sendOkResponse(this.recordImpl.encode(record));
-    }
     this.verifyNotAlreadyResponded();
     await ctx.send({
       discriminator: RpcResponseOk.discriminator,
@@ -180,6 +160,49 @@ export class RequestHandle<RI extends BebopRecordImpl> implements CallDetails {
       });
     }
     this.responseSent = true;
+  }
+}
+
+export class TypedRequestHandle<
+  RI extends BebopRecordImpl
+  > extends RequestHandle {
+  constructor(private readonly recordImpl: RI, inner: RequestHandle) {
+    super(inner);
+  }
+
+  async sendResponse(
+    response: RecordTypeOf<RI> | Uint8Array | Error
+  ): Promise<void> {
+    if (response instanceof LocalRpcError) {
+      const e = response.inner;
+      switch (e.discriminator) {
+        case LocalRpcErrorVariants.DeadlineExceeded:
+          // do nothing, no response needed as the remote should forget automatically.
+          break;
+        case LocalRpcErrorVariants.Custom:
+          await this.sendErrorResponse(e.code, e.info);
+          break;
+        case LocalRpcErrorVariants.NotSupported:
+          await this.sendCallNotSupportedResponse();
+          break;
+        default:
+          assertUnreachable(e);
+      }
+    } else if (isNativeError(response)) {
+      console.error("Unhandled exception: ", response);
+      await this.sendErrorResponse(
+        0xffffffff,
+        `Unhandled internal exception: ${response.message}`
+      );
+    } else {
+      await this.sendOkResponse(response);
+    }
+  }
+
+  async sendOkResponse(record: RecordTypeOf<RI> | Uint8Array): Promise<void> {
+    return this.sendOkResponseRaw(
+      isUint8Array(record) ? record : this.recordImpl.encode(record)
+    );
   }
 }
 

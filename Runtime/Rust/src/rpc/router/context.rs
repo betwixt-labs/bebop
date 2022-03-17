@@ -151,6 +151,22 @@ impl RouterContext {
         self.transport.send(datagram).await
     }
 
+    /// Send notification that there was an error decoding one of the datagrams. This may be called
+    /// by the transport or by the generated handler code.
+    pub async fn send_decode_error_response(
+        &self,
+        call_id: Option<NonZeroU16>,
+        info: Option<&str>,
+    ) -> TransportResult {
+        self.send(&Datagram::RpcDecodeError {
+            header: RpcResponseHeader {
+                id: call_id.map(Into::into).unwrap_or(0),
+            },
+            info: info.unwrap_or(""),
+        })
+            .await
+    }
+
     /// Receive a request datagram and send it to the local service for handling.
     /// This is used by the handler for the TransportProtocol.
     fn recv_request<'a, 'b: 'a>(
@@ -178,22 +194,6 @@ impl RouterContext {
             // zelf.expire_futures.lock().remove(&id).unwrap();
             zelf.call_table.lock().drop_expired(id);
         }
-    }
-
-    /// Send notification that there was an error decoding one of the datagrams. This may be called
-    /// by the transport or by the generated handler code.
-    pub async fn send_decode_error_response(
-        &self,
-        call_id: Option<NonZeroU16>,
-        info: Option<&str>,
-    ) -> TransportResult {
-        self.send(&Datagram::RpcDecodeError {
-            header: RpcResponseHeader {
-                id: call_id.map(Into::into).unwrap_or(0),
-            },
-            info: info.unwrap_or(""),
-        })
-        .await
     }
 }
 

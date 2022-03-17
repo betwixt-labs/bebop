@@ -9,7 +9,7 @@ pub use context::TransportHandler;
 use crate::rpc::transport::TransportProtocol;
 use crate::rpc::{Datagram, DynFuture};
 
-pub use self::calls::{CallDetails, RequestHandle, TypedRequestHandle};
+pub use self::calls::{CallDetails, RequestHandle};
 use self::context::{SpawnTask, UnknownResponseHandler};
 
 mod call_table;
