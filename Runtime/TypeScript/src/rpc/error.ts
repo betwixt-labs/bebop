@@ -10,7 +10,10 @@ export interface ServiceContext {
   readonly callId: number;
 }
 
-const noop = () => {};
+const noop = () => {
+  /* Do nothing */
+};
+
 let ON_RESPOND_ERROR: OnRespondError | undefined;
 
 export type OnRespondError = (
@@ -55,7 +58,7 @@ export enum TransportErrorVariants {
  */
 export type TransportErrorResponseAlreadySent = {
   readonly discriminator: TransportErrorVariants.ResponseAlreadySent;
-}
+};
 
 /**
  * The datagram is too large to send. Some transports may impose different limits, but Bebop

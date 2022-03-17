@@ -111,10 +111,7 @@ export class RouterContext {
    * Send notification that there was an error decoding one of the datagrams. This may be called
    * by the transport or by the generated handler code.
    */
-  async sendDecodeErrorResponse(
-    callId: number = 0,
-    info: string = ""
-  ): Promise<void> {
+  async sendDecodeErrorResponse(callId = 0, info = ""): Promise<void> {
     return this.send({
       discriminator: RpcDecodeError.discriminator,
       value: {
@@ -168,8 +165,7 @@ export class RouterContext {
       if (!ctx) return;
 
       if (DatagramInfo.isRequest(d)) {
-        let handle = new RequestHandle(weakCtx, d);
-        await ctx.recvRequest(d, handle);
+        await ctx.recvRequest(d, new RequestHandle(weakCtx, d));
       } else {
         ctx.recvResponse(d);
       }

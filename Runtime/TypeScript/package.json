@@ -13,8 +13,8 @@
   "scripts": {
     "generate": "ts-node gen.ts",
     "lint": "eslint src --ext .ts",
-    "fmt": "prettier --write src/**.ts",
-    "build": "rimraf dist && npm run generate && tsc"
+    "fmt": "prettier --write src/**/*.ts",
+    "build": "rimraf dist && npm run generate && npm run lint && tsc"
   },
   "author": "The Bebop Authors",
   "license": "Apache-2.0",

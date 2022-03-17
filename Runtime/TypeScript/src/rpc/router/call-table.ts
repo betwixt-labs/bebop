@@ -21,7 +21,7 @@ import {
 import { isUint8Array } from "util/types";
 import { RemoteRpcError, RemoteRpcErrorVariants } from "../error";
 
-const U16_MAX = 1 << 16 - 1;
+const U16_MAX = 1 << (16 - 1);
 
 /** Verify a given callId is valid. */
 export function isValidCallId(id: number): boolean {

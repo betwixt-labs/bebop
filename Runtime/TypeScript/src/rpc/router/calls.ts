@@ -165,7 +165,7 @@ export class RequestHandle implements CallDetails {
 
 export class TypedRequestHandle<
   RI extends BebopRecordImpl
-  > extends RequestHandle {
+> extends RequestHandle {
   constructor(private readonly recordImpl: RI, inner: RequestHandle) {
     super(inner);
   }

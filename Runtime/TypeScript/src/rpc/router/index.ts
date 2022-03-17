@@ -7,6 +7,7 @@
 import { TransportProtocol } from "../transport";
 import { RouterContext, UnknownResponseHandler } from "./context";
 import { IDatagram } from "../index";
+import { RequestHandle } from "./calls";
 
 export interface ServiceHandlers {
   /**
