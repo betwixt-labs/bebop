@@ -5,7 +5,7 @@ import {
   ResponseHandle,
 } from "./calls";
 import * as assert from "assert";
-import { BebopRecordImpl } from "../../record";
+import { BebopRecordImpl, RecordTypeOf } from "../../record";
 import { IDatagram } from "../index";
 import DatagramInfo from "../datagram-info";
 import { UnknownResponseHandler } from "./context";
@@ -21,7 +21,7 @@ import {
 import { isUint8Array } from "util/types";
 import { RemoteRpcError, RemoteRpcErrorVariants } from "../error";
 
-const U16_MAX = 1 << 16;
+const U16_MAX = 1 << 16 - 1;
 
 /** Verify a given callId is valid. */
 export function isValidCallId(id: number): boolean {
@@ -74,10 +74,10 @@ export class RouterCallTable {
   }
 
   /** Register a datagram before we send it. This will set the call_id. */
-  register<TRecord, TRecordImpl extends BebopRecordImpl<TRecord>>(
+  register<TRecordImpl extends BebopRecordImpl>(
     recordImpl: TRecordImpl,
     datagram: IDatagram
-  ): PendingResponse<TRecord> {
+  ): PendingResponse<RecordTypeOf<TRecordImpl>> {
     assert(
       DatagramInfo.isRequest(datagram),
       "Only requests should be registered."
@@ -85,7 +85,7 @@ export class RouterCallTable {
     const callId = DatagramInfo.callId(datagram);
     assert(isValidCallId(callId), "Datagram must have a valid call id.");
     const timeout = DatagramInfo.timeoutS(datagram) ?? this.defaultTimeout;
-    const [handle, pending] = newPendingResponse<TRecord, TRecordImpl>(
+    const [handle, pending] = newPendingResponse<TRecordImpl>(
       recordImpl,
       callId,
       timeout
