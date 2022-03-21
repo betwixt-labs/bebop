@@ -1,9 +1,5 @@
 ﻿using System;
-using System.IO;
 using System.Linq;
-using System.Linq.Expressions;
-using System.Reflection;
-using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using Core.Meta;
@@ -27,10 +23,12 @@ namespace Core.Generators.TypeScript
             {
                 builder.AppendLine($"* {line}");
             }
+
             if (!string.IsNullOrWhiteSpace(deprecationReason))
             {
                 builder.AppendLine($"* @deprecated {deprecationReason}");
             }
+
             builder.AppendLine("*/");
             return builder.ToString();
         }
@@ -73,11 +71,13 @@ namespace Core.Generators.TypeScript
                 {
                     continue;
                 }
+
                 builder.AppendLine($"if (message.{field.Name.ToCamelCase()} != null) {{");
                 builder.AppendLine($"  view.writeByte({field.ConstantValue});");
                 builder.AppendLine($"  {CompileEncodeField(field.Type, $"message.{field.Name.ToCamelCase()}")}");
                 builder.AppendLine($"}}");
             }
+
             builder.AppendLine("view.writeByte(0);");
             builder.AppendLine("const end = view.length;");
             builder.AppendLine("view.fillMessageLength(pos, end - start);");
@@ -91,6 +91,7 @@ namespace Core.Generators.TypeScript
             {
                 builder.AppendLine(CompileEncodeField(field.Type, $"message.{field.Name.ToCamelCase()}"));
             }
+
             return builder.ToString();
         }
 
@@ -107,6 +108,7 @@ namespace Core.Generators.TypeScript
                 builder.AppendLine($"    {branch.Definition.Name}.encodeInto(message.value, view);");
                 builder.AppendLine($"    break;");
             }
+
             builder.AppendLine("}");
             builder.AppendLine("const end = view.length;");
             builder.AppendLine("view.fillMessageLength(pos, end - start);");
@@ -126,7 +128,8 @@ namespace Core.Generators.TypeScript
                     $"{tab}const length{depth} = {target}.length;" + nl +
                     $"{tab}view.writeUint32(length{depth});" + nl +
                     $"{tab}for (let {i} = 0; {i} < length{depth}; {i}++) {{" + nl +
-                    $"{tab}{tab}{CompileEncodeField(at.MemberType, $"{target}[{i}]", depth + 1, indentDepth + 2)}" + nl +
+                    $"{tab}{tab}{CompileEncodeField(at.MemberType, $"{target}[{i}]", depth + 1, indentDepth + 2)}" +
+                    nl +
                     $"{tab}}}" + nl +
                     $"}}",
                 MapType mt =>
@@ -199,6 +202,7 @@ namespace Core.Generators.TypeScript
                 builder.AppendLine("    break;");
                 builder.AppendLine("");
             }
+
             builder.AppendLine("  default:");
             builder.AppendLine("    view.index = end;");
             builder.AppendLine("    return message;");
@@ -218,6 +222,7 @@ namespace Core.Generators.TypeScript
                 builder.AppendLine(CompileDecodeField(field.Type, $"field{i}"));
                 i++;
             }
+
             builder.AppendLine($"let message: I{definition.Name} = {{");
             i = 0;
             foreach (var field in definition.Fields)
@@ -225,6 +230,7 @@ namespace Core.Generators.TypeScript
                 builder.AppendLine($"  {field.Name.ToCamelCase()}: field{i},");
                 i++;
             }
+
             builder.AppendLine("};");
             builder.AppendLine("return message;");
             return builder.ToString();
@@ -239,13 +245,135 @@ namespace Core.Generators.TypeScript
             foreach (var branch in definition.Branches)
             {
                 builder.AppendLine($"  case {branch.Discriminator}:");
-                builder.AppendLine($"    return {{ discriminator: {branch.Discriminator}, value: {branch.Definition.Name}.readFrom(view) }};");
+                builder.AppendLine(
+                    $"    return {{ discriminator: {branch.Discriminator}, value: {branch.Definition.Name}.readFrom(view) }};");
             }
+
             builder.AppendLine("  default:");
             builder.AppendLine("    view.index = end;");
-            builder.AppendLine($"    throw new BebopRuntimeError(\"Unrecognized discriminator while decoding {definition.Name}\");");
+            builder.AppendLine(
+                $"    throw new BebopRuntimeError(\"Unrecognized discriminator while decoding {definition.Name}\");");
             builder.AppendLine("}");
             return builder.ToString();
+        }
+
+        private void CompileService(IndentedStringBuilder bldr, ServiceDefinition sd)
+        {
+            var serviceIdent = sd.Name.ToPascalCase();
+            bldr.CodeBlock($"export abstract class {serviceIdent}HandlersDef implements $B.ServiceHandlers", 2, () =>
+                {
+                    bldr.AppendLine($"readonly $name = \"{serviceIdent}\";")
+                        .AppendLine()
+                        .CodeBlock("$recvCall(datagram: $B.IDatagram, handle: $B.RequestHandle)", 2, () =>
+                        {
+                            bldr.AppendLine("if (datagram.discriminator != $B.IRpcRequestDatagram.discriminator)")
+                                .Append("  throw new BebopRuntimeException")
+                                .AppendEnd("(\"`$recvCall` Should only ever be provided with Requests.\")")
+                                .AppendLine()
+                                .AppendLine("const { header, opcode, data } = datagram.value;")
+                                .CodeBlock("switch (opcode)", 2, () =>
+                                {
+                                    // since case statements overlap on var names
+                                    bldr.AppendLine("let response: any;");
+
+                                    foreach (var branch in sd.Branches.OrderBy(b => b.Discriminator))
+                                    {
+                                        var opcode = branch.Discriminator;
+                                        var fn = branch.Definition;
+                                        var fnIdent = fn.Name.ToCamelCase();
+                                        var sig = fn.Signature.Name;
+                                        var hasArgs = fn.ArgumentStruct.Fields.Count > 0;
+                                        var catchSendErr = $".catch(err => $B.handleRespondError(err, \"{serviceIdent}\", \"{fnIdent}\", header.callId))";
+                                        bldr.CodeBlock($"case {opcode}", 2, () =>
+                                        {
+                                            bldr.CodeBlock($"if (header.signature != {sig})", 2, () =>
+                                            {
+                                                bldr.AppendLine($"return handle.sendInvalidSigResponse({sig})")
+                                                    .AppendLine($"  {catchSendErr};");
+                                            });
+
+                                            if (hasArgs)
+                                            {
+                                                bldr.AppendLine($"let args: I{fn.ArgumentStruct.Name};");
+                                                bldr.CodeBlock("try", 2, () =>
+                                                    {
+                                                        bldr.AppendLine(
+                                                            $"args = {fn.ArgumentStruct.Name}.decode(data);");
+                                                    })
+                                                    .CodeBlock("catch (err)", 2, () =>
+                                                    {
+                                                        bldr.AppendLine("return handle.sendDecodeErrorResponse(err)")
+                                                            .AppendLine($"  {catchSendErr};");
+                                                    });
+                                            }
+
+                                            var args = string.Join(", ",
+                                                fn.ArgumentStruct.Fields.Select(f => $"args.{f.Name.ToPascalCase()}")
+                                                    .Concat(new[] { "$B.CallDetails.deadline(handle)" }));
+                                            bldr.CodeBlock("try", 2, () =>
+                                                {
+                                                    bldr.AppendLine($"response = await this.{fnIdent}({args});");
+                                                })
+                                                .CodeBlock("catch (err)", 2, () =>
+                                                {
+                                                    bldr.AppendLine("response = err;");
+                                                })
+                                                .AppendLine("return handle.sendResponse(response)")
+                                                .AppendLine($"  {catchSendErr};");
+                                        }, ":", "  break;");
+                                    }
+                                });
+                            // TODO: unpack the arguments
+                            // TODO: call the correct function
+                            // TODO: pack the return
+                            // TODO: send the response
+                            // TODO: handle response errors
+                        });
+                })
+                .AppendLine()
+                .CodeBlock($"export class {serviceIdent}Requests implements ServiceRequests", 2, () =>
+                {
+                    bldr.AppendLine($"readonly $name = \"{serviceIdent}\";")
+                        .AppendLine("readonly $ctx: RouterContext;")
+                        .AppendLine()
+                        .CodeBlock("constructor(ctx: RouterContext)", 2, () =>
+                        {
+                            bldr.AppendLine("this.$ctx = ctx;");
+                        });
+
+                    foreach (var branch in sd.Branches.OrderBy(b => b.Discriminator))
+                    {
+                        var opcode = branch.Discriminator;
+                        var fn = branch.Definition;
+                        var fnIdent = fn.Name.ToCamelCase();
+                        var fnArgs =
+                            string.Join(", ",
+                                fn.ArgumentStruct.Fields.Select(f => $"{f.Name.ToCamelCase()}: {TypeName(f.Type)}")
+                                    .Concat(new[] { "timeoutSec?: number" }));
+                        var hasRet = fn.ReturnStruct.Fields.Count > 0;
+                        var retType = hasRet
+                            ? TypeName(fn.ReturnStruct.Fields.First().Type)
+                            : "void";
+                        bldr.AppendLine()
+                            .CodeBlock($"async {fnIdent}({fnArgs}): Promise<{retType}>", 2, () =>
+                            {
+                                if (hasRet) bldr.Append("const response = ");
+                                bldr.CodeBlock("await this.$ctx.request", 2, () =>
+                                {
+                                    var argNameList = string.Join(", ",
+                                        fn.ArgumentStruct.Fields.Select(f => f.Name.ToCamelCase()));
+                                    bldr.AppendLine($"{fn.ArgumentStruct.Name},")
+                                        .AppendLine($"{fn.ReturnStruct.Name},")
+                                        .AppendLine($"{opcode},")
+                                        .AppendLine("timeoutSec,")
+                                        .AppendLine($"{fn.Signature.Name}")
+                                        .AppendLine($"{{{argNameList}}}");
+                                }, "(", ");");
+                                if (hasRet) bldr.AppendLine("return response.value;");
+                            });
+                    }
+                })
+                .AppendLine();
         }
 
         private string ReadBaseType(BaseType baseType)
@@ -337,6 +465,7 @@ namespace Core.Generators.TypeScript
                     var isEnum = Schema.Definitions[dt.Name] is EnumDefinition;
                     return (isEnum ? "" : "I") + dt.Name;
             }
+
             throw new InvalidOperationException($"GetTypeName: {type}");
         }
 
@@ -347,7 +476,8 @@ namespace Core.Generators.TypeScript
             return JsonSerializer.Serialize(value, options);
         }
 
-        private string EmitLiteral(Literal literal) {
+        private string EmitLiteral(Literal literal)
+        {
             return literal switch
             {
                 BoolLiteral bl => bl.Value ? "true" : "false",
@@ -374,6 +504,8 @@ namespace Core.Generators.TypeScript
             {
                 builder.AppendLine(GeneratorUtils.GetXmlAutoGeneratedNotice());
             }
+
+            builder.AppendLine("import * as $B from \"bebop\";");
             builder.AppendLine("import { BebopView, BebopRuntimeError } from \"bebop\";");
             builder.AppendLine("");
             if (!string.IsNullOrWhiteSpace(Schema.Namespace))
@@ -384,10 +516,11 @@ namespace Core.Generators.TypeScript
 
             foreach (var definition in Schema.Definitions.Values)
             {
-                if(!string.IsNullOrWhiteSpace(definition.Documentation))
+                if (!string.IsNullOrWhiteSpace(definition.Documentation))
                 {
                     builder.AppendLine(FormatDocumentation(definition.Documentation, string.Empty, 0));
                 }
+
                 if (definition is EnumDefinition ed)
                 {
                     var is64Bit = ed.ScalarType.Is64Bit;
@@ -400,6 +533,7 @@ namespace Core.Generators.TypeScript
                     {
                         builder.AppendLine($"export enum {ed.Name} {{");
                     }
+
                     for (var i = 0; i < ed.Members.Count; i++)
                     {
                         var field = ed.Members.ElementAt(i);
@@ -407,20 +541,25 @@ namespace Core.Generators.TypeScript
                         if (!string.IsNullOrWhiteSpace(field.Documentation))
                         {
                             builder.AppendLine(FormatDocumentation(field.Documentation, deprecationReason, 2));
-                        } else if (string.IsNullOrWhiteSpace(field.Documentation) && !string.IsNullOrWhiteSpace(deprecationReason))
+                        }
+                        else if (string.IsNullOrWhiteSpace(field.Documentation) &&
+                                 !string.IsNullOrWhiteSpace(deprecationReason))
                         {
                             builder.AppendLine(FormatDeprecationDoc(deprecationReason, 2));
                         }
+
                         if (is64Bit)
                         {
                             builder.AppendLine($"  {field.Name}: {field.ConstantValue}n,");
-                            builder.AppendLine($"  {EscapeStringLiteral(field.ConstantValue.ToString())}: {EscapeStringLiteral(field.Name)},");
+                            builder.AppendLine(
+                                $"  {EscapeStringLiteral(field.ConstantValue.ToString())}: {EscapeStringLiteral(field.Name)},");
                         }
                         else
                         {
                             builder.AppendLine($"  {field.Name} = {field.ConstantValue},");
                         }
                     }
+
                     builder.AppendLine(is64Bit ? "};" : "}");
                     builder.AppendLine("");
                 }
@@ -438,18 +577,24 @@ namespace Core.Generators.TypeScript
                             {
                                 builder.AppendLine(FormatDocumentation(field.Documentation, deprecationReason, 2));
                             }
-                            else if (string.IsNullOrWhiteSpace(field.Documentation) && !string.IsNullOrWhiteSpace(deprecationReason))
+                            else if (string.IsNullOrWhiteSpace(field.Documentation) &&
+                                     !string.IsNullOrWhiteSpace(deprecationReason))
                             {
                                 builder.AppendLine(FormatDeprecationDoc(deprecationReason, 2));
                             }
-                            builder.AppendLine($"  {(fd is StructDefinition { IsReadOnly: true } ? "readonly " : "")}{field.Name.ToCamelCase()}{(fd is MessageDefinition ? "?" : "")}: {type};");
+
+                            builder.AppendLine(
+                                $"  {(fd is StructDefinition { IsReadOnly: true } ? "readonly " : "")}{field.Name.ToCamelCase()}{(fd is MessageDefinition ? "?" : "")}: {type};");
                         }
+
                         builder.AppendLine("}");
                         builder.AppendLine("");
                     }
                     else if (definition is UnionDefinition ud)
                     {
-                        var expression = string.Join("\n  | ", ud.Branches.Select(b => $"{{ discriminator: {b.Discriminator}, value: I{b.Definition.Name} }}"));
+                        var expression = string.Join("\n  | ",
+                            ud.Branches.Select(b =>
+                                $"{{ discriminator: {b.Discriminator}, value: I{b.Definition.Name} }}"));
                         if (string.IsNullOrWhiteSpace(expression)) expression = "never";
                         builder.AppendLine($"export type I{ud.Name}\n  = {expression};");
                         builder.AppendLine("");
@@ -460,10 +605,12 @@ namespace Core.Generators.TypeScript
                     {
                         builder.AppendLine($"  opcode: {td.OpcodeAttribute.Value},");
                     }
+
                     if (td.DiscriminatorInParent != null)
                     {
                         builder.AppendLine($"  discriminator: {td.DiscriminatorInParent},");
                     }
+
                     builder.AppendLine($"  encode(message: I{td.Name}): Uint8Array {{");
                     builder.AppendLine("    const view = BebopView.getInstance();");
                     builder.AppendLine("    view.startWriting();");
@@ -496,11 +643,16 @@ namespace Core.Generators.TypeScript
                     builder.AppendLine($"export const {cd.Name}: {TypeName(cd.Value.Type)} = {EmitLiteral(cd.Value)};");
                     builder.AppendLine("");
                 }
+                else if (definition is ServiceDefinition sd)
+                {
+                    CompileService(builder, sd);
+                }
                 else
                 {
                     throw new InvalidOperationException($"Unsupported definition {definition}");
                 }
             }
+
             if (!string.IsNullOrWhiteSpace(Schema.Namespace))
             {
                 builder.Dedent(2);

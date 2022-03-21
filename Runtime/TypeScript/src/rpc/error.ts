@@ -25,7 +25,7 @@ export type OnRespondError = (
  * Get the `on_respond_error` function.
  * This should be used by generated code only.
  */
-export function get_on_respond_error(): OnRespondError {
+export function getOnRespondError(): OnRespondError {
   return ON_RESPOND_ERROR ?? noop;
 }
 
@@ -33,12 +33,31 @@ export function get_on_respond_error(): OnRespondError {
  * One-time initialization. Returns true if the provided value has been set. False if it was
  * already initialized.
  */
-export function set_on_respond_error(cb: OnRespondError): boolean {
+export function setOnRespondError(cb: OnRespondError): boolean {
   if (!ON_RESPOND_ERROR) {
     ON_RESPOND_ERROR = cb;
     return true;
   } else {
     return false;
+  }
+}
+
+/**
+ * Use this with the `.catch` for a promise which we want to have the error
+ * handled globally for.
+ *
+ * @ignore
+ */
+export function handleRespondError(
+  err: unknown,
+  service: string,
+  fnName: string,
+  callId: number
+): void {
+  if (ON_RESPOND_ERROR && err instanceof BebopRuntimeError) {
+    ON_RESPOND_ERROR({ service, function: fnName, callId }, err);
+  } else {
+    throw err;
   }
 }
 

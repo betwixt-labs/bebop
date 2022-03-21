@@ -37,10 +37,10 @@ export interface ServiceRequests {
   /** The name of this service. */
   readonly $name: string;
 
-  /** @ignore */
-  readonly $context: RouterContext;
-
-  /** The router context. (In TS this object owns it because there is no actual Router.) */
+  /**
+   * The router context. (In TS this object owns it because there is no actual Router.)
+   * @ignore
+   */
   readonly $ctx: RouterContext;
 }
 

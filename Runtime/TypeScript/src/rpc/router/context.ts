@@ -171,8 +171,6 @@ export class RouterContext {
       }
     };
   }
-
-  // TODO: rest of functions here
 }
 
 /** A connector between the Router and the Handlers. This is set up internally. */
