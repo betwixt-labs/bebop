@@ -13,7 +13,7 @@ namespace Core.Meta.Extensions
 
         private static readonly string[] NewLines = { "\r\n", "\r", "\n" };
 
-      
+
         /// <summary>
         ///     Splits the specified <paramref name="value"/> based on line ending.
         /// </summary>
@@ -161,6 +161,11 @@ namespace Core.Meta.Extensions
                     builder.Append(SnakeSeparator);
                 }
                 else if (char.IsLower(currentChar) && char.IsUpper(nextChar))
+                {
+                    builder.Append(char.ToLowerInvariant(currentChar));
+                    builder.Append('_');
+                }
+                else if (char.IsUpper(currentChar) && char.IsUpper(nextChar))
                 {
                     builder.Append(char.ToLowerInvariant(currentChar));
                     builder.Append('_');

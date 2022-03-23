@@ -395,11 +395,24 @@ fn pascal_case(s: &str) -> String {
     let mut r = String::new();
 
     // allow leading underscores
-    s.chars().take_while(|&c| c == '_').for_each(|c| r.push(c));
+    r.extend(s.chars().take_while(|&c| c == '_'));
 
     // capitalize the first char
     if let Some(c) = s.chars().next() {
         c.to_uppercase().for_each(|c| r.push(c));
+    }
+
+    // DO capitalize both characters on two-character acronyms.
+    if s.len() == 2 {
+        r.extend(s[1..].chars().next().unwrap().to_uppercase());
+        return r;
+    }
+
+    // DO capitalize only the first character of acronyms with three or more characters, except the first word.
+    // DO NOT capitalize any of the characters of any acronyms, whatever their length.
+    if s[1..].chars().all(char::is_uppercase) {
+        r.extend(s[1..].chars().flat_map(char::to_lowercase));
+        return pascal_case(&r);
     }
 
     let mut cap_next = false;
@@ -411,12 +424,19 @@ fn pascal_case(s: &str) -> String {
             r.push(cur);
         } else if cap_next {
             cap_next = false;
-            cur.to_uppercase().for_each(|c| r.push(c));
+            r.extend(cur.to_uppercase());
         } else {
             r.push(cur);
         }
     }
     r
+}
+
+#[test]
+fn pascal_case_tests() {
+    assert_eq!(pascal_case("SSubmitABReturn"), "SSubmitABReturn");
+    assert_eq!(pascal_case("sSubmitABReturn"), "SSubmitABReturn");
+    assert_eq!(pascal_case("ab"), "AB");
 }
 
 #[cfg(test)]
