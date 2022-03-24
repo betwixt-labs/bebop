@@ -6,7 +6,7 @@ use std::process::Command;
 #[cfg(feature = "downloader")]
 pub use downloader::*;
 #[cfg(feature = "format")]
-use format::*;
+pub use format::*;
 
 /// Configurable compiler path. By default it will use the downloaded executeable or assume it is in PATH.
 pub static mut COMPILER_PATH: Option<PathBuf> = None;
@@ -26,6 +26,8 @@ pub struct BuildConfig {
     /// Whether files should be automatically formatted after being generated.
     /// Does nothing if feature `format` is not enabled. Default: `true`.
     pub format_files: bool,
+    /// Optional feature flag/namespace.
+    pub feature_flag: Option<String>,
 }
 
 impl Default for BuildConfig {
@@ -34,6 +36,7 @@ impl Default for BuildConfig {
             skip_generated_notice: false,
             generate_module_file: true,
             format_files: true,
+            feature_flag: None,
         }
     }
 }
@@ -104,6 +107,9 @@ pub fn build_schema(schema: impl AsRef<Path>, destination: impl AsRef<Path>, con
     let mut cmd = Command::new(compiler_path);
     if config.skip_generated_notice {
         cmd.arg("--skip-generated-notice");
+    }
+    if let Some(ns) = &config.feature_flag {
+        cmd.arg("--namespace").arg(ns);
     }
     let output = cmd
         .arg("--files")

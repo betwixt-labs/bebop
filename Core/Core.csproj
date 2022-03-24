@@ -44,5 +44,10 @@
     </PackageReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <None Remove="Schemas\RpcDatagram.bop" />
+    <EmbeddedResource Include="Schemas\RpcDatagram.bop" />
+  </ItemGroup>
+
   
 </Project>

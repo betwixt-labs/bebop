@@ -2,7 +2,7 @@ use bebop::error::{DeResult, SeResult};
 use bebop::fixed_sized::FixedSized;
 use bebop::SubRecord;
 use bebop::{SliceWrapper, LEN_SIZE};
-use criterion::{black_box, criterion_group, BenchmarkId, Criterion};
+use criterion::{black_box, criterion_group, Criterion};
 use std::convert::TryInto;
 use std::io::Write;
 

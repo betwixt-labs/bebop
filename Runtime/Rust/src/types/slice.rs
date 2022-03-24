@@ -1,9 +1,9 @@
-use std::mem::size_of;
-
-use crate::{FixedSized, SubRecord};
 use std::iter::FusedIterator;
+use std::mem::size_of;
 use std::ops::Deref;
 use std::ptr::slice_from_raw_parts;
+
+use crate::{FixedSized, SubRecord};
 
 /// This allows us to either wrap an existing &[T] slice to serialize it OR to store a raw byte
 /// slice from an encoding and access its potentially unaligned values.
@@ -33,7 +33,7 @@ impl<'a> Deref for SliceWrapper<'a, u8> {
     fn deref(&self) -> &Self::Target {
         match self {
             SliceWrapper::Raw(d) => d,
-            SliceWrapper::Cooked(d) => d
+            SliceWrapper::Cooked(d) => d,
         }
     }
 }
@@ -172,9 +172,10 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{DeResult, FixedSized, SeResult, SliceWrapper, SubRecord};
     use std::convert::TryInto;
     use std::io::Write;
+
+    use crate::{DeResult, FixedSized, SeResult, SliceWrapper, SubRecord};
 
     #[repr(packed)]
     #[derive(Debug, Eq, PartialEq, Copy, Clone)]

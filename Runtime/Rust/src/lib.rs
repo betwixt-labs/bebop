@@ -1,15 +1,19 @@
-mod serialization;
-mod types;
-
 pub use bitflags::bitflags;
+
 pub use serialization::*;
 pub use types::*;
 
+#[cfg(feature = "rpc")]
+pub mod rpc;
+mod serialization;
+mod types;
+
 pub mod prelude {
-    pub use crate::serialization::{FixedSized, Record};
+    #[cfg(feature = "rpc")]
+    pub use crate::rpc::DatagramInfo;
+    #[cfg(feature = "rpc")]
+    pub use crate::rpc::{Datagram, DynFuture, OwnedDatagram};
+    pub use crate::serialization::{FixedSized, OwnedRecord, Record};
     pub use crate::types::{Date, Guid};
     pub use crate::SliceWrapper;
 }
-
-#[cfg(feature = "cargo")]
-pub mod cargo;

@@ -46,12 +46,21 @@ pub trait Record<'raw>: SubRecord<'raw> {
         self._serialize_chained(dest)
     }
 
-    // TODO: support async serialization
-    // fn serialize_async<W: AsyncWrite>(&self, dest: &mut W) -> impl Future<Type=SeResult<usize>>;
+    /// Convert this record into an owned (Vec) byte buffer. It is recommended to prefer using
+    /// `serialize` whenever more than one record needs to be written since this allocates new
+    /// memory for every call.
+    fn serialize_to_vec(&self) -> SeResult<Vec<u8>> {
+        let size = self.serialized_size();
+        let mut buf = Vec::with_capacity(size);
+        self.serialize(&mut buf)?;
+        // A panic here indicates a flaw with bebop, but should not break usability.
+        debug_assert_eq!(buf.len(), size);
+        Ok(buf)
+    }
 }
 
 /// Internal trait used to reduce the amount of code that needs to be generated.
-pub trait SubRecord<'raw>: Sized {
+pub trait SubRecord<'raw>: Sized + Send + Sync {
     const MIN_SERIALIZED_SIZE: usize;
     const EXACT_SERIALIZED_SIZE: Option<usize> = None;
 

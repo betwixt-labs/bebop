@@ -6,10 +6,14 @@ edition = "2021"
 [lib]
 
 [dependencies]
-bebop = { path = "../../../Runtime/Rust", default-features = false }
+bebop = { path = "../../../Runtime/Rust", default-features = false, features = ["rpc"] }
 static_assertions = "1.1.0"
+async-trait = "0.1"
+tokio = { version = "1.16", default-features = false, optional = true }
 
 [features]
-default = ["bebop-owned-all", "owned-generation"]
+default = ["bebop-owned-all", "owned-generation", "hello-requests", "hello-handlers"]
 bebop-owned-all = []
 owned-generation = []
+hello-requests = []
+hello-handlers = ["tokio/sync"]

@@ -1,0 +1,37 @@
+message Msg {
+    1 -> string name;
+    2 -> date time;
+    3 -> byte[] data;
+}
+
+service Hello {
+    /* Test docs */ 
+    1 -> void world();
+    [deprecated("Deprecated for testing")]
+    2 -> string[] get_messages(uint32 max);
+    4 -> bool check(string name, byte[] hash);
+    5 -> Msg respond(Msg input);
+}
+
+struct KV {
+    string key;
+    string value;
+}
+
+service KVStore {
+    1 -> void ping();
+
+    2 -> KV[] entries(uint64 page, uint16 pageSize);
+    3 -> string[] keys(uint64 page, uint16 pageSize);
+    4 -> string[] values(uint64 page, uint16 pageSize);
+
+    /** Returns true if it was inserted, false if the key was a duplicate */
+    5 -> bool insert(string key, string value);
+    /** Add multiple entries and return any keys which where already there */
+    6 -> string[] insertMany(KV[] entries);
+    /** Lookup a key. Returns a custom user error of not present. */
+    7 -> string get(string key);
+
+    /** Retrieve a count of the number of entries stored. */
+    8 -> uint64 count();
+}

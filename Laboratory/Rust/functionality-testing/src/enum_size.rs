@@ -1,5 +1,5 @@
-use crate::generated::enum_size::SmallEnum;
 use crate::generated::enum_size::HugeEnum;
+use crate::generated::enum_size::SmallEnum;
 use std::mem::size_of;
 
 #[test]

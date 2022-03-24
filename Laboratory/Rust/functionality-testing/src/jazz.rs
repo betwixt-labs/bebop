@@ -1,5 +1,5 @@
 use crate::generated::jazz::*;
-use bebop::{test_serialization, collection, Date, Guid, Record, SubRecord, ENUM_SIZE, LEN_SIZE};
+use bebop::{collection, test_serialization, Date, Guid, Record, SubRecord, ENUM_SIZE, LEN_SIZE};
 
 fn song1() -> Song<'static> {
     Song {
@@ -133,7 +133,8 @@ test_serialization!(
     Performer {
         name: "Charlie Parker",
         plays: Instrument::Sax,
-    }.into(),
+    }
+    .into(),
     LEN_SIZE + 14 + ENUM_SIZE
 );
 test_serialization!(
@@ -160,12 +161,7 @@ test_serialization!(
     song2().into(),
     LEN_SIZE * 2 + 3 + 11 + 2
 );
-test_serialization!(
-    serialization_of_song_no_fields,
-    Song,
-    Song::default(),
-    5
-);
+test_serialization!(serialization_of_song_no_fields, Song, Song::default(), 5);
 test_serialization!(
     serialization_of_song_no_fields_owned,
     owned::Song,
@@ -185,23 +181,20 @@ test_serialization!(
     owned::Album,
     Album::StudioAlbum {
         tracks: vec![song1(), song2()],
-    }.into(),
+    }
+    .into(),
     115
 );
 test_serialization!(
     serialization_of_studio_album_empty_array,
     Album,
-    Album::StudioAlbum {
-        tracks: vec![]
-    },
+    Album::StudioAlbum { tracks: vec![] },
     LEN_SIZE * 2 + 1
 );
 test_serialization!(
     serialization_of_studio_album_empty_array_owned,
     owned::Album,
-    Album::StudioAlbum {
-        tracks: vec![]
-    }.into(),
+    Album::StudioAlbum { tracks: vec![] }.into(),
     LEN_SIZE * 2 + 1
 );
 test_serialization!(
@@ -221,7 +214,8 @@ test_serialization!(
         tracks: Some(vec![song1(), song2()]),
         venue_name: Some("Perdido"),
         concert_date: Some(Date::from_secs(1627595855)),
-    }.into(),
+    }
+    .into(),
     142
 );
 test_serialization!(
@@ -241,7 +235,8 @@ test_serialization!(
         tracks: None,
         venue_name: Some("Perdido"),
         concert_date: Some(Date::from_secs(1627595855)),
-    }.into(),
+    }
+    .into(),
     31
 );
 test_serialization!(
@@ -261,7 +256,8 @@ test_serialization!(
         tracks: None,
         venue_name: None,
         concert_date: None,
-    }.into(),
+    }
+    .into(),
     10
 );
 test_serialization!(
@@ -277,7 +273,8 @@ test_serialization!(
     owned::Library,
     Library {
         albums: collection! {}
-    }.into(),
+    }
+    .into(),
     LEN_SIZE
 );
 test_serialization!(
@@ -302,7 +299,8 @@ test_serialization!(
                 tracks: vec![]
             }
         }
-    }.into(),
+    }
+    .into(),
     // map, vec, string, and union have size
     LEN_SIZE * 4 + 10 + 1
 );

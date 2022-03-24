@@ -1,0 +1,27 @@
+struct KV {
+    string key;
+    string value;
+}
+
+service NullService {}
+
+service KVStore {
+    1 -> void ping();
+
+    2 -> KV[] entries(uint64 page, uint16 pageSize);
+    3 -> string[] keys(uint64 page, uint16 pageSize);
+    4 -> string[] values(uint64 page, uint16 pageSize);
+
+    /** Returns true if it was inserted, false if the key was a duplicate and was not inserted. */
+    5 -> bool insert(string key, string value);
+    /** Add multiple entries and return any keys which where already there */
+    6 -> string[] insertMany(KV[] entries);
+    /** Lookup a key. Returns a custom user error of not present. */
+    7 -> string get(string key);
+
+    /** Retrieve a count of the number of entries stored. */
+    8 -> uint64 count();
+
+    /** Have the server hold a write lock for a certain number of seconds. */
+    9 -> void wait(uint16 secs);
+}

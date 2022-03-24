@@ -1,8 +1,10 @@
-﻿namespace Core.Parser
-{
-    static class RpcSchema
-    {
-        public const string RpcRequestHeader = @"
+﻿/* Static RPC response header used for all response datagrams. */
+readonly struct RpcResponseHeader {
+    /* The caller-assigned identifier */
+	uint16 id;
+}
+
+
 /* Static RPC request header used for all request datagrams. */
 readonly struct RpcRequestHeader {
     /*
@@ -17,6 +19,19 @@ readonly struct RpcRequestHeader {
     uint16 id;
 
     /*
+        How long in seconds this request is allowed to be processed for. A value of 0 indicates no limit.
+        
+        This allows for potentially long queries to be cancelled if the requester will no longer be interested and more
+        importantly allows unreliable transports to establish an agreed upon point at which the requester is going to
+        assume the packet was lost even if it just had yet to be sent.
+        
+        By using a max-time to compute rather than an expiration time, we reduce the risk of different system times
+        causing confusion. Though there will be some overlap where a response may be sent and ignored as the requester
+        already considers it to be expired. 
+    */
+    uint16 timeout;
+    
+    /*
         Function signature includes information about the args to ensure the caller and
         callee are referencing precisely the same thing. There is a non-zero risk of
         accidental signature collisions, but 32-bits is probably sufficient for peace of
@@ -27,17 +42,8 @@ readonly struct RpcRequestHeader {
     */
     uint32 signature;
 }
-";
 
-        public const string RpcResponseHeader = @"
-/* Static RPC response header used for all response datagrams. */
-readonly struct RpcResponseHeader {
-    /* The caller-assigned identifier */
-	uint16 id;
-}
-";
 
-        public const string RpcDatagram = @"
 /*
     All data sent over the transport MUST be represented by this union.
 
@@ -51,7 +57,7 @@ union RpcDatagram {
         /* The function that is to be called. */
         uint16 opcode;
         /* Callee can decode this given the opcode in the header. */
-        byte[] request;
+        byte[] data;
     }
 
     2 -> struct RpcResponseOk {
@@ -73,7 +79,7 @@ union RpcDatagram {
     }
 
     /* Default response if no handler was registered. */
-    0xfc -> struct CallNotSupported {
+    0xfc -> struct RpcResponseCallNotSupported {
         RpcResponseHeader header;
     }
 
@@ -95,12 +101,16 @@ union RpcDatagram {
 
         This should never occur between proper implementations of the same version.
     */
-    0xff -> struct DecodeError {
+    0xff -> struct RpcDecodeError {
         /* Information provided on a best-effort basis. */
         RpcResponseHeader header;
         string info;
     }
 }
-";
-    }
+
+/* Service name function arguments */
+struct RpcServiceNameArgs {}
+/* Service name function reponmse. */
+struct RpcServiceNameReturn {
+    string value;
 }

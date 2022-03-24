@@ -2,6 +2,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using Core.Meta;
@@ -12,7 +14,7 @@ namespace Core.Generators.Rust
 {
     enum OwnershipType
     {
-        // name used when borrowed, E.g. `&'raw [u8]` or `&'raw str`.
+        // name used when borrowed, E.g. `SliceWrapper<'raw, u8>` or `&'raw str`.
         Borrowed,
 
         // name used when owned, E.g. `Vec<u8>` or `String`.
@@ -37,15 +39,21 @@ namespace Core.Generators.Rust
 
         const int _tab = 4;
 
-        private static readonly string[] _reservedWordsArray =
+        private static readonly ImmutableHashSet<string> _reservedWords = new[]
         {
             "Self", "abstract", "as", "become", "box", "break", "const", "continue", "crate", "do", "else", "enum",
             "extern", "false", "final", "fn", "for", "if", "impl", "in", "let", "loop", "macro", "match", "mod",
             "move", "mut", "override", "priv", "pub", "ref", "return", "self", "static", "struct", "super", "trait",
             "true", "try", "type", "typeof", "unsafe", "unsized", "use", "virtual", "where", "while", "yield",
-        };
+        }.ToImmutableHashSet();
 
-        private static readonly HashSet<string> _reservedWords = _reservedWordsArray.ToHashSet();
+        // TODO: should we get this list from the SchemaRepo or something to prevent sync issues?
+        private static readonly ImmutableHashSet<string> _rpcDefinitionsToIgnore =
+            new[]
+            {
+                "RpcDatagram", "RpcRequestHeader", "RpcResponseHeader", "RpcServiceNameReturn", "RpcServiceNameArgs"
+            }.ToImmutableHashSet();
+
         private Dictionary<string, bool> _needsLifetime = new Dictionary<string, bool>();
 
         #endregion
@@ -72,53 +80,72 @@ namespace Core.Generators.Rust
 
             if (!string.IsNullOrWhiteSpace(Schema.Namespace))
             {
-                mainBuilder.AppendLine($"#![cfg(feature = \"{Schema.Namespace.ToKebabCase()}\")]");
+                mainBuilder.AppendLine($"#![cfg(feature = \"{MakeFeatureIdent(Schema.Namespace)}\")]");
             }
 
             WriteStandardImportsForModule(mainBuilder);
             WriteStandardImportsForModule(ownedBuilder);
 
-            // TODO: do we need to do something with the namespace? Probably not since the file is itself a module.
+            var hasServiceDefinition = Schema.Definitions.Values.Any(d => d is ServiceDefinition);
 
             foreach (var definition in Schema.Definitions.Values)
             {
-                WriteDocumentation(mainBuilder, definition.Documentation);
+                if (hasServiceDefinition && _rpcDefinitionsToIgnore.Contains(definition.Name))
+                {
+                    // We don't want to generate the RPC types for Rust because we need them in the Runtime due to
+                    // the static nature of rust, so just ignore them.
+                    continue;
+                }
+
                 switch (definition)
                 {
                     case ConstDefinition cd:
                         WriteConstDefinition(mainBuilder, cd, CodeRegion.Main);
                         WriteConstDefinition(ownedBuilder, cd, CodeRegion.Owned);
+                        mainBuilder.AppendLine();
+                        ownedBuilder.AppendLine();
                         break;
                     case EnumDefinition ed:
                         WriteEnumDefinition(mainBuilder, ed, CodeRegion.Main);
                         WriteEnumDefinition(ownedBuilder, ed, CodeRegion.Owned);
+                        mainBuilder.AppendLine();
+                        ownedBuilder.AppendLine();
                         break;
                     case MessageDefinition md:
                         if (md.Parent is UnionDefinition) continue;
                         WriteMessageDefinition(mainBuilder, md, CodeRegion.Main);
                         WriteMessageDefinition(ownedBuilder, md, CodeRegion.Owned);
+                        mainBuilder.AppendLine();
+                        ownedBuilder.AppendLine();
                         break;
                     case StructDefinition sd:
                         if (sd.Parent is UnionDefinition) continue;
                         WriteStructDefinition(mainBuilder, sd, CodeRegion.Main);
                         WriteStructDefinition(ownedBuilder, sd, CodeRegion.Owned);
+                        mainBuilder.AppendLine();
+                        ownedBuilder.AppendLine();
                         break;
                     case UnionDefinition ud:
                         WriteUnionDefinition(mainBuilder, ud, CodeRegion.Main);
                         WriteUnionDefinition(ownedBuilder, ud, CodeRegion.Owned);
+                        mainBuilder.AppendLine();
+                        ownedBuilder.AppendLine();
+                        break;
+                    case ServiceDefinition sd:
+                        // for now we only support the owned datagrams so might as well put it where it can reference
+                        // them correctly.
+                        WriteServiceDefinition(ownedBuilder, sd);
+                        ownedBuilder.AppendLine();
                         break;
                     default:
                         throw new InvalidOperationException($"unsupported definition {definition.GetType()}");
                 }
-
-                mainBuilder.AppendLine();
-                ownedBuilder.AppendLine();
             }
 
             mainBuilder
                 .AppendLine(string.IsNullOrWhiteSpace(Schema.Namespace)
                     ? "#[cfg(feature = \"bebop-owned-all\")]"
-                    : $"#[cfg(any(feature = \"bebop-owned-all\", feature = \"{Schema.Namespace.ToKebabCase()}-owned\"))]")
+                    : $"#[cfg(any(feature = \"bebop-owned-all\", feature = \"{MakeFeatureIdent(Schema.Namespace)}-owned\"))]")
                 .CodeBlock("pub mod owned", _tab, () =>
                 {
                     mainBuilder.Append(ownedBuilder.ToString());
@@ -136,13 +163,13 @@ namespace Core.Generators.Rust
 
         #region definition_writers
 
-        private void WriteStandardImportsForModule(IndentedStringBuilder builder) =>
-            builder
-                .AppendLine("#![allow(warnings)]")
+        private void WriteStandardImportsForModule(IndentedStringBuilder bldr) =>
+            bldr.AppendLine("#![allow(warnings)]")
                 .AppendLine()
                 .AppendLine("use ::std::io::Write as _;")
                 .AppendLine("use ::core::convert::TryInto as _;") // we can remove this for Rust 2021
                 .AppendLine("use ::bebop::FixedSized as _;")
+                .AppendLine("use ::bebop::Record as _;")
                 .AppendLine();
 
         private void WriteConstDefinition(IndentedStringBuilder builder, ConstDefinition d, CodeRegion region)
@@ -151,6 +178,7 @@ namespace Core.Generators.Rust
             switch (region)
             {
                 case CodeRegion.Main:
+                    WriteDocumentation(builder, d.Documentation);
                     builder.AppendLine(
                         $"pub const {ident}: {TypeName(d.Value.Type, OwnershipType.Constant)} = {EmitLiteral(d.Value)};");
                     break;
@@ -174,23 +202,25 @@ namespace Core.Generators.Rust
                 return;
             }
 
+            WriteDocumentation(builder, d.Documentation);
+
             if (d.IsBitFlags)
             {
                 builder
                     .CodeBlock("::bebop::bitflags!", _tab, () =>
-                {
-                    builder
-                        .AppendLine("#[repr(transparent)]")
-                        .CodeBlock($"pub struct {name}: {type}", _tab, () =>
                     {
-                        foreach (var m in d.Members)
-                        {
-                            WriteDocumentation(builder, m.Documentation);
-                            WriteDeprecation(builder, m.DeprecatedAttribute);
-                            builder.AppendLine($"const {MakeConstIdent(m.Name)} = {m.ConstantValue};");
-                        }
-                    });
-                }).AppendLine();
+                        builder
+                            .AppendLine("#[repr(transparent)]")
+                            .CodeBlock($"pub struct {name}: {type}", _tab, () =>
+                            {
+                                foreach (var m in d.Members)
+                                {
+                                    WriteDocumentation(builder, m.Documentation);
+                                    WriteDeprecation(builder, m.DeprecatedAttribute);
+                                    builder.AppendLine($"const {MakeConstIdent(m.Name)} = {m.ConstantValue};");
+                                }
+                            });
+                    }).AppendLine();
             }
             else
             {
@@ -223,7 +253,7 @@ namespace Core.Generators.Rust
                                 }
 
                                 builder.AppendLine(
-                                    "d => Err(::bebop::DeserializeError::InvalidEnumDiscriminator(d.into())),");
+                                    "d => Err(::bebop::DeserializeError::InvalidEnumDiscriminator(d as i128)),");
                             });
                         });
                 }).AppendLine();
@@ -280,7 +310,7 @@ namespace Core.Generators.Rust
             }).AppendLine();
         }
 
-        private void WriteStructDefinition(IndentedStringBuilder builder, StructDefinition d, CodeRegion region)
+        private void WriteStructDefinition(IndentedStringBuilder bldr, StructDefinition d, CodeRegion region)
         {
             var needsLifetime = NeedsLifetime(d);
             var ident = MakeDefIdent(d.Name);
@@ -288,9 +318,11 @@ namespace Core.Generators.Rust
 
             if (!needsLifetime && region == CodeRegion.Owned)
             {
-                builder.AppendLine($"pub use super::{ident};");
+                bldr.AppendLine($"pub use super::{ident};");
                 return;
             }
+
+            WriteDocumentation(bldr, d.Documentation);
 
             var ot = region switch
             {
@@ -300,107 +332,168 @@ namespace Core.Generators.Rust
             };
 
             // if it is the owned region, skip lifetime
+            var lifetime = needsLifetime && region != CodeRegion.Owned ? "'raw" : "";
             var name = needsLifetime && region != CodeRegion.Owned ? $"{ident}<'raw>" : ident;
 
-            builder.Append("#[derive(Clone, Debug, PartialEq");
+            bldr.Append("#[derive(Clone, Debug, PartialEq");
             if (isFixedSize)
             {
                 // this will allow us access it in a raw buffer without copying it.
-                builder
-                    .AppendEnd(", Copy)]")
+                bldr.AppendEnd(", Copy)]")
                     .AppendLine("#[repr(packed)]");
             }
             else
             {
-                builder.AppendEnd(")]");
+                bldr.AppendEnd(")]");
             }
 
-            builder
-                .CodeBlock($"pub struct {name}", _tab, () => WriteStructDefinitionAttrs(builder, d, ot))
+            bldr.CodeBlock($"pub struct {name}", _tab, () => WriteStructDefinitionAttrs(bldr, d, ot))
                 .AppendLine();
 
             if (isFixedSize)
             {
-                builder
-                    .AppendLine($"impl ::bebop::FixedSized for {name} {{}}")
+                bldr.AppendLine($"impl ::bebop::FixedSized for {name} {{}}")
                     .AppendLine();
             }
 
             if (region == CodeRegion.Owned)
             {
-                builder.CodeBlock($"impl<'raw> ::core::convert::From<super::{ident}<'raw>> for {ident}", _tab, () =>
+                bldr.CodeBlock($"impl<'raw> ::core::convert::From<super::{ident}<'raw>> for {ident}", _tab, () =>
                 {
-                    builder.CodeBlock($"fn from(value: super::{ident}) -> Self", _tab, () =>
+                    bldr.CodeBlock($"fn from(value: super::{ident}) -> Self", _tab, () =>
                     {
-                        WriteFromBorrowedToOwnedForFields(builder, d.Fields);
+                        WriteFromBorrowedToOwnedForFields(bldr, d.Fields);
                     });
                 }).AppendLine();
             }
 
-            builder
-                .CodeBlock($"impl<'raw> ::bebop::SubRecord<'raw> for {name}", _tab, () =>
+            if (d.Fields.Count <= 4)
+            {
+                // impl From as long as it has no more than 4 values. Over that and people really should use the names
+                // to prevent mistakes.
+                var typeName = d.Fields.Count switch
                 {
-                    if (isFixedSize)
-                    {
-                        builder
-                            .AppendLine("const MIN_SERIALIZED_SIZE: usize = Self::SERIALIZED_SIZE;")
-                            .AppendLine("const EXACT_SERIALIZED_SIZE: Option<usize> = Some(Self::SERIALIZED_SIZE);")
-                            .AppendLine();
-                    }
-                    else
-                    {
-                        // sum size of all fields at compile time
-                        builder.AppendLine("const MIN_SERIALIZED_SIZE: usize =");
-                        var parts = d.Fields.Select(f =>
-                            $"<{TypeName(f.Type, ot)}>::MIN_SERIALIZED_SIZE");
-                        builder.Indent(_tab).Append(string.Join(" +\n", parts)).AppendEnd(";").Dedent(_tab)
-                            .AppendLine();
-                    }
+                    0 => "()",
+                    1 => TypeName(d.Fields.First().Type, ot),
+                    _ => $"({string.Join(", ", d.Fields.Select(f => TypeName(f.Type, ot)))})",
+                };
 
-                    builder.AppendLine("#[inline]").CodeBlock("fn serialized_size(&self) -> usize", _tab, () =>
+                bldr.CodeBlock($"impl<{lifetime}> ::core::convert::From<{typeName}> for {name}", _tab, () =>
+                {
+                    bldr.CodeBlock($"fn from(value: {typeName}) -> Self", _tab, () =>
+                    {
+                        bldr.AppendLine(d.Fields.Count switch
+                        {
+                            0 => "Self {}",
+                            1 => $"Self {{ {MakeAttrIdent(d.Fields.First().Name)}: value }}",
+                            _ =>
+                                $"Self {{ {string.Join(", ", d.Fields.Enumerated().Select(itr => $"{MakeAttrIdent(itr.value.Name)}: value.{itr.index}"))} }}"
+                        });
+                    });
+                }).AppendLine();
+            }
+
+            if (d.Fields.Count <= 1)
+            {
+                // impl reverse From
+                var typeName = d.Fields.Count == 0 ? "()" : TypeName(d.Fields.First().Type, ot);
+
+                bldr.CodeBlock($"impl<{lifetime}> ::core::convert::From<{name}> for {typeName}", _tab, () =>
+                {
+                    bldr.CodeBlock($"fn from(value: {name}) -> Self", _tab, () =>
+                    {
+                        bldr.AppendLine(d.Fields.Count == 0 ? "()" : $"value.{MakeAttrIdent(d.Fields.First().Name)}");
+                    });
+                }).AppendLine();
+            }
+
+            if (d.Fields.Count == 1)
+            {
+                // impl Deref for structs with only one value
+                var attrName = MakeAttrIdent(d.Fields.First().Name);
+                bldr.CodeBlock($"impl<{lifetime}> ::core::ops::Deref for {name}", _tab, () =>
+                    {
+                        bldr.AppendLine($"type Target = {TypeName(d.Fields.First().Type, ot)};")
+                            .AppendLine()
+                            .CodeBlock("fn deref(&self) -> &Self::Target", _tab, () =>
+                            {
+                                bldr.AppendLine($"&self.{attrName}");
+                            });
+                    }).AppendLine()
+                    .CodeBlock($"impl<{lifetime}> ::core::ops::DerefMut for {name}", _tab, () =>
+                    {
+                        bldr.CodeBlock("fn deref_mut(&mut self) -> &mut Self::Target", _tab, () =>
+                        {
+                            bldr.AppendLine($"&mut self.{attrName}");
+                        });
+                    }).AppendLine();
+            }
+
+            bldr.CodeBlock($"impl<'raw> ::bebop::SubRecord<'raw> for {name}", _tab, () =>
+            {
+                if (isFixedSize)
+                {
+                    bldr
+                        .AppendLine("const MIN_SERIALIZED_SIZE: usize = Self::SERIALIZED_SIZE;")
+                        .AppendLine("const EXACT_SERIALIZED_SIZE: Option<usize> = Some(Self::SERIALIZED_SIZE);")
+                        .AppendLine();
+                }
+                else
+                {
+                    // sum size of all fields at compile time
+                    bldr.AppendLine("const MIN_SERIALIZED_SIZE: usize =");
+                    var parts = d.Fields.Select(f =>
+                        $"<{TypeName(f.Type, ot)}>::MIN_SERIALIZED_SIZE");
+                    bldr.Indent(_tab).Append(string.Join(" +\n", parts)).AppendEnd(";").Dedent(_tab)
+                        .AppendLine();
+                }
+
+                bldr.AppendLine("#[inline]").CodeBlock("fn serialized_size(&self) -> usize", _tab, () =>
                     {
                         if (isFixedSize)
                         {
-                            builder.AppendLine("Self::SERIALIZED_SIZE");
+                            bldr.AppendLine("Self::SERIALIZED_SIZE");
                         }
                         else
                         {
-                            builder.AppendLine(string.Join(" +\n",
+                            bldr.AppendLine(string.Join(" +\n",
                                 d.Fields.Select(
                                     (f) => $"self.{MakeAttrIdent(f.Name)}.serialized_size()"
                                 )));
                         }
-                    }).AppendLine();
+                    })
+                    .AppendLine();
 
-                    builder.CodeBlock(
+                bldr.CodeBlock(
                         "fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
                         _tab, () =>
                         {
                             if (d.Fields.Count == 0)
                             {
-                                builder.AppendLine("Ok(0)");
+                                bldr.AppendLine("Ok(0)");
                             }
                             else
                             {
                                 // just serialize all fields and sum their bytes written
-                                builder.CodeBlock("Ok(", _tab, () =>
+                                bldr.CodeBlock("Ok(", _tab, () =>
                                 {
-                                    builder.AppendLine(string.Join(" +\n",
+                                    bldr.AppendLine(string.Join(" +\n",
                                         d.Fields.Select(
                                             (f) => $"self.{MakeAttrIdent(f.Name)}._serialize_chained(dest)?")));
                                 }, "", ")");
                             }
-                        }).AppendLine();
+                        })
+                    .AppendLine();
 
-                    builder.CodeBlock("fn _deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)>",
-                        _tab,
-                        () =>
-                        {
-                            WriteStructDeserialization(builder, d);
-                        });
-                }).AppendLine();
+                bldr.CodeBlock("fn _deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)>",
+                    _tab,
+                    () =>
+                    {
+                        WriteStructDeserialization(bldr, d);
+                    });
+            }).AppendLine();
 
-            WriteRecordImpl(builder, name, d);
+            WriteRecordImpl(bldr, name, d);
         }
 
         /// <summary>
@@ -464,6 +557,7 @@ namespace Core.Generators.Rust
 
         private void WriteMessageDefinition(IndentedStringBuilder builder, MessageDefinition d, CodeRegion region)
         {
+            WriteDocumentation(builder, d.Documentation);
             var needsLifetime = NeedsLifetime(d);
             var ident = MakeDefIdent(d.Name);
 
@@ -596,7 +690,7 @@ namespace Core.Generators.Rust
                 .AppendLine($"let len = ::bebop::read_len(&raw[i..])?{plusI} + ::bebop::LEN_SIZE;")
                 .AppendLine($"i += ::bebop::LEN_SIZE;")
                 .AppendLine()
-                .AppendLine("#[cfg(not(feature = \"unchecked\"))]")
+                .AppendLine("#[cfg(not(feature = \"bebop-unchecked\"))]")
                 .CodeBlock("if len == 0", _tab, () =>
                 {
                     builder.AppendLine("return Err(::bebop::DeserializeError::CorruptFrame);");
@@ -615,7 +709,7 @@ namespace Core.Generators.Rust
 
             builder
                 .AppendLine()
-                .AppendLine("#[cfg(not(feature = \"unchecked\"))]")
+                .AppendLine("#[cfg(not(feature = \"bebop-unchecked\"))]")
                 .AppendLine("let mut last = 0;")
                 .AppendLine();
 
@@ -624,7 +718,7 @@ namespace Core.Generators.Rust
                 builder
                     .AppendLine("let di = raw[i];")
                     .AppendLine()
-                    .AppendLine("#[cfg(not(feature = \"unchecked\"))]")
+                    .AppendLine("#[cfg(not(feature = \"bebop-unchecked\"))]")
                     .CodeBlock("if di != 0", _tab, () =>
                     {
                         builder.CodeBlock("if di < last", _tab, () =>
@@ -647,7 +741,7 @@ namespace Core.Generators.Rust
                         var fname = MakeAttrIdent(f.Name);
                         builder.CodeBlock($"{f.ConstantValue} =>", _tab, () =>
                         {
-                            builder.AppendLine("#[cfg(not(feature = \"unchecked\"))]");
+                            builder.AppendLine("#[cfg(not(feature = \"bebop-unchecked\"))]");
                             builder.CodeBlock($"if _{fname}.is_some()", _tab, () =>
                             {
                                 builder.AppendLine(
@@ -695,6 +789,8 @@ namespace Core.Generators.Rust
                 builder.AppendLine($"pub use super::{ident};");
                 return;
             }
+
+            WriteDocumentation(builder, d.Documentation);
 
             var ot = region switch
             {
@@ -914,7 +1010,7 @@ namespace Core.Generators.Rust
                                     .AppendLine($"{ident}::Unknown");
                             });
                         }, "{", "};");
-                        builder.CodeBlock("if !cfg!(feature = \"unchecked\") && i != len", _tab,
+                        builder.CodeBlock("if !cfg!(feature = \"bebop-unchecked\") && i != len", _tab,
                             () =>
                             {
                                 builder
@@ -955,6 +1051,221 @@ namespace Core.Generators.Rust
                     throw new ArgumentOutOfRangeException(b.Definition.ToString());
                 }
             });
+        }
+
+        #endregion
+
+        #region rpc
+
+        private void WriteServiceDefinition(IndentedStringBuilder bldr, ServiceDefinition d)
+        {
+            var ident = MakeDefIdent(d.Name);
+            var requestsFeat = $"#[cfg(feature = \"{MakeFeatureIdent(ident)}-requests\")]";
+            var handlersFeat = $"#[cfg(feature = \"{MakeFeatureIdent(ident)}-handlers\")]";
+            var serviceBranches = d.Branches.OrderBy(d => d.Discriminator).ToImmutableArray();
+
+            WriteDocumentation(bldr, d.Documentation);
+            bldr.AppendLine(handlersFeat)
+                .CodeBlock($"pub trait {ident}HandlersDef: ::core::marker::Send + ::core::marker::Sync", _tab, () =>
+                {
+                    bldr.CodeBlock(
+                        $"fn service_name<'f>(&self, handle: ::bebop::rpc::TypedRequestHandle<'f, super::{ident}ServiceNameReturn<'f>>) -> {DynFutType("()")}",
+                        _tab,
+                        () =>
+                        {
+                            bldr.AppendLine("use ::bebop::rpc::CallDetails as _;")
+                                .AppendLine("let call_id = handle.call_id().get();")
+                                .AppendLine(
+                                    $"::bebop::dyn_fut! {{ ::bebop::handle_respond_error!(handle.send_ok_response(&super::{ident}ServiceNameReturn {{ value: \"{ident}\" }}), \"{ident}\", \"service_name\", call_id); }}");
+                        });
+                    foreach (var (b, i) in d.Branches.OrderBy(d => d.Discriminator).Skip(1).Enumerated())
+                    {
+                        var fn = b.Definition;
+                        WriteDocumentation(bldr, fn.Documentation);
+                        WriteDeprecation(bldr, fn.Attributes);
+                        var fname = MakeFnIdent(fn.Name);
+                        var args = fn.ArgumentStruct.Fields.Select(f =>
+                            (MakeFnArgIdent(f.Name), TypeName(f.Type, OwnershipType.Owned))).ToArray();
+                        var retType = MakeDefIdent(fn.ReturnStruct.Name);
+                        var lt = NeedsLifetime(fn.ReturnStruct) ? "<'f>" : "";
+                        var argsStr = string.Join(", ",
+                            new[] { "&self", $"_handle: ::bebop::rpc::TypedRequestHandle<'f, super::{retType}{lt}>" }
+                                .Concat(args.Select(i => $"{i.Item1}: {i.Item2}")));
+                        bldr.AppendLine($"fn {fname}<'f>({argsStr}) -> {DynFutType("()")};");
+                        if (i < d.Branches.Count - 1) bldr.AppendLine();
+                    }
+                })
+                .AppendLine()
+                .AppendLine(handlersFeat)
+                .AppendLine("#[repr(transparent)]")
+                .AppendLine($"pub struct {ident}Handlers<_Def: {ident}HandlersDef>(_Def);")
+                .AppendLine()
+                .AppendLine(handlersFeat)
+                .CodeBlock($"impl<_Def: {ident}HandlersDef> ::core::convert::From<_Def> for {ident}Handlers<_Def>",
+                    _tab, () =>
+                    {
+                        bldr.AppendLine("fn from(def: _Def) -> Self { Self(def) }");
+                    })
+                .AppendLine()
+                .AppendLine(handlersFeat)
+                .CodeBlock($"impl<_Def: {ident}HandlersDef> ::core::ops::Deref for {ident}Handlers<_Def>", _tab, () =>
+                {
+                    bldr.AppendLine("type Target = _Def;")
+                        .AppendLine()
+                        .AppendLine("fn deref(&self) -> &Self::Target { &self.0 }");
+                })
+                .AppendLine()
+                .AppendLine(handlersFeat)
+                .CodeBlock($"impl<_Def: {ident}HandlersDef> ::bebop::rpc::ServiceHandlers for {ident}Handlers<_Def>",
+                    _tab, () =>
+                    {
+                        bldr.AppendLine($"fn _name(&self) -> &'static str {{ \"{ident}\" }}")
+                            .AppendLine()
+                            .CodeBlock(
+                                $"fn _recv_call<'f>(&self, datagram: &::bebop::rpc::Datagram, handle: ::bebop::rpc::RequestHandle) -> {DynFutType("()")}",
+                                _tab, () =>
+                                {
+                                    bldr.AppendLine("use ::bebop::rpc::CallDetails as _;")
+                                        .CodeBlock(
+                                            "if let ::bebop::rpc::Datagram::RpcRequestDatagram { header: req_header, opcode, data } = datagram",
+                                            _tab, () =>
+                                            {
+                                                bldr.AppendLine("let call_id = req_header.id;")
+                                                    .AppendLine("let opcode = *opcode;")
+                                                    .CodeBlock("match opcode", _tab, () =>
+                                                    {
+                                                        foreach (var b in serviceBranches)
+                                                        {
+                                                            bldr.CodeBlock($"{b.Discriminator} =>", _tab,
+                                                                () =>
+                                                                {
+                                                                    WriteRpcHandlerFnCall(bldr, b.Definition);
+                                                                });
+                                                        }
+
+                                                        bldr.AppendLine(
+                                                            $"_ => ::bebop::dyn_fut! {{ ::bebop::handle_respond_error!(handle.send_unknown_call_response(), \"{ident}\", \"UNKNOWN\", call_id); }},");
+                                                    });
+                                            }, "{",
+                                            "} else { unreachable!(\"`_recv_call` Should only ever be provided with Requests.\") }");
+                                });
+                    }).AppendLine();
+
+            WriteDocumentation(bldr, d.Documentation);
+            bldr.AppendLine(requestsFeat)
+                .AppendLine("#[derive(Clone)]")
+                .AppendLine(
+                    $"pub struct {ident}Requests(::std::sync::Weak<::bebop::rpc::RouterContext>);")
+                .AppendLine()
+                .AppendLine(requestsFeat)
+                .CodeBlock($"impl {ident}Requests", _tab, () =>
+                {
+                    foreach (var b in serviceBranches)
+                    {
+                        WriteRpcRequesterFn(bldr, b.Discriminator, b.Definition);
+                    }
+                })
+                .AppendLine()
+                .AppendLine(requestsFeat)
+                .CodeBlock($"impl ::bebop::rpc::ServiceRequests for {ident}Requests", _tab,
+                    () =>
+                    {
+                        bldr.AppendLine($"const NAME: &'static str = \"{ident}\";")
+                            .AppendLine()
+                            .CodeBlock("fn new(ctx: ::std::sync::Weak<::bebop::rpc::RouterContext>) -> Self",
+                                _tab,
+                                () =>
+                                {
+                                    bldr.AppendLine("Self(ctx)");
+                                });
+                    });
+        }
+
+        /// <summary>
+        /// Write the code which unpacks the argument struct, checks the function signature, calls the appropriate
+        /// function, and then packs the return value and submits it to `tx`.
+        /// </summary>
+        private static void WriteRpcHandlerFnCall(IndentedStringBuilder bldr, FunctionDefinition fnDef)
+        {
+            var serviceName = MakeDefIdent(fnDef.Parent!.Name);
+            var fnName = MakeFnIdent(fnDef.Name);
+            var sigName = MakeConstIdent(fnDef.Signature.Name);
+            var argsName = MakeDefIdent(fnDef.ArgumentStruct.Name);
+            var retName = MakeDefIdent(fnDef.ReturnStruct.Name);
+
+            bldr.CodeBlock($"if req_header.signature != {sigName}", _tab, () =>
+            {
+                bldr.AppendLine(
+                    $"return ::bebop::dyn_fut! {{ ::bebop::handle_respond_error!(handle.send_invalid_sig_response({sigName}), \"{serviceName}\", \"{fnName}\", call_id); }}");
+            });
+
+            if (fnDef.ArgumentStruct.Fields.Count > 0)
+            {
+                bldr.CodeBlock($"let args = match {argsName}::deserialize(data)", _tab, () =>
+                {
+                    bldr.AppendLine("Ok(args) => args,")
+                        .AppendLine(
+                            $"Err(err) => return ::bebop::dyn_fut! {{ ::bebop::handle_respond_error!(handle.send_decode_error_response(Some(&err.to_string())), \"{serviceName}\", \"{fnName}\", call_id) }}");
+                }, "{", "};");
+            }
+
+            bldr.Append($"self.{fnName}(")
+                .AppendMid(string.Join(", ",
+                    new[] { "handle.into()" }.Concat(
+                        fnDef.ArgumentStruct.Fields.Select(f => $"args.{MakeAttrIdent(f.Name)}"))))
+                .AppendEnd(")");
+        }
+
+        private void WriteRpcRequesterFn(IndentedStringBuilder bldr, ushort opcode, FunctionDefinition fnDef)
+        {
+            var fnName = MakeFnIdent(fnDef.Name);
+            var sigName = MakeConstIdent(fnDef.Signature.Name);
+            var argName = MakeDefIdent(fnDef.ArgumentStruct.Name);
+            var retName = MakeDefIdent(fnDef.ReturnStruct.Name);
+            const string timeoutArg = "timeout: ::core::option::Option<::core::time::Duration>";
+
+            var args = fnDef.ArgumentStruct.Fields.Select(i =>
+                (MakeAttrIdent(i.Name), TypeName(i.Type, OwnershipType.Borrowed, "'_", "super::"))).ToImmutableArray();
+            var argString = string.Join(", ",
+                new[] { "&self", timeoutArg }.Concat(args.Select(i =>
+                    $"{i.Item1}: {i.Item2}")));
+            var retType = fnDef.ReturnStruct.Fields.Count > 0
+                ? TypeName(fnDef.ReturnStruct.Fields.First().Type, OwnershipType.Owned)
+                : "()";
+
+            WriteDocumentation(bldr, fnDef.Documentation);
+            WriteDeprecation(bldr, fnDef.Attributes);
+            bldr.AppendLine("#[inline]")
+                .CodeBlock($"pub async fn {fnName}({argString}) -> ::bebop::rpc::RemoteRpcResponse<{retType}>", _tab,
+                    () =>
+                    {
+                        var argsString = string.Join(", ", args.Select(i => i.Item1));
+                        bldr.AppendLine($"self.{fnName}_raw(timeout, &super::{argName} {{ {argsString} }})?")
+                            .Append(".await")
+                            .AppendEnd(fnDef.ReturnStruct.Fields.Count > 0 ? ".map(|v| v.value)" : "?; Ok(())");
+                    })
+                .AppendLine();
+
+            WriteDocumentation(bldr, fnDef.Documentation);
+            WriteDeprecation(bldr, fnDef.Attributes);
+            bldr.CodeBlock(
+                $"pub fn {fnName}_raw<'data>(&self, {timeoutArg}, payload: &'data super::{argName}) -> ::bebop::rpc::TransportResult<impl 'data + Sized + ::core::future::Future<Output = ::bebop::rpc::RemoteRpcResponse<{retName}>>>",
+                _tab,
+                () =>
+                {
+                    bldr.AppendLine(
+                            "let zelf = self.0.upgrade().ok_or(::bebop::rpc::TransportError::NotConnected)?;")
+                        .CodeBlock($"let fut = zelf.request::<_, {retName}>", _tab, () =>
+                        {
+                            bldr.AppendLine($"{opcode}, ")
+                                .AppendLine("timeout,")
+                                .AppendLine($"{sigName},")
+                                .AppendLine("payload,");
+                        }, "(", ");")
+                        .AppendLine(fnDef.ReturnStruct.Fields.Count > 0
+                            ? "Ok(async move { fut.await.map(::core::convert::Into::into) })"
+                            : "Ok(fut)");
+                }).AppendLine();
         }
 
         #endregion
@@ -1067,6 +1378,9 @@ namespace Core.Generators.Rust
             }
         }
 
+        private string DynFutType(string output) => DynFutType("'f", output);
+        private string DynFutType(string lifetime, string output) => $"::bebop::rpc::DynFuture<{lifetime}, {output}>";
+
         #endregion
 
         #region types_and_identifiers
@@ -1097,13 +1411,19 @@ namespace Core.Generators.Rust
                 : reCased;
         }
 
+        private static string MakeFnIdent(string ident) => MakeAttrIdent(ident);
+
+        private static string MakeFnArgIdent(string ident) => MakeAttrIdent(ident);
+
+        private static string MakeFeatureIdent(string ident) => ident.ToKebabCase();
+
         /// <summary>
         /// Generate a Rust type name for the given <see cref="TypeBase"/>.
         /// </summary>
         /// <param name="type">The field type to generate code for.</param>
         /// <param name="ot">Ownership type, e.g. <c>&'raw str</c> versus <c>String</c>.</param>
         /// <returns>The Rust type name.</returns>
-        private string TypeName(TypeBase type, OwnershipType ot)
+        private string TypeName(TypeBase type, OwnershipType ot, string lt = "'raw", string definedTypePrefix = "")
         {
             switch (type)
             {
@@ -1122,9 +1442,9 @@ namespace Core.Generators.Rust
                         BaseType.Float64 => "f64",
                         BaseType.String => ot switch
                         {
-                            OwnershipType.Borrowed => "&'raw str",
+                            OwnershipType.Borrowed => $"&{lt} str",
                             OwnershipType.Constant => "&str",
-                            OwnershipType.Owned => "String",
+                            OwnershipType.Owned => "::std::string::String",
                             _ => throw new ArgumentOutOfRangeException(nameof(ot))
                         },
                         BaseType.Guid => "::bebop::Guid",
@@ -1135,8 +1455,9 @@ namespace Core.Generators.Rust
                     if (at.MemberType is ScalarType mst && ot is OwnershipType.Borrowed or OwnershipType.Constant)
                     {
                         // TODO: expand this to make better use of the slice wrapper
-                        var lifetime = ot is OwnershipType.Borrowed ? "'raw" : "'static";
-                        var wrappedSlice = $"::bebop::SliceWrapper<{lifetime}, {TypeName(at.MemberType, ot)}>";
+                        var lifetime = ot is OwnershipType.Borrowed ? lt : "'static";
+                        var wrappedSlice =
+                            $"::bebop::SliceWrapper<{lifetime}, {TypeName(at.MemberType, ot, lt, definedTypePrefix)}>";
                         return mst.BaseType switch
                         {
                             BaseType.Bool => wrappedSlice,
@@ -1150,7 +1471,7 @@ namespace Core.Generators.Rust
                             BaseType.Float32 => wrappedSlice,
                             BaseType.Float64 => wrappedSlice,
                             BaseType.String when ot is OwnershipType.Borrowed =>
-                                $"::std::vec::Vec<{TypeName(at.MemberType, ot)}>",
+                                $"::std::vec::Vec<{TypeName(at.MemberType, ot, lt, definedTypePrefix)}>",
                             BaseType.String => wrappedSlice,
                             // this one does not care what endian the system is
                             BaseType.Guid => wrappedSlice, //$"&{lifetime} [::bebop::Guid]",
@@ -1162,26 +1483,28 @@ namespace Core.Generators.Rust
                              at.MemberType is DefinedType mdt &&
                              ((Schema.Definitions[mdt.Name] is StructDefinition msd &&
                                msd.IsFixedSize(Schema)) ||
-                              (Schema.Definitions[mdt.Name] is EnumDefinition)))
+                              Schema.Definitions[mdt.Name] is EnumDefinition))
                     {
                         // extra special case where we have an array of primitive-like structs
-                        var lifetime = ot is OwnershipType.Borrowed ? "'raw" : "'static";
+                        var lifetime = ot is OwnershipType.Borrowed ? lt : "'static";
                         return
-                            $"::bebop::SliceWrapper<{lifetime}, {TypeName(at.MemberType, ot)}>";
+                            $"::bebop::SliceWrapper<{lifetime}, {TypeName(at.MemberType, ot, lt, definedTypePrefix)}>";
                     }
                     else
                     {
-                        return $"::std::vec::Vec<{TypeName(at.MemberType, ot)}>";
+                        return $"::std::vec::Vec<{TypeName(at.MemberType, ot, lt, definedTypePrefix)}>";
                     }
                 case MapType mt:
-                    return $"::std::collections::HashMap<{TypeName(mt.KeyType, ot)}, {TypeName(mt.ValueType, ot)}>";
+                    return
+                        $"::std::collections::HashMap<{TypeName(mt.KeyType, ot, lt, definedTypePrefix)}, {TypeName(mt.ValueType, ot, lt, definedTypePrefix)}>";
                 case DefinedType dt:
+                    var dtName = MakeDefIdent(dt.Name);
                     return ot switch
                     {
-                        OwnershipType.Borrowed => NeedsLifetime(Schema.Definitions[dt.Name])
-                            ? $"{dt.Name}<'raw>"
-                            : dt.Name,
-                        OwnershipType.Owned => dt.Name,
+                        OwnershipType.Borrowed => NeedsLifetime(Schema.Definitions[dt.Name], ot)
+                            ? $"{definedTypePrefix}{dtName}<{lt}>"
+                            : $"{definedTypePrefix}{dtName}",
+                        OwnershipType.Owned => $"{definedTypePrefix}{dtName}",
                         OwnershipType.Constant => throw new NotSupportedException(
                             "Cannot have a const defined type"),
                         _ => throw new ArgumentOutOfRangeException(nameof(ot), ot, null)
@@ -1216,6 +1539,11 @@ namespace Core.Generators.Rust
 
         private bool NeedsLifetime(Definition d, OwnershipType ot = OwnershipType.Borrowed)
         {
+            if (ot == OwnershipType.Owned)
+            {
+                return false;
+            }
+
             if (_needsLifetime.ContainsKey(d.Name))
             {
                 return _needsLifetime[d.Name];
