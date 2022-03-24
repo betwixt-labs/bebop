@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Reflection;
 
 namespace Core.Schemas
@@ -18,6 +19,11 @@ namespace Core.Schemas
             using (var rsrcStream =
                    asm.GetManifestResourceStream("Core.Schemas.RpcDatagram.bop"))
             {
+                if (rsrcStream is null)
+                {
+                    throw new Exception("Could not find RpcDatagram schema which should be embedded in the binary");
+                }
+
                 using (var sRdr = new StreamReader(rsrcStream))
                 {
                     RpcDatagram = sRdr.ReadToEnd();
