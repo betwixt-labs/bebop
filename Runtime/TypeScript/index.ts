@@ -11,6 +11,8 @@ const asciiToHex = [
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
 ];
 
+const ticksBetweenEpochs = BigInt("621355968000000000");
+const dateMask = BigInt("0x3fffffffffffffff");
 const emptyByteArray = new Uint8Array(0);
 const emptyString = "";
 const byteToHex: string[] = []; // A lookup table: ['00', '01', ..., 'ff']
@@ -329,28 +331,15 @@ export class BebopView {
     // 0x40000000 is a mask to set the "Kind" bits to "DateTimeKind.Utc".
 
     readDate(): Date {
-        const low = this.readUint32();
-        const high = this.readUint32();
-        const highn = high & 0x3fffffff;
-        const msSince1AD = 429496.7296 * highn + 0.0001 * low;
-        let date = new Date(msSince1AD - 62135596800000);
-        date["__bebopLow"] = low;
-        date["__bebopHigh"] = high;
-        return date;
+        const ticks = this.readUint64() & dateMask;
+        const ms = (ticks - ticksBetweenEpochs) / BigInt("10000");
+        return new Date(Number(ms));
     }
 
     writeDate(date: Date) {
-        if ("__bebopLow" in date && "__bebopHigh" in date) {
-            this.writeUint32(date["__bebopLow"]);
-            this.writeUint32(date["__bebopHigh"]);
-            return;
-        }
-        const ms = date.getTime();
-        const msSince1AD = ms + 62135596800000;
-        const low = msSince1AD % 429496.7296 * 10000 | 0;
-        const high = msSince1AD / 429496.7296 | 0x40000000;
-        this.writeUint32(low);
-        this.writeUint32(high);
+        const ms = BigInt(date.getTime());
+        const ticks = ms * BigInt("10000") + ticksBetweenEpochs;
+        this.writeUint64(ticks & dateMask);
     }
 
     writeEnum(value: any): void {
