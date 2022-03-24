@@ -330,12 +330,21 @@ export class BebopView {
 
     readDate(): Date {
         const low = this.readUint32();
-        const high = this.readUint32() & 0x3fffffff;
-        const msSince1AD = 429496.7296 * high + 0.0001 * low;
-        return new Date(msSince1AD - 62135596800000);
+        const high = this.readUint32();
+        const highn = high & 0x3fffffff;
+        const msSince1AD = 429496.7296 * highn + 0.0001 * low;
+        let date = new Date(msSince1AD - 62135596800000);
+        date["__bebopLow"] = low;
+        date["__bebopHigh"] = high;
+        return date;
     }
 
     writeDate(date: Date) {
+        if ("__bebopLow" in date && "__bebopHigh" in date) {
+            this.writeUint32(date["__bebopLow"]);
+            this.writeUint32(date["__bebopHigh"]);
+            return;
+        }
         const ms = date.getTime();
         const msSince1AD = ms + 62135596800000;
         const low = msSince1AD % 429496.7296 * 10000 | 0;
