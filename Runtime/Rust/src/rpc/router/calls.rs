@@ -232,7 +232,7 @@ impl<R: OwnedRecord + Send + Sync> ResponseHandle for ResponseHandleImpl<R> {
         let res = value.and_then(|v| Ok(R::deserialize(v)?));
         if let Some(tx) = self.tx.take() {
             if tx.send(res).is_err() {
-                // TODO: log this? Receiver stopped listening.
+                log::debug!("Receiver stopped listening for call ({})", self.details.call_id)
             }
         }
     }

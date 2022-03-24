@@ -95,6 +95,7 @@ dependencies = [
  "bebop-handler-macro",
  "bebop-tools",
  "bitflags",
+ "log",
  "parking_lot 0.12.0",
  "static_assertions",
  "tokio",

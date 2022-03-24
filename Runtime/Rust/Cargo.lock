@@ -28,6 +28,7 @@ dependencies = [
  "bitflags",
  "criterion",
  "itertools",
+ "log",
  "parking_lot",
  "static_assertions",
  "tokio",
