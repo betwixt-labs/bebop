@@ -1,0 +1,71 @@
+/* A fixed-sized struct */
+struct ObjA {
+    int32 a;
+    int16 b;
+    date c;
+    guid d;
+}
+
+message ObjB {
+    1 -> int32 a;
+    2 -> int16 b;
+    3 -> date c;
+    4 -> guid d;
+    5 -> string e;
+}
+
+/* A type which contains raw data with some header info */
+struct ObjC {
+    ObjA a;
+    string b;
+    float32[] c;
+}
+
+service S {
+    0x1000 -> void ping();
+
+    0x2000 -> void submitA(ObjA a);
+    0x2001 -> void submitB(ObjB b);
+    0x2002 -> void submitAB(ObjA a, ObjB b, bool c, string d);
+    0x2003 -> void submitC(int32 a, ObjC b);
+
+    0x3001 -> ObjA respondA();
+    0x3002 -> ObjB respondB();
+    0x4003 -> ObjC respondC();
+}
+
+
+///* Clone of the RPC request header */
+//struct HandrolledRequestHeader {
+//    uint16 id;
+//    uint16 timeout;
+//    uint32 signature;
+//}
+//
+///* Clone of the RPC response header */
+//struct HandrolledResponseHeader {
+//    uint16 id;
+//}
+//
+//union HandrolledDatagram {
+//  1 -> struct PingRequest {
+//    HandrolledRequestHeader header;
+//  }
+//  2 -> struct PingResponse {
+//    HandrolledResponseHeader header;
+//  }
+//  0xfc -> struct HandrolledResponseCallNotSupported {
+//      HandrolledResponseHeader header;
+//  }
+//  0xfd -> struct HandrolledResponseUnknownCall {
+//      HandrolledResponseHeader header;
+//  }
+//  0xfe -> struct HandrolledResponseInvalidSignature {
+//      HandrolledResponseHeader header;
+//      uint32 signature;
+//  }
+//  0xff -> struct HandrolledDecodeError {
+//      HandrolledResponseHeader header;
+//      string info;
+//  }
+//}

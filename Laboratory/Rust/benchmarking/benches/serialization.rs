@@ -1,5 +1,5 @@
 use bebop::{Record, SubRecord};
-use criterion::{black_box, criterion_group, Criterion, Throughput};
+use criterion::{black_box, Criterion, Throughput};
 use protobuf::Message;
 
 use bebops::jazz as bb;
@@ -9,7 +9,7 @@ use protos::jazz as pr;
 
 const ALLOC_SIZE: usize = 1024 * 1024 * 4;
 
-fn library(c: &mut Criterion) {
+pub fn run(c: &mut Criterion) {
     // structuring
     let mut structuring_group = c.benchmark_group("Jazz Library Structuring");
     structuring_group
@@ -144,5 +144,3 @@ fn library(c: &mut Criterion) {
         })
     });
 }
-
-criterion_group!(benches, library);

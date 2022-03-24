@@ -20,12 +20,21 @@ codegen-units = 1
 bebop = { path = "../../../Runtime/Rust" }
 protobuf = "2.24.1"
 serde = { version = "1.0.127", features = ["derive"] }
-pprof = { version = "0.5", features = ["criterion", "flamegraph"], optional = true}
+pprof = { version = "0.5", features = ["criterion", "flamegraph"], optional = true }
 criterion = "0.3"
 serde_json = "1.0.66"
 rmp-serde = "0.15.5"
 bincode = "1.3.3"
+tokio = { version = "1.17.0", features = ["full"] }
+parking_lot = { version = "0.12.0" }
 
 [build-dependencies]
-bebop-tools = { path = "../../../Tools/cargo", default-features = false }
+bebop-tools = { path = "../../../Tools/cargo", default-features = false, features = ["format"] }
 protobuf-codegen-pure = "2.24.1"
+
+[features]
+default = ["rpc"]
+rpc = ["S-handlers", "S-requests"]
+S-handlers = ["bebop-owned-all"]
+S-requests = ["bebop-owned-all"]
+bebop-owned-all = []

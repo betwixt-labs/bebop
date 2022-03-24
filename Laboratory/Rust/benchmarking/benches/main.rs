@@ -1,4 +1,10 @@
-use criterion::criterion_main;
-mod jazz;
+use criterion::{criterion_main, criterion_group};
 
-criterion_main!(jazz::benches);
+mod serialization;
+mod rpc;
+
+// criterion_group!(serialization, serialization::run);
+criterion_group!(rpc, rpc::run);
+
+// criterion_main!(serialization, rpc);
+criterion_main!(rpc);
