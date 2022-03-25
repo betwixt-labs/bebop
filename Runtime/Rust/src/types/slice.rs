@@ -206,7 +206,7 @@ mod test {
             Self::SERIALIZED_SIZE
         }
 
-        fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+        fn _serialize_chained<W: Write + ?Sized>(&self, dest: &mut W) -> SeResult<usize> {
             self.a._serialize_chained(dest)?;
             self.b._serialize_chained(dest)?;
             Ok(9)
