@@ -4,13 +4,13 @@ use bebop::rpc::{
 };
 use bebop::timeout;
 use benchmarking::bebops::rpc::owned::{SHandlers, SRequests};
-use benchmarking::bebops::rpc::ObjB;
 use benchmarking::rpc::Service;
-use criterion::black_box;
 use criterion::{Criterion, Throughput};
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio::{join, select};
+
+mod transport;
 
 struct ChannelTransport {
     handler: Option<TransportHandler>,
@@ -155,106 +155,7 @@ pub fn run(c: &mut Criterion) {
             .expect("Failed to create tokio runtime!"),
     );
 
-    // let's benchmark the transport to see what the theoretical max speed is on this system
-    let mut group = c.benchmark_group("transport - u32 1");
-    group.sample_size(500);
-    group.throughput(Throughput::Elements(1));
-    let rt = runtime.handle().clone();
-    let (tx, mut rx) = tokio::sync::mpsc::channel::<u32>(CHANNEL_BUFFER_SIZE);
-    group.bench_function("Tokio Channels", |b| {
-        let mut i = 0;
-        b.iter(|| {
-            rt.block_on(async {
-                let v = join!(tx.send(black_box(i)), rx.recv());
-                v.0.unwrap();
-                assert_eq!(v.1.unwrap(), i);
-            });
-            i += 1;
-        })
-    });
-    group.finish();
-
-    let mut group = c.benchmark_group("transport - u32 10000");
-    group.throughput(Throughput::Elements(10000));
-    let rt = runtime.handle().clone();
-    let (tx, mut rx) = tokio::sync::mpsc::channel::<u32>(CHANNEL_BUFFER_SIZE);
-    group.bench_function("Tokio Channels", |b| {
-        b.iter(|| {
-            rt.block_on(async {
-                // create two async tasks, one that produces, and one that consumes.
-                join!(
-                    async {
-                        for i in 0..10000 {
-                            tx.send(black_box(i)).await.unwrap();
-                        }
-                    },
-                    async {
-                        for i in 0..10000 {
-                            assert_eq!(rx.recv().await, Some(i));
-                        }
-                    }
-                );
-            });
-        })
-    });
-    group.finish();
-
-    let mut group = c.benchmark_group("transport - datagram 10000");
-    group.throughput(Throughput::Elements(10000));
-    let rt = runtime.handle().clone();
-    let (tx, mut rx) = tokio::sync::mpsc::channel::<Vec<u8>>(CHANNEL_BUFFER_SIZE);
-    group.bench_function("Tokio Channels", |b| {
-        b.iter(|| {
-            rt.block_on(async {
-                // create two async tasks, one that produces, and one that consumes.
-                join!(
-                    async {
-                        let mut buf = Vec::new();
-                        for i in 0..10000 {
-                            buf.clear();
-                            (black_box(ObjB {
-                                a: Some(2343),
-                                b: None,
-                                c: Some(bebop::Date::from_secs_since_unix_epoch(84672397865)),
-                                d: None,
-                                e: Some("Hello world!"),
-                            }))
-                            .serialize(&mut buf)
-                            .unwrap();
-
-                            let d = black_box(bebop::rpc::Datagram::RpcResponseOk {
-                                header: ResponseHeader { id: i },
-                                data: SliceWrapper::Cooked(&buf),
-                            });
-                            tx.send(d.serialize_to_vec().unwrap()).await.unwrap();
-                        }
-                    },
-                    async {
-                        for i in 0..10000 {
-                            let raw = rx.recv().await.unwrap();
-                            let datagram = Datagram::deserialize(&raw).unwrap();
-                            match datagram {
-                                Datagram::RpcResponseOk { header, data } => {
-                                    assert_eq!(header.id, i);
-                                    let o =
-                                        benchmarking::bebops::rpc::owned::ObjB::deserialize(&data)
-                                            .unwrap();
-                                    assert_eq!(o.a, Some(2343))
-                                }
-                                _ => unreachable!(),
-                            }
-                        }
-                    }
-                );
-            });
-        })
-    });
-    group.finish();
-
-    let mut group = c.benchmark_group("transport - 16");
-    group.sample_size(500);
-    group.throughput(Throughput::Elements(2));
-    group.finish();
+    transport::bench(c, &runtime);
 
     let rt = runtime.handle().clone();
     let (transport_a, transport_b) = ChannelTransport::new(rt.clone());
@@ -399,35 +300,3 @@ pub fn run(c: &mut Criterion) {
     });
     group.finish();
 }
-
-// async fn run_inner(c: &mut Criterion) {
-//     let (transport_a, transport_b) = ChannelTransport::new();
-//     let rt = tokio::runtime::Handle::current();
-//     let router_a = Router::<SRequests>::new(
-//         transport_a,
-//         SHandlers::from(Arc::new(Service)),
-//         Box::pin(move |f| {
-//             rt.spawn(f);
-//         }),
-//         None,
-//     );
-//     let rt = tokio::runtime::Handle::current();
-//     let router_b = Router::<SRequests>::new(
-//         transport_b,
-//         SHandlers::from(Arc::new(Service)),
-//         Box::pin(move |f| {
-//             rt.spawn(f);
-//         }),
-//         None,
-//     );
-//
-//     let mut group = c.benchmark_group("ping");
-//     group.throughput(Throughput::Elements(1));
-//
-//     let rt = tokio::runtime::Handle::current();
-//
-//     group.bench_function("Bebop", |b| b.iter(|| {
-//         router_a.ping(timeout!(2 s)).await.unwrap();
-//         router_b.ping(timeout!(2 s)).await.unwrap();
-//     }));
-// }
