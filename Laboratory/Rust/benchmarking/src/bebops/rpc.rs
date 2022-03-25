@@ -48,7 +48,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for ObjA {
         Self::SERIALIZED_SIZE
     }
 
-    fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+    fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
         Ok(
             self.a._serialize_chained(dest)? +
             self.b._serialize_chained(dest)? +
@@ -111,7 +111,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for ObjB<'raw> {
         self.e.as_ref().map(|v| v.serialized_size() + 1).unwrap_or(0)
     }
 
-    fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+    fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
         let size = self.serialized_size();
         ::bebop::write_len(dest, size - ::bebop::LEN_SIZE)?;
         if let Some(ref v) = self.a {
@@ -273,7 +273,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for ObjC<'raw> {
         self.c.serialized_size()
     }
 
-    fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+    fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
         Ok(
             self.a._serialize_chained(dest)? +
             self.b._serialize_chained(dest)? +
@@ -334,7 +334,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for SPingReturn {
         Self::SERIALIZED_SIZE
     }
 
-    fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+    fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
         Ok(0)
     }
 
@@ -374,7 +374,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for SPingArgs {
         Self::SERIALIZED_SIZE
     }
 
-    fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+    fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
         Ok(0)
     }
 
@@ -417,7 +417,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for SSubmitAReturn {
         Self::SERIALIZED_SIZE
     }
 
-    fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+    fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
         Ok(0)
     }
 
@@ -472,7 +472,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for SSubmitAArgs {
         Self::SERIALIZED_SIZE
     }
 
-    fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+    fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
         Ok(
             self.a._serialize_chained(dest)?
         )
@@ -528,7 +528,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for SSubmitBReturn {
         Self::SERIALIZED_SIZE
     }
 
-    fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+    fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
         Ok(0)
     }
 
@@ -580,7 +580,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for SSubmitBArgs<'raw> {
         self.b.serialized_size()
     }
 
-    fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+    fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
         Ok(
             self.b._serialize_chained(dest)?
         )
@@ -636,7 +636,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for SSubmitABReturn {
         Self::SERIALIZED_SIZE
     }
 
-    fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+    fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
         Ok(0)
     }
 
@@ -677,7 +677,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for SSubmitABArgs<'raw> {
         self.d.serialized_size()
     }
 
-    fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+    fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
         Ok(
             self.a._serialize_chained(dest)? +
             self.b._serialize_chained(dest)? +
@@ -745,7 +745,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for SSubmitCReturn {
         Self::SERIALIZED_SIZE
     }
 
-    fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+    fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
         Ok(0)
     }
 
@@ -780,7 +780,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for SSubmitCArgs<'raw> {
         self.b.serialized_size()
     }
 
-    fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+    fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
         Ok(
             self.a._serialize_chained(dest)? +
             self.b._serialize_chained(dest)?
@@ -855,7 +855,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for SRespondAReturn {
         Self::SERIALIZED_SIZE
     }
 
-    fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+    fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
         Ok(
             self.value._serialize_chained(dest)?
         )
@@ -908,7 +908,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for SRespondAArgs {
         Self::SERIALIZED_SIZE
     }
 
-    fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+    fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
         Ok(0)
     }
 
@@ -963,7 +963,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for SRespondBReturn<'raw> {
         self.value.serialized_size()
     }
 
-    fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+    fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
         Ok(
             self.value._serialize_chained(dest)?
         )
@@ -1016,7 +1016,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for SRespondBArgs {
         Self::SERIALIZED_SIZE
     }
 
-    fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+    fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
         Ok(0)
     }
 
@@ -1071,7 +1071,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for SRespondCReturn<'raw> {
         self.value.serialized_size()
     }
 
-    fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+    fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
         Ok(
             self.value._serialize_chained(dest)?
         )
@@ -1124,7 +1124,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for SRespondCArgs {
         Self::SERIALIZED_SIZE
     }
 
-    fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+    fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
         Ok(0)
     }
 
@@ -1178,7 +1178,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for SServiceNameReturn<'raw> {
         self.value.serialized_size()
     }
 
-    fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+    fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
         Ok(
             self.value._serialize_chained(dest)?
         )
@@ -1230,7 +1230,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for SServiceNameArgs {
         Self::SERIALIZED_SIZE
     }
 
-    fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+    fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
         Ok(0)
     }
 
@@ -1294,7 +1294,7 @@ pub mod owned {
             self.e.as_ref().map(|v| v.serialized_size() + 1).unwrap_or(0)
         }
 
-        fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+        fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
             let size = self.serialized_size();
             ::bebop::write_len(dest, size - ::bebop::LEN_SIZE)?;
             if let Some(ref v) = self.a {
@@ -1466,7 +1466,7 @@ pub mod owned {
             self.c.serialized_size()
         }
 
-        fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+        fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
             Ok(
                 self.a._serialize_chained(dest)? +
                 self.b._serialize_chained(dest)? +
@@ -1561,7 +1561,7 @@ pub mod owned {
             self.b.serialized_size()
         }
 
-        fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+        fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
             Ok(
                 self.b._serialize_chained(dest)?
             )
@@ -1630,7 +1630,7 @@ pub mod owned {
             self.d.serialized_size()
         }
 
-        fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+        fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
             Ok(
                 self.a._serialize_chained(dest)? +
                 self.b._serialize_chained(dest)? +
@@ -1703,7 +1703,7 @@ pub mod owned {
             self.b.serialized_size()
         }
 
-        fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+        fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
             Ok(
                 self.a._serialize_chained(dest)? +
                 self.b._serialize_chained(dest)?
@@ -1788,7 +1788,7 @@ pub mod owned {
             self.value.serialized_size()
         }
 
-        fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+        fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
             Ok(
                 self.value._serialize_chained(dest)?
             )
@@ -1865,7 +1865,7 @@ pub mod owned {
             self.value.serialized_size()
         }
 
-        fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+        fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
             Ok(
                 self.value._serialize_chained(dest)?
             )
@@ -1941,7 +1941,7 @@ pub mod owned {
             self.value.serialized_size()
         }
 
-        fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+        fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
             Ok(
                 self.value._serialize_chained(dest)?
             )
@@ -2108,7 +2108,7 @@ pub mod owned {
             .await.map(|v| v.value)
         }
 
-        pub fn service_name_raw<'data>(&self, timeout: ::core::option::Option<::core::time::Duration>, payload: &'data super::SServiceNameArgs) -> ::bebop::rpc::TransportResult<impl 'data + Sized + ::core::future::Future<Output = ::bebop::rpc::RemoteRpcResponse<SServiceNameReturn>>> {
+        pub fn service_name_raw<'data>(&self, timeout: ::core::option::Option<::core::time::Duration>, payload: &'data super::SServiceNameArgs) -> ::bebop::rpc::TransportResult<impl 'data + ::core::marker::Sized + ::core::future::Future<Output = ::bebop::rpc::RemoteRpcResponse<SServiceNameReturn>>> {
             let zelf = self.0.upgrade().ok_or(::bebop::rpc::TransportError::NotConnected)?;
             let fut = zelf.request::<_, SServiceNameReturn> (
                 0,
@@ -2125,7 +2125,7 @@ pub mod owned {
             .await?; Ok(())
         }
 
-        pub fn ping_raw<'data>(&self, timeout: ::core::option::Option<::core::time::Duration>, payload: &'data super::SPingArgs) -> ::bebop::rpc::TransportResult<impl 'data + Sized + ::core::future::Future<Output = ::bebop::rpc::RemoteRpcResponse<SPingReturn>>> {
+        pub fn ping_raw<'data>(&self, timeout: ::core::option::Option<::core::time::Duration>, payload: &'data super::SPingArgs) -> ::bebop::rpc::TransportResult<impl 'data + ::core::marker::Sized + ::core::future::Future<Output = ::bebop::rpc::RemoteRpcResponse<SPingReturn>>> {
             let zelf = self.0.upgrade().ok_or(::bebop::rpc::TransportError::NotConnected)?;
             let fut = zelf.request::<_, SPingReturn> (
                 4096,
@@ -2142,7 +2142,7 @@ pub mod owned {
             .await?; Ok(())
         }
 
-        pub fn submit_a_raw<'data>(&self, timeout: ::core::option::Option<::core::time::Duration>, payload: &'data super::SSubmitAArgs) -> ::bebop::rpc::TransportResult<impl 'data + Sized + ::core::future::Future<Output = ::bebop::rpc::RemoteRpcResponse<SSubmitAReturn>>> {
+        pub fn submit_a_raw<'data>(&self, timeout: ::core::option::Option<::core::time::Duration>, payload: &'data super::SSubmitAArgs) -> ::bebop::rpc::TransportResult<impl 'data + ::core::marker::Sized + ::core::future::Future<Output = ::bebop::rpc::RemoteRpcResponse<SSubmitAReturn>>> {
             let zelf = self.0.upgrade().ok_or(::bebop::rpc::TransportError::NotConnected)?;
             let fut = zelf.request::<_, SSubmitAReturn> (
                 8192,
@@ -2159,7 +2159,7 @@ pub mod owned {
             .await?; Ok(())
         }
 
-        pub fn submit_b_raw<'data>(&self, timeout: ::core::option::Option<::core::time::Duration>, payload: &'data super::SSubmitBArgs) -> ::bebop::rpc::TransportResult<impl 'data + Sized + ::core::future::Future<Output = ::bebop::rpc::RemoteRpcResponse<SSubmitBReturn>>> {
+        pub fn submit_b_raw<'data>(&self, timeout: ::core::option::Option<::core::time::Duration>, payload: &'data super::SSubmitBArgs) -> ::bebop::rpc::TransportResult<impl 'data + ::core::marker::Sized + ::core::future::Future<Output = ::bebop::rpc::RemoteRpcResponse<SSubmitBReturn>>> {
             let zelf = self.0.upgrade().ok_or(::bebop::rpc::TransportError::NotConnected)?;
             let fut = zelf.request::<_, SSubmitBReturn> (
                 8193,
@@ -2176,7 +2176,7 @@ pub mod owned {
             .await?; Ok(())
         }
 
-        pub fn submit_a_b_raw<'data>(&self, timeout: ::core::option::Option<::core::time::Duration>, payload: &'data super::SSubmitABArgs) -> ::bebop::rpc::TransportResult<impl 'data + Sized + ::core::future::Future<Output = ::bebop::rpc::RemoteRpcResponse<SSubmitABReturn>>> {
+        pub fn submit_a_b_raw<'data>(&self, timeout: ::core::option::Option<::core::time::Duration>, payload: &'data super::SSubmitABArgs) -> ::bebop::rpc::TransportResult<impl 'data + ::core::marker::Sized + ::core::future::Future<Output = ::bebop::rpc::RemoteRpcResponse<SSubmitABReturn>>> {
             let zelf = self.0.upgrade().ok_or(::bebop::rpc::TransportError::NotConnected)?;
             let fut = zelf.request::<_, SSubmitABReturn> (
                 8194,
@@ -2193,7 +2193,7 @@ pub mod owned {
             .await?; Ok(())
         }
 
-        pub fn submit_c_raw<'data>(&self, timeout: ::core::option::Option<::core::time::Duration>, payload: &'data super::SSubmitCArgs) -> ::bebop::rpc::TransportResult<impl 'data + Sized + ::core::future::Future<Output = ::bebop::rpc::RemoteRpcResponse<SSubmitCReturn>>> {
+        pub fn submit_c_raw<'data>(&self, timeout: ::core::option::Option<::core::time::Duration>, payload: &'data super::SSubmitCArgs) -> ::bebop::rpc::TransportResult<impl 'data + ::core::marker::Sized + ::core::future::Future<Output = ::bebop::rpc::RemoteRpcResponse<SSubmitCReturn>>> {
             let zelf = self.0.upgrade().ok_or(::bebop::rpc::TransportError::NotConnected)?;
             let fut = zelf.request::<_, SSubmitCReturn> (
                 8195,
@@ -2210,7 +2210,7 @@ pub mod owned {
             .await.map(|v| v.value)
         }
 
-        pub fn respond_a_raw<'data>(&self, timeout: ::core::option::Option<::core::time::Duration>, payload: &'data super::SRespondAArgs) -> ::bebop::rpc::TransportResult<impl 'data + Sized + ::core::future::Future<Output = ::bebop::rpc::RemoteRpcResponse<SRespondAReturn>>> {
+        pub fn respond_a_raw<'data>(&self, timeout: ::core::option::Option<::core::time::Duration>, payload: &'data super::SRespondAArgs) -> ::bebop::rpc::TransportResult<impl 'data + ::core::marker::Sized + ::core::future::Future<Output = ::bebop::rpc::RemoteRpcResponse<SRespondAReturn>>> {
             let zelf = self.0.upgrade().ok_or(::bebop::rpc::TransportError::NotConnected)?;
             let fut = zelf.request::<_, SRespondAReturn> (
                 12289,
@@ -2227,7 +2227,7 @@ pub mod owned {
             .await.map(|v| v.value)
         }
 
-        pub fn respond_b_raw<'data>(&self, timeout: ::core::option::Option<::core::time::Duration>, payload: &'data super::SRespondBArgs) -> ::bebop::rpc::TransportResult<impl 'data + Sized + ::core::future::Future<Output = ::bebop::rpc::RemoteRpcResponse<SRespondBReturn>>> {
+        pub fn respond_b_raw<'data>(&self, timeout: ::core::option::Option<::core::time::Duration>, payload: &'data super::SRespondBArgs) -> ::bebop::rpc::TransportResult<impl 'data + ::core::marker::Sized + ::core::future::Future<Output = ::bebop::rpc::RemoteRpcResponse<SRespondBReturn>>> {
             let zelf = self.0.upgrade().ok_or(::bebop::rpc::TransportError::NotConnected)?;
             let fut = zelf.request::<_, SRespondBReturn> (
                 12290,
@@ -2244,7 +2244,7 @@ pub mod owned {
             .await.map(|v| v.value)
         }
 
-        pub fn respond_c_raw<'data>(&self, timeout: ::core::option::Option<::core::time::Duration>, payload: &'data super::SRespondCArgs) -> ::bebop::rpc::TransportResult<impl 'data + Sized + ::core::future::Future<Output = ::bebop::rpc::RemoteRpcResponse<SRespondCReturn>>> {
+        pub fn respond_c_raw<'data>(&self, timeout: ::core::option::Option<::core::time::Duration>, payload: &'data super::SRespondCArgs) -> ::bebop::rpc::TransportResult<impl 'data + ::core::marker::Sized + ::core::future::Future<Output = ::bebop::rpc::RemoteRpcResponse<SRespondCReturn>>> {
             let zelf = self.0.upgrade().ok_or(::bebop::rpc::TransportError::NotConnected)?;
             let fut = zelf.request::<_, SRespondCReturn> (
                 16387,
