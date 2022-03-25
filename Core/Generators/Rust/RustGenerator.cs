@@ -286,7 +286,7 @@ namespace Core.Generators.Rust
                     .AppendLine()
                     .AppendLine("#[inline]")
                     .CodeBlock(
-                        "fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
+                        "fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
                         _tab,
                         () =>
                         {
@@ -465,7 +465,7 @@ namespace Core.Generators.Rust
                     .AppendLine();
 
                 bldr.CodeBlock(
-                        "fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
+                        "fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
                         _tab, () =>
                         {
                             if (d.Fields.Count == 0)
@@ -605,7 +605,7 @@ namespace Core.Generators.Rust
                         })
                         .AppendLine()
                         .CodeBlock(
-                            "fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
+                            "fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
                             _tab, () =>
                             {
                                 WriteMessageSerialization(builder, d);
@@ -922,7 +922,7 @@ namespace Core.Generators.Rust
                 }).AppendLine();
 
                 builder.CodeBlock(
-                    "fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
+                    "fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
                     _tab, () =>
                     {
                         builder.AppendLine("let size = self.serialized_size();")
@@ -1249,7 +1249,7 @@ namespace Core.Generators.Rust
             WriteDocumentation(bldr, fnDef.Documentation);
             WriteDeprecation(bldr, fnDef.Attributes);
             bldr.CodeBlock(
-                $"pub fn {fnName}_raw<'data>(&self, {timeoutArg}, payload: &'data super::{argName}) -> ::bebop::rpc::TransportResult<impl 'data + Sized + ::core::future::Future<Output = ::bebop::rpc::RemoteRpcResponse<{retName}>>>",
+                $"pub fn {fnName}_raw<'data>(&self, {timeoutArg}, payload: &'data super::{argName}) -> ::bebop::rpc::TransportResult<impl 'data + ::core::marker::Sized + ::core::future::Future<Output = ::bebop::rpc::RemoteRpcResponse<{retName}>>>",
                 _tab,
                 () =>
                 {

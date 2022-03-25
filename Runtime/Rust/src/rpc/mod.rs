@@ -68,7 +68,7 @@ pub(crate) mod test_struct {
         fn serialized_size(&self) -> usize {
             0
         }
-        fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+        fn _serialize_chained<W: Write + ?Sized>(&self, dest: &mut W) -> SeResult<usize> {
             dest.write_all(&[self.v])?;
             Ok(1)
         }

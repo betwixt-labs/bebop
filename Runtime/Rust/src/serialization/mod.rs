@@ -42,7 +42,7 @@ pub trait Record<'raw>: SubRecord<'raw> {
 
     /// Serialize this record. It is highly recommend to use a buffered writer.
     #[inline(always)]
-    fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+    fn serialize<W: Write + ?Sized>(&self, dest: &mut W) -> SeResult<usize> {
         self._serialize_chained(dest)
     }
 
@@ -59,6 +59,30 @@ pub trait Record<'raw>: SubRecord<'raw> {
     }
 }
 
+/// An object-safe record trait. This should only be used in cases where you need to dynamically
+/// refer to multiple bebop records you want to serialize.
+pub trait Serializable {
+    fn opcode(&self) -> Option<u32>;
+    fn serialize(&self, dest: &mut dyn Write) -> SeResult<usize>;
+    fn serialize_to_vec(&self) -> SeResult<Vec<u8>>;
+}
+
+impl<'raw, R: Record<'raw>> Serializable for R {
+    fn opcode(&self) -> Option<u32> {
+        R::OPCODE
+    }
+
+    fn serialize(&self, dest: &mut dyn Write) -> SeResult<usize> {
+        R::serialize(self, dest)
+    }
+
+    fn serialize_to_vec(&self) -> SeResult<Vec<u8>> {
+        R::serialize_to_vec(self)
+    }
+}
+
+static_assertions::assert_obj_safe!(Serializable);
+
 /// Internal trait used to reduce the amount of code that needs to be generated.
 pub trait SubRecord<'raw>: Sized + Send + Sync {
     const MIN_SERIALIZED_SIZE: usize;
@@ -72,7 +96,7 @@ pub trait SubRecord<'raw>: Sized + Send + Sync {
     // TODO: test performance of this versus a generic Write
     /// Should only be called from generated code!
     /// Serialize this record. It is highly recommend to use a buffered writer.
-    fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize>;
+    fn _serialize_chained<W: Write + ?Sized>(&self, dest: &mut W) -> SeResult<usize>;
 
     /// Should only be called from generated code!
     /// Deserialize this object as a sub component of a larger message. Returns a tuple of
@@ -88,7 +112,7 @@ impl<'raw> SubRecord<'raw> for &'raw str {
         self.len() + LEN_SIZE
     }
 
-    fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+    fn _serialize_chained<W: Write + ?Sized>(&self, dest: &mut W) -> SeResult<usize> {
         let raw = self.as_bytes();
         write_len(dest, raw.len())?;
         dest.write_all(raw)?;
@@ -121,7 +145,7 @@ impl<'raw> SubRecord<'raw> for String {
     }
 
     #[inline]
-    fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+    fn _serialize_chained<W: Write + ?Sized>(&self, dest: &mut W) -> SeResult<usize> {
         self.as_str()._serialize_chained(dest)
     }
 
@@ -150,7 +174,7 @@ where
         }
     }
 
-    fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+    fn _serialize_chained<W: Write + ?Sized>(&self, dest: &mut W) -> SeResult<usize> {
         write_len(dest, self.len())?;
         let mut i = LEN_SIZE;
         for v in self.iter() {
@@ -234,7 +258,7 @@ where
         }
     }
 
-    fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+    fn _serialize_chained<W: Write + ?Sized>(&self, dest: &mut W) -> SeResult<usize> {
         #[cfg(feature = "sorted_maps")]
         use itertools::Itertools;
 
@@ -288,7 +312,7 @@ impl<'raw> SubRecord<'raw> for Guid {
     }
 
     #[inline]
-    fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+    fn _serialize_chained<W: Write + ?Sized>(&self, dest: &mut W) -> SeResult<usize> {
         dest.write_all(&self.to_ms_bytes())?;
         Ok(16)
     }
@@ -326,7 +350,7 @@ impl<'raw> SubRecord<'raw> for Date {
     }
 
     #[inline]
-    fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+    fn _serialize_chained<W: Write + ?Sized>(&self, dest: &mut W) -> SeResult<usize> {
         self.to_ticks()._serialize_chained(dest)
     }
 
@@ -349,7 +373,7 @@ impl<'de> SubRecord<'de> for bool {
     }
 
     #[inline]
-    fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+    fn _serialize_chained<W: Write + ?Sized>(&self, dest: &mut W) -> SeResult<usize> {
         dest.write_all(&[if *self { 1 } else { 0 }])?;
         Ok(1)
     }
@@ -378,7 +402,7 @@ where
         self.size() + LEN_SIZE
     }
 
-    fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+    fn _serialize_chained<W: Write + ?Sized>(&self, dest: &mut W) -> SeResult<usize> {
         write_len(dest, self.len())?;
         match *self {
             SliceWrapper::Raw(raw) => {
@@ -455,7 +479,7 @@ macro_rules! impl_record_for_num {
             }
 
             #[inline]
-            fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+            fn _serialize_chained<W: Write + ?Sized>(&self, dest: &mut W) -> SeResult<usize> {
                 dest.write_all(&self.to_le_bytes())?;
                 Ok(core::mem::size_of::<$t>())
             }
@@ -510,7 +534,7 @@ fn read_len_test() {
 /// This should only be called from within an auto-implemented deserialize function or for byte
 /// hacking.
 #[inline(always)]
-pub fn write_len<W: Write>(dest: &mut W, len: usize) -> SeResult<()> {
+pub fn write_len<W: Write + ?Sized>(dest: &mut W, len: usize) -> SeResult<()> {
     if len > u32::MAX as usize {
         Err(SerializeError::LengthExceeds32Bits)
     } else {
