@@ -1,7 +1,7 @@
-use criterion::{criterion_main, criterion_group};
+use criterion::{criterion_group, criterion_main};
 
-mod serialization;
 mod rpc;
+mod serialization;
 
 // criterion_group!(serialization, serialization::run);
 criterion_group!(rpc, rpc::run);

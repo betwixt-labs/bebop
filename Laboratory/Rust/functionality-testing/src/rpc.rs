@@ -101,7 +101,6 @@ impl MemBackedKVStore {
     }
 }
 
-
 // impl for Arc so that we can create weak references that we pass to the futures without capturing
 // the lifetime of the self reference.
 #[handlers(crate::generated::rpc)]

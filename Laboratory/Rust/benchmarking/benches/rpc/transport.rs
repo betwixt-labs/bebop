@@ -1,5 +1,4 @@
 use std::str::FromStr;
-use std::sync::Arc;
 
 use bebop::prelude::*;
 use bebop::rpc::ResponseHeader;
@@ -10,14 +9,14 @@ use benchmarking::bebops::rpc::{ObjA, ObjB, ObjC};
 
 use super::CHANNEL_BUFFER_SIZE;
 
-pub fn bench(c: &mut Criterion, runtime: &Arc<Runtime>) {
+pub(super) fn bench(c: &mut Criterion, runtime: &Runtime) {
     transport_u32(c, runtime);
     transport_datagram(c, runtime);
 }
 
 /// let's benchmark the transport to see what the theoretical max speed is on this system without
 /// any serialization to get in the way.
-fn transport_u32(c: &mut Criterion, runtime: &Arc<Runtime>) {
+fn transport_u32(c: &mut Criterion, runtime: &Runtime) {
     let mut group = c.benchmark_group("transport - u32 1");
     group.sample_size(500);
     group.throughput(Throughput::Elements(1));
@@ -66,7 +65,7 @@ fn transport_u32(c: &mut Criterion, runtime: &Arc<Runtime>) {
 /// and does double-deserialize, however, it does it as we would expect any normal implementation to
 /// do it with the datagram not being copied on deserialize and then the inner data being copied
 /// into an owned type.
-fn transport_datagram(c: &mut Criterion, runtime: &Arc<Runtime>) {
+fn transport_datagram(c: &mut Criterion, runtime: &Runtime) {
     let mut group = c.benchmark_group("transport - datagram 10000");
     const ELEMENTS: u64 = 10000;
     group.throughput(Throughput::Elements(ELEMENTS));

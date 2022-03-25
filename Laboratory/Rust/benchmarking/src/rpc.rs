@@ -1,6 +1,6 @@
 use crate::bebops::rpc::owned::SHandlersDef;
 use bebop::prelude::*;
-use bebop::rpc::{handlers};
+use bebop::rpc::handlers;
 use std::sync::Arc;
 
 pub struct Service;

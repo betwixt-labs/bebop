@@ -1,15 +1,15 @@
+use std::sync::Arc;
+
 use bebop::prelude::*;
-use bebop::rpc::{
-    RequestHeader, ResponseHeader, Router, TransportHandler, TransportProtocol, TransportResult,
-};
-use bebop::timeout;
+use bebop::rpc::{Router, TransportHandler, TransportProtocol, TransportResult};
+use criterion::Criterion;
+use tokio::runtime::Runtime;
+use tokio::sync::mpsc;
+
 use benchmarking::bebops::rpc::owned::{SHandlers, SRequests};
 use benchmarking::rpc::Service;
-use criterion::{Criterion, Throughput};
-use std::sync::Arc;
-use tokio::sync::mpsc;
-use tokio::{join, select};
 
+mod ping;
 mod transport;
 
 struct ChannelTransport {
@@ -146,21 +146,22 @@ impl TransportProtocol for ChannelTransport {
 // }
 
 pub fn run(c: &mut Criterion) {
-    let runtime = Arc::new(
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            // for benchmarking, want to do single-threaded performance
-            .worker_threads(1)
-            .build()
-            .expect("Failed to create tokio runtime!"),
-    );
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        // for benchmarking, want to do single-threaded performance
+        .worker_threads(1)
+        .build()
+        .expect("Failed to create tokio runtime!");
 
     transport::bench(c, &runtime);
+    ping::ping(c, &runtime);
+}
 
+fn make_routers(runtime: &Runtime) -> (Router<SRequests>, Router<SRequests>) {
     let rt = runtime.handle().clone();
     let (transport_a, transport_b) = ChannelTransport::new(rt.clone());
 
-    let router_a = Router::<SRequests>::new(
+    let router_a = Router::new(
         transport_a,
         SHandlers::from(Arc::new(Service)),
         Box::pin(move |f| {
@@ -168,8 +169,9 @@ pub fn run(c: &mut Criterion) {
         }),
         None,
     );
+
     let rt = runtime.handle().clone();
-    let router_b = Router::<SRequests>::new(
+    let router_b = Router::new(
         transport_b,
         SHandlers::from(Arc::new(Service)),
         Box::pin(move |f| {
@@ -178,125 +180,5 @@ pub fn run(c: &mut Criterion) {
         None,
     );
 
-    let mut group = c.benchmark_group("monodi ping - 2");
-    group.sample_size(500);
-    group.throughput(Throughput::Elements(2));
-    let rt = runtime.handle().clone();
-    group.bench_function("Bebop", |b| {
-        b.iter(|| {
-            rt.block_on(async {
-                let (a, b) = join!(router_a.ping(timeout!(2 s)), router_a.ping(timeout!(2 s)));
-                a.unwrap();
-                b.unwrap();
-            });
-        })
-    });
-    group.finish();
-
-    let mut group = c.benchmark_group("bidi ping - 2");
-    group.sample_size(500);
-    group.throughput(Throughput::Elements(2));
-    let rt = runtime.handle().clone();
-    group.bench_function("Bebop", |b| {
-        b.iter(|| {
-            rt.block_on(async {
-                let (a, b) = join!(router_a.ping(timeout!(2 s)), router_b.ping(timeout!(2 s)));
-                a.unwrap();
-                b.unwrap();
-            });
-        })
-    });
-    group.finish();
-
-    let mut group = c.benchmark_group("monodi ping - 16");
-    group.sample_size(500);
-    group.throughput(Throughput::Elements(16));
-    let rt = runtime.handle().clone();
-    group.bench_function("Bebop", |b| {
-        b.iter(|| {
-            rt.block_on(async {
-                let tup = join!(
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                );
-                tup.0.unwrap();
-                tup.1.unwrap();
-                tup.2.unwrap();
-                tup.3.unwrap();
-                tup.4.unwrap();
-                tup.5.unwrap();
-                tup.6.unwrap();
-                tup.7.unwrap();
-                tup.8.unwrap();
-                tup.9.unwrap();
-                tup.10.unwrap();
-                tup.11.unwrap();
-                tup.12.unwrap();
-                tup.13.unwrap();
-                tup.14.unwrap();
-                tup.15.unwrap();
-            });
-        })
-    });
-    group.finish();
-
-    let mut group = c.benchmark_group("bidi ping - 16");
-    group.sample_size(500);
-    group.throughput(Throughput::Elements(16));
-    let rt = runtime.handle().clone();
-    group.bench_function("Bebop", |b| {
-        b.iter(|| {
-            rt.block_on(async {
-                let tup = join!(
-                    router_a.ping(timeout!(2 s)),
-                    router_b.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_b.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_b.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_b.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_b.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_b.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_b.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_b.ping(timeout!(2 s)),
-                );
-                tup.0.unwrap();
-                tup.1.unwrap();
-                tup.2.unwrap();
-                tup.3.unwrap();
-                tup.4.unwrap();
-                tup.5.unwrap();
-                tup.6.unwrap();
-                tup.7.unwrap();
-                tup.8.unwrap();
-                tup.9.unwrap();
-                tup.10.unwrap();
-                tup.11.unwrap();
-                tup.12.unwrap();
-                tup.13.unwrap();
-                tup.14.unwrap();
-                tup.15.unwrap();
-            });
-        })
-    });
-    group.finish();
+    (router_a, router_b)
 }
