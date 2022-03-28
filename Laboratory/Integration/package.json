@@ -6,5 +6,8 @@
     "typescript": "^4.1.2",
     "deep-equal": "^2.0.5",
     "@types/deep-equal": "^1.0.1"
+  },
+  "devDependencies": {
+    "shelljs": "0.8.5"
   }
 }

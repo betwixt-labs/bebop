@@ -31,7 +31,10 @@ jobs:
       - name: Setup C++
         run: |
           sudo apt update
-          sudo apt install gcc g++ zsh
+          sudo apt install gcc g++
+      - name: npm install
+        run: npm install
+        working-directory: ${{env.TEST_ROOT}}
       - name: Test
-        run: zsh run_test.sh
+        run: node run_test.js
         working-directory: ${{env.TEST_ROOT}}
