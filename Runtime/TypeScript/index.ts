@@ -11,8 +11,8 @@ const asciiToHex = [
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
 ];
 
-const ticksBetweenEpochs = BigInt("621355968000000000");
-const dateMask = BigInt("0x3fffffffffffffff");
+const ticksBetweenEpochs = 621355968000000000n;
+const dateMask = 0x3fffffffffffffffn;
 const emptyByteArray = new Uint8Array(0);
 const emptyString = "";
 const byteToHex: string[] = []; // A lookup table: ['00', '01', ..., 'ff']
@@ -332,13 +332,13 @@ export class BebopView {
 
     readDate(): Date {
         const ticks = this.readUint64() & dateMask;
-        const ms = (ticks - ticksBetweenEpochs) / BigInt("10000");
+        const ms = (ticks - ticksBetweenEpochs) / 10000n;
         return new Date(Number(ms));
     }
 
     writeDate(date: Date) {
         const ms = BigInt(date.getTime());
-        const ticks = ms * BigInt("10000") + ticksBetweenEpochs;
+        const ticks = ms * 10000n + ticksBetweenEpochs;
         this.writeUint64(ticks & dateMask);
     }
 
