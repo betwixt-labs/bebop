@@ -1,5 +1,4 @@
 use bebop::rpc::Router;
-use bebop::timeout;
 use benchmarking::bebops::rpc::owned::SRequests;
 use criterion::{Criterion, Throughput};
 use tokio::runtime::Runtime;
@@ -29,7 +28,7 @@ fn bidi_2(
         b.iter(|| {
             rt.block_on(async {
                 let (a, b) =
-                    tokio::join!(router_a.ping(timeout!(2 s)), router_b.ping(timeout!(2 s)));
+                    tokio::join!(router_a.ping(None), router_b.ping(None));
                 a.unwrap();
                 b.unwrap();
             });
@@ -47,7 +46,7 @@ fn monodi_2(c: &mut Criterion, runtime: &Runtime, router_a: &Router<SRequests>) 
         b.iter(|| {
             rt.block_on(async {
                 let (a, b) =
-                    tokio::join!(router_a.ping(timeout!(2 s)), router_a.ping(timeout!(2 s)));
+                    tokio::join!(router_a.ping(None), router_a.ping(None));
                 a.unwrap();
                 b.unwrap();
             });
@@ -65,22 +64,22 @@ fn monodi_16(c: &mut Criterion, runtime: &Runtime, router_a: &Router<SRequests>)
         b.iter(|| {
             rt.block_on(async {
                 let tup = tokio::join!(
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
+                    router_a.ping(None),
+                    router_a.ping(None),
+                    router_a.ping(None),
+                    router_a.ping(None),
+                    router_a.ping(None),
+                    router_a.ping(None),
+                    router_a.ping(None),
+                    router_a.ping(None),
+                    router_a.ping(None),
+                    router_a.ping(None),
+                    router_a.ping(None),
+                    router_a.ping(None),
+                    router_a.ping(None),
+                    router_a.ping(None),
+                    router_a.ping(None),
+                    router_a.ping(None),
                 );
                 tup.0.unwrap();
                 tup.1.unwrap();
@@ -118,22 +117,22 @@ fn bidi_16(
         b.iter(|| {
             rt.block_on(async {
                 let tup = tokio::join!(
-                    router_a.ping(timeout!(2 s)),
-                    router_b.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_b.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_b.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_b.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_b.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_b.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_b.ping(timeout!(2 s)),
-                    router_a.ping(timeout!(2 s)),
-                    router_b.ping(timeout!(2 s)),
+                    router_a.ping(None),
+                    router_b.ping(None),
+                    router_a.ping(None),
+                    router_b.ping(None),
+                    router_a.ping(None),
+                    router_b.ping(None),
+                    router_a.ping(None),
+                    router_b.ping(None),
+                    router_a.ping(None),
+                    router_b.ping(None),
+                    router_a.ping(None),
+                    router_b.ping(None),
+                    router_a.ping(None),
+                    router_b.ping(None),
+                    router_a.ping(None),
+                    router_b.ping(None),
                 );
                 tup.0.unwrap();
                 tup.1.unwrap();
