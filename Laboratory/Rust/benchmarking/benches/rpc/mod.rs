@@ -11,6 +11,8 @@ use benchmarking::rpc::Service;
 
 mod ping;
 mod transport;
+mod submit;
+mod respond;
 
 struct ChannelTransport {
     handler: Option<TransportHandler>,
@@ -154,7 +156,9 @@ pub fn run(c: &mut Criterion) {
         .expect("Failed to create tokio runtime!");
 
     transport::bench(c, &runtime);
-    ping::ping(c, &runtime);
+    ping::bench(c, &runtime);
+    submit::bench(c, &runtime);
+    respond::bench(c, &runtime);
 }
 
 fn make_routers(runtime: &Runtime) -> (Router<SRequests>, Router<SRequests>) {

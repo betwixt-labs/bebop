@@ -6,7 +6,7 @@ use tokio::runtime::Runtime;
 
 use super::make_routers;
 
-pub(super) fn ping(c: &mut Criterion, runtime: &Runtime) {
+pub(super) fn bench(c: &mut Criterion, runtime: &Runtime) {
     let (router_a, router_b) = make_routers(runtime);
 
     monodi_2(c, runtime, &router_a);

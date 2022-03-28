@@ -1,7 +1,11 @@
-use crate::bebops::rpc::owned::SHandlersDef;
-use bebop::prelude::*;
-use bebop::rpc::handlers;
+use std::str::FromStr;
 use std::sync::Arc;
+
+use bebop::prelude::*;
+use bebop::rpc::{handlers, LocalRpcError};
+use criterion::black_box;
+
+use crate::bebops::rpc::owned::SHandlersDef;
 
 pub struct Service;
 
@@ -18,6 +22,14 @@ impl SHandlersDef for Arc<Service> {
         _details: &dyn CallDetails,
         a: crate::bebops::rpc::owned::ObjA,
     ) -> LocalRpcResponse<()> {
+        if (a.a == -34234 && a.b == 695) {
+            Ok(())
+        } else {
+            Err(LocalRpcError::CustomErrorStatic(
+                1,
+                "Expected different data",
+            ))
+        }
     }
 
     #[handler]
@@ -26,6 +38,17 @@ impl SHandlersDef for Arc<Service> {
         _details: &dyn CallDetails,
         b: crate::bebops::rpc::owned::ObjB,
     ) -> LocalRpcResponse<()> {
+        if matches!(b.a, Some(3))
+            && matches!(b.b, Some(5743))
+            && matches!(b.e.as_deref(), Some("s890df7g"))
+        {
+            Ok(())
+        } else {
+            Err(LocalRpcError::CustomErrorStatic(
+                2,
+                "Expected different data",
+            ))
+        }
     }
 
     #[handler]
@@ -37,6 +60,14 @@ impl SHandlersDef for Arc<Service> {
         c: bool,
         d: String,
     ) -> LocalRpcResponse<()> {
+        if c && d == "08fdg" && a.b == -579 && matches!(b.b, Some(9543)) {
+            Ok(())
+        } else {
+            Err(LocalRpcError::CustomErrorStatic(
+                3,
+                "Expected different data",
+            ))
+        }
     }
 
     #[handler]
@@ -46,6 +77,14 @@ impl SHandlersDef for Arc<Service> {
         a: i32,
         b: crate::bebops::rpc::owned::ObjC,
     ) -> LocalRpcResponse<()> {
+        if a == 1234 && b.b == "iogy" && b.a.b == 6 && b.c[1] == 23.34 {
+            Ok(())
+        } else {
+            Err(LocalRpcError::CustomErrorStatic(
+                4,
+                "Expected different data",
+            ))
+        }
     }
 
     #[handler]
@@ -53,6 +92,12 @@ impl SHandlersDef for Arc<Service> {
         self,
         _details: &dyn CallDetails,
     ) -> LocalRpcResponse<crate::bebops::rpc::ObjA> {
+        black_box(Ok(crate::bebops::rpc::ObjA {
+            a: -34234,
+            b: 695,
+            c: Date::from_secs(8497589634),
+            d: Guid::from_str("f7df0b17-6fc3-4a09-b8c2-308d06e3e558").unwrap(),
+        }))
     }
 
     #[handler]
@@ -60,6 +105,13 @@ impl SHandlersDef for Arc<Service> {
         self,
         _details: &dyn CallDetails,
     ) -> LocalRpcResponse<crate::bebops::rpc::ObjB<'sup>> {
+        black_box(Ok(crate::bebops::rpc::ObjB {
+            a: Some(3),
+            b: Some(5743),
+            c: Some(Date::from_secs(9754234)),
+            d: Some(Guid::from_str("7b5de104-5a40-47e6-b5d3-ab33f8c82fd2").unwrap()),
+            e: Some("s890df7g"),
+        }))
     }
 
     #[handler]
@@ -67,6 +119,16 @@ impl SHandlersDef for Arc<Service> {
         self,
         _details: &dyn CallDetails,
     ) -> LocalRpcResponse<crate::bebops::rpc::ObjC<'sup>> {
+        black_box(Ok(crate::bebops::rpc::ObjC {
+            a: crate::bebops::rpc::ObjA {
+                a: 324,
+                b: 6,
+                c: Date::from_secs(9864234),
+                d: Guid::from_str("2265afc4-7e12-4174-a17c-ee75c4dff074").unwrap(),
+            },
+            b: "iogy",
+            c: SliceWrapper::Cooked(&[234.4, 23.34, 54., 543.1]),
+        }))
     }
 }
 

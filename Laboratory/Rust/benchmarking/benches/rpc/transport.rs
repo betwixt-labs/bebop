@@ -2,8 +2,10 @@ use std::str::FromStr;
 
 use bebop::prelude::*;
 use bebop::rpc::ResponseHeader;
-use criterion::{black_box, BenchmarkId, Criterion, Throughput};
-use tokio::runtime::Runtime;
+use criterion::{BenchmarkGroup, BenchmarkId, black_box, Criterion, Throughput};
+use criterion::measurement::WallTime;
+use tokio::runtime::{Handle, Runtime};
+use tokio::sync::mpsc::{Receiver, Sender};
 
 use benchmarking::bebops::rpc::{ObjA, ObjB, ObjC};
 
@@ -66,12 +68,22 @@ fn transport_u32(c: &mut Criterion, runtime: &Runtime) {
 /// do it with the datagram not being copied on deserialize and then the inner data being copied
 /// into an owned type.
 fn transport_datagram(c: &mut Criterion, runtime: &Runtime) {
-    let mut group = c.benchmark_group("transport - datagram 10000");
-    const ELEMENTS: u64 = 10000;
-    group.throughput(Throughput::Elements(ELEMENTS));
+    let mut group = c.benchmark_group("transport - datagram 1");
+    group.throughput(Throughput::Elements(1));
     let rt = runtime.handle().clone();
-    let (tx, mut rx) = tokio::sync::mpsc::channel::<Vec<u8>>(CHANNEL_BUFFER_SIZE);
+    let (tx, rx) = tokio::sync::mpsc::channel::<Vec<u8>>(CHANNEL_BUFFER_SIZE);
+    transport_datagram_n(1, &mut group, rt, tx, rx);
+    group.finish();
 
+    let mut group = c.benchmark_group("transport - datagram 10000");
+    group.throughput(Throughput::Elements(1000));
+    let rt = runtime.handle().clone();
+    let (tx, rx) = tokio::sync::mpsc::channel::<Vec<u8>>(CHANNEL_BUFFER_SIZE);
+    transport_datagram_n(1000, &mut group, rt, tx, rx);
+    group.finish();
+}
+
+fn transport_datagram_n(n: u64, group: &mut BenchmarkGroup<WallTime>, rt: Handle, tx: Sender<Vec<u8>>, mut rx: Receiver<Vec<u8>>) {
     let obj_a = ObjA {
         a: 7389347,
         b: 5782,
@@ -145,7 +157,7 @@ fn transport_datagram(c: &mut Criterion, runtime: &Runtime) {
                     rt.block_on(async {
                         tokio::join!(
                             async {
-                                for i in 0..ELEMENTS {
+                                for i in 0..n {
                                     buf.clear();
                                     obj.serialize(&mut buf).unwrap();
                                     let d = black_box(bebop::rpc::Datagram::RpcResponseOk {
@@ -156,7 +168,7 @@ fn transport_datagram(c: &mut Criterion, runtime: &Runtime) {
                                 }
                             },
                             async {
-                                for i in 0..ELEMENTS {
+                                for i in 0..n {
                                     let raw = rx.recv().await.unwrap();
                                     let datagram = Datagram::deserialize(&raw).unwrap();
                                     match datagram {
@@ -174,5 +186,4 @@ fn transport_datagram(c: &mut Criterion, runtime: &Runtime) {
             },
         );
     }
-    group.finish();
 }
