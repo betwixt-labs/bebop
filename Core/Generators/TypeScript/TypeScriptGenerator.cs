@@ -263,16 +263,38 @@ namespace Core.Generators.TypeScript
             bldr.CodeBlock($"export abstract class {serviceIdent}HandlersDef implements $B.ServiceHandlers", 2, () =>
                 {
                     bldr.AppendLine($"readonly $name = \"{serviceIdent}\";")
-                        .AppendLine()
-                        .CodeBlock("$recvCall(datagram: $B.IDatagram, handle: $B.RequestHandle)", 2, () =>
+                        .AppendLine();
+
+                    foreach (var branch in sd.Branches.OrderBy(b => b.Discriminator))
+                    {
+                        var fn = branch.Definition;
+                        var fnIdent = fn.Name.ToCamelCase();
+                        var isVoid = fn.ReturnStruct.Fields.Count <= 0;
+
+                        var args = string.Join(", ",
+                            (new[] { "deadline: $B.Deadline" }).Concat(
+                                fn.ArgumentStruct.Fields.Select(a => $"{a.Name}: {TypeName(a.Type)}")));
+                        var ret = isVoid ? "void" : TypeName(fn.ReturnStruct.Fields.First().Type);
+
+                        if (fn.Documentation != "" || fn.Attributes is not null)
+                        {
+                            var docs = FormatDocumentation(fn.Documentation, fn.Attributes?.Value ?? string.Empty, 2);
+                            bldr.AppendLine(docs);
+                        }
+
+                        bldr.AppendLine($"abstract async {fnIdent}({args}): Promise<{ret}>;")
+                            .AppendLine();
+                    }
+
+                    bldr.AppendLine("/** @ignore this should only be called by generated code. */")
+                        .CodeBlock("$recvCall(datagram: $B.IDatagram, rawHandle: $B.RequestHandle)", 2, () =>
                         {
                             bldr.AppendLine("if (datagram.discriminator != $B.RpcRequestDatagram.discriminator)")
                                 .Append("  throw new BebopRuntimeError")
                                 .AppendEnd("(\"`$recvCall` Should only ever be provided with Requests.\")")
-                                .AppendLine()
                                 .AppendLine("const { header, opcode, data } = datagram.value;")
                                 // since case statements overlap on var names
-                                .AppendLine("let response: any, args: any;")
+                                .AppendLine("let response: any, args: any, handle: $B.TypedRequestHandle<unknown>;")
                                 .CodeBlock("switch (opcode)", 2, () =>
                                 {
                                     foreach (var branch in sd.Branches.OrderBy(b => b.Discriminator))
@@ -282,14 +304,18 @@ namespace Core.Generators.TypeScript
                                         var fnIdent = fn.Name.ToCamelCase();
                                         var sig = fn.Signature.Name;
                                         var hasArgs = fn.ArgumentStruct.Fields.Count > 0;
-                                        var catchSendErr = $".catch(err => $B.handleRespondError(err, \"{serviceIdent}\", \"{fnIdent}\", header.callId))";
+                                        var isVoid = fn.ReturnStruct.Fields.Count <= 0;
+                                        var catchSendErr =
+                                            $".catch(err => $B.handleRespondError(err, this.$name, \"{fnIdent}\", header.callId))";
                                         bldr.CodeBlock($"case {opcode}", 2, () =>
                                         {
-                                            bldr.CodeBlock($"if (header.signature != {sig})", 2, () =>
-                                            {
-                                                bldr.AppendLine($"return handle.sendInvalidSigResponse({sig})")
-                                                    .AppendLine($"  {catchSendErr};");
-                                            });
+                                            bldr.AppendLine(
+                                                    $"handle = new $B.TypedRequestHandle({fn.ReturnStruct.Name}, rawHandle);")
+                                                .CodeBlock($"if (header.signature != {sig})", 2, () =>
+                                                {
+                                                    bldr.AppendLine($"return handle.sendInvalidSigResponse({sig})")
+                                                        .AppendLine($"  {catchSendErr};");
+                                                });
 
                                             if (hasArgs)
                                             {
@@ -310,7 +336,9 @@ namespace Core.Generators.TypeScript
                                                     .Concat(new[] { "$B.CallDetails.deadline(handle)" }));
                                             bldr.CodeBlock("try", 2, () =>
                                                 {
-                                                    bldr.AppendLine($"response = await this.{fnIdent}({args});");
+                                                    bldr.AppendLine(isVoid
+                                                        ? $"response = await this.{fnIdent}({args});"
+                                                        : $"response = {{ value: await this.{fnIdent}({args}) }};");
                                                 })
                                                 .CodeBlock("catch (err)", 2, () =>
                                                 {
@@ -324,15 +352,10 @@ namespace Core.Generators.TypeScript
                                     bldr.CodeBlock("default", 2, () =>
                                     {
                                         bldr.AppendLine("return handle.sendUnknownCallResponse()")
-                                            .AppendLine($"  .catch(err => $B.handleRespondError(err, \"{serviceIdent}\", \"UNKNOWN\", header.callId));");
+                                            .AppendLine(
+                                                $"  .catch(err => $B.handleRespondError(err, this.$name, \"UNKNOWN\", header.callId));");
                                     }, ":", "");
                                 });
-
-                            // TODO: unpack the arguments
-                            // TODO: call the correct function
-                            // TODO: pack the return
-                            // TODO: send the response
-                            // TODO: handle response errors
                         });
                 })
                 .AppendLine()
