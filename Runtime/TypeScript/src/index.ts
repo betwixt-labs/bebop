@@ -13,7 +13,7 @@ export class BebopRuntimeError extends Error {
 
 export { BebopView } from "./view";
 export { BebopRecordImpl, BebopUnionRecordImpl } from "./record";
-export * as rpc from "./rpc";
+export * from "./rpc";
 
 /**
  * Use this in the `default` statement of a switch to ensure all cases are handled.
