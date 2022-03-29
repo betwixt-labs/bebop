@@ -278,93 +278,97 @@ namespace Core.Generators.TypeScript
 
                         if (fn.Documentation != "" || fn.Attributes is not null)
                         {
-                            var docs = FormatDocumentation(fn.Documentation, fn.Attributes?.Value ?? string.Empty, 2);
+                            var docs = FormatDocumentation(fn.Documentation, fn.Attributes?.Value ?? string.Empty, 0);
                             bldr.AppendLine(docs);
                         }
 
-                        bldr.AppendLine($"abstract async {fnIdent}({args}): Promise<{ret}>;")
+                        bldr.AppendLine($"abstract {fnIdent}({args}): PromiseLike<{ret}> | {ret};")
                             .AppendLine();
                     }
 
                     bldr.AppendLine("/** @ignore this should only be called by generated code. */")
-                        .CodeBlock("$recvCall(datagram: $B.IDatagram, rawHandle: $B.RequestHandle)", 2, () =>
-                        {
-                            bldr.AppendLine("if (datagram.discriminator != $B.RpcRequestDatagram.discriminator)")
-                                .Append("  throw new BebopRuntimeError")
-                                .AppendEnd("(\"`$recvCall` Should only ever be provided with Requests.\")")
-                                .AppendLine("const { header, opcode, data } = datagram.value;")
-                                // since case statements overlap on var names
-                                .AppendLine("let response: any, args: any, handle: $B.TypedRequestHandle<unknown>;")
-                                .CodeBlock("switch (opcode)", 2, () =>
-                                {
-                                    foreach (var branch in sd.Branches.OrderBy(b => b.Discriminator))
+                        .CodeBlock(
+                            "async $recvCall(datagram: $B.IDatagram, rawHandle: $B.RequestHandle): Promise<void>", 2,
+                            () =>
+                            {
+                                bldr.AppendLine("if (datagram.discriminator != $B.RpcRequestDatagram.discriminator)")
+                                    .Append("  throw new BebopRuntimeError")
+                                    .AppendEnd("(\"`$recvCall` Should only ever be provided with Requests.\")")
+                                    .AppendLine("const { header, opcode, data } = datagram.value;")
+                                    // since case statements overlap on var names
+                                    .AppendLine("let response: any, args: any, handle: $B.TypedRequestHandle<unknown>;")
+                                    .CodeBlock("switch (opcode)", 2, () =>
                                     {
-                                        var opcode = branch.Discriminator;
-                                        var fn = branch.Definition;
-                                        var fnIdent = fn.Name.ToCamelCase();
-                                        var sig = fn.Signature.Name;
-                                        var hasArgs = fn.ArgumentStruct.Fields.Count > 0;
-                                        var isVoid = fn.ReturnStruct.Fields.Count <= 0;
-                                        var catchSendErr =
-                                            $".catch(err => $B.handleRespondError(err, this.$name, \"{fnIdent}\", header.callId))";
-                                        bldr.CodeBlock($"case {opcode}", 2, () =>
+                                        foreach (var branch in sd.Branches.OrderBy(b => b.Discriminator))
                                         {
-                                            bldr.AppendLine(
-                                                    $"handle = new $B.TypedRequestHandle({fn.ReturnStruct.Name}, rawHandle);")
-                                                .CodeBlock($"if (header.signature != {sig})", 2, () =>
-                                                {
-                                                    bldr.AppendLine($"return handle.sendInvalidSigResponse({sig})")
-                                                        .AppendLine($"  {catchSendErr};");
-                                                });
-
-                                            if (hasArgs)
+                                            var opcode = branch.Discriminator;
+                                            var fn = branch.Definition;
+                                            var fnIdent = fn.Name.ToCamelCase();
+                                            var sig = fn.Signature.Name;
+                                            var hasArgs = fn.ArgumentStruct.Fields.Count > 0;
+                                            var isVoid = fn.ReturnStruct.Fields.Count <= 0;
+                                            var catchSendErr =
+                                                $".catch(err => $B.handleRespondError(err, this.$name, \"{fnIdent}\", header.callId))";
+                                            bldr.CodeBlock($"case {opcode}", 2, () =>
                                             {
+                                                bldr.AppendLine(
+                                                        $"handle = new $B.TypedRequestHandle({fn.ReturnStruct.Name}, rawHandle);")
+                                                    .CodeBlock($"if (header.signature != {sig})", 2, () =>
+                                                    {
+                                                        bldr.AppendLine($"return handle.sendInvalidSigResponse({sig})")
+                                                            .AppendLine($"  {catchSendErr};");
+                                                    });
+
+                                                if (hasArgs)
+                                                {
+                                                    bldr.CodeBlock("try", 2, () =>
+                                                        {
+                                                            bldr.AppendLine(
+                                                                $"args = {fn.ArgumentStruct.Name}.decode(data);");
+                                                        })
+                                                        .CodeBlock("catch (err)", 2, () =>
+                                                        {
+                                                            bldr.AppendLine(
+                                                                    "return handle.sendDecodeErrorResponse(err)")
+                                                                .AppendLine($"  {catchSendErr};");
+                                                        });
+                                                }
+
+                                                var args = string.Join(", ",
+                                                    fn.ArgumentStruct.Fields
+                                                        .Select(f => $"args.{f.Name.ToPascalCase()}")
+                                                        .Concat(new[] { "$B.CallDetails.deadline(handle)" }));
                                                 bldr.CodeBlock("try", 2, () =>
                                                     {
-                                                        bldr.AppendLine(
-                                                            $"args = {fn.ArgumentStruct.Name}.decode(data);");
+                                                        bldr.AppendLine(isVoid
+                                                            ? $"response = await this.{fnIdent}({args});"
+                                                            : $"response = {{ value: await this.{fnIdent}({args}) }};");
                                                     })
                                                     .CodeBlock("catch (err)", 2, () =>
                                                     {
-                                                        bldr.AppendLine("return handle.sendDecodeErrorResponse(err)")
-                                                            .AppendLine($"  {catchSendErr};");
-                                                    });
-                                            }
+                                                        bldr.AppendLine("response = err;");
+                                                    })
+                                                    .AppendLine("return handle.sendResponse(response)")
+                                                    .AppendLine($"  {catchSendErr};");
+                                            }, ":", "");
+                                        }
 
-                                            var args = string.Join(", ",
-                                                fn.ArgumentStruct.Fields.Select(f => $"args.{f.Name.ToPascalCase()}")
-                                                    .Concat(new[] { "$B.CallDetails.deadline(handle)" }));
-                                            bldr.CodeBlock("try", 2, () =>
-                                                {
-                                                    bldr.AppendLine(isVoid
-                                                        ? $"response = await this.{fnIdent}({args});"
-                                                        : $"response = {{ value: await this.{fnIdent}({args}) }};");
-                                                })
-                                                .CodeBlock("catch (err)", 2, () =>
-                                                {
-                                                    bldr.AppendLine("response = err;");
-                                                })
-                                                .AppendLine("return handle.sendResponse(response)")
-                                                .AppendLine($"  {catchSendErr};");
+                                        bldr.CodeBlock("default", 2, () =>
+                                        {
+                                            bldr.AppendLine("return handle.sendUnknownCallResponse()")
+                                                .AppendLine(
+                                                    $"  .catch(err => $B.handleRespondError(err, this.$name, \"UNKNOWN\", header.callId));");
                                         }, ":", "");
-                                    }
-
-                                    bldr.CodeBlock("default", 2, () =>
-                                    {
-                                        bldr.AppendLine("return handle.sendUnknownCallResponse()")
-                                            .AppendLine(
-                                                $"  .catch(err => $B.handleRespondError(err, this.$name, \"UNKNOWN\", header.callId));");
-                                    }, ":", "");
-                                });
-                        });
+                                    });
+                            });
                 })
                 .AppendLine()
-                .CodeBlock($"export class {serviceIdent}Requests implements ServiceRequests", 2, () =>
+                .CodeBlock($"export class {serviceIdent}Requests implements $B.ServiceRequests", 2, () =>
                 {
                     bldr.AppendLine($"readonly $name = \"{serviceIdent}\";")
-                        .AppendLine("readonly $ctx: RouterContext;")
+                        .AppendLine("readonly $ctx: $B.RouterContext;")
                         .AppendLine()
-                        .CodeBlock("constructor(ctx: RouterContext)", 2, () =>
+                        .CodeBlock("constructor(ctx: $B.RouterContext)", 2, () =>
                         {
                             bldr.AppendLine("this.$ctx = ctx;");
                         });
@@ -382,23 +386,30 @@ namespace Core.Generators.TypeScript
                         var retType = hasRet
                             ? TypeName(fn.ReturnStruct.Fields.First().Type)
                             : "void";
-                        bldr.AppendLine()
-                            .CodeBlock($"async {fnIdent}({fnArgs}): Promise<{retType}>", 2, () =>
+                        bldr.AppendLine();
+
+                        if (fn.Documentation != "" || fn.Attributes is not null)
+                        {
+                            var docs = FormatDocumentation(fn.Documentation, fn.Attributes?.Value ?? string.Empty, 0);
+                            bldr.AppendLine(docs);
+                        }
+
+                        bldr.CodeBlock($"async {fnIdent}({fnArgs}): Promise<{retType}>", 2, () =>
+                        {
+                            if (hasRet) bldr.Append("return (");
+                            bldr.CodeBlock("await this.$ctx.request", 2, () =>
                             {
-                                if (hasRet) bldr.Append("const response = ");
-                                bldr.CodeBlock("await this.$ctx.request", 2, () =>
-                                {
-                                    var argNameList = string.Join(", ",
-                                        fn.ArgumentStruct.Fields.Select(f => f.Name.ToCamelCase()));
-                                    bldr.AppendLine($"{fn.ArgumentStruct.Name},")
-                                        .AppendLine($"{fn.ReturnStruct.Name},")
-                                        .AppendLine($"{opcode},")
-                                        .AppendLine("timeoutSec,")
-                                        .AppendLine($"{fn.Signature.Name}")
-                                        .AppendLine($"{{{argNameList}}}");
-                                }, "(", ");");
-                                if (hasRet) bldr.AppendLine("return response.value;");
-                            });
+                                var argNameList = string.Join(", ",
+                                    fn.ArgumentStruct.Fields.Select(f => f.Name.ToCamelCase()));
+                                bldr.AppendLine($"{fn.ArgumentStruct.Name},")
+                                    .AppendLine($"{fn.ReturnStruct.Name},")
+                                    .AppendLine($"{opcode},")
+                                    .AppendLine("timeoutSec,")
+                                    .AppendLine($"{fn.Signature.Name},")
+                                    .AppendLine($"{{{argNameList}}}");
+                            }, "(", hasRet ? ")" : ");");
+                            if (hasRet) bldr.AppendLine(").value;");
+                        });
                     }
                 })
                 .AppendLine();
