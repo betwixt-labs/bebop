@@ -9,6 +9,8 @@ import { RouterContext, UnknownResponseHandler } from "./context";
 import { IDatagram } from "../index";
 import { RequestHandle } from "./calls";
 
+export { RequestHandle, CallDetails } from "./calls";
+
 export interface ServiceHandlers {
   /**
    * The name of this service.

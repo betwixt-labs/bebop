@@ -70,7 +70,10 @@ impl ::bebop::SubRecord<'_> for Instrument {
     }
 
     #[inline]
-    fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+    fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(
+        &self,
+        dest: &mut W,
+    ) -> ::bebop::SeResult<usize> {
         u32::from(*self)._serialize_chained(dest)
     }
 
@@ -109,7 +112,10 @@ impl<'raw> ::bebop::SubRecord<'raw> for Performer<'raw> {
         self.name.serialized_size() + self.plays.serialized_size()
     }
 
-    fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+    fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(
+        &self,
+        dest: &mut W,
+    ) -> ::bebop::SeResult<usize> {
         Ok(self.name._serialize_chained(dest)? + self.plays._serialize_chained(dest)?)
     }
 
@@ -171,7 +177,10 @@ impl<'raw> ::bebop::SubRecord<'raw> for Song<'raw> {
                 .unwrap_or(0)
     }
 
-    fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+    fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(
+        &self,
+        dest: &mut W,
+    ) -> ::bebop::SeResult<usize> {
         let size = self.serialized_size();
         ::bebop::write_len(dest, size - ::bebop::LEN_SIZE)?;
         if let Some(ref v) = self.title {
@@ -332,7 +341,10 @@ impl<'raw> ::bebop::SubRecord<'raw> for Album<'raw> {
             }
     }
 
-    fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+    fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(
+        &self,
+        dest: &mut W,
+    ) -> ::bebop::SeResult<usize> {
         let size = self.serialized_size();
         ::bebop::write_len(dest, size - ::bebop::LEN_SIZE - 1)?;
         match self {
@@ -524,7 +536,10 @@ impl<'raw> ::bebop::SubRecord<'raw> for Library<'raw> {
         self.albums.serialized_size()
     }
 
-    fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize> {
+    fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(
+        &self,
+        dest: &mut W,
+    ) -> ::bebop::SeResult<usize> {
         Ok(self.albums._serialize_chained(dest)?)
     }
 
@@ -588,7 +603,7 @@ pub mod owned {
             self.name.serialized_size() + self.plays.serialized_size()
         }
 
-        fn _serialize_chained<W: ::std::io::Write>(
+        fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(
             &self,
             dest: &mut W,
         ) -> ::bebop::SeResult<usize> {
@@ -665,7 +680,7 @@ pub mod owned {
                     .unwrap_or(0)
         }
 
-        fn _serialize_chained<W: ::std::io::Write>(
+        fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(
             &self,
             dest: &mut W,
         ) -> ::bebop::SeResult<usize> {
@@ -849,7 +864,7 @@ pub mod owned {
                 }
         }
 
-        fn _serialize_chained<W: ::std::io::Write>(
+        fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(
             &self,
             dest: &mut W,
         ) -> ::bebop::SeResult<usize> {
@@ -1052,7 +1067,7 @@ pub mod owned {
             self.albums.serialized_size()
         }
 
-        fn _serialize_chained<W: ::std::io::Write>(
+        fn _serialize_chained<W: ::std::io::Write + ?::core::marker::Sized>(
             &self,
             dest: &mut W,
         ) -> ::bebop::SeResult<usize> {

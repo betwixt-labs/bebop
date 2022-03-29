@@ -1,6 +1,7 @@
 {
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "gen-rpc": "dotnet run --project ../../Compiler --ts test/generated/gen.ts --files ../Schemas/rpc.bop"
   },
   "devDependencies": {
     "@types/benchmark": "^2.1.1",

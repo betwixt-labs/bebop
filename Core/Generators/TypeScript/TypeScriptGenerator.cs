@@ -266,16 +266,15 @@ namespace Core.Generators.TypeScript
                         .AppendLine()
                         .CodeBlock("$recvCall(datagram: $B.IDatagram, handle: $B.RequestHandle)", 2, () =>
                         {
-                            bldr.AppendLine("if (datagram.discriminator != $B.IRpcRequestDatagram.discriminator)")
-                                .Append("  throw new BebopRuntimeException")
+                            bldr.AppendLine("if (datagram.discriminator != $B.RpcRequestDatagram.discriminator)")
+                                .Append("  throw new BebopRuntimeError")
                                 .AppendEnd("(\"`$recvCall` Should only ever be provided with Requests.\")")
                                 .AppendLine()
                                 .AppendLine("const { header, opcode, data } = datagram.value;")
+                                // since case statements overlap on var names
+                                .AppendLine("let response: any, args: any;")
                                 .CodeBlock("switch (opcode)", 2, () =>
                                 {
-                                    // since case statements overlap on var names
-                                    bldr.AppendLine("let response: any;");
-
                                     foreach (var branch in sd.Branches.OrderBy(b => b.Discriminator))
                                     {
                                         var opcode = branch.Discriminator;
@@ -294,7 +293,6 @@ namespace Core.Generators.TypeScript
 
                                             if (hasArgs)
                                             {
-                                                bldr.AppendLine($"let args: I{fn.ArgumentStruct.Name};");
                                                 bldr.CodeBlock("try", 2, () =>
                                                     {
                                                         bldr.AppendLine(
@@ -320,9 +318,16 @@ namespace Core.Generators.TypeScript
                                                 })
                                                 .AppendLine("return handle.sendResponse(response)")
                                                 .AppendLine($"  {catchSendErr};");
-                                        }, ":", "  break;");
+                                        }, ":", "");
                                     }
+
+                                    bldr.CodeBlock("default", 2, () =>
+                                    {
+                                        bldr.AppendLine("return handle.sendUnknownCallResponse()")
+                                            .AppendLine($"  .catch(err => $B.handleRespondError(err, \"{serviceIdent}\", \"UNKNOWN\", header.callId));");
+                                    }, ":", "");
                                 });
+
                             // TODO: unpack the arguments
                             // TODO: call the correct function
                             // TODO: pack the return

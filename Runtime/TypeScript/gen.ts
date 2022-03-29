@@ -29,7 +29,7 @@ function buildSchema(source: string, dest: string): Promise<void> {
     await fs.rm("src/generated/datagram.ts.tmp");
   });
 
-  data = data.replace('from "bebop"', 'from ".."');
+  data = data.replace(/from "bebop"/g, 'from ".."');
 
   await fs.rm("src/generated/datagram.ts", { force: true });
   let out = await fs.open("src/generated/datagram.ts", "w");

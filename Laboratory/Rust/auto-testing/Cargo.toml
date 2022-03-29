@@ -12,5 +12,7 @@ bebop = { path = "../../../Runtime/Rust" }
 bebop-tools = { path = "../../../Tools/cargo", default-features = false, features = ["format"] }
 
 [features]
-default = ["bebop-owned-all"]
+default = ["bebop-owned-all", "hello-handlers", "hello-requests"]
 bebop-owned-all = []
+hello-handlers = []
+hello-requests = []
