@@ -1,6 +1,5 @@
-This test checks that:
+This test has all runtimes encode the same struct, then performs full matrix testing where each language decodes each encoding.
 
-* `Right(r="Success")` encodes to the same binary in all implementations.
-* All implementations decode that binary to `Right(r="Success")`.
+Run it with `node run_test.js` (needs npm and dotnet).
 
-Run it with `./run_test.sh` (needs npm and dotnet).
+You can set the C++ compiler with the `CXX` environment variable (default `g++`).
