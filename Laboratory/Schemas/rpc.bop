@@ -18,6 +18,8 @@ struct KV {
     string value;
 }
 
+service NullService {}
+
 service KVStore {
     1 -> void ping();
 

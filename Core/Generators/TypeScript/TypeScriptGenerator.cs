@@ -293,7 +293,9 @@ namespace Core.Generators.TypeScript
                             bldr.AppendLine(docs);
                         }
 
-                        bldr.AppendLine($"abstract {fnIdent}({args}): PromiseLike<{ret}> | {ret};")
+                        bldr.AppendLine(fnIdent == "serviceName"
+                                ? $"async {fnIdent}({args}): Promise<{ret}> {{ return this.$name; }}"
+                                : $"abstract {fnIdent}({args}): Promise<{ret}>;")
                             .AppendLine();
                     }
 
