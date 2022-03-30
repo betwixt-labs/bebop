@@ -10,6 +10,7 @@ import { IDatagram } from "../index";
 import { RequestHandle } from "./calls";
 
 export { RequestHandle, TypedRequestHandle, CallDetails } from "./calls";
+export { RouterContext, UnknownResponseHandler } from "./context";
 
 export interface ServiceHandlers {
   /**

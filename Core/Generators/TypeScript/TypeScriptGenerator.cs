@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -10,6 +11,16 @@ namespace Core.Generators.TypeScript
     public class TypeScriptGenerator : BaseGenerator
     {
         const int indentStep = 2;
+
+        // TODO: should we get this list from the SchemaRepo or something to prevent sync issues?
+        private static readonly ImmutableHashSet<string> _rpcDefinitionsToIgnore =
+            new[]
+            {
+                "RpcDatagram", "RpcRequestHeader", "RpcResponseHeader", "RpcServiceNameReturn",
+                "RpcServiceNameArgs", "RpcRequestDatagram", "RpcResponseOk", "RpcResponseErr",
+                "RpcResponseCallNotSupported", "RpcResponseUnknownCall", "RpcResponseInvalidSignature",
+                "RpcDecodeError"
+            }.ToImmutableHashSet();
 
         public TypeScriptGenerator(BebopSchema schema) : base(schema) { }
 
@@ -296,7 +307,7 @@ namespace Core.Generators.TypeScript
                                     .AppendEnd("(\"`$recvCall` Should only ever be provided with Requests.\")")
                                     .AppendLine("const { header, opcode, data } = datagram.value;")
                                     // since case statements overlap on var names
-                                    .AppendLine("let response: any, args: any, handle: $B.TypedRequestHandle<unknown>;")
+                                    .AppendLine("let response: any, args: any, handle: $B.TypedRequestHandle<any>;")
                                     .CodeBlock("switch (opcode)", 2, () =>
                                     {
                                         foreach (var branch in sd.Branches.OrderBy(b => b.Discriminator))
@@ -308,7 +319,7 @@ namespace Core.Generators.TypeScript
                                             var hasArgs = fn.ArgumentStruct.Fields.Count > 0;
                                             var isVoid = fn.ReturnStruct.Fields.Count <= 0;
                                             var catchSendErr =
-                                                $".catch(err => $B.handleRespondError(err, this.$name, \"{fnIdent}\", header.callId))";
+                                                $".catch(err => $B.handleRespondError(err, this.$name, \"{fnIdent}\", header.id))";
                                             bldr.CodeBlock($"case {opcode}", 2, () =>
                                             {
                                                 bldr.AppendLine(
@@ -335,9 +346,9 @@ namespace Core.Generators.TypeScript
                                                 }
 
                                                 var args = string.Join(", ",
-                                                    fn.ArgumentStruct.Fields
-                                                        .Select(f => $"args.{f.Name.ToPascalCase()}")
-                                                        .Concat(new[] { "$B.CallDetails.deadline(handle)" }));
+                                                    (new[] { "$B.CallDetails.deadline(handle)" }).Concat(
+                                                        fn.ArgumentStruct.Fields.Select(f =>
+                                                            $"args.{f.Name.ToPascalCase()}")));
                                                 bldr.CodeBlock("try", 2, () =>
                                                     {
                                                         bldr.AppendLine(isVoid
@@ -357,7 +368,7 @@ namespace Core.Generators.TypeScript
                                         {
                                             bldr.AppendLine("return handle.sendUnknownCallResponse()")
                                                 .AppendLine(
-                                                    $"  .catch(err => $B.handleRespondError(err, this.$name, \"UNKNOWN\", header.callId));");
+                                                    $"  .catch(err => $B.handleRespondError(err, this.$name, \"UNKNOWN\", header.id));");
                                         }, ":", "");
                                     });
                             });
@@ -553,8 +564,17 @@ namespace Core.Generators.TypeScript
                 builder.Indent(2);
             }
 
+            var hasServiceDefinition = Schema.Definitions.Values.Any(d => d is ServiceDefinition);
+
             foreach (var definition in Schema.Definitions.Values)
             {
+                if (hasServiceDefinition && _rpcDefinitionsToIgnore.Contains(definition.Name))
+                {
+                    // We don't want to generate the RPC types for TS because it is easier to ship them in the runtime
+                    // for NotNullWhenAttribute. Also makes it more similar to Rust.
+                    continue;
+                }
+
                 if (!string.IsNullOrWhiteSpace(definition.Documentation))
                 {
                     builder.AppendLine(FormatDocumentation(definition.Documentation, string.Empty, 0));
