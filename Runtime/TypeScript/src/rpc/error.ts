@@ -141,35 +141,40 @@ export type TransportErrorInner =
  * Things like the internet connection dying would fall under this.
  */
 export class TransportError extends BebopRuntimeError {
-  constructor(public readonly inner: TransportErrorInner) {
+  public readonly inner: TransportErrorInner;
+
+  constructor(inner: TransportErrorInner) {
+    let message: string;
     switch (inner.discriminator) {
       case TransportErrorVariants.ResponseAlreadySent:
-        super("Response already sent");
+        message = "Response already sent";
         break;
       case TransportErrorVariants.DatagramTooLarge:
-        super("Datagram too large");
+        message = "Datagram too large";
         break;
       case TransportErrorVariants.SerializationError:
-        super(`Serialization error: ${inner.error.message}`);
+        message = `Serialization error: ${inner.error.message}`;
         break;
       case TransportErrorVariants.DeserializationError:
-        super(`Deserialization error: ${inner.error.message}`);
+        message = `Deserialization error: ${inner.error.message}`;
         break;
       case TransportErrorVariants.NotConnected:
-        super("Not connected");
+        message = "Not connected";
         break;
       case TransportErrorVariants.Timeout:
-        super("Timeout");
+        message = "Timeout";
         break;
       case TransportErrorVariants.CallDropped:
-        super("Call dropped");
+        message = "Call dropped";
         break;
       case TransportErrorVariants.Other:
-        super(inner.message);
+        message = inner.message;
         break;
       default:
         assertUnreachable(inner);
     }
+    super(message);
+    this.inner = inner;
   }
 }
 
@@ -213,20 +218,25 @@ export type LocalRpcErrorInner =
 
 /** Errors that the local may return when sending or responding to a request. */
 export class LocalRpcError extends BebopRuntimeError {
-  constructor(public readonly inner: LocalRpcErrorInner) {
+  public readonly inner: LocalRpcErrorInner;
+
+  constructor(inner: LocalRpcErrorInner) {
+    let message: string;
     switch (inner.discriminator) {
       case LocalRpcErrorVariants.DeadlineExceeded:
-        super("Deadline exceeded");
+        message = "Deadline exceeded";
         break;
       case LocalRpcErrorVariants.Custom:
-        super(`Custom (${inner.code}) ${inner.info}`);
+        message = `Custom (${inner.code}) ${inner.info}`;
         break;
       case LocalRpcErrorVariants.NotSupported:
-        super("Not supported");
+        message = "Not supported";
         break;
       default:
         assertUnreachable(inner);
     }
+    super(message);
+    this.inner = inner;
   }
 }
 
@@ -293,28 +303,33 @@ export type RemoteRpcErrorInner =
 
 /** Errors that can be received from the remote when making a request. */
 export class RemoteRpcError extends BebopRuntimeError {
-  constructor(public readonly inner: RemoteRpcErrorInner) {
+  public readonly inner: RemoteRpcErrorInner;
+
+  constructor(inner: RemoteRpcErrorInner) {
+    let message: string;
     switch (inner.discriminator) {
       case RemoteRpcErrorVariants.UnknownCall:
-        super("Unknown call");
+        message = "Unknown call";
         break;
       case RemoteRpcErrorVariants.Transport:
-        super(inner.error.message);
+        message = inner.error.message;
         break;
       case RemoteRpcErrorVariants.Custom:
-        super(`Custom (${inner.code}) ${inner.info}`);
+        message = `Custom (${inner.code}) ${inner.info}`;
         break;
       case RemoteRpcErrorVariants.InvalidSignature:
-        super("Invalid signature");
+        message = "Invalid signature";
         break;
       case RemoteRpcErrorVariants.CallNotSupported:
-        super("Call not supported");
+        message = "Call not supported";
         break;
       case RemoteRpcErrorVariants.RemoteDecode:
-        super(`Remote decode ${inner.info}`);
+        message = `Remote decode ${inner.info}`;
         break;
       default:
         assertUnreachable(inner);
     }
+    super(message);
+    this.inner = inner;
   }
 }

@@ -172,8 +172,8 @@ function setup(lifetimeMs = 1000): { server: Router<NullServiceRequests>, client
     // for these tests 1s should be plenty
     setTimeout(() => { transport.shutdown() }, lifetimeMs);
     return {
-        server: new Router(NullServiceRequests, transport, new MemBackedKVStore(), null),
-        client: new Router(KVStoreRequests, transport, new NullService(), null)
+        server: Router(NullServiceRequests, transport, new MemBackedKVStore(), null),
+        client: Router(KVStoreRequests, transport, new NullService(), null)
     }
 }
 
