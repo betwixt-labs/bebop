@@ -20,6 +20,6 @@ export {
 } from "../generated/datagram";
 
 export * from "./router";
-export { handleRespondError } from "./error";
 export { Deadline } from "./deadlines";
 export { TransportProtocol } from "./transport";
+export * from "./error";

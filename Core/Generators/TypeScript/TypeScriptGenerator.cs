@@ -321,7 +321,7 @@ namespace Core.Generators.TypeScript
                                             var hasArgs = fn.ArgumentStruct.Fields.Count > 0;
                                             var isVoid = fn.ReturnStruct.Fields.Count <= 0;
                                             var catchSendErr =
-                                                $".catch(err => $B.handleRespondError(err, this.$name, \"{fnIdent}\", header.id))";
+                                                $".catch((err: unknown) => $B.handleRespondError(err, this.$name, \"{fnIdent}\", header.id))";
                                             bldr.CodeBlock($"case {opcode}", 2, () =>
                                             {
                                                 bldr.AppendLine(
@@ -339,10 +339,10 @@ namespace Core.Generators.TypeScript
                                                             bldr.AppendLine(
                                                                 $"args = {fn.ArgumentStruct.Name}.decode(data);");
                                                         })
-                                                        .CodeBlock("catch (err)", 2, () =>
+                                                        .CodeBlock("catch (err: unknown)", 2, () =>
                                                         {
                                                             bldr.AppendLine(
-                                                                    "return handle.sendDecodeErrorResponse(err)")
+                                                                    "return handle.sendDecodeErrorResponse(err as $B.TransportErrorDeserializationError)")
                                                                 .AppendLine($"  {catchSendErr};");
                                                         });
                                                 }
@@ -368,9 +368,9 @@ namespace Core.Generators.TypeScript
 
                                         bldr.CodeBlock("default", 2, () =>
                                         {
-                                            bldr.AppendLine("return handle.sendUnknownCallResponse()")
+                                            bldr.AppendLine("return rawHandle.sendUnknownCallResponse()")
                                                 .AppendLine(
-                                                    $"  .catch(err => $B.handleRespondError(err, this.$name, \"UNKNOWN\", header.id));");
+                                                    $"  .catch((err: unknown) => $B.handleRespondError(err, this.$name, \"UNKNOWN\", header.id));");
                                         }, ":", "");
                                     });
                             });

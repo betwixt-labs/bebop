@@ -1,4 +1,12 @@
-import {Datagram, Deadline, IDatagram, Router, TransportHandler, TransportProtocol} from "bebop";
+import {
+    Datagram,
+    Deadline,
+    IDatagram,
+    LocalRpcError, LocalRpcErrorVariants,
+    Router,
+    TransportHandler,
+    TransportProtocol
+} from "bebop";
 import * as EventEmitter from "events";
 import {
     IKV,
@@ -7,12 +15,11 @@ import {
     NullServiceHandlersDef,
     NullServiceRequests
 } from "./generated/rpc";
-import {LocalRpcError} from "../../../Runtime/TypeScript/dist/rpc/error";
-import {LocalRpcErrorVariants} from "../../../Runtime/TypeScript/src/rpc/error";
+import * as assert from "assert";
 
 /** Simple MPMC channel which uses an event emitter internally */
 class Channel<T> {
-    private readonly buffer = [];
+    private readonly buffer: T[] = [];
     private readonly maxSize: number;
 
     private readonly events: EventEmitter = new EventEmitter();
@@ -20,7 +27,7 @@ class Channel<T> {
 
 
     constructor(bufferSize?: number) {
-        console.assert(Number.isInteger(bufferSize) && bufferSize > 0, "Must be a valid buffer size!")
+        assert(bufferSize && Number.isInteger(bufferSize) && bufferSize > 0, "Must be a valid buffer size!")
         this.maxSize = bufferSize;
     }
 
@@ -49,7 +56,7 @@ class Channel<T> {
             })
             this.events.removeAllListeners('close')
         }
-        const v = this.buffer.shift()
+        const v = this.buffer.shift()!
         this.events.emit('rem')
         return v
     }
@@ -61,7 +68,9 @@ class Channel<T> {
 
 class ChannelTransport extends TransportProtocol {
     private handler?: TransportHandler;
-    private channel: Channel<Uint8Array>;
+    // this will not be valid at first but once valid will remain so perpetually.
+    // Should be valid before the user can send anything.
+    private channel!: Channel<Uint8Array>;
     private running = true;
 
     constructor() {
@@ -77,6 +86,8 @@ class ChannelTransport extends TransportProtocol {
     }
 
     private async recvLoop(): Promise<void> {
+        while (this.running && !this.channel)
+            await new Promise(resolve => setTimeout(resolve, 10))
         while (this.running) {
             const datagram = Datagram.decode(await this.channel.rx())
             // awaiting here allows for backpressure on requests, could just spawn instead.
@@ -170,10 +181,12 @@ class NullService extends NullServiceHandlersDef {
 function setup(lifetimeMs = 1000): { server: Router<NullServiceRequests>, client: Router<KVStoreRequests> } {
     const transport = new ChannelTransport();
     // for these tests 1s should be plenty
-    setTimeout(() => { transport.shutdown() }, lifetimeMs);
+    setTimeout(() => {
+        transport.shutdown()
+    }, lifetimeMs);
     return {
-        server: Router(NullServiceRequests, transport, new MemBackedKVStore(), null),
-        client: Router(KVStoreRequests, transport, new NullService(), null)
+        server: Router(NullServiceRequests, transport, new MemBackedKVStore(), undefined),
+        client: Router(KVStoreRequests, transport, new NullService(), undefined)
     }
 }
 
