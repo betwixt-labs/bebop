@@ -72,7 +72,7 @@ export type Router<TRequests> = TRequests & {
  * @return A router class that can be used with the provided remote service for any
  * transport + local service combination.
  */
-export function Router<
+export function makeRouter<
   TRequests extends ServiceRequests,
   TRequestsConstructor extends ServiceRequestsConstructor<TRequests>
 >(

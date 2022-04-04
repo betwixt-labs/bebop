@@ -4,6 +4,7 @@ import {
     IDatagram,
     LocalRpcError, LocalRpcErrorVariants,
     Router,
+    makeRouter,
     TransportHandler,
     TransportProtocol
 } from "bebop";
@@ -16,6 +17,8 @@ import {
     NullServiceRequests
 } from "./generated/rpc";
 import * as assert from "assert";
+import {IRpcDatagram} from "../../../Runtime/TypeScript/dist/generated/datagram";
+import {IRpcRequestDatagram} from "../../../Runtime/TypeScript/src";
 
 /** Simple MPMC channel which uses an event emitter internally */
 class Channel<T> {
@@ -68,12 +71,25 @@ class Channel<T> {
 
 class ChannelTransport extends TransportProtocol {
     private handler?: TransportHandler;
-    // this will not be valid at first but once valid will remain so perpetually.
-    // Should be valid before the user can send anything.
-    private channel!: Channel<Uint8Array>;
-    private running = true;
 
-    constructor() {
+    static make(): [a: ChannelTransport, b: ChannelTransport] {
+        const c1 = new Channel<Uint8Array>(8);
+        const c2 = new Channel<Uint8Array>(8);
+
+        const running: [boolean] = [true];
+        return [
+            new ChannelTransport(running, c1.tx.bind(c1), c2.rx.bind(c2), c1, c2),
+            new ChannelTransport(running, c2.tx.bind(c2), c1.rx.bind(c1), c1, c2)
+        ]
+    }
+
+    private constructor(
+        private readonly running: [ptr: boolean],
+        private readonly tx: (v: Uint8Array) => Promise<void>,
+        private readonly rx: () => Promise<Uint8Array>,
+        private readonly ch1: Channel<Uint8Array>,
+        private readonly ch2: Channel<Uint8Array>,
+    ) {
         super();
 
         // intentionally do not await this
@@ -82,26 +98,28 @@ class ChannelTransport extends TransportProtocol {
 
     setHandler(recv: TransportHandler): void {
         this.handler = recv;
-        this.channel = new Channel(16);
     }
 
     private async recvLoop(): Promise<void> {
-        while (this.running && !this.channel)
-            await new Promise(resolve => setTimeout(resolve, 10))
-        while (this.running) {
-            const datagram = Datagram.decode(await this.channel.rx())
+        while (this.running[0] && !this.handler)
+            await 0
+        while (this.running[0]) {
+            const datagram = Datagram.decode(await this.rx())
             // awaiting here allows for backpressure on requests, could just spawn instead.
             await this.handler!(datagram)
         }
     }
 
     async send(datagram: IDatagram): Promise<void> {
-        return this.channel.tx(Datagram.encode(datagram))
+        return this.tx(Datagram.encode(datagram))
     }
 
     shutdown() {
-        this.running = false;
-        process.nextTick(() => this.channel.close());
+        this.running[0] = false;
+        process.nextTick(() => {
+            this.ch1.close()
+            this.ch2.close()
+        });
     }
 }
 
@@ -179,19 +197,59 @@ class NullService extends NullServiceHandlersDef {
 }
 
 function setup(lifetimeMs = 1000): { server: Router<NullServiceRequests>, client: Router<KVStoreRequests> } {
-    const transport = new ChannelTransport();
+    const [transport_a, transport_b] = ChannelTransport.make();
     // for these tests 1s should be plenty
     setTimeout(() => {
-        transport.shutdown()
+        transport_a.shutdown()
+        transport_b.shutdown()
     }, lifetimeMs);
     return {
-        server: Router(NullServiceRequests, transport, new MemBackedKVStore(), undefined),
-        client: Router(KVStoreRequests, transport, new NullService(), undefined)
+        server: makeRouter(NullServiceRequests, transport_a, new MemBackedKVStore(), undefined),
+        client: makeRouter(KVStoreRequests, transport_b, new NullService(), undefined)
     }
 }
 
+it("underlying transport works", async () => {
+    const [transport_a, transport_b] = ChannelTransport.make();
+    setTimeout(() => {
+        transport_a.shutdown()
+        transport_b.shutdown()
+    }, 100);
+
+    let a_recv = null, b_recv = null;
+    transport_a.setHandler(async (d: IRpcDatagram) => {
+        a_recv = d;
+    });
+    transport_b.setHandler(async (d: IRpcDatagram) => {
+        b_recv = d;
+    });
+
+    const d1: IDatagram = {
+        discriminator: 1,
+        value: {
+            header: {id: 1, signature: 0, timeout: 0},
+            opcode: 1,
+            data: new Uint8Array(0)
+        },
+    };
+    await transport_a.send(d1);
+    expect(b_recv).toEqual(d1);
+    expect(b_recv).not.toBe(d1);
+
+    b_recv = null;
+    await transport_a.send(d1);
+    expect(b_recv).toEqual(d1);
+    expect(a_recv).toBeNull();
+
+    b_recv = null;
+    await transport_b.send(d1);
+    expect(a_recv).toEqual(d1);
+    expect(a_recv).not.toBe(d1);
+    expect(b_recv).toBeNull();
+})
+
 it('can request and receive', async () => {
-    const {client, server} = setup()
+    const {client, server} = setup(100000)
     expect(await client.serviceName()).toBe("KVStore");
     expect(await server.serviceName()).toBe("NullService");
     await client.insert("Mykey", "Myvalue", 1);
