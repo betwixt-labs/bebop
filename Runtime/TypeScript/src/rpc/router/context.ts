@@ -48,7 +48,8 @@ export class RouterContext {
       opcode,
       timeout,
       signature,
-      recordInputImpl.encode(record)
+      // TODO: Don't clone if https://github.com/RainwayApp/bebop/issues/209 removes the pooled view
+      new Uint8Array(recordInputImpl.encode(record))
     );
   }
 

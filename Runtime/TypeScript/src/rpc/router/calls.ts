@@ -200,9 +200,11 @@ export class TypedRequestHandle<
   }
 
   async sendOkResponse(record: RecordTypeOf<RI> | Uint8Array): Promise<void> {
-    return this.sendOkResponseRaw(
-      isUint8Array(record) ? record : this.recordImpl.encode(record)
-    );
+    // TODO: Don't clone if https://github.com/RainwayApp/bebop/issues/209 removes the pooled view
+    const raw = isUint8Array(record)
+      ? record
+      : new Uint8Array(this.recordImpl.encode(record));
+    return this.sendOkResponseRaw(raw);
   }
 }
 
