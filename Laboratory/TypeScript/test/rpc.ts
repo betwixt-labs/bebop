@@ -6,10 +6,12 @@ import {
     Router,
     makeRouter,
     TransportHandler,
-    TransportProtocol
+    TransportProtocol,
 } from "bebop";
 import * as EventEmitter from "events";
 import {
+    _HelloServiceNameReturn,
+    I_HelloServiceNameReturn,
     IKV,
     KVStoreHandlersDef,
     KVStoreRequests,
@@ -17,8 +19,7 @@ import {
     NullServiceRequests
 } from "./generated/rpc";
 import * as assert from "assert";
-import {IRpcDatagram} from "../../../Runtime/TypeScript/dist/generated/datagram";
-import {IRpcRequestDatagram} from "../../../Runtime/TypeScript/src";
+import {RpcResponseOk} from "../../../Runtime/TypeScript/dist/generated/datagram";
 
 /** Simple MPMC channel which uses an event emitter internally */
 class Channel<T> {
@@ -104,14 +105,16 @@ class ChannelTransport extends TransportProtocol {
         while (this.running[0] && !this.handler)
             await 0
         while (this.running[0]) {
-            const datagram = Datagram.decode(await this.rx())
             // awaiting here allows for backpressure on requests, could just spawn instead.
+            const raw = await this.rx();
+            const datagram = Datagram.decode(raw)
             await this.handler!(datagram)
         }
     }
 
     async send(datagram: IDatagram): Promise<void> {
-        return this.tx(Datagram.encode(datagram))
+        const raw = Datagram.encode(datagram);
+        return this.tx(raw);
     }
 
     shutdown() {
@@ -209,6 +212,55 @@ function setup(lifetimeMs = 1000): { server: Router<NullServiceRequests>, client
     }
 }
 
+it("correctly encodes data", () => {
+    const name1: I_HelloServiceNameReturn = { value: "KVStore" };
+    const name_raw = _HelloServiceNameReturn.encode(name1);
+    const name2 = _HelloServiceNameReturn.decode(name_raw);
+    expect(name2).toEqual(name1)
+})
+
+it("correctly encodes and decodes datagrams", () => {
+    const data = new Uint8Array([7,0,0,0,75,86,83,116,111,114,101]);
+    const dgram1: IDatagram = {
+        discriminator: RpcResponseOk.discriminator,
+        value: {
+            header: {id: 1},
+            data,
+        }
+    };
+    const raw = Datagram.encode(dgram1);
+    const dgram2 = Datagram.decode(raw);
+    expect(dgram2.discriminator).toBe(RpcResponseOk.discriminator);
+    if (dgram2.discriminator == RpcResponseOk.discriminator)
+        expect(dgram2.value.data).toEqual(data)
+
+    expect(dgram2).toEqual(dgram1);
+    expect(dgram2).not.toBe(dgram1);
+})
+
+it("correctly encodes and decodes datagrams and data", () => {
+    const name1: I_HelloServiceNameReturn = { value: "KVStore" };
+    const data = _HelloServiceNameReturn.encode(name1);
+
+    const dgram1: IDatagram = {
+        discriminator: RpcResponseOk.discriminator,
+        value: {
+            header: {id: 1},
+            data: data
+        }
+    };
+    const raw = Datagram.encode(dgram1);
+    const dgram2 = Datagram.decode(raw);
+    expect(dgram2.discriminator).toBe(RpcResponseOk.discriminator);
+    if (dgram2.discriminator == RpcResponseOk.discriminator) {
+        const name3 = _HelloServiceNameReturn.decode(dgram2.value.data);
+        expect(name3).toEqual(name1)
+    }
+
+    expect(dgram2).toEqual(dgram1);
+    expect(dgram2).not.toBe(dgram1);
+})
+
 it("underlying transport works", async () => {
     const [transport_a, transport_b] = ChannelTransport.make();
     setTimeout(() => {
@@ -217,10 +269,10 @@ it("underlying transport works", async () => {
     }, 100);
 
     let a_recv = null, b_recv = null;
-    transport_a.setHandler(async (d: IRpcDatagram) => {
+    transport_a.setHandler(async (d: IDatagram) => {
         a_recv = d;
     });
-    transport_b.setHandler(async (d: IRpcDatagram) => {
+    transport_b.setHandler(async (d: IDatagram) => {
         b_recv = d;
     });
 
