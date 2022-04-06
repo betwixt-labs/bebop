@@ -15,7 +15,8 @@
     "ts-jest": "^27.1.3",
     "ts-node": "^10.7.0",
     "typescript": "^4.6.2",
-    "benchmark": "^2.1.4"
+    "benchmark": "^2.1.4",
+    "eslint": "^8.12.0"
   },
   "dependencies": {
     "bebop": "file:../../Runtime/TypeScript"
