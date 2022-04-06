@@ -36,4 +36,7 @@ service KVStore {
 
     /** Retrieve a count of the number of entries stored. */
     8 -> uint64 count();
+    
+    /** Have the server hold a write lock for a certain number of seconds. */
+    9 -> void wait(uint16 secs);
 }

@@ -7,6 +7,8 @@ export {
   IRpcRequestHeader,
   RpcRequestDatagram,
   IRpcRequestDatagram,
+  RpcResponseOk,
+  IRpcResponseOk,
   RpcResponseErr,
   IRpcResponseErr,
   RpcResponseCallNotSupported,

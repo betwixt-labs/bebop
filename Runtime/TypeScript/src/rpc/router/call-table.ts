@@ -6,7 +6,12 @@ import {
 } from "./calls";
 import * as assert from "assert";
 import { BebopRecordImpl, RecordTypeOf } from "../../record";
-import { IDatagram } from "../index";
+import {
+  IDatagram,
+  RemoteRpcErrorVariants,
+  TransportError,
+  TransportErrorVariants,
+} from "../index";
 import DatagramInfo from "../datagram-info";
 import { UnknownResponseHandler } from "./context";
 import {
@@ -19,9 +24,9 @@ import {
   RpcResponseUnknownCall,
 } from "../../generated/datagram";
 import { isUint8Array } from "util/types";
-import { RemoteRpcError, RemoteRpcErrorVariants } from "../error";
+import { RemoteRpcError } from "../error";
 
-const U16_MAX = 1 << (16 - 1);
+const U16_MAX = Math.pow(2, 16) - 1;
 
 /** Verify a given callId is valid. */
 export function isValidCallId(id: number): boolean {
@@ -61,12 +66,14 @@ export class RouterCallTable {
     assert(this.callTable.size < U16_MAX, "Call table overflow");
 
     // zero is a "null" id
-    while (this.nextId == 0 || this.callTable.has(this.nextId)) {
+    while (
+      this.nextId == 0 ||
+      this.nextId > U16_MAX ||
+      this.callTable.has(this.nextId)
+    ) {
       // the value is not valid because it is 0 or is in use already
       this.nextId++;
-      if (this.nextId > U16_MAX) {
-        this.nextId = 1;
-      }
+      if (this.nextId > U16_MAX) this.nextId = 1;
     }
 
     // Very intentional use of POST increment
@@ -74,10 +81,10 @@ export class RouterCallTable {
   }
 
   /** Register a datagram before we send it. This will set the call_id. */
-  register<TRecordImpl extends BebopRecordImpl>(
-    recordImpl: TRecordImpl,
+  register<RI extends BebopRecordImpl>(
+    recordImpl: RI,
     datagram: IDatagram
-  ): PendingResponse<RecordTypeOf<TRecordImpl>> {
+  ): PendingResponse<RecordTypeOf<RI>> {
     assert(
       DatagramInfo.isRequest(datagram),
       "Only requests should be registered."
@@ -85,7 +92,7 @@ export class RouterCallTable {
     const callId = DatagramInfo.callId(datagram);
     assert(isValidCallId(callId), "Datagram must have a valid call id.");
     const timeout = DatagramInfo.timeoutS(datagram) ?? this.defaultTimeout;
-    const [handle, pending] = newPendingResponse<TRecordImpl>(
+    const [handle, pending] = newPendingResponse<RI>(
       recordImpl,
       callId,
       timeout
@@ -177,8 +184,16 @@ export class RouterCallTable {
 
   dropExpired(id: number) {
     const record = this.callTable.get(id);
-    if (record && CallDetails.isExpired(record)) {
-      this.callTable.delete(id);
-    }
+    if (!record || !CallDetails.isExpired(record)) return;
+
+    this.callTable.delete(id);
+    record.reject(
+      new RemoteRpcError({
+        discriminator: RemoteRpcErrorVariants.Transport,
+        error: new TransportError({
+          discriminator: TransportErrorVariants.Timeout,
+        }),
+      })
+    );
   }
 }

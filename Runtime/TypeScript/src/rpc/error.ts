@@ -143,6 +143,13 @@ export type TransportErrorInner =
 export class TransportError extends BebopRuntimeError {
   public readonly inner: TransportErrorInner;
 
+  static is(obj: any): obj is TransportError {
+    return (
+      obj?.constructor?.name == TransportError.name &&
+      Number.isInteger(obj?.inner?.discriminator)
+    );
+  }
+
   constructor(inner: TransportErrorInner) {
     let message: string;
     switch (inner.discriminator) {
@@ -219,6 +226,13 @@ export type LocalRpcErrorInner =
 /** Errors that the local may return when sending or responding to a request. */
 export class LocalRpcError extends BebopRuntimeError {
   public readonly inner: LocalRpcErrorInner;
+
+  static is(obj: any): obj is LocalRpcError {
+    return (
+      obj?.constructor?.name == LocalRpcError.name &&
+      Number.isInteger(obj?.inner?.discriminator)
+    );
+  }
 
   constructor(inner: LocalRpcErrorInner) {
     let message: string;
@@ -304,6 +318,13 @@ export type RemoteRpcErrorInner =
 /** Errors that can be received from the remote when making a request. */
 export class RemoteRpcError extends BebopRuntimeError {
   public readonly inner: RemoteRpcErrorInner;
+
+  static is(obj: any): obj is RemoteRpcError {
+    return (
+      obj?.constructor?.name == RemoteRpcError.name &&
+      Number.isInteger(obj?.inner?.discriminator)
+    );
+  }
 
   constructor(inner: RemoteRpcErrorInner) {
     let message: string;
