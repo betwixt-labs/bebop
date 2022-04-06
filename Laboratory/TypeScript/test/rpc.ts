@@ -2,16 +2,17 @@ import {
     Datagram,
     Deadline,
     IDatagram,
-    LocalRpcError, LocalRpcErrorVariants,
-    Router,
+    LocalRpcError,
+    LocalRpcErrorVariants,
     makeRouter,
+    Router,
+    TransportError,
+    TransportErrorVariants,
     TransportHandler,
     TransportProtocol,
 } from "bebop";
 import * as EventEmitter from "events";
 import {
-    _HelloServiceNameReturn,
-    I_HelloServiceNameReturn,
     IKV,
     KVStoreHandlersDef,
     KVStoreRequests,
@@ -19,7 +20,7 @@ import {
     NullServiceRequests
 } from "./generated/rpc";
 import * as assert from "assert";
-import {RpcResponseOk} from "../../../Runtime/TypeScript/dist/generated/datagram";
+import {RemoteRpcError, RemoteRpcErrorVariants} from "../../../Runtime/TypeScript/src";
 
 /** Simple MPMC channel which uses an event emitter internally */
 class Channel<T> {
@@ -106,7 +107,14 @@ class ChannelTransport extends TransportProtocol {
             await 0
         while (this.running[0]) {
             // awaiting here allows for backpressure on requests, could just spawn instead.
-            const raw = await this.rx();
+            let raw
+            try {
+                 raw = await this.rx();
+            } catch (err) {
+                // channel closed
+                this.shutdown()
+                break
+            }
             const datagram = Datagram.decode(raw)
             await this.handler!(datagram)
         }
@@ -187,12 +195,15 @@ class MemBackedKVStore extends KVStoreHandlersDef {
     }
 
     async ping(deadline: Deadline): Promise<void> {
+        throw new LocalRpcError({
+            discriminator: LocalRpcErrorVariants.Custom,
+            code: 4,
+            info: "some error"
+        })
     }
 
-    async values(deadline: Deadline, page: bigint, pageSize: number): Promise<Array<string>> {
-        const start = Math.min(this.store.size, Number(page) * pageSize);
-        const end = Math.min(start + pageSize, this.store.size);
-        return Array.from(this.store.values()).slice(start, end);
+    async wait(deadline: Deadline, secs: number): Promise<void> {
+        await new Promise(resolve => setTimeout(resolve, secs * 1000))
     }
 }
 
@@ -211,55 +222,6 @@ function setup(lifetimeMs = 1000): { server: Router<NullServiceRequests>, client
         client: makeRouter(KVStoreRequests, transport_b, new NullService(), undefined)
     }
 }
-
-it("correctly encodes data", () => {
-    const name1: I_HelloServiceNameReturn = { value: "KVStore" };
-    const name_raw = _HelloServiceNameReturn.encode(name1);
-    const name2 = _HelloServiceNameReturn.decode(name_raw);
-    expect(name2).toEqual(name1)
-})
-
-it("correctly encodes and decodes datagrams", () => {
-    const data = new Uint8Array([7,0,0,0,75,86,83,116,111,114,101]);
-    const dgram1: IDatagram = {
-        discriminator: RpcResponseOk.discriminator,
-        value: {
-            header: {id: 1},
-            data,
-        }
-    };
-    const raw = Datagram.encode(dgram1);
-    const dgram2 = Datagram.decode(raw);
-    expect(dgram2.discriminator).toBe(RpcResponseOk.discriminator);
-    if (dgram2.discriminator == RpcResponseOk.discriminator)
-        expect(dgram2.value.data).toEqual(data)
-
-    expect(dgram2).toEqual(dgram1);
-    expect(dgram2).not.toBe(dgram1);
-})
-
-it("correctly encodes and decodes datagrams and data", () => {
-    const name1: I_HelloServiceNameReturn = { value: "KVStore" };
-    const data = _HelloServiceNameReturn.encode(name1);
-
-    const dgram1: IDatagram = {
-        discriminator: RpcResponseOk.discriminator,
-        value: {
-            header: {id: 1},
-            data: data
-        }
-    };
-    const raw = Datagram.encode(dgram1);
-    const dgram2 = Datagram.decode(raw);
-    expect(dgram2.discriminator).toBe(RpcResponseOk.discriminator);
-    if (dgram2.discriminator == RpcResponseOk.discriminator) {
-        const name3 = _HelloServiceNameReturn.decode(dgram2.value.data);
-        expect(name3).toEqual(name1)
-    }
-
-    expect(dgram2).toEqual(dgram1);
-    expect(dgram2).not.toBe(dgram1);
-})
 
 it("underlying transport works", async () => {
     const [transport_a, transport_b] = ChannelTransport.make();
@@ -301,10 +263,56 @@ it("underlying transport works", async () => {
 })
 
 it('can request and receive', async () => {
-    const {client, server} = setup(100000)
+    const {client, server} = setup()
     expect(await client.serviceName()).toBe("KVStore");
     expect(await server.serviceName()).toBe("NullService");
     await client.insert("Mykey", "Myvalue", 1);
-    expect(await client.count(5)).toBe(1);
-    expect(await client.get("Mykey", 10)).toBe("Myvalue");
+    expect(await client.count(1)).toBe(1n);
+    expect(await client.get("Mykey", 2)).toBe("Myvalue");
+})
+
+it('defaults to not supported', async () => {
+    const {client, server} = setup()
+    let err!: RemoteRpcError
+    try {
+        await client.values(0n, 100);
+    } catch (e) {
+        if (RemoteRpcError.is(e)) err = e
+        else throw e
+    }
+    expect(err).not.toBeUndefined()
+    expect(err.inner.discriminator).toBe(RemoteRpcErrorVariants.CallNotSupported)
+})
+
+it('handles custom errors', async () => {
+    const {client, server} = setup()
+    let err!: RemoteRpcError
+    try {
+        await client.ping();
+    } catch (e) {
+        if (RemoteRpcError.is(e)) err = e
+        else throw e
+    }
+    expect(err).not.toBeUndefined()
+    expect(err.inner.discriminator).toBe(RemoteRpcErrorVariants.Custom)
+    if (err.inner.discriminator == RemoteRpcErrorVariants.Custom)
+        expect(err.inner.code).toBe(4);
+})
+
+it('handles remote timeout error', async () => {
+    const {client, server} = setup(1500)
+
+    let err!: RemoteRpcError;
+    try {
+        await client.wait(2, 1);
+    } catch (e) {
+        if (RemoteRpcError.is(e)) err = e
+        else throw e
+    }
+    expect(err).not.toBeUndefined()
+    expect(err.inner.discriminator).toBe(RemoteRpcErrorVariants.Transport)
+    if (err.inner.discriminator == RemoteRpcErrorVariants.Transport) {
+        const terr: TransportError = err.inner.error
+        expect(terr.inner.discriminator).toBe(TransportErrorVariants.Timeout)
+    }
 })

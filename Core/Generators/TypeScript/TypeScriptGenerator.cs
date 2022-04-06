@@ -295,7 +295,7 @@ namespace Core.Generators.TypeScript
 
                         bldr.AppendLine(fnIdent == "serviceName"
                                 ? $"async {fnIdent}({args}): Promise<{ret}> {{ return this.$name; }}"
-                                : $"abstract {fnIdent}({args}): Promise<{ret}>;")
+                                : $"async {fnIdent}({args}): Promise<{ret}> {{ throw new $B.LocalRpcError({{discriminator: $B.LocalRpcErrorVariants.NotSupported}}); }}")
                             .AppendLine();
                     }
 
@@ -350,7 +350,7 @@ namespace Core.Generators.TypeScript
                                                 var args = string.Join(", ",
                                                     (new[] { "$B.CallDetails.deadline(handle)" }).Concat(
                                                         fn.ArgumentStruct.Fields.Select(f =>
-                                                            $"args.{f.Name.ToPascalCase()}")));
+                                                            $"args.{f.Name.ToCamelCase()}")));
                                                 bldr.CodeBlock("try", 2, () =>
                                                     {
                                                         bldr.AppendLine(isVoid
