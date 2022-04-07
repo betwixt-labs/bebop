@@ -37,7 +37,10 @@ export class RouterCallTable {
   /** Default timeout in seconds */
   private readonly defaultTimeout?: number;
   /** Table of calls which have yet to be resolved. */
-  private readonly callTable: Map<number, ResponseHandle>;
+  private readonly callTable: Map<
+    number,
+    [handle: ResponseHandle, timeoutId?: NodeJS.Timeout]
+  >;
   /** The next ID value which should be used */
   private nextId: number;
 
@@ -83,7 +86,8 @@ export class RouterCallTable {
   /** Register a datagram before we send it. This will set the call_id. */
   register<RI extends BebopRecordImpl>(
     recordImpl: RI,
-    datagram: IDatagram
+    datagram: IDatagram,
+    timeoutId?: NodeJS.Timeout
   ): PendingResponse<RecordTypeOf<RI>> {
     assert(
       DatagramInfo.isRequest(datagram),
@@ -97,7 +101,7 @@ export class RouterCallTable {
       callId,
       timeout
     );
-    this.callTable.set(callId, handle);
+    this.callTable.set(callId, [handle, timeoutId]);
     return pending;
   }
 
@@ -164,12 +168,14 @@ export class RouterCallTable {
     }
 
     if (v && isValidCallId(v.id)) {
-      const call = this.callTable.get(v.id);
-      if (!call) {
+      const entry = this.callTable.get(v.id);
+      if (!entry) {
         // already handled (probably?)
         return;
       }
+      const [call, timeoutId] = entry;
       this.callTable.delete(v.id);
+      if (timeoutId) clearTimeout(timeoutId);
       if (isUint8Array(v.res)) {
         call.resolve(v.res);
       } else {
@@ -184,10 +190,12 @@ export class RouterCallTable {
 
   dropExpired(id: number) {
     const record = this.callTable.get(id);
-    if (!record || !CallDetails.isExpired(record)) return;
+    if (!record || !CallDetails.isExpired(record[0])) return;
 
+    const [handle, timeoutId] = record;
     this.callTable.delete(id);
-    record.reject(
+    if (timeoutId) clearTimeout(timeoutId!);
+    handle.reject(
       new RemoteRpcError({
         discriminator: RemoteRpcErrorVariants.Transport,
         error: new TransportError({

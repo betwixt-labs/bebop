@@ -91,10 +91,15 @@ export class RouterContext {
         data,
       },
     };
-    const pending = this.callTable.register(recordOutputImpl, datagram);
-    const expiresInMs = CallDetails.timeoutMs(pending);
-    if (expiresInMs) this.cleanOnExpiration(id, expiresInMs);
 
+    const expiresInMs = DatagramInfo.timeoutMs(datagram);
+    let timeoutId;
+    if (expiresInMs) timeoutId = this.cleanOnExpiration(id, expiresInMs);
+    const pending = this.callTable.register(
+      recordOutputImpl,
+      datagram,
+      timeoutId
+    );
     await this.send(datagram);
     return pending;
   }
@@ -149,9 +154,9 @@ export class RouterContext {
     this.callTable.resolve(this.unknownResponseHandler, datagram);
   }
 
-  private cleanOnExpiration(id: number, inMs: number): void {
+  private cleanOnExpiration(id: number, inMs: number): NodeJS.Timeout {
     const weak = new WeakRef(this);
-    setTimeout(() => {
+    return setTimeout(() => {
       const self = weak.deref();
       if (!self) return;
       self.callTable.dropExpired(id);

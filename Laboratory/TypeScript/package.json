@@ -1,7 +1,6 @@
 {
   "scripts": {
-    "test": "jest",
-    "gen-rpc": "dotnet run --project ../../Compiler --ts test/generated/rpc.ts --files ../Schemas/rpc.bop"
+    "test": "jest"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^5.10.1",

@@ -104,7 +104,9 @@ it("drops expired entry", async () => {
             data: new Uint8Array()
         }
     }
-    const pending = ct.register(_HelloServiceNameReturn, request)
+    let wasCalled = false;
+    const timeoutId = setTimeout(() => { wasCalled = true; }, 1200)
+    const pending = ct.register(_HelloServiceNameReturn, request, timeoutId)
     await new Promise(resolve => setTimeout(resolve, 1100))
 
     expect(CallDetails.isExpired(pending)).toBeTruthy()
@@ -121,4 +123,8 @@ it("drops expired entry", async () => {
         const terr = (rerr as any).inner.error as TransportError
         expect(terr.inner.discriminator).toBe(TransportErrorVariants.Timeout)
     }
+
+    expect(wasCalled).toBeFalsy()
+    await new Promise(resolve => setTimeout(resolve, 200))
+    expect(wasCalled).toBeFalsy()
 })
