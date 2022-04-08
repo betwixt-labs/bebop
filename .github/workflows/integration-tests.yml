@@ -27,7 +27,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v1
         with:
-          node-version: "12"
+          node-version: "16"
       - name: Setup C++
         run: |
           sudo apt update
