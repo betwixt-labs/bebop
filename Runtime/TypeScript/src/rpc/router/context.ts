@@ -6,7 +6,7 @@ import DatagramInfo from "../datagram-info";
 import { BebopRecordImpl, RecordTypeOf } from "../../record";
 import { RpcDecodeError, RpcRequestDatagram } from "../../generated/datagram";
 import * as assert from "assert";
-import { CallDetails, RequestHandle } from "./calls";
+import { RequestHandle } from "./calls";
 
 export type UnknownResponseHandler = (unknownDatagram: IDatagram) => void;
 

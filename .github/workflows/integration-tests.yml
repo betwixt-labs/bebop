@@ -32,6 +32,11 @@ jobs:
         run: |
           sudo apt update
           sudo apt install gcc g++ zsh
+      - name: Build TS Runtime
+        run: |
+          npm install
+          npm run build
+        working-directory: ./Runtime/TypeScript
       - name: Test
         run: zsh run_test.sh
         working-directory: ${{env.TEST_ROOT}}
