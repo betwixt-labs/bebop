@@ -250,7 +250,7 @@ mod test {
         let pending = ct.register::<TestStruct>(&request);
         tokio::time::sleep(Duration::from_secs(1)).await;
 
-        assert!(pending.is_expired())
+        assert!(pending.is_expired());
         ct.drop_expired(id);
         assert!(!ct.call_table.contains_key(&id));
         assert!(matches!(
