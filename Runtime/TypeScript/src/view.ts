@@ -10,6 +10,8 @@ const asciiToHex = Object.freeze([
 ]);
 const emptyByteArray = Object.freeze(new Uint8Array(0));
 const emptyString = Object.freeze("");
+const ticksBetweenEpochs = 621355968000000000n;
+const dateMask = 0x3fffffffffffffffn;
 
 export class BebopView {
   private static textDecoder = new TextDecoder();
