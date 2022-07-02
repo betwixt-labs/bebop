@@ -11,82 +11,32 @@
     <VersionPrefix Condition="'$(ReleaseVersion)' == ''">0.0.1</VersionPrefix>
     <VersionSuffix Condition="'$(ReleaseVersion)' == ''">$([System.DateTime]::UtcNow.ToString(`yyyyMMdd-HHmm`))</VersionSuffix>
     <Authors>The Bebop Authors</Authors>
-    <PlatformTarget>x64</PlatformTarget>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-    <OutputPath>../bin/compiler/$(Configuration)</OutputPath>
+    <AppendRuntimeIdentifierToOutputPath>true</AppendRuntimeIdentifierToOutputPath>
+    <OutputPath>../bin/compiler/$(Configuration)/artifacts/</OutputPath>
     <NativeOutputPath>../bin/compiler/$(Configuration)/native/</NativeOutputPath>
-    <PublishDir>../bin/compiler/$(Configuration)/publish</PublishDir>
-    <Platforms>x64</Platforms>
-    <RuntimeIdentifiers>win-x64;osx-x64;linux-x64</RuntimeIdentifiers>
-    <Configurations>Windows-Debug;Windows-Release;macOS-Debug;macOS-Release;Linux-Debug;Linux-Release</Configurations>
+    <PublishDir>../bin/compiler/$(Configuration)/publish/$(RuntimeIdentifier)</PublishDir>
+    <Platforms>AnyCPU</Platforms>
+    <Configurations>Debug;Release</Configurations>
   </PropertyGroup>
 
-
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Windows-Debug|x64' ">
-    <PlatformTarget>x64</PlatformTarget>
-    <DebugSymbols>true</DebugSymbols>
-    <Optimize>false</Optimize>
+   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+     <DebugSymbols>true</DebugSymbols>
+      <Optimize>false</Optimize>
     <DefineConstants>DEBUG</DefineConstants>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
   </PropertyGroup>
 
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Linux-Debug|x64'">
-    <PlatformTarget>x64</PlatformTarget>
-    <DebugSymbols>true</DebugSymbols>
-    <Optimize>false</Optimize>
-    <DefineConstants>DEBUG</DefineConstants>
-    <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
-  </PropertyGroup>
-
-
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Windows-Release|x64' ">
-    <PublishSingleFile>true</PublishSingleFile>
-    <PlatformTarget>x64</PlatformTarget>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
     <Optimize>true</Optimize>
     <DefineConstants>RELEASE</DefineConstants>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <IlcOptimizationPreference>Size</IlcOptimizationPreference>
-
-  </PropertyGroup>
-
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Linux-Release|x64'">
     <PublishSingleFile>true</PublishSingleFile>
-    <PlatformTarget>x64</PlatformTarget>
-    <Optimize>true</Optimize>
-    <DefineConstants>RELEASE</DefineConstants>
-    <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
-    <IlcOptimizationPreference>Size</IlcOptimizationPreference>
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <SelfContained>true</SelfContained>
+    <PublishTrimmed>true</PublishTrimmed>
   </PropertyGroup>
-
-
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'macOS-Debug|x64' ">
-    <PlatformTarget>x64</PlatformTarget>
-    <DebugSymbols>true</DebugSymbols>
-    <Optimize>false</Optimize>
-    <DefineConstants>DEBUG</DefineConstants>
-    <RuntimeIdentifier>osx-x64</RuntimeIdentifier>
-  </PropertyGroup>
-
-
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'macOS-Release|x64' ">
-    <PlatformTarget>x64</PlatformTarget>
-    <PublishSingleFile>true</PublishSingleFile>
-    <Optimize>true</Optimize>
-    <DefineConstants>RELEASE</DefineConstants>
-    <RuntimeIdentifier>osx-x64</RuntimeIdentifier>
-    <IlcOptimizationPreference>Size</IlcOptimizationPreference>
-  </PropertyGroup>
-
 
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.DotNet.ILCompiler" Version="7.0.0-*" />
   </ItemGroup>
 
 	<ItemGroup>

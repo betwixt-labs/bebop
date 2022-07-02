@@ -7,8 +7,7 @@
     <LangVersion>9.0</LangVersion>
     <AssemblyName>BebopCore</AssemblyName>
     <RootNamespace>Core</RootNamespace>
-    <PlatformTarget>x64</PlatformTarget>
-    <Platforms>x64;AnyCPU</Platforms>
+    <Platforms>AnyCPU</Platforms>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <Version Condition="'$(ReleaseVersion)' != ''">$(ReleaseVersion)</Version>
     <VersionPrefix Condition="'$(ReleaseVersion)' == ''">0.0.1</VersionPrefix>
@@ -21,19 +20,11 @@
     <AdditionalFiles Include="../.env" />
   </ItemGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
     <Optimize>false</Optimize>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <Optimize>true</Optimize>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <Optimize>false</Optimize>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
     <Optimize>true</Optimize>
   </PropertyGroup>
 
@@ -43,6 +34,5 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
   </ItemGroup>
-
   
 </Project>
