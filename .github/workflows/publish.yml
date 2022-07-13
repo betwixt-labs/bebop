@@ -3,7 +3,7 @@ name: publish bebop
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 jobs:
   build-compiler:
@@ -13,22 +13,22 @@ jobs:
         os: [windows-latest, macos-latest, ubuntu-18.04]
         include:
           - os: macos-latest
-            CONFIGURATION: macOS-Release
-            RUNTIME: osx-x64
+            IDENTIFIER: osx
             ARTIFACT: bebopc
 
           - os: windows-latest
-            CONFIGURATION: Windows-Release
-            RUNTIME: win-x64
+            IDENTIFIER: win
             ARTIFACT: bebopc.exe
 
           - os: ubuntu-18.04
-            CONFIGURATION: Linux-Release
-            RUNTIME: linux-x64
+            IDENTIFIER: linux
             ARTIFACT: bebopc
-
     env:
-      BUILD_ARTIFACT: ./bin/compiler/${{matrix.CONFIGURATION}}/publish/${{matrix.ARTIFACT}}
+      CONFIGURATION: Release
+      BUILD_ARTIFACT_X86_64: ./bin/compiler/${{env.CONFIGURATION}}/publish/${{matrix.IDENTIFIER}}-x64/${{matrix.ARTIFACT}}
+      BUILD_ARTIFACT_ARM64: ./bin/compiler/${{env.CONFIGURATION}}/publish/${{matrix.IDENTIFIER}}-arm64/${{matrix.ARTIFACT}}
+      BUILD_ZIP_ARTIFACT_X86_64: ./bin/compiler/${{env.CONFIGURATION}}/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-x64.zip
+      BUILD_ZIP_ARTIFACT_ARM64: ./bin/compiler/${{env.CONFIGURATION}}/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-arm64.zip
     steps:
       - uses: actions/checkout@v1
 
@@ -54,12 +54,13 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: "6.0.x" # SDK Version to use; x will use the latest version of the 6.0 channel
+          dotnet-version: "7.0.x" # SDK Version to use; x will use the latest version of the 6.0 channel
 
       - name: Build bebopc
         run: |
           dotnet restore
-          dotnet publish -c ${{matrix.CONFIGURATION}} -r ${{matrix.RUNTIME}} -p:ReleaseVersion=${{ steps.dotenv.outputs.version }}
+          dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-x64 -p:ReleaseVersion=${{ steps.dotenv.outputs.version }}
+          dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-arm64 -p:ReleaseVersion=${{ steps.dotenv.outputs.version }}
         working-directory: ./Compiler/
 
       - if: matrix.os == 'macos-latest'
@@ -86,26 +87,35 @@ jobs:
       - if: matrix.os == 'macos-latest'
         name: ZIP macOS Notarization Build
         run: |
-          unzip -j -o ${{env.BUILD_ARTIFACT}}.zip
-          rm -f ${{env.BUILD_ARTIFACT}}.zip
-          zip -j ${{env.BUILD_ARTIFACT}}.zip ${{env.BUILD_ARTIFACT}}
+          unzip -o ./bin/compiler/publish/bebopc.zip
+          rm -f ./bin/compiler/publish/bebopc.zip
+          zip -j ${{env.BUILD_ZIP_ARTIFACT_X86_64}} ./bin/compiler/publish/${{matrix.IDENTIFIER}}-x64/${{matrix.ARTIFACT}}
+          zip -j ${{env.BUILD_ZIP_ARTIFACT_ARM64}} ./bin/compiler/publish/${{matrix.IDENTIFIER}}-arm64/${{matrix.ARTIFACT}}
 
       - if: matrix.os == 'ubuntu-18.04'
         name: ZIP Linux Build
         run: |
-          zip -j ${{env.BUILD_ARTIFACT}}.zip ${{env.BUILD_ARTIFACT}}
+          zip -j ${{env.BUILD_ZIP_ARTIFACT_X86_64}} ${{env.BUILD_ARTIFACT_X86_64}}
+          zip -j ${{env.BUILD_ZIP_ARTIFACT_ARM64}} ${{env.BUILD_ARTIFACT_ARM64}}
 
       - if: matrix.os == 'windows-latest'
         name: ZIP Windows Build
         shell: powershell
         run: |
-          Compress-Archive -Path ${{env.BUILD_ARTIFACT}} -DestinationPath ${{env.BUILD_ARTIFACT}}.zip
+          Compress-Archive -Path ${{env.BUILD_ARTIFACT_X86_64}} -DestinationPath ${{env.BUILD_ZIP_ARTIFACT_X86_64}}
+          Compress-Archive -Path ${{env.BUILD_ARTIFACT_ARM64}} -DestinationPath ${{env.BUILD_ZIP_ARTIFACT_ARM64}}
 
-      - name: Upload Build
+      - name: Upload x64 Build
         uses: actions/upload-artifact@v2
         with:
-          name: ${{matrix.RUNTIME}}
-          path: ${{env.BUILD_ARTIFACT}}.zip
+          name: ${{matrix.IDENTIFIER}}-x64
+          path: ${{env.BUILD_ZIP_ARTIFACT_X86_64}}
+
+      - name: Upload ARM64 Build
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{matrix.IDENTIFIER}}-arm64
+          path: ${{env.BUILD_ZIP_ARTIFACT_ARM64}}
 
   build-runtimes:
     env:
@@ -130,12 +140,12 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: "6.0.x" # SDK Version to use; x will use the latest version of the 5.0 channel
+          dotnet-version: "7.0.x" # SDK Version to use; x will use the latest version of the 5.0 channel
 
       - name: Test .NET Runtime
         run: |
           dotnet run --project ../../../Compiler/ --cs "../GeneratedTestCode/Output.g.cs" --namespace Bebop.Codegen --files $(ls -p ../../Schemas/Valid/*.bop | tr '\n' ' ')
-          dotnet test -c Release -f net6.0
+          dotnet test -c Release -f net7.0
         working-directory: ${{env.NET_TEST_ROOT}}
 
       - name: Build .NET Runtime
@@ -157,16 +167,16 @@ jobs:
           profile: minimal
       - name: Cargo Login
         run: cargo login ${{ secrets.CRATES_TOKEN  }}
-      
+
       - name: Download Compiler Artifacts
         uses: actions/download-artifact@v2
-        
+
       - name: Extract Compiler Artifacts
         run: |
           mkdir -p ${{github.workspace}}/bin/compiler/Linux-Debug
           unzip -j -o ./linux-x64/bebopc.zip -d ${{github.workspace}}/bin/compiler/Linux-Debug
           ls
-      
+
       # todo: depend on a different job
       - name: Test Rust Runtime
         run: cargo test
@@ -176,7 +186,7 @@ jobs:
           cargo check -p auto-testing
           cargo test -p functionality-testing
         working-directory: ${{ env.RUST_TEST_ROOT }}
-        
+
       - name: Package Rust Runtime
         working-directory: ${{ env.RUST_RUNTIME_ROOT }}
         run: |
@@ -252,7 +262,7 @@ jobs:
           unzip -j -o ./win-x64/bebopc.exe.zip -d ${{env.BEBOPC_PATH}}/windows
           unzip -j -o ./osx-x64/bebopc.zip -d ${{env.BEBOPC_PATH}}/macos
           unzip -j -o ./linux-x64/bebopc.zip -d ${{env.BEBOPC_PATH}}/linux
-          
+
       - name: Build NuGet Package
         run: bash build.sh ${{ steps.dotenv.outputs.version }}
         working-directory: ${{env.TOOLS_ROOT}}/vs
@@ -314,7 +324,7 @@ jobs:
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: "6.0.x" # SDK Version to use; x will use the latest version of the 5.0 channel
-          
+
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -338,7 +348,7 @@ jobs:
           mv tmp Cargo.toml
           cargo publish --allow-dirty
         working-directory: ${{env.TOOLS_ROOT}}/cargo
-      
+
       - name: Publish Rust Runtime
         run: |
           sed 's/^version \?= \?.*/version = "${{ steps.dotenv.outputs.version }}"/' Cargo.toml > tmp
@@ -360,7 +370,7 @@ jobs:
         run: |
           mkdir -p homepage/repl && cp -a bebop-repl-${{ steps.dotenv.outputs.version }}/. homepage/repl
           sed 's/0.0.0/${{ steps.dotenv.outputs.version }}/' ${{env.TOOLS_ROOT}}/bash/install.sh > homepage/install.sh
-          
+
       - name: Publish Website
         uses: jakejarvis/s3-sync-action@master
         env:
