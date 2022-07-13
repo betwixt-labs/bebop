@@ -84,10 +84,14 @@ jobs:
           Compress-Archive -Path ${{env.BUILD_ARTIFACT_X86_64}} -DestinationPath ${{env.BUILD_ZIP_ARTIFACT_X86_64}}
           Compress-Archive -Path ${{env.BUILD_ARTIFACT_ARM64}} -DestinationPath ${{env.BUILD_ZIP_ARTIFACT_ARM64}}
 
-      - name: Upload Build
+      - name: Upload X86_64 Build
         uses: actions/upload-artifact@v2
         with:
-          name: ${{matrix.RUNTIME}}
-          path: |
-            ${{env.BUILD_ZIP_ARTIFACT_X86_64}}
-            ${{env.BUILD_ZIP_ARTIFACT_ARM64}}
+          name: ${{matrix.IDENTIFIER}}-x64
+          path: ${{env.BUILD_ZIP_ARTIFACT_X86_64}}
+
+      - name: Upload ARM64 Build
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{matrix.IDENTIFIER}}-arm64
+          path: ${{env.BUILD_ZIP_ARTIFACT_ARM64}}
