@@ -34,10 +34,10 @@ jobs:
 
     env:
       CONFIGURATION: Release
-      BUILD_ARTIFACT_X86_64: ./bin/compiler/${{env.CONFIGURATION}}/publish/${{matrix.IDENTIFIER}}-x64/${{matrix.ARTIFACT}}
-      BUILD_ARTIFACT_ARM64: ./bin/compiler/${{env.CONFIGURATION}}/publish/${{matrix.IDENTIFIER}}-arm64/${{matrix.ARTIFACT}}
-      BUILD_ZIP_ARTIFACT_X86_64: ./bin/compiler/${{env.CONFIGURATION}}/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-x64.zip
-      BUILD_ZIP_ARTIFACT_ARM64: ./bin/compiler/${{env.CONFIGURATION}}/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-arm64.zip
+      BUILD_ARTIFACT_X86_64: ./bin/compiler/Release/publish/${{matrix.IDENTIFIER}}-x64/${{matrix.ARTIFACT}}
+      BUILD_ARTIFACT_ARM64: ./bin/compiler/Release/publish/${{matrix.IDENTIFIER}}-arm64/${{matrix.ARTIFACT}}
+      BUILD_ZIP_ARTIFACT_X86_64: ./bin/compiler/Release/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-x64.zip
+      BUILD_ZIP_ARTIFACT_ARM64: ./bin/compiler/Release/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-arm64.zip
     steps:
       - uses: actions/checkout@v1
 
