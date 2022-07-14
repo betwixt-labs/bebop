@@ -22,7 +22,7 @@ function getHostInfo() {
     const arch = process.arch;
     const platform = process.platform;
     ensureHostSupport(arch, platform);
-    const osName = () => {
+    const osName = (() => {
         switch (platform) {
             case "win32":
                 return "windows";
@@ -33,7 +33,7 @@ function getHostInfo() {
             default:
                 throw new Error(`Unknown platform name: ${platform}`);
         }
-    };
+    })();
     return { arch: arch, os: osName, exeSuffix: osName === "windows" ? '.exe' : '' };
 
 }
