@@ -26,6 +26,7 @@ impl<'raw> SubRecord<'raw> for Fixed {
 
     fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
         self.a._serialize_chained(dest)?;
+        #[allow(unaligned_references)]
         self.b._serialize_chained(dest)?;
         Ok(9)
     }
