@@ -7,9 +7,6 @@
     "apple_id": {
         "password": "@env:AC_PASSWORD"
     },
-    "zip": {
-        "output_path": "/Users/runner/work/bebop/bebop/bin/compiler/publish/bebopc.zip"
-    },
     "sign": {
         "application_identity": "FB328BC574FB712798E2C79A237759ADB0839AAF"
     }
