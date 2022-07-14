@@ -94,8 +94,11 @@ jobs:
         run: |
           unzip -l ./notarized.zip
           unzip -o ./notarized.zip
-          zip -j ${{env.BUILD_ZIP_ARTIFACT_X86_64}} ./bebopc-macos-x64
-          zip -j ${{env.BUILD_ZIP_ARTIFACT_ARM64}} ./bebopc-macos-arm64
+          mv -f ./bebopc-macos-x64 ${{env.BUILD_ARTIFACT_X86_64}}
+          mv -f ./bebopc-macos-arm64 ${{env.BUILD_ARTIFACT_ARM64}}
+
+          zip -j ${{env.BUILD_ZIP_ARTIFACT_X86_64}} ${{env.BUILD_ARTIFACT_X86_64}}
+          zip -j ${{env.BUILD_ZIP_ARTIFACT_ARM64}} ${{env.BUILD_ARTIFACT_ARM64}}
 
       - if: matrix.os == 'ubuntu-18.04'
         name: ZIP Linux Build
