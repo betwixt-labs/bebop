@@ -86,7 +86,7 @@ jobs:
         run: |
           mkdir ./tosign
           mv ${{env.BUILD_ARTIFACT_X86_64}} ./tosign/bebopc-macos-x64
-          mv ${{env.BUILD_ZIP_ARTIFACT_ARM64}} ./tosign/bebopc-macos-arm64
+          mv ${{env.BUILD_ARTIFACT_ARM64}} ./tosign/bebopc-macos-arm64
           gon -log-level=trace -log-json ./gon.json
 
       - if: matrix.os == 'macos-latest'
