@@ -25,10 +25,10 @@ jobs:
             ARTIFACT: bebopc
     env:
       CONFIGURATION: Release
-      BUILD_ARTIFACT_X86_64: ./bin/compiler/${{env.CONFIGURATION}}/publish/${{matrix.IDENTIFIER}}-x64/${{matrix.ARTIFACT}}
-      BUILD_ARTIFACT_ARM64: ./bin/compiler/${{env.CONFIGURATION}}/publish/${{matrix.IDENTIFIER}}-arm64/${{matrix.ARTIFACT}}
-      BUILD_ZIP_ARTIFACT_X86_64: ./bin/compiler/${{env.CONFIGURATION}}/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-x64.zip
-      BUILD_ZIP_ARTIFACT_ARM64: ./bin/compiler/${{env.CONFIGURATION}}/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-arm64.zip
+      BUILD_ARTIFACT_X86_64: ./bin/compiler/Release/publish/${{matrix.IDENTIFIER}}-x64/${{matrix.ARTIFACT}}
+      BUILD_ARTIFACT_ARM64: ./bin/compiler/Release/publish/${{matrix.IDENTIFIER}}-arm64/${{matrix.ARTIFACT}}
+      BUILD_ZIP_ARTIFACT_X86_64: ./bin/compiler/Release/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-x64.zip
+      BUILD_ZIP_ARTIFACT_ARM64: ./bin/compiler/Release/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-arm64.zip
     steps:
       - uses: actions/checkout@v1
 
@@ -54,13 +54,14 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: "7.0.x" # SDK Version to use; x will use the latest version of the 6.0 channel
+          dotnet-version: "7.0.x" # SDK Version to use; x will use the latest version of the 7.0 channel
+          include-prerelease: true
 
       - name: Build bebopc
         run: |
           dotnet restore
-          dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-x64 -p:ReleaseVersion=${{ steps.dotenv.outputs.version }}
-          dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-arm64 -p:ReleaseVersion=${{ steps.dotenv.outputs.version }}
+          dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-x64 -p:ReleaseVersion=${{ steps.dotenv.outputs.version }} --self-contained
+          dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-arm64 -p:ReleaseVersion=${{ steps.dotenv.outputs.version }} --self-contained
         working-directory: ./Compiler/
 
       - if: matrix.os == 'macos-latest'
@@ -105,7 +106,7 @@ jobs:
           Compress-Archive -Path ${{env.BUILD_ARTIFACT_X86_64}} -DestinationPath ${{env.BUILD_ZIP_ARTIFACT_X86_64}}
           Compress-Archive -Path ${{env.BUILD_ARTIFACT_ARM64}} -DestinationPath ${{env.BUILD_ZIP_ARTIFACT_ARM64}}
 
-      - name: Upload x64 Build
+      - name: Upload X86_64 Build
         uses: actions/upload-artifact@v2
         with:
           name: ${{matrix.IDENTIFIER}}-x64
@@ -140,7 +141,8 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: "7.0.x" # SDK Version to use; x will use the latest version of the 5.0 channel
+          dotnet-version: "7.0.x" # SDK Version to use; x will use the latest version of the 7.0 channel
+          include-prerelease: true
 
       - name: Test .NET Runtime
         run: |
@@ -173,8 +175,8 @@ jobs:
 
       - name: Extract Compiler Artifacts
         run: |
-          mkdir -p ${{github.workspace}}/bin/compiler/Linux-Debug
-          unzip -j -o ./linux-x64/bebopc.zip -d ${{github.workspace}}/bin/compiler/Linux-Debug
+          mkdir -p ${{github.workspace}}/bin/compiler/Debug/artifacts
+          unzip -j -o ./linux-x64/bebopc.zip -d ${{github.workspace}}/bin/compiler/Debug/artifacts
           ls
 
       # todo: depend on a different job
@@ -259,9 +261,12 @@ jobs:
       - name: Extract Compiler Artifacts
         run: |
           ls
-          unzip -j -o ./win-x64/bebopc.exe.zip -d ${{env.BEBOPC_PATH}}/windows
-          unzip -j -o ./osx-x64/bebopc.zip -d ${{env.BEBOPC_PATH}}/macos
-          unzip -j -o ./linux-x64/bebopc.zip -d ${{env.BEBOPC_PATH}}/linux
+          unzip -j -o ./win-x64/bebopc.exe.zip -d ${{env.BEBOPC_PATH}}/windows/x64
+          unzip -j -o ./win-arm64/bebopc.exe.zip -d ${{env.BEBOPC_PATH}}/windows/arm64
+          unzip -j -o ./osx-x64/bebopc.zip -d ${{env.BEBOPC_PATH}}/macos/x64
+          unzip -j -o ./osx-arm64/bebopc.zip -d ${{env.BEBOPC_PATH}}/macos/arm64
+          unzip -j -o ./linux-x64/bebopc.zip -d ${{env.BEBOPC_PATH}}/linux/x64
+          unzip -j -o ./linux-arm64/bebopc.zip -d ${{env.BEBOPC_PATH}}/linux/arm64
 
       - name: Build NuGet Package
         run: bash build.sh ${{ steps.dotenv.outputs.version }}
@@ -323,7 +328,8 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: "6.0.x" # SDK Version to use; x will use the latest version of the 5.0 channel
+          dotnet-version: "7.0.x" # SDK Version to use; x will use the latest version of the 7.0 channel
+          include-prerelease: true
 
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
@@ -399,7 +405,17 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./win-x64/bebopc.exe.zip
-          asset_name: bebopc-win64.zip
+          asset_name: bebopc-windows-x64.zip
+          asset_content_type: application/zip
+
+      - name: Upload Compiler for Windows ARM64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./win-arm64/bebopc.exe.zip
+          asset_name: bebopc-windows-arm64.zip
           asset_content_type: application/zip
 
       - name: Upload Compiler for Mac x64
@@ -409,7 +425,17 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./osx-x64/bebopc.zip
-          asset_name: bebopc-mac64.zip
+          asset_name: bebopc-macos-x64.zip
+          asset_content_type: application/zip
+
+      - name: Upload Compiler for Mac x64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./osx-arm64/bebopc.zip
+          asset_name: bebopc-macos-arm64.zip
           asset_content_type: application/zip
 
       - name: Upload Compiler for Linux x64
@@ -419,5 +445,15 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./linux-x64/bebopc.zip
-          asset_name: bebopc-linux64.zip
+          asset_name: bebopc-linux-x64.zip
+          asset_content_type: application/zip
+
+      - name: Upload Compiler for Linux ARM64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./linux-arm64/bebopc.zip
+          asset_name: bebopc-linux-arm64.zip
           asset_content_type: application/zip

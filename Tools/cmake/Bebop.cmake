@@ -1,7 +1,7 @@
 set(BEBOP_RELEASES_URL https://github.com/RainwayApp/bebop/releases/download
 	CACHE STRING "Public location of Bebop binary releases" FORCE)
 
-set(BEBOP_LANGUAGES cpp cs ts dart)
+set(BEBOP_LANGUAGES cpp cs ts dart rust)
 
 include(FetchContent)
 
@@ -41,14 +41,22 @@ function(Bebop_Generate target_name)
 	endif()
 	
 	set(_bebopc_executable_name "bebopc")
+
+
+	string( TOLOWER "${CMAKE_HOST_SYSTEM_PROCESSOR}" _system_processor )
+	
+	if (_system_processor STREQUAL "amd64") 
+		set(_system_processor "x64")
+	endif()
+   
 	if(NOT ${_bebopc_prefix}_POPULATED)
-		if(WIN32)
+		if(CMAKE_HOST_WIN32)
 		    string(APPEND _bebopc_executable_name ".exe")
-		    set(_bebopc_zip "bebopc-win64.zip")
-		elseif(APPLE)
-		    set(_bebopc_zip "bebopc-mac64.zip")
+		    set(_bebopc_zip "bebopc-windows-${_system_processor}.zip")
+		elseif(CMAKE_HOST_APPLE)
+		    set(_bebopc_zip "bebopc-macos-${_system_processor}.zip")
 		else()
-		    set(_bebopc_zip "bebopc-linux64.zip")
+		    set(_bebopc_zip "bebopc-linux-${_system_processor}.zip")
 		endif()
 		
 		set(_bebopc_zip_url "${BEBOP_RELEASES_URL}/${Bebop_Generate_VERSION}/${_bebopc_zip}")

@@ -21,8 +21,11 @@ Linux and macOS. Managed runtime is supplied separately in the bebop package.</d
   <files>
 	<file src="build\bebop-tools.targets" target="build" />
     <file src="buildMultiTargeting\bebop-tools.targets" target="buildMultiTargeting" />
-    <file src="..\bebopc\windows\bebopc.exe" target="tools\windows\bebopc.exe" />
-	<file src="..\bebopc\macos\bebopc" target="tools\macos\bebopc" />
-	<file src="..\bebopc\linux\bebopc" target="tools\linux\bebopc" />
+    <file src="..\bebopc\windows\x64\bebopc.exe" target="tools\windows\x64\bebopc.exe" />
+    <file src="..\bebopc\windows\arm64\bebopc.exe" target="tools\windows\arm64\bebopc.exe" />
+	  <file src="..\bebopc\macos\x64\bebopc" target="tools\macos\x64\bebopc" />
+    <file src="..\bebopc\macos\arm64\bebopc" target="tools\macos\arm64\bebopc" />
+	  <file src="..\bebopc\linux\x64\bebopc" target="tools\linux\x64\bebopc" />
+  	<file src="..\bebopc\linux\arm64\bebopc" target="tools\linux\arm64\bebopc" />
   </files>
 </package>
