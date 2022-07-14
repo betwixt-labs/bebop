@@ -1,7 +1,7 @@
 {
     "source": [
-        "/Users/runner/work/bebop/bebop/bin/compiler/publish/osx-x64/bebopc",
-        "/Users/runner/work/bebop/bebop/bin/compiler/publish/osx-arm64/bebopc"
+        "/Users/runner/work/bebop/bebop/bin/compiler/Release/publish/osx-x64/bebopc",
+        "/Users/runner/work/bebop/bebop/bin/compiler/Release/publish/osx-arm64/bebopc"
     ],
     "bundle_id": "sh.bebop",
     "apple_id": {
