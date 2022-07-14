@@ -25,8 +25,6 @@ fi
 readonly BEBOPC_VERSION="${1:-0.0.0}"
 readonly BEBOP_RELEASE_URL="https://api.github.com/repos/rainwayapp/bebop/releases/tags/v${BEBOPC_VERSION}"
 
-readonly ARM64_ISSUE_LINK="https://github.com/RainwayApp/bebop/issues/185"
-
 ### string formatters
 
 # listen, emojis are a way of life
@@ -172,24 +170,6 @@ readonly system_info="${tty_underline}${tty_white}$os $os_version ($os_arch)${tt
 
 # OS support checks
 
-### Linux has no x86_64 emulation so the current artifacts won't work
-if [[ $os_arch == "arm64" && $os == "linux" ]]; then
-    abort "$(
-        cat <<EOABORT
-${CONSTRUCTION_UTF8} The Bebop compiler does not currently support ARM64 flavors of Linux.
-
-Unlike macOS and Windows, the Linux kernel does not have built-in x86_64 emulation.
-
-ARM64 builds of bebopc are on the way: ${tty_underline}${tty_white}${ARM64_ISSUE_LINK}${tty_reset}
-
-Please subscribe to the issue to know when ARM64 native builds are available.
-
-Your system: ${system_info}
-
-EOABORT
-    )"
-fi
-
 unset HAVE_SUDO_ACCESS # unset this from the environment
 
 have_sudo_access() {
@@ -297,7 +277,7 @@ EOABORT
 fetch_release_url() {
     local target_os_name="$1"
     local target_os_arch="$2"
-    readonly target="${target_os_name}${target_os_arch}.zip"
+    readonly target="${target_os_name}-${target_os_arch}.zip"
     local exit_code=1
     if result=$(
         if [[ -x "$(which wget)" ]]; then
@@ -440,26 +420,12 @@ else
     echo "- ${BEBOPC_PREFIX}/bin/bebopc"
 fi
 
-if [[ $os_arch == "arm64" && ($os == "mac" || $os == "windows") ]]; then
-    warn "$(
-        cat <<EOS
-${CONSTRUCTION_UTF8} The x86_64 version of bebopc will be used.
-Native ARM64 builds of bebopc are on the way: ${tty_underline}${tty_white}${ARM64_ISSUE_LINK}${tty_reset}
-
-Please subscribe to the issue to know when ARM64 native builds are available.
-
-Your system: ${system_info}
-
-EOS
-    )"
-fi
-
 point "${UNICORN_UTF8} Downloading and installing bebopc (${BEBOPC_VERSION})..."
 (
 
     echo -ne "- ${tty_bold}Locating release${tty_reset} "
 
-    if ! release_url=$(fetch_release_url "$os" "64"); then
+    if ! release_url=$(fetch_release_url "$os" "$os_arch"); then
         # should be the error if fetch_release_url failed
         abort "$release_url"
     fi

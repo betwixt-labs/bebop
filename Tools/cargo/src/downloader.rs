@@ -1,13 +1,7 @@
 use json::JsonValue;
+use std::env::consts::ARCH;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
-
-#[cfg(target_os = "windows")]
-const OS_NAME: &str = "win";
-#[cfg(target_os = "linux")]
-const OS_NAME: &str = "linux";
-#[cfg(target_os = "macos")]
-const OS_NAME: &str = "mac";
 
 /// Version of bebopc to download
 pub const BEBOPC_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -17,7 +11,7 @@ pub const BEBOPC_VERSION: &str = env!("CARGO_PKG_VERSION");
 /// - `dest` directory in which bebopc directory structure will be placed.
 ///
 /// The bebopc directoy is structured as
-/// - `dest/<version>/<os>/`
+/// - `dest/<version>/<os>/<cpu_arch>`
 ///     - <zipfile>
 ///     - <bin>
 ///
@@ -31,18 +25,31 @@ pub fn download_bebopc(dest: impl AsRef<Path>) -> PathBuf {
 }
 
 fn download_bebopc_internal(dest: impl AsRef<Path>) -> PathBuf {
-    let root_path = dest.as_ref().join(BEBOPC_VERSION).join(OS_NAME);
-    let exe_path = if cfg!(target_os = "windows") {
-        root_path.join("bebopc.exe")
-    } else {
-        root_path.join("bebopc")
+    let exe_arch = match ARCH {
+        "aarch64" => "arm64",
+        "x86_64" => "x64",
+        _ => panic!(
+            "Unknown or unsupported CPU architecture: {}",
+            std::env::consts::ARCH
+        ),
     };
+
+    let root_path = dest
+        .as_ref()
+        .join(BEBOPC_VERSION)
+        .join(std::env::consts::OS)
+        .join(exe_arch);
+
+    let exe_name = format!("bebopc{}", std::env::consts::EXE_SUFFIX);
+    let exe_path = root_path.join(&exe_name);
+
     if exe_path.exists() {
         // executable already downloaded
         return exe_path;
     }
+
     mkdir_p(&root_path);
-    let zip_name = format!("bebopc-{}64.zip", OS_NAME);
+    let zip_name = format!("bebopc-{}-{}.zip", std::env::consts::OS, exe_arch);
     let release_info = get_json(format!(
         "https://api.github.com/repos/rainwayapp/bebop/releases/tags/v{}",
         BEBOPC_VERSION
@@ -59,11 +66,8 @@ fn download_bebopc_internal(dest: impl AsRef<Path>) -> PathBuf {
     download(url, &zip_path);
     let tmp_path = &root_path.join("tmp");
     unzip(&zip_path, &tmp_path);
-    if cfg!(target_os = "windows") {
-        mv(&tmp_path.join("bebopc.exe"), &exe_path);
-    } else {
-        mv(&tmp_path.join("bebopc"), &exe_path);
-    };
+
+    mv(&tmp_path.join(&exe_name), &exe_path);
     rm_rf(&tmp_path);
     exe_path
 }

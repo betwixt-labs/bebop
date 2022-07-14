@@ -1,13 +1,16 @@
 {
-    "source" : ["/Users/runner/work/bebop/bebop/bin/compiler/macOS-Release/publish/bebopc"],
-    "bundle_id" : "sh.bebop",
+    "source": [
+        "/Users/runner/work/bebop/bebop/bin/compiler/publish/osx-x64/bebopc",
+        "/Users/runner/work/bebop/bebop/bin/compiler/publish/osx-arm64/bebopc"
+    ],
+    "bundle_id": "sh.bebop",
     "apple_id": {
-        "password":  "@env:AC_PASSWORD"
+        "password": "@env:AC_PASSWORD"
     },
-    "zip" :{
-        "output_path" : "/Users/runner/work/bebop/bebop/bin/compiler/macOS-Release/publish/bebopc.zip"
+    "zip": {
+        "output_path": "/Users/runner/work/bebop/bebop/bin/compiler/publish/bebopc.zip"
     },
-    "sign" :{
-        "application_identity" : "FB328BC574FB712798E2C79A237759ADB0839AAF"
+    "sign": {
+        "application_identity": "FB328BC574FB712798E2C79A237759ADB0839AAF"
     }
 }

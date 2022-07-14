@@ -1,13 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" InitialTargets="CompileBops" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
-        <IsWindows Condition="$([MSBuild]::IsOSPlatform('Windows'))" >true</IsWindows>
-        <IsMac Condition="$([MSBuild]::IsOSPlatform('OSX'))" >true</IsMac>
-        <IsLinux Condition="$([MSBuild]::IsOSPlatform('Linux'))" >true</IsLinux>
+      <!-- Map RuntimeIdentifier e.g. converts from win10-x64 to win-x64 -->
+      <_BebopOsArch>$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLower())</_BebopOsArch>
+      <_BebopOs Condition="$([MSBuild]::IsOSPlatform('Windows'))">windows</_BebopOs>
+      <_BebopOs Condition="$([MSBuild]::IsOSPlatform('Linux'))">linux</_BebopOs>
+      <_BebopOs Condition="$([MSBuild]::IsOSPlatform('OSX'))">macos</_BebopOs>
+      <_BebopExe Condition="$([MSBuild]::IsOSPlatform('Windows'))">bebopc.exe</_BebopExe>
+      <_BebopExe Condition="$([MSBuild]::IsOSPlatform('Linux')) or $([MSBuild]::IsOSPlatform('OSX'))">bebopc</_BebopExe>
+      <_Bebopc>"$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../tools/$(_BebopOs)/$(_BebopOsArch)/$(_BebopExe)'))"</_Bebopc>
+      <_Bebopc Condition="'$(BebopcPathOverride)' != ''">"$([System.IO.Path]::GetFullPath('$(BebopcPathOverride)'))"</_Bebopc>
     </PropertyGroup>
     <ItemDefinitionGroup>
         <Bebop>
-            <OutputDir Condition="'%(Bebop.OutputDir)' == '' " >$(MSBuildProjectDirectory)\</OutputDir>
+            <OutputDir Condition="'%(Bebop.OutputDir)' == '' " >$(MSBuildProjectDirectory)</OutputDir>
+            <OutputDir Condition="'%(Bebop.OutputDir)' != ''">$([System.IO.Path]::GetFullPath('$([MSBuild]::EnsureTrailingSlash('%(Bebop.OutputDir)'))'))</OutputDir>
             <Language Condition="'%(Bebop.Language)' == '' " >cs</Language>
             <LogFormat Condition="'%(Bebop.LogFormat)' == '' " >MSBuild</LogFormat>
             <OutputFile Condition="'%(Bebop.OutputFile)' == '' " />
@@ -15,14 +22,40 @@
         </Bebop>
     </ItemDefinitionGroup>
     <PropertyGroup>
-        <_Bebopc Condition="'$(IsWindows)' == 'true'">"$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\tools\windows\bebopc.exe'))"</_Bebopc>
-        <_Bebopc Condition="'$(IsMac)' == 'true'">"$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../tools/macos/bebopc'))"</_Bebopc>
-        <_Bebopc Condition="'$(IsLinux)' == 'true'">"$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../tools/linux/bebopc'))"</_Bebopc>
         <_BebopSchemas>@(Bebop -> '"%(FullPath)"', ' ')</_BebopSchemas>
+        <_BebopOutput>"%(Bebop.OutputDir)%(Bebop.OutputFile)"</_BebopOutput>
     </PropertyGroup>
-    <Target Name="CompileBops" BeforeTargets="CoreCompile" DependsOnTargets="PrepareForBuild" Condition="'$(_BebopSchemas)' != '' " >
+
+ <!--
+  Add to project file for debuggint purposes
+  <Target Name="BebopPrepareForBuildDebug" AfterTargets="PrepareForBuild">
+    <CallTarget Targets="BebopPrepareForBuildDiagnostic"/>
+  </Target> 
+  -->
+  <Target Name="BebopPrepareForBuildDiagnostic">
+    <Message Importance="high" Text="Bebop Prepare For Build Diagnostic" />
+    <Message Importance="high" Text="Bebop Compiler Path = $(_Bebopc)" />
+    <Message Importance="high" Text="Bebop Output Directory = %(Bebop.OutputDir)" />
+    <Message Importance="high" Text="Bebop Output File = %(Bebop.OutputFile)" />
+    <Message Importance="high" Text="Bebop Target Language = %(Bebop.Language)" />
+    <Message Importance="high" Text="Bebop Log Format = %(Bebop.Logformat)" />
+    <Message Importance="high" Text="Bebop Namespace = %(Bebop.Namespace)" Condition="'%(Bebop.Namespace)' != '' "/>
+    <Message Importance="high" Text="Input Schemas = $(_BebopSchemas)" Condition="'$(_BebopSchemas)' != '' "/>
+    <Message Importance="high" Text="Bebop Output = $(_BebopOutput)" />
+  </Target>
+
+    <Target Name="ValidateBebopcCommandLine">
+        <Error
+            Text="The Bebop.OutputFile property is not set for this project. Please check to make sure that you have specified a valid output file."
+            Condition="'%(Bebop.OutputFile)' == ''" />
+        <Error
+            Text="The defined path for the Bebop compiler could not be found."
+            Condition="!Exists('$(_Bebopc)')" />
+    </Target>
+
+    <Target Name="CompileBops" BeforeTargets="CoreCompile" DependsOnTargets="PrepareForBuild;ValidateBebopcCommandLine" Condition="'$(_BebopSchemas)' != '' " >
         <Exec
-            Command="$(_Bebopc) --log-format %(Bebop.LogFormat) --%(Bebop.Language) &quot;$([System.IO.Path]::GetFullPath('%(Bebop.OutputDir)'))%(Bebop.OutputFile)&quot; --namespace %(Bebop.Namespace) --files $(_BebopSchemas)"
+            Command="$(_Bebopc) --log-format %(Bebop.LogFormat) --%(Bebop.Language) $(_BebopOutput) --namespace %(Bebop.Namespace) --files $(_BebopSchemas)"
             EchoOff='true'
             StandardErrorImportance='high'
             StandardOutputImportance='low'
