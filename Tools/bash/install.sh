@@ -124,7 +124,7 @@ IFS=" " read -ra uname <<<"$(uname -srm)"
 # get OS name
 kernel_name="${uname[0]}"
 case $kernel_name in
-Darwin) os=mac ;;
+Darwin) os=macos ;;
 Linux | GNU*)
     os=linux
     ;;
@@ -277,7 +277,7 @@ EOABORT
 fetch_release_url() {
     local target_os_name="$1"
     local target_os_arch="$2"
-    readonly target="${target_os_name}-${target_os_arch}.zip"
+    readonly target="bebopc-${target_os_name}-${target_os_arch}.zip"
     local exit_code=1
     if result=$(
         if [[ -x "$(which wget)" ]]; then
