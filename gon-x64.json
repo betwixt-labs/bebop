@@ -7,7 +7,8 @@
         "password": "@env:AC_PASSWORD"
     },
     "sign": {
-        "application_identity": "FB328BC574FB712798E2C79A237759ADB0839AAF"
+        "application_identity": "FB328BC574FB712798E2C79A237759ADB0839AAF",
+        "entitlements_file": "/Users/runner/work/bebop/bebop/bebopc.entitlements"
     },
     "zip": {
         "output_path": "/Users/runner/work/bebop/bebop/notarized-osx-x64.zip"
