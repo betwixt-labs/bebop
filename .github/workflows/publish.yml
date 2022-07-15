@@ -273,7 +273,7 @@ jobs:
           unzip -j -o ./osx-x64/bebopc-osx-x64.zip -d ${{env.BEBOPC_PATH}}/macos/x64
           unzip -j -o ./osx-arm64/bebopc-osx-arm64.zip -d ${{env.BEBOPC_PATH}}/macos/arm64
           unzip -j -o ./linux-x64/bebopc-linux-x64.zip -d ${{env.BEBOPC_PATH}}/linux/x64
-          unzip -j -o ./linux-arm64/bebopc-linux-arm64.zi -d ${{env.BEBOPC_PATH}}/linux/arm64
+          unzip -j -o ./linux-arm64/bebopc-linux-arm64.zip -d ${{env.BEBOPC_PATH}}/linux/arm64
 
       - name: Build NuGet Package
         run: bash build.sh ${{ steps.dotenv.outputs.version }}
