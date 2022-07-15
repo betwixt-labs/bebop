@@ -100,11 +100,6 @@ jobs:
       - if: matrix.os == 'macos-latest'
         name: ZIP macOS Notarization Build
         run: |
-          unzip -l ./notarized.zip
-          unzip -o ./notarized.zip
-          mv -f ./bebopc-macos-x64 ${{env.BUILD_ARTIFACT_X86_64}}
-          mv -f ./bebopc-macos-arm64 ${{env.BUILD_ARTIFACT_ARM64}}
-
           zip -j ${{env.BUILD_ZIP_ARTIFACT_X86_64}} ${{env.BUILD_ARTIFACT_X86_64}}
           zip -j ${{env.BUILD_ZIP_ARTIFACT_ARM64}} ${{env.BUILD_ARTIFACT_ARM64}}
 
