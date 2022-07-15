@@ -183,7 +183,7 @@ jobs:
       - name: Extract Compiler Artifacts
         run: |
           mkdir -p ${{github.workspace}}/bin/compiler/Debug/artifacts
-          unzip -j -o ./linux-x64/bebopc.zip -d ${{github.workspace}}/bin/compiler/Debug/artifacts
+          unzip -j -o ./linux-x64/bebopc-linux-x64.zip -d ${{github.workspace}}/bin/compiler/Debug/artifacts
           ls
 
       # todo: depend on a different job
@@ -268,12 +268,12 @@ jobs:
       - name: Extract Compiler Artifacts
         run: |
           ls
-          unzip -j -o ./win-x64/bebopc.exe.zip -d ${{env.BEBOPC_PATH}}/windows/x64
-          unzip -j -o ./win-arm64/bebopc.exe.zip -d ${{env.BEBOPC_PATH}}/windows/arm64
-          unzip -j -o ./osx-x64/bebopc.zip -d ${{env.BEBOPC_PATH}}/macos/x64
-          unzip -j -o ./osx-arm64/bebopc.zip -d ${{env.BEBOPC_PATH}}/macos/arm64
-          unzip -j -o ./linux-x64/bebopc.zip -d ${{env.BEBOPC_PATH}}/linux/x64
-          unzip -j -o ./linux-arm64/bebopc.zip -d ${{env.BEBOPC_PATH}}/linux/arm64
+          unzip -j -o ./win-x64/bebopc.exe-win-x64.zip -d ${{env.BEBOPC_PATH}}/windows/x64
+          unzip -j -o ./win-arm64/bebopc.exe-win-arm64.zip -d ${{env.BEBOPC_PATH}}/windows/arm64
+          unzip -j -o ./osx-x64/bebopc-osx-x64.zip -d ${{env.BEBOPC_PATH}}/macos/x64
+          unzip -j -o ./osx-arm64/bebopc-osx-arm64.zip -d ${{env.BEBOPC_PATH}}/macos/arm64
+          unzip -j -o ./linux-x64/bebopc-linux-x64.zip -d ${{env.BEBOPC_PATH}}/linux/x64
+          unzip -j -o ./linux-arm64/bebopc-linux-arm64.zi -d ${{env.BEBOPC_PATH}}/linux/arm64
 
       - name: Build NuGet Package
         run: bash build.sh ${{ steps.dotenv.outputs.version }}
