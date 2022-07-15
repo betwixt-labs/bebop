@@ -60,8 +60,8 @@ jobs:
       - name: Build bebopc
         run: |
           dotnet restore
-          dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-x64 -p:ReleaseVersion=${{ steps.dotenv.outputs.version }} --self-contained
-          dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-arm64 -p:ReleaseVersion=${{ steps.dotenv.outputs.version }} --self-contained
+          dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-x64 -p:ReleaseVersion=${{ steps.dotenv.outputs.version }} -p:PublishSingleFile=true --self-contained
+          dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-arm64 -p:ReleaseVersion=${{ steps.dotenv.outputs.version }} -p:PublishSingleFile=true --self-contained
         working-directory: ./Compiler/
 
       - if: matrix.os == 'macos-latest'
@@ -88,6 +88,14 @@ jobs:
           mv ${{env.BUILD_ARTIFACT_X86_64}} ./tosign/bebopc-macos-x64
           mv ${{env.BUILD_ARTIFACT_ARM64}} ./tosign/bebopc-macos-arm64
           gon -log-level=trace -log-json ./gon.json
+          unzip -l ./notarized.zip
+          mkdir ./signed/
+          unzip ./notarized.zip -d ./signed/
+          ls ./signed/
+          codesign --test-requirement="=notarized" --verify --verbose ./signed/bebopc-macos-x64
+          codesign --test-requirement="=notarized" --verify --verbose ./signed/bebopc-macos-arm64
+          mv ./signed/bebopc-macos-x64 ${{env.BUILD_ARTIFACT_X86_64}}
+          mv ./signed/bebopc-macos-arm64 ${{env.BUILD_ARTIFACT_ARM64}}
 
       - if: matrix.os == 'macos-latest'
         name: ZIP macOS Notarization Build
