@@ -10,6 +10,6 @@
         "application_identity": "FB328BC574FB712798E2C79A237759ADB0839AAF"
     },
     "zip": {
-        "output_path": "/Users/runner/work/bebop/bebop/bin/compiler/publish/bebopc-x64.zip"
+        "output_path": "/Users/runner/work/bebop/bebop/notarized-osx-x64.zip"
     }
 }
