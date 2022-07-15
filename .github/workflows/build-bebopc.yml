@@ -92,8 +92,12 @@ jobs:
         name: ZIP macOS Notarization Build
         run: |
           unzip -j -o ./bin/compiler/notarized/osx-arm64/notarized.zip
+          rm -f ./bin/compiler/notarized/osx-arm64/notarized.zip
+          ls ./bin/compiler/notarized/osx-arm64/
           zip -j ${{env.BUILD_ZIP_ARTIFACT_ARM64}} ./bin/compiler/notarized/osx-arm64/bebopc
           unzip -j -o ./bin/compiler/notarized/osx-x64/notarized.zip
+          rm -f ./bin/compiler/notarized/osx-x64/notarized.zip
+          ls ./bin/compiler/notarized/osx-x64/
           zip -j ${{env.BUILD_ZIP_ARTIFACT_X86_64}} ./bin/compiler/notarized/osx-x64/bebopc
 
       - if: matrix.os == 'ubuntu-18.04'
