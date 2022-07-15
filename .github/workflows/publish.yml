@@ -92,8 +92,6 @@ jobs:
           mkdir ./signed/
           unzip ./notarized.zip -d ./signed/
           ls ./signed/
-          codesign --test-requirement="=notarized" --verify --verbose ./signed/bebopc-macos-x64
-          codesign --test-requirement="=notarized" --verify --verbose ./signed/bebopc-macos-arm64
           mv ./signed/bebopc-macos-x64 ${{env.BUILD_ARTIFACT_X86_64}}
           mv ./signed/bebopc-macos-arm64 ${{env.BUILD_ARTIFACT_ARM64}}
 
