@@ -411,7 +411,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./win-x64/bebopc.exe.zip
+          asset_path: /win-x64/bebopc.exe-win-x64.zip
           asset_name: bebopc-windows-x64.zip
           asset_content_type: application/zip
 
@@ -421,7 +421,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./win-arm64/bebopc.exe.zip
+          asset_path: ./win-arm64/bebopc.exe-win-arm64.zip
           asset_name: bebopc-windows-arm64.zip
           asset_content_type: application/zip
 
@@ -431,17 +431,17 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./osx-x64/bebopc.zip
+          asset_path: ./osx-x64/bebopc-osx-x64.zip
           asset_name: bebopc-macos-x64.zip
           asset_content_type: application/zip
 
-      - name: Upload Compiler for Mac x64
+      - name: Upload Compiler for Mac ARM64
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./osx-arm64/bebopc.zip
+          asset_path: ./osx-arm64/bebopc-osx-arm64.zip
           asset_name: bebopc-macos-arm64.zip
           asset_content_type: application/zip
 
@@ -451,7 +451,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./linux-x64/bebopc.zip
+          asset_path: ./linux-x64/bebopc-linux-x64.zip
           asset_name: bebopc-linux-x64.zip
           asset_content_type: application/zip
 
@@ -461,6 +461,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./linux-arm64/bebopc.zip
+          asset_path: ./linux-arm64/bebopc-linux-arm64.zip
           asset_name: bebopc-linux-arm64.zip
           asset_content_type: application/zip
