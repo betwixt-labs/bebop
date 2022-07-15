@@ -1,7 +1,6 @@
 {
     "source": [
-        "/Users/runner/work/bebop/bebop/tosign/bebopc-macos-x64",
-        "/Users/runner/work/bebop/bebop/tosign/bebopc-macos-arm64"
+        "/Users/runner/work/bebop/bebop/bin/compiler/Release/publish/osx-x64/bebopc"
     ],
     "bundle_id": "sh.bebop",
     "apple_id": {
@@ -11,6 +10,6 @@
         "application_identity": "FB328BC574FB712798E2C79A237759ADB0839AAF"
     },
     "zip": {
-        "output_path": "/Users/runner/work/bebop/bebop/notarized.zip"
+        "output_path": "/Users/runner/work/bebop/bebop/bin/compiler/publish/bebopc-x64.zip"
     }
 }

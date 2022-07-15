@@ -61,8 +61,8 @@ jobs:
 
       - name: Build bebopc
         run: |
-          dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-x64 -p:ReleaseVersion=${{ steps.dotenv.outputs.version }} -p:PublishSingleFile=true --self-contained
-          dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-arm64 -p:ReleaseVersion=${{ steps.dotenv.outputs.version }} -p:PublishSingleFile=true --self-contained
+          dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-x64 -p:ReleaseVersion=${{ steps.dotenv.outputs.version }} -p:PublishTrimmed=false -p:PublishSingleFile=true --self-contained
+          dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-arm64 -p:ReleaseVersion=${{ steps.dotenv.outputs.version }} -p:PublishTrimmed=false -p:PublishSingleFile=true --self-contained
         working-directory: ./Compiler/
 
       - if: matrix.os == 'macos-latest'
@@ -85,22 +85,16 @@ jobs:
           AC_USERNAME: ${{ secrets.AC_USERNAME }}
           AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
         run: |
-          mkdir ./tosign
-          mv ${{env.BUILD_ARTIFACT_X86_64}} ./tosign/bebopc-macos-x64
-          mv ${{env.BUILD_ARTIFACT_ARM64}} ./tosign/bebopc-macos-arm64
-          gon -log-level=trace -log-json ./gon.json
-          unzip -l ./notarized.zip
-          mkdir ./signed/
-          unzip ./notarized.zip -d ./signed/
-          ls ./signed/
-          mv ./signed/bebopc-macos-x64 ${{env.BUILD_ARTIFACT_X86_64}}
-          mv ./signed/bebopc-macos-arm64 ${{env.BUILD_ARTIFACT_ARM64}}
+          gon -log-level=trace -log-json ./gon-x64.json
+          gon -log-level=trace -log-json ./gon-arm64.json
 
       - if: matrix.os == 'macos-latest'
-        name: ZIP macOS Build
+        name: ZIP macOS Notarization Build
         run: |
-          zip -j ${{env.BUILD_ZIP_ARTIFACT_X86_64}} ${{env.BUILD_ARTIFACT_X86_64}}
-          zip -j ${{env.BUILD_ZIP_ARTIFACT_ARM64}} ${{env.BUILD_ARTIFACT_ARM64}}
+          unzip -j -o ./bin/compiler/notarized/osx-arm64/notarized.zip
+          zip -j ${{env.BUILD_ZIP_ARTIFACT_ARM64}} ./bin/compiler/notarized/osx-arm64/bebopc
+          unzip -j -o ./bin/compiler/notarized/osx-x64/notarized.zip
+          zip -j ${{env.BUILD_ZIP_ARTIFACT_X86_64}} ./bin/compiler/notarized/osx-x64/bebopc
 
       - if: matrix.os == 'ubuntu-18.04'
         name: ZIP Linux Build
