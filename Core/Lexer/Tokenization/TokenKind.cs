@@ -7,7 +7,7 @@ namespace Core.Lexer.Tokenization
     /// </summary>
     public enum TokenKind : ushort
     {
-    #region Keywords
+        #region Keywords
 
         /// <summary>
         ///     The 'enum' keyword which is used by the enum <see cref="Meta.AggregateKind"/>
@@ -50,14 +50,20 @@ namespace Core.Lexer.Tokenization
         /// </summary>
         [Keyword("union")]
         Union,
-        
+
         /// <summary>
         ///     The 'service' keyword which is reserved by the compiler
         /// </summary>
         [Keyword("service")]
         Service,
 
-    #endregion
+        /// <summary>
+        ///     The 'mut' keyword which is reserved by the compiler
+        /// </summary>
+        [Keyword("mut")]
+        Mut,
+
+        #endregion
 
 
         #region Literals
@@ -78,10 +84,10 @@ namespace Core.Lexer.Tokenization
         BlockComment,
         EndOfFile,
 
-    #endregion
+        #endregion
 
 
-    #region Symbols
+        #region Symbols
 
         /// <summary>
         ///     <![CDATA[ ( ]]>

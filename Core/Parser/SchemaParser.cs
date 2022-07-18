@@ -341,7 +341,9 @@ namespace Core.Parser
                 _errors.Add(e);
             }
 
-            var isReadOnly = Eat(TokenKind.ReadOnly);
+            var modifiers = RecordModifiers.None;
+            if (Eat(TokenKind.ReadOnly)) modifiers |= RecordModifiers.ReadOnly;
+            if (Eat(TokenKind.Mut)) modifiers |= RecordModifiers.Mut;
 
             ExpectAndSkip(_topLevelDefinitionKinds, _universalFollowKinds, hint: "Expecting a top-level definition.");
             if (CurrentToken.Kind == TokenKind.EndOfFile)
@@ -386,7 +388,7 @@ namespace Core.Parser
                     // Uh oh we skipped ahead due to a missing identifier, get outta there
                     return null;
                 }
-                return ParseNonUnionDefinition(CurrentToken, kind, isReadOnly, definitionDocumentation, opcodeAttribute, flagsAttribute);
+                return ParseNonUnionDefinition(CurrentToken, kind, modifiers, definitionDocumentation, opcodeAttribute, flagsAttribute);
             }
         }
 
@@ -523,14 +525,14 @@ namespace Core.Parser
         /// </summary>
         /// <param name="definitionToken">The token that names the type to define.</param>
         /// <param name="kind">The <see cref="AggregateKind"/> the type will represents.</param>
-        /// <param name="isReadOnly"></param>
+        /// <param name="modifiers"></param>
         /// <param name="definitionDocumentation"></param>
         /// <param name="opcodeAttribute"></param>
         /// <param name="flagsAttribute"></param>
         /// <returns>The parsed definition.</returns>
         private Definition? ParseNonUnionDefinition(Token definitionToken,
             AggregateKind kind,
-            bool isReadOnly,
+            RecordModifiers modifiers,
             string definitionDocumentation,
             BaseAttribute? opcodeAttribute,
             BaseAttribute? flagsAttribute)
@@ -679,14 +681,13 @@ namespace Core.Parser
             Definition definition = kind switch
             {
                 AggregateKind.Enum => new EnumDefinition(name, definitionSpan, definitionDocumentation, fields, flagsAttribute != null, enumBaseType),
-                AggregateKind.Struct => new StructDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, fields, isReadOnly),
-                AggregateKind.Message => new MessageDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, fields),
+                AggregateKind.Struct => new StructDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, fields, modifiers),
+                AggregateKind.Message => new MessageDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, fields, modifiers),
                 _ => throw new InvalidOperationException("invalid kind when making definition"),
             };
-
-            if (isReadOnly && definition is not StructDefinition)
+            if (modifiers.HasFlag(RecordModifiers.Mut) && definition is not StructDefinition)
             {
-                _errors.Add(new InvalidReadOnlyException(definition));
+                _errors.Add(new IncompatibleDefinitionModifierException(RecordModifiers.Mut, definition, AggregateKind.Struct));
             }
             if (opcodeAttribute != null && definition is not RecordDefinition)
             {
@@ -990,7 +991,7 @@ namespace Core.Parser
                 branches.Add(new UnionBranch((byte)discriminator, td));
             }
             var definitionSpan = definitionToken.Span.Combine(definitionEnd);
-            var unionDefinition = new UnionDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, branches);
+            var unionDefinition = new UnionDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, branches, RecordModifiers.None);
             CloseScope(unionDefinition);
             if (unionDefinition.Branches.Count == 0)
             {

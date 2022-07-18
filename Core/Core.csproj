@@ -4,7 +4,7 @@
     <TypeScriptCompileBlocked>true</TypeScriptCompileBlocked>
     <TargetFramework>net7.0</TargetFramework>
     <Nullable>enable</Nullable>
-    <LangVersion>9.0</LangVersion>
+    <LangVersion>10.0</LangVersion>
     <AssemblyName>BebopCore</AssemblyName>
     <RootNamespace>Core</RootNamespace>
     <Platforms>AnyCPU</Platforms>

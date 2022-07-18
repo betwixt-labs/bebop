@@ -277,7 +277,8 @@ namespace Core.Generators.Dart
             return JsonSerializer.Serialize(value, options);
         }
 
-        private string EmitLiteral(Literal literal) {
+        private string EmitLiteral(Literal literal)
+        {
             return literal switch
             {
                 BoolLiteral bl => bl.Value ? "true" : "false",
@@ -346,7 +347,7 @@ namespace Core.Generators.Dart
                             {
                                 builder.AppendLine($"  /// @deprecated {field.DeprecatedAttribute.Value}");
                             }
-                            var final = fd is StructDefinition { IsReadOnly: true } ? "final " : "";
+                            var final = fd is StructDefinition { IsMutable: false } ? "final " : "";
                             var optional = fd is MessageDefinition ? "?" : "";
                             builder.AppendLine($"  {final}{type}{optional} {field.Name};");
                         }
@@ -356,7 +357,7 @@ namespace Core.Generators.Dart
                         }
                         else
                         {
-                            builder.AppendLine($"  {(fd is StructDefinition { IsReadOnly: true } ? "const " : "")}{fd.Name}({{");
+                            builder.AppendLine($"  {(fd is StructDefinition { IsMutable: false } ? "const " : "")}{fd.Name}({{");
                             foreach (var field in fd.Fields)
                             {
                                 builder.AppendLine($"    required this.{field.Name},");

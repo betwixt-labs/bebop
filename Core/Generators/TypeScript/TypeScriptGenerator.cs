@@ -63,7 +63,7 @@ namespace Core.Generators.TypeScript
         }
 
         private string CompileEncodeMessage(MessageDefinition definition)
-        { 
+        {
             var builder = new IndentedStringBuilder(6);
             builder.AppendLine($"const pos = view.reserveMessageLength();");
             builder.AppendLine($"const start = view.length;");
@@ -207,7 +207,7 @@ namespace Core.Generators.TypeScript
             builder.AppendLine("}");
             return builder.ToString();
         }
-        
+
         private string CompileDecodeStruct(StructDefinition definition)
         {
             var builder = new IndentedStringBuilder(4);
@@ -347,7 +347,8 @@ namespace Core.Generators.TypeScript
             return JsonSerializer.Serialize(value, options);
         }
 
-        private string EmitLiteral(Literal literal) {
+        private string EmitLiteral(Literal literal)
+        {
             return literal switch
             {
                 BoolLiteral bl => bl.Value ? "true" : "false",
@@ -384,7 +385,7 @@ namespace Core.Generators.TypeScript
 
             foreach (var definition in Schema.Definitions.Values)
             {
-                if(!string.IsNullOrWhiteSpace(definition.Documentation))
+                if (!string.IsNullOrWhiteSpace(definition.Documentation))
                 {
                     builder.AppendLine(FormatDocumentation(definition.Documentation, string.Empty, 0));
                 }
@@ -407,7 +408,8 @@ namespace Core.Generators.TypeScript
                         if (!string.IsNullOrWhiteSpace(field.Documentation))
                         {
                             builder.AppendLine(FormatDocumentation(field.Documentation, deprecationReason, 2));
-                        } else if (string.IsNullOrWhiteSpace(field.Documentation) && !string.IsNullOrWhiteSpace(deprecationReason))
+                        }
+                        else if (string.IsNullOrWhiteSpace(field.Documentation) && !string.IsNullOrWhiteSpace(deprecationReason))
                         {
                             builder.AppendLine(FormatDeprecationDoc(deprecationReason, 2));
                         }
@@ -442,7 +444,7 @@ namespace Core.Generators.TypeScript
                             {
                                 builder.AppendLine(FormatDeprecationDoc(deprecationReason, 2));
                             }
-                            builder.AppendLine($"  {(fd is StructDefinition { IsReadOnly: true } ? "readonly " : "")}{field.Name.ToCamelCase()}{(fd is MessageDefinition ? "?" : "")}: {type};");
+                            builder.AppendLine($"  {(fd is StructDefinition { IsMutable: false } ? "readonly " : "")}{field.Name.ToCamelCase()}{(fd is MessageDefinition ? "?" : "")}: {type};");
                         }
                         builder.AppendLine("}");
                         builder.AppendLine("");

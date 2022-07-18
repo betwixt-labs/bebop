@@ -27,7 +27,7 @@ namespace Core.Exceptions
     [Serializable]
     public class SpanException : Exception
     {
-       
+
         public Span Span { get; }
         /// <summary>
         /// A unique error code identifying the type of exception
@@ -48,7 +48,7 @@ namespace Core.Exceptions
         public UnrecognizedTokenException(char tokenStart, Span span)
             : base($"Unrecognized token start '{tokenStart}'", span, 100) { }
     }
-   
+
     [Serializable]
     class MultipleDefinitionsException : SpanException
     {
@@ -223,7 +223,7 @@ namespace Core.Exceptions
     {
         public ReferenceScopeException(Definition definition, Definition reference, string scopeLabel)
             : base($"Cannot reference {reference.Name} within {scopeLabel} from {definition.Name}.", definition.Span, 123)
-        {}
+        { }
     }
 
     [Serializable]
@@ -273,7 +273,7 @@ namespace Core.Exceptions
             : base($"The discriminator index {discriminator.Lexeme} was used more than once in service '{serviceName}'.", discriminator.Span, 129)
         { }
     }
-    
+
     [Serializable]
     class DuplicateServiceFunctionNameException : SpanException
     {
@@ -289,12 +289,28 @@ namespace Core.Exceptions
             : base($"Index {serviceIndex} in service '{serviceName}' has duplicated argument name {argumentName}.", span, 131)
         { }
     }
-    
+
+    [Serializable]
+    class IncompatibleDefinitionModifierException : SpanException
+    {
+        public IncompatibleDefinitionModifierException(RecordModifiers modifier, Definition definition, AggregateKind expectedDefinitionKind)
+            : base($"The '{modifier.ToString().ToLower()}' modifer cannot be applied to '{definition.Name}' as it is not a '{expectedDefinitionKind.ToString().ToLower()}'", definition.Span, 132) { }
+    }
+
     [Serializable]
     public class EnumZeroWarning : SpanException
     {
         public EnumZeroWarning(Field field)
             : base($"Bebop recommends that 0 in an enum be reserved for a value named 'Unknown', 'Default', or similar. See https://github.com/RainwayApp/bebop/wiki/Why-should-0-be-a-%22boring%22-value-in-an-enum%3F for more info.", field.Span, 200, Severity.Warning)
+        { }
+    }
+
+
+    [Serializable]
+    class ReadonlyStructWarning : SpanException
+    {
+        public ReadonlyStructWarning(StructDefinition definition)
+            : base($"The 'readonly' modifier has been deprecated and has no effect. All structs are now immutable by default. See TODO {definition.Name} for more info.", definition.Span, 201, Severity.Warning)
         { }
     }
 }

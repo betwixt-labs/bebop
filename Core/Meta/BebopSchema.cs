@@ -10,7 +10,7 @@ using Core.Parser.Extensions;
 namespace Core.Meta
 {
     /// <summary>
-    /// Represents the contents of a textual Bebop schema 
+    /// Represents the contents of a textual Bebop schema
     /// </summary>
     public struct BebopSchema
     {
@@ -164,49 +164,50 @@ namespace Core.Meta
                     }
                 }
                 if (definition is FieldsDefinition fd) foreach (var field in fd.Fields)
-                {
-                    if (ReservedWords.Identifiers.Contains(field.Name))
                     {
-                        errors.Add(new ReservedIdentifierException(field.Name, field.Span));
-                    }
-                    if (field.DeprecatedAttribute != null && fd is StructDefinition)
-                    {
-                        errors.Add(new InvalidDeprecatedAttributeUsageException(field));
-                    }
-                    if (fd.Fields.Count(f => f.Name.Equals(field.Name, StringComparison.OrdinalIgnoreCase)) > 1)
-                    {
-                        errors.Add(new DuplicateFieldException(field, fd));
-                    }
-                    switch (fd)
-                    {
-                        case StructDefinition when field.Type is DefinedType dt && fd.Name.Equals(dt.Name):
+                        if (ReservedWords.Identifiers.Contains(field.Name))
                         {
-                            errors.Add(new InvalidFieldException(field, "Struct contains itself"));
-                            break;
+                            errors.Add(new ReservedIdentifierException(field.Name, field.Span));
                         }
-                        case MessageDefinition when fd.Fields.Count(f => f.ConstantValue == field.ConstantValue) > 1:
+                        if (field.DeprecatedAttribute != null && fd is StructDefinition)
                         {
-                            errors.Add(new InvalidFieldException(field, "Message index must be unique"));
-                            break;
+                            errors.Add(new InvalidDeprecatedAttributeUsageException(field));
                         }
-                        case MessageDefinition when field.ConstantValue <= 0:
+                        if (fd.Fields.Count(f => f.Name.Equals(field.Name, StringComparison.OrdinalIgnoreCase)) > 1)
                         {
-                            errors.Add(new InvalidFieldException(field, "Message member index must start at 1"));
-                            break;
+                            errors.Add(new DuplicateFieldException(field, fd));
                         }
-                        case MessageDefinition when field.ConstantValue > fd.Fields.Count:
+                        switch (fd)
                         {
-                            errors.Add(new InvalidFieldException(field, "Message index is greater than field count"));
-                            break;
+                            case StructDefinition when field.Type is DefinedType dt && fd.Name.Equals(dt.Name):
+                                {
+                                    errors.Add(new InvalidFieldException(field, "Struct contains itself"));
+                                    break;
+                                }
+                            case MessageDefinition when fd.Fields.Count(f => f.ConstantValue == field.ConstantValue) > 1:
+                                {
+                                    errors.Add(new InvalidFieldException(field, "Message index must be unique"));
+                                    break;
+                                }
+                            case MessageDefinition when field.ConstantValue <= 0:
+                                {
+                                    errors.Add(new InvalidFieldException(field, "Message member index must start at 1"));
+                                    break;
+                                }
+                            case MessageDefinition when field.ConstantValue > fd.Fields.Count:
+                                {
+                                    errors.Add(new InvalidFieldException(field, "Message index is greater than field count"));
+                                    break;
+                                }
+                            default:
+                                break;
                         }
-                        default:
-                            break;
                     }
-                }
+#if RPC
                 if (definition is ServiceDefinition sd)
                 {
                     var usedFunctionNames = new HashSet<string>();
-                    
+
                     foreach (var b in sd.Branches)
                     {
                         var fnd = b.Definition;
@@ -220,6 +221,7 @@ namespace Core.Meta
                         }
                     }
                 }
+#endif
                 if (definition is EnumDefinition ed)
                 {
                     var values = new HashSet<BigInteger>();
@@ -249,6 +251,13 @@ namespace Core.Meta
                         }
                         values.Add(field.ConstantValue);
                         names.Add(field.Name);
+                    }
+                }
+                if (definition is StructDefinition structDefinition)
+                {
+                    if (structDefinition.IsReadOnly)
+                    {
+                        Warnings.Add(new ReadonlyStructWarning(structDefinition));
                     }
                 }
             }

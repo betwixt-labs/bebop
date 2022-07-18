@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Core.Lexer.Tokenization.Models;
@@ -6,6 +7,26 @@ using Core.Meta.Attributes;
 
 namespace Core.Meta
 {
+    /// <summary>
+    /// A collection of bitflags which indicate the modifiers that have been applied to the declaration of a record definition
+    /// </summary>
+    [System.FlagsAttribute]
+    public enum RecordModifiers
+    {
+        /// <summary>
+        /// Indicates no modifiers have been applied to the record definition
+        /// </summary>
+        None = 0,
+        /// <summary>
+        /// A deprecated modifier that originally made structs immutable. Superseded by 'mut'.
+        /// </summary>
+        ReadOnly = 1 << 0,
+        /// <summary>
+        /// A modifier that allows the members of a struct to be mutated after deserialization.
+        /// </summary>
+        Mut = 1 << 1,
+    }
+
     /// <summary>
     /// A base class for definitions in a schema.
     /// </summary>
@@ -69,10 +90,11 @@ namespace Core.Meta
     /// </summary>
     public abstract class RecordDefinition : Definition
     {
-        protected RecordDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, Definition? parent = null) :
+        protected RecordDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, in RecordModifiers modifiers, Definition? parent = null) :
             base(name, span, documentation, parent)
         {
             OpcodeAttribute = opcodeAttribute;
+            Modifiers = modifiers;
         }
 
         public BaseAttribute? OpcodeAttribute { get; }
@@ -89,6 +111,13 @@ namespace Core.Meta
         /// <param name="schema">The schema this definition belongs to, used to resolve references to other definitions.</param>
         /// <returns>The lower bound, in bytes.</returns>
         public abstract int MinimalEncodedSize(BebopSchema schema);
+
+        /// <summary>
+        /// A record of modifiers that have been applied to the definition.
+        /// </summary>
+        public RecordModifiers Modifiers { get; }
+
+
     }
 
     /// <summary>
@@ -96,8 +125,8 @@ namespace Core.Meta
     /// </summary>
     public abstract class FieldsDefinition : RecordDefinition
     {
-        protected FieldsDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<Field> fields, Definition? parent = null) :
-            base(name, span, documentation, opcodeAttribute, parent)
+        protected FieldsDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<Field> fields, in RecordModifiers modifiers, Definition? parent = null) :
+            base(name, span, documentation, opcodeAttribute, modifiers, parent)
         {
             Fields = fields;
         }
@@ -110,21 +139,27 @@ namespace Core.Meta
 
     /// <summary>
     /// A class representing a struct definition.
-    /// 
+    ///
     /// A struct is an aggregate of some fields that are always present in a fixed order. It promises to never grow in later versions of the schema.
     /// </summary>
     public class StructDefinition : FieldsDefinition
     {
-        public StructDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<Field> fields, bool isReadOnly, Definition? parent = null) :
-            base(name, span, documentation, opcodeAttribute, fields, parent)
+        public StructDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<Field> fields, in RecordModifiers modifiers, Definition? parent = null) :
+            base(name, span, documentation, opcodeAttribute, fields, modifiers, parent)
         {
-            IsReadOnly = isReadOnly;
+
         }
 
         /// <summary>
         /// Is this struct "read-only"? (This will mean something like: not generating setters in the codegen.)
         /// </summary>
-        public bool IsReadOnly { get; }
+        [Obsolete("The 'readonly' modifier has been deprecated. Bebop v3.0.0 considers all structs immutable by default. This property is only here for backward compatibility.")]
+        public bool IsReadOnly => Modifiers.HasFlag(RecordModifiers.ReadOnly);
+
+        // <summary>
+        /// Is this struct "mutable"?
+        /// </summary>
+        public bool IsMutable => Modifiers.HasFlag(RecordModifiers.Mut);
 
         override public int MinimalEncodedSize(BebopSchema schema)
         {
@@ -155,12 +190,12 @@ namespace Core.Meta
 
     /// <summary>
     /// A class representing a message definition.
-    /// 
+    ///
     /// A message is an aggregate of optional fields. Each field is prefixed on the wire by its index in the message. A message may grow in a later version of the schema.
     /// </summary>
     public class MessageDefinition : FieldsDefinition
     {
-        public MessageDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<Field> fields, Definition? parent = null) : base(name, span, documentation, opcodeAttribute, fields, parent)
+        public MessageDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<Field> fields, in RecordModifiers modifiers, Definition? parent = null) : base(name, span, documentation, opcodeAttribute, fields, modifiers, parent)
         {
         }
 
@@ -213,7 +248,7 @@ namespace Core.Meta
             Definition = definition;
         }
     }
-    
+
     public readonly struct ServiceBranch
     {
         public readonly ushort Discriminator;
@@ -228,7 +263,7 @@ namespace Core.Meta
 
     public class UnionDefinition : RecordDefinition
     {
-        public UnionDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<UnionBranch> branches, Definition? parent = null) : base(name, span, documentation, opcodeAttribute, parent)
+        public UnionDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<UnionBranch> branches, in RecordModifiers modifiers, Definition? parent = null) : base(name, span, documentation, opcodeAttribute, modifiers, parent)
         {
             Branches = branches;
         }
@@ -243,7 +278,7 @@ namespace Core.Meta
             return 4 + 1 + (Branches.Count == 0 ? 0 : Branches.Min(b => b.Definition.MinimalEncodedSize(schema)));
         }
     }
-    
+
     public class ServiceDefinition : Definition
     {
         public ServiceDefinition(string name, Span span, string documentation, ICollection<ServiceBranch> branches) : base(name, span, documentation)

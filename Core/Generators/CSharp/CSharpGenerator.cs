@@ -108,8 +108,7 @@ namespace Core.Generators.CSharp
                         var recordAttribute = fd switch
                         {
                             MessageDefinition => "[global::Bebop.Attributes.BebopRecord(global::Bebop.Runtime.BebopKind.Message)]",
-                            StructDefinition { IsReadOnly: true } => "[global::Bebop.Attributes.BebopRecord(global::Bebop.Runtime.BebopKind.Struct, true)]",
-                            StructDefinition => "[global::Bebop.Attributes.BebopRecord(global::Bebop.Runtime.BebopKind.Struct)]",
+                            StructDefinition sd => $"[global::Bebop.Attributes.BebopRecord(global::Bebop.Runtime.BebopKind.Struct, {(sd.IsMutable ? "true" : "false")})]",
                             _ => string.Empty
                         };
                         builder.AppendLine(recordAttribute);
@@ -155,7 +154,7 @@ namespace Core.Generators.CSharp
                             }
                             var type = TypeName(field.Type, string.Empty);
                             var opt = fd is MessageDefinition && IsNullableType(field.Type) ? "?" : "";
-                            var setOrInit = fd is StructDefinition { IsReadOnly: true } ? LanguageVersion == CSharpNine ? "init" : "private set" : "set";
+                            var setOrInit = fd is StructDefinition { IsMutable: false } ? LanguageVersion == CSharpNine ? "init" : "private set" : "set";
                             builder.AppendLine($"public {type}{opt} {field.Name.ToPascalCase()} {{ get; {setOrInit}; }}");
                         }
 
@@ -569,7 +568,7 @@ namespace Core.Generators.CSharp
                 CompileHashCode();
                 builder.AppendLine("#endregion");
             }
-            // Compiles a read-only struct which holds our union. 
+            // Compiles a read-only struct which holds our union.
             void CompileUnionStruct()
             {
                 builder.AppendLine("/// <inheritdoc />");
