@@ -1,5 +1,6 @@
 name: Integration Tests
 on:
+  workflow_dispatch:
   push:
     branches:
       - master
