@@ -88,12 +88,12 @@ impl<'raw> SubRecord<'raw> for &'raw str {
 
     fn _deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
         let len = read_len(raw)?;
-        let raw_str = &raw
-            .get(LEN_SIZE..len + LEN_SIZE)
-            .ok_or(DeserializeError::CorruptFrame)?;
-        if raw_str.len() < len {
-            return Err(DeserializeError::MoreDataExpected(len - raw_str.len()));
+        if len + LEN_SIZE > raw.len() {
+            return Err(DeserializeError::MoreDataExpected(
+                len + LEN_SIZE - raw.len(),
+            ));
         }
+        let raw_str = &raw[LEN_SIZE..len + LEN_SIZE];
         #[cfg(not(feature = "unchecked"))]
         {
             Ok((len + LEN_SIZE, std::str::from_utf8(raw_str)?))
