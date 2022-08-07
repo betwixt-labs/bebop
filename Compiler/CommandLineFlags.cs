@@ -42,7 +42,8 @@ namespace Compiler
             string helpText,
             string usageExample = "",
             bool isGeneratorFlag = false,
-            bool valuesRequired = true)
+            bool valuesRequired = true,
+            bool hideFromHelp = false)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -57,6 +58,7 @@ namespace Compiler
             UsageExample = usageExample;
             IsGeneratorFlag = isGeneratorFlag;
             ValuesRequired = valuesRequired;
+            HideFromHelp = hideFromHelp;
         }
 
 
@@ -87,6 +89,11 @@ namespace Compiler
         ///     If this property is true, the flag requires values (arguments) to be set.
         /// </summary>
         public bool ValuesRequired { get; }
+
+        /// <summary>
+        ///     If this property is true, the command-line flag will be hidden from help output.
+        /// </summary>
+        public bool HideFromHelp { get; }
     }
 
     #endregion
@@ -222,6 +229,12 @@ namespace Compiler
         /// </summary>
         [CommandLineFlag("help", "Show this text and exit.", "--help")]
         public bool Help { get; private set; }
+
+        [CommandLineFlag("langserv", "Starts the language server", "--langserv", hideFromHelp: true)]
+        public bool LanguageServer { get; private set; }
+
+        [CommandLineFlag("debug", "Waits for a debugger to attach", "--debug", hideFromHelp: true)]
+        public bool Debug { get; private set; }
 
         /// <summary>
         ///     Controls how loggers format data.
@@ -397,7 +410,7 @@ namespace Compiler
             stringBuilder.AppendLine(string.Empty);
             stringBuilder.AppendLine("Options:");
             stringBuilder.Indent(4);
-            foreach (var prop in props)
+            foreach (var prop in props.Where(p => !p.Attribute.HideFromHelp))
             {
                 stringBuilder.AppendLine($"--{prop.Attribute.Name}  {prop.Attribute.HelpText}");
             }

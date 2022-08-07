@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Core.Lexer.Tokenization;
@@ -9,7 +9,7 @@ namespace Core.Parser.Extensions
 {
     public static class TypeExtensions
     {
-        private static readonly Dictionary<string, BaseType> BaseTypeNames = new Dictionary<string, BaseType>
+        public static readonly Dictionary<string, BaseType> BaseTypeNames = new Dictionary<string, BaseType>
         {
             {"bool", BaseType.Bool},
             {"byte", BaseType.Byte},

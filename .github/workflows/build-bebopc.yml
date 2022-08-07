@@ -38,6 +38,7 @@ jobs:
       BUILD_ARTIFACT_ARM64: ./bin/compiler/Release/publish/${{matrix.IDENTIFIER}}-arm64/${{matrix.ARTIFACT}}
       BUILD_ZIP_ARTIFACT_X86_64: ./bin/compiler/Release/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-x64.zip
       BUILD_ZIP_ARTIFACT_ARM64: ./bin/compiler/Release/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-arm64.zip
+
     steps:
       - uses: actions/checkout@v1
 
@@ -95,3 +96,46 @@ jobs:
         with:
           name: ${{matrix.IDENTIFIER}}-arm64
           path: ${{env.BUILD_ZIP_ARTIFACT_ARM64}}
+
+  build-vscode-extension:
+    runs-on: ubuntu-18.04
+    needs:
+      - build-compiler
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      - name: Download Compiler Artifacts
+        uses: actions/download-artifact@v2
+
+      - name: Extract Compiler Artifacts
+        run: |
+          mkdir -p ./artifacts
+          mkdir -p vscode-bebop/bebopc/windows
+          mkdir -p vscode-bebop/bebopc/macos
+          mkdir -p vscode-bebop/bebopc/linux
+          unzip -j -o ./win-x64/bebopc.exe-win-x64.zip -d vscode-bebop/bebopc/windows
+          unzip -j -o ./osx-x64/bebopc-osx-x64.zip -d vscode-bebop/bebopc/macos
+          unzip -j -o ./linux-x64/bebopc-linux-x64.zip -d vscode-bebop/bebopc/linux
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16.6.0'
+      
+      - name: Install VSCode extensions
+        run: npm install -g vsce
+
+      - name: Install VSCode dependencies
+        run: npm install
+        working-directory: ./vscode-bebop
+
+      - name: Build VSCode extension
+        run: vsce package
+        working-directory: ./vscode-bebop
+
+      - name: Upload VSCode artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: vscode
+          path: vscode-bebop/vscode-bebop-*.vsix

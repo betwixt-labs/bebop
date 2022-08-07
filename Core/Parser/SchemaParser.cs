@@ -33,6 +33,8 @@ namespace Core.Parser
         private readonly Stack<List<Definition>> _scopes = new();
         private readonly Tokenizer _tokenizer;
         private readonly Dictionary<string, Definition> _definitions = new();
+        private readonly List<string> _imports = new();
+
         /// <summary>
         /// Whether the RPC boilerplate has already been generated.
         /// </summary>
@@ -248,6 +250,10 @@ namespace Core.Parser
             return definitionDocumentation;
         }
 
+        /// <summary>
+        /// Gets or sets the import resolver to use.
+        /// </summary>
+        public IImportResolver? ImportResolver { get; set; }
 
         /// <summary>
         ///     Parse the current input files into an <see cref="BebopSchema"/> object.
@@ -267,19 +273,23 @@ namespace Core.Parser
                 if (EatPseudoKeyword("import"))
                 {
                     var currentFilePath = CurrentToken.Span.FileName;
-                    
-                    var currentFileDirectory = Path.GetDirectoryName(currentFilePath)!;
-       
                     var pathToken = CurrentToken;
                     var relativePathFromCurrent = ExpectStringLiteral();
-                    var combinedPath = Path.Combine(currentFileDirectory, relativePathFromCurrent);
+
+                    //  Resolve the full path to the file
+                    var resolver = ImportResolver ?? DefaultImportResolver.Shared;
+                    var fullPath = resolver.GetPath(currentFilePath, relativePathFromCurrent);
+
                     try
                     {
-                        await _tokenizer.AddFile(combinedPath);
+                        await _tokenizer.AddFile(fullPath);
+
+                        // Add the resolved path to known imports
+                        _imports.Add(fullPath);
                     }
                     catch (IOException)
                     {
-                        throw File.Exists(combinedPath) ? new ImportFileReadException(pathToken) : new ImportFileNotFoundException(pathToken);
+                        throw File.Exists(fullPath) ? new ImportFileReadException(pathToken) : new ImportFileNotFoundException(pathToken);
                     }
                 }
                 else
@@ -304,7 +314,8 @@ namespace Core.Parser
                 nameSpace: _nameSpace, 
                 definitions: _definitions, 
                 typeReferences: _typeReferences, 
-                parsingErrors: _errors
+                parsingErrors: _errors,
+                imports: _imports
             );
         }
 
