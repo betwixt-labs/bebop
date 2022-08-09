@@ -8,23 +8,29 @@
       <_BebopOs Condition="$([MSBuild]::IsOSPlatform('OSX'))">macos</_BebopOs>
       <_BebopExe Condition="$([MSBuild]::IsOSPlatform('Windows'))">bebopc.exe</_BebopExe>
       <_BebopExe Condition="$([MSBuild]::IsOSPlatform('Linux')) or $([MSBuild]::IsOSPlatform('OSX'))">bebopc</_BebopExe>
-      <_Bebopc>"$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../tools/$(_BebopOs)/$(_BebopOsArch)/$(_BebopExe)'))"</_Bebopc>
-      <_Bebopc Condition="'$(BebopcPathOverride)' != ''">"$([System.IO.Path]::GetFullPath('$(BebopcPathOverride)'))"</_Bebopc>
+      <_Bebopc>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../tools/$(_BebopOs)/$(_BebopOsArch)/$(_BebopExe)'))</_Bebopc>
+      <_Bebopc Condition="'$(BebopcPathOverride)' != ''">$([System.IO.Path]::GetFullPath('$(BebopcPathOverride)'))</_Bebopc>
     </PropertyGroup>
+	
     <ItemDefinitionGroup>
         <Bebop>
-            <OutputDir Condition="'%(Bebop.OutputDir)' == '' " >$(MSBuildProjectDirectory)</OutputDir>
-            <OutputDir Condition="'%(Bebop.OutputDir)' != ''">$([System.IO.Path]::GetFullPath('$([MSBuild]::EnsureTrailingSlash('%(Bebop.OutputDir)'))'))</OutputDir>
-            <Language Condition="'%(Bebop.Language)' == '' " >cs</Language>
-            <LogFormat Condition="'%(Bebop.LogFormat)' == '' " >MSBuild</LogFormat>
-            <OutputFile Condition="'%(Bebop.OutputFile)' == '' " />
-            <Namespace Condition="'%(Bebop.Namespace)' == '' " />
+            <OutputDir>$([System.IO.Path]::GetFullPath('$([MSBuild]::EnsureTrailingSlash('$(MSBuildProjectDirectory)'))'))</OutputDir>
+            <Language>cs</Language>
+            <LogFormat>MSBuild</LogFormat>
+            <OutputFile/>
+            <Namespace/>
         </Bebop>
     </ItemDefinitionGroup>
-    <PropertyGroup>
-        <_BebopSchemas>@(Bebop -> '"%(FullPath)"', ' ')</_BebopSchemas>
-        <_BebopOutput>"%(Bebop.OutputDir)%(Bebop.OutputFile)"</_BebopOutput>
-    </PropertyGroup>
+
+	<Target Name="DefineBebopProperties">
+		<PropertyGroup>
+			<_BebopSchemas>@(Bebop -> '"%(FullPath)"', ' ')</_BebopSchemas>
+			<_BebopOutputDir>%(Bebop.OutputDir)</_BebopOutputDir>
+			<_BebopOutputDir Condition="'$(_BebopOutputDir)' == '' " >$(MSBuildProjectDirectory)</_BebopOutputDir>
+			<_BebopOutputDir>$([System.IO.Path]::GetFullPath('$([MSBuild]::EnsureTrailingSlash('$(_BebopOutputDir)'))'))</_BebopOutputDir>
+			<_BebopOutput>$([System.IO.Path]::GetFullPath('$(_BebopOutputDir)%(Bebop.OutputFile)'))</_BebopOutput>
+		</PropertyGroup>
+	</Target>
 
  <!--
   Add to project file for debuggint purposes
@@ -32,8 +38,8 @@
     <CallTarget Targets="BebopPrepareForBuildDiagnostic"/>
   </Target> 
   -->
-  <Target Name="BebopPrepareForBuildDiagnostic">
-    <Message Importance="high" Text="Bebop Prepare For Build Diagnostic" />
+  <Target Name="BebopPrepareForBuildDiagnostic" DependsOnTargets="ValidateBebopcCommandLine">
+	  <Message Importance="high" Text="Bebop Prepare For Build Diagnostic" />
     <Message Importance="high" Text="Bebop Compiler Path = $(_Bebopc)" />
     <Message Importance="high" Text="Bebop Output Directory = %(Bebop.OutputDir)" />
     <Message Importance="high" Text="Bebop Output File = %(Bebop.OutputFile)" />
@@ -44,18 +50,19 @@
     <Message Importance="high" Text="Bebop Output = $(_BebopOutput)" />
   </Target>
 
-    <Target Name="ValidateBebopcCommandLine">
+    <Target Name="ValidateBebopcCommandLine" DependsOnTargets="DefineBebopProperties">
         <Error
             Text="The Bebop.OutputFile property is not set for this project. Please check to make sure that you have specified a valid output file."
             Condition="'%(Bebop.OutputFile)' == ''" />
         <Error
-            Text="The defined path for the Bebop compiler could not be found."
-            Condition="!Exists('$(_Bebopc)')" />
+            Text="The defined path for the Bebop compiler could not be found: $(_Bebopc)"
+            Condition="!Exists($(_Bebopc))" />
     </Target>
 
     <Target Name="CompileBops" BeforeTargets="CoreCompile" DependsOnTargets="PrepareForBuild;ValidateBebopcCommandLine" Condition="'$(_BebopSchemas)' != '' " >
+
         <Exec
-            Command="$(_Bebopc) --log-format %(Bebop.LogFormat) --%(Bebop.Language) $(_BebopOutput) --namespace %(Bebop.Namespace) --files $(_BebopSchemas)"
+            Command="&quot;$(_Bebopc)&quot; --log-format %(Bebop.LogFormat) --%(Bebop.Language) &quot;$(_BebopOutput)&quot; --namespace %(Bebop.Namespace) --files $(_BebopSchemas)"
             EchoOff='true'
             StandardErrorImportance='high'
             StandardOutputImportance='low'
