@@ -6,7 +6,7 @@ import * as lsp from "vscode-languageclient/node";
 import { Trace } from 'vscode-jsonrpc';
 import * as path from "path";
 import { existsSync } from "fs";
-import { platform } from "os";
+import { arch, platform } from 'os';
 
 export async function activate(context: vscode.ExtensionContext) {
     // Register our own little status bar
@@ -77,37 +77,29 @@ function getBebopCompilerPath(context: vscode.ExtensionContext) {
         return envPath;
     }
 
-    // In development mode?
-    if (context.extensionMode === vscode.ExtensionMode.Development) {
-        // Resolve the Bebop compiler from the bin directory
-        return path.resolve(path.join(context.extensionPath, `../bin/${getCompilerPlatformPath(true)}`));
-    }
-
     // Use the packaged compiler
     return context.asAbsolutePath(getCompilerPlatformPath());
 }
 
-function getCompilerPlatformPath(debug: boolean = false) {
-    switch (platform()) {
-        case "win32":
-            if (debug) {
-                return "compiler/Debug/artifacts/bebopc.exe";
-            } else {
-                return "bebopc/windows/bebopc.exe";
-            }
-        case "darwin":
-            if (debug) {
-                return "compiler/Debug/artifacts/bebopc";
-            } else {
-                return "bebopc/macos/bebopc";
-            }
-        default:
-            if (debug) {
-                return "compiler/Debug/artifacts/bebopc";
-            } else {
-                return "bebopc/linux/bebopc";
-            }
+function getCompilerPlatformPath() {
+    const cpu = arch();
+    if (cpu !== "x64" && cpu !== "arm64") {
+        throw new Error(`${cpu} is not supported`);
     }
+    const os = platform();
+    const osName = () => {
+        switch (os) {
+            case "win32":
+                return "windows";
+            case "linux":
+                return "linux";
+            case "darwin":
+                return "macos";
+            default:
+                throw new Error(`unsupported OS: ${os}`);
+        }
+    };
+    return `compiler/$${osName()}/${cpu}/bebopc${os === "win32" ? ".exe" : ""}`;
 }
 
 export function deactivate() { }

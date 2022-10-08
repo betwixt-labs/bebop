@@ -310,6 +310,24 @@ jobs:
           name: bebop-tools-npm-${{ steps.dotenv.outputs.version }}
           path: ${{env.TOOLS_ROOT}}/node/bebop-tools-${{ steps.dotenv.outputs.version }}.tgz
 
+      - name: Copy compiler builds for VSCode extension
+        run: |
+          mkdir -p ./vscode-bebop/compiler && cp -a ${{env.BEBOPC_PATH}}/. ./vscode-bebop/compiler
+
+      - name: Build VSCode extension
+        run: |
+          jq '.version = "${{ steps.dotenv.outputs.version }}"' package.json > tmp && mv tmp package.json
+          npm install -g vsce
+          npm install
+          vsce package
+        working-directory: ./vscode-bebop
+
+      - name: Upload VSCode artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: vscode-bebop
+          path: vscode-bebop/vscode-bebop-*.vsix
+
   publish-packages:
     env:
       RUST_RUNTIME_ROOT: ${{github.workspace}}/Runtime/Rust
@@ -373,6 +391,11 @@ jobs:
         run: npm publish "./bebop-runtime-ts-${{ steps.dotenv.outputs.version }}/bebop-${{ steps.dotenv.outputs.version }}.tgz" --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
+
+      - name: Publish VSCode Extension
+        run: |
+          npm install -g vsce
+          vsce publish --packagePath ./vscode-bebop/vscode-bebop-{{ steps.dotenv.outputs.version }}.vsix -p ${{ secrets.VSCE_TOKEN }}
 
       - name: Stage Website
         run: |
