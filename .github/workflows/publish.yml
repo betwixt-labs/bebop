@@ -395,7 +395,7 @@ jobs:
       - name: Publish VSCode Extension
         run: |
           npm install -g vsce
-          vsce publish --packagePath ./vscode-bebop/vscode-bebop-{{ steps.dotenv.outputs.version }}.vsix -p ${{ secrets.VSCE_TOKEN }}
+          vsce publish --packagePath ./vscode-bebop/vscode-bebop-${{ steps.dotenv.outputs.version }}.vsix -p ${{ secrets.VSCE_TOKEN }}
 
       - name: Stage Website
         run: |
