@@ -99,7 +99,7 @@ function getCompilerPlatformPath() {
                 throw new Error(`unsupported OS: ${os}`);
         }
     };
-    return `compiler/$${osName()}/${cpu}/bebopc${os === "win32" ? ".exe" : ""}`;
+    return `compiler/${osName()}/${cpu}/bebopc${os === "win32" ? ".exe" : ""}`;
 }
 
 export function deactivate() { }
