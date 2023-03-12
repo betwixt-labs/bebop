@@ -1,4 +1,3 @@
-#[allow(unaligned_references)]
 mod serialization;
 mod types;
 

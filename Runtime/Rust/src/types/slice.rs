@@ -5,6 +5,9 @@ use std::iter::FusedIterator;
 use std::ops::Deref;
 use std::ptr::slice_from_raw_parts;
 
+#[cfg(test)]
+use crate::packed_read;
+
 /// This allows us to either wrap an existing &[T] slice to serialize it OR to store a raw byte
 /// slice from an encoding and access its potentially unaligned values.
 ///
@@ -172,9 +175,8 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{DeResult, FixedSized, SeResult, SliceWrapper, SubRecord};
+    use crate::{DeResult, FixedSized, packed_read, packed_serialize, SliceWrapper, SubRecord};
     use std::convert::TryInto;
-    use std::io::Write;
 
     #[repr(packed)]
     #[derive(Debug, Eq, PartialEq, Copy, Clone)]
@@ -257,12 +259,12 @@ mod test {
     }
 
     #[test]
-    #[allow(unaligned_references)]
     fn get_raw_fixed_struct() {
         // only happens for big-endian systems or systems where `repr(packed)` is not supported
         let s = <SliceWrapper<Fixed>>::Raw(&[0x01, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
-        assert_eq!(s.get(0).unwrap().a, 1);
-        assert_eq!(s.get(0).unwrap().b, 2);
+        let s0 = s.get(0).unwrap();
+        assert_eq!(packed_read!(s0.a), 1);
+        assert_eq!(packed_read!(s0.b), 2);
     }
 
     #[test]
@@ -283,15 +285,14 @@ mod test {
     }
 
     #[test]
-    #[allow(unaligned_references)]
     fn iter_raw() {
         let s = <SliceWrapper<Fixed>>::Raw(&[
             0x01, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x04, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00,
         ]);
         for (i, v) in s.iter().enumerate() {
-            assert_eq!(v.a, (i * 2 + 1) as u8);
-            assert_eq!(v.b, (i * 2 + 2) as u64);
+            assert_eq!(packed_read!(v.a), (i * 2 + 1) as u8);
+            assert_eq!(packed_read!(v.b), (i * 2 + 2) as u64);
         }
     }
 

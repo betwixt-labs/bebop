@@ -5,15 +5,21 @@ use std::collections::HashMap;
 use std::convert::TryInto;
 use std::hash::Hash;
 use std::io::Write;
+use std::mem;
+use std::path::Component::ParentDir;
 
 pub use error::*;
 pub use fixed_sized::*;
 
-use crate::{test_serialization, Date, Guid, SliceWrapper};
+use crate::{
+    const_assert_align, const_assert_impl, define_serialize_chained, test_serialization,
+    unaligned_do, unaligned_read, Date, Guid, SliceWrapper,
+};
 // not sure why but this is "unused"
 #[allow(unused_imports)]
 use crate::collection;
 
+pub mod alignment;
 pub mod error;
 pub mod fixed_sized;
 pub mod testing;
@@ -43,7 +49,10 @@ pub trait Record<'raw>: SubRecord<'raw> {
     /// Serialize this record. It is highly recommend to use a buffered writer.
     #[inline(always)]
     fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
-        self._serialize_chained(dest)
+        unsafe {
+            // safe because `self` was a reference so we know it is a valid pointer.
+            Self::_serialize_chained(self, dest)
+        }
     }
 
     // TODO: support async serialization
@@ -60,10 +69,26 @@ pub trait SubRecord<'raw>: Sized {
     /// *Warning*: call is recursive and costly to make if not needed.
     fn serialized_size(&self) -> usize;
 
+    /// Should only be called from generated code!
+    /// Serialize this record. It is highly recommend to use a buffered writer.
+    #[inline]
+    fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+        unsafe { Self::_serialize_chained_unaligned(self, dest) }
+    }
+
     // TODO: test performance of this versus a generic Write
     /// Should only be called from generated code!
     /// Serialize this record. It is highly recommend to use a buffered writer.
-    fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize>;
+    ///
+    /// This allows the value to be unaligned.
+    ///
+    /// # Safety
+    /// This function assumes that `zelf` is a valid, readable, initialized pointer to a Self
+    /// object. `zelf` does not need to be aligned.
+    unsafe fn _serialize_chained_unaligned<W: Write>(
+        zelf: *const Self,
+        dest: &mut W,
+    ) -> SeResult<usize>;
 
     /// Should only be called from generated code!
     /// Deserialize this object as a sub component of a larger message. Returns a tuple of
@@ -79,12 +104,7 @@ impl<'raw> SubRecord<'raw> for &'raw str {
         self.len() + LEN_SIZE
     }
 
-    fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
-        let raw = self.as_bytes();
-        write_len(dest, raw.len())?;
-        dest.write_all(raw)?;
-        Ok(LEN_SIZE + raw.len())
-    }
+    define_serialize_chained!(&str => |zelf, dest| serialize_byte_slice(dest, zelf.as_bytes()));
 
     fn _deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
         let len = read_len(raw)?;
@@ -120,10 +140,7 @@ impl<'raw> SubRecord<'raw> for String {
         self.len() + LEN_SIZE
     }
 
-    #[inline]
-    fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
-        self.as_str()._serialize_chained(dest)
-    }
+    define_serialize_chained!(String => |zelf, dest| serialize_byte_slice(dest, zelf.as_bytes()));
 
     #[inline]
     fn _deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
@@ -150,14 +167,14 @@ where
         }
     }
 
-    fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
-        write_len(dest, self.len())?;
+    define_serialize_chained!(Vec<T> => |zelf, dest| {
+        write_len(dest, zelf.len())?;
         let mut i = LEN_SIZE;
-        for v in self.iter() {
+        for v in zelf.iter() {
             i += v._serialize_chained(dest)?;
         }
         Ok(i)
-    }
+    });
 
     fn _deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
         let len = read_len(raw)?;
@@ -242,15 +259,15 @@ where
         }
     }
 
-    fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+    define_serialize_chained!(HashMap<K, V> => |zelf, dest| {
         #[cfg(feature = "sorted_maps")]
-        use itertools::Itertools;
+        use itertools::Itertools as _;
 
-        write_len(dest, self.len())?;
+        write_len(dest, zelf.len())?;
         let mut i = LEN_SIZE;
 
         #[cfg(feature = "sorted_maps")]
-        let iter = self
+        let iter = zelf
             .iter()
             .sorted_unstable_by(|(k1, _), (k2, _)| k1.cmp(k2));
         #[cfg(not(feature = "sorted_maps"))]
@@ -261,7 +278,7 @@ where
             i += v._serialize_chained(dest)?;
         }
         Ok(i)
-    }
+    });
 
     fn _deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
         let len = read_len(raw)?;
@@ -297,11 +314,10 @@ impl<'raw> SubRecord<'raw> for Guid {
         Self::SERIALIZED_SIZE
     }
 
-    #[inline]
-    fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
-        dest.write_all(&self.to_ms_bytes())?;
+    define_serialize_chained!(*Guid => |zelf, dest| {
+        dest.write_all(&zelf.to_ms_bytes())?;
         Ok(16)
-    }
+    });
 
     #[inline]
     fn _deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
@@ -338,10 +354,7 @@ impl<'raw> SubRecord<'raw> for Date {
         Self::SERIALIZED_SIZE
     }
 
-    #[inline]
-    fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
-        self.to_ticks()._serialize_chained(dest)
-    }
+    define_serialize_chained!(*Date => |zelf, dest| zelf.to_ticks()._serialize_chained(dest));
 
     #[inline]
     fn _deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
@@ -361,11 +374,10 @@ impl<'de> SubRecord<'de> for bool {
         bool::SERIALIZED_SIZE
     }
 
-    #[inline]
-    fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
-        dest.write_all(&[if *self { 1 } else { 0 }])?;
+    define_serialize_chained!(*bool => |zelf, dest| {
+        dest.write_all(&[if zelf { 1 } else { 0 }])?;
         Ok(1)
-    }
+    });
 
     #[inline]
     fn _deserialize_chained(raw: &'de [u8]) -> DeResult<(usize, Self)> {
@@ -391,38 +403,50 @@ where
         self.size() + LEN_SIZE
     }
 
-    fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
-        write_len(dest, self.len())?;
-        match *self {
+    define_serialize_chained!(*SliceWrapper<'raw, T> => |zelf, dest| {
+        match zelf {
             SliceWrapper::Raw(raw) => {
-                dest.write_all(&raw)?;
-                Ok(raw.len() + LEN_SIZE)
+                serialize_byte_slice(dest, raw)
             }
             SliceWrapper::Cooked(ary) => {
-                #[cfg(target_endian = "big")]
-                todo!();
-
-                let b: &[u8] = unsafe {
-                    std::slice::from_raw_parts(
-                        ary.as_ptr() as *const u8,
-                        ary.len() * core::mem::size_of::<T>(),
-                    )
-                };
-                dest.write_all(b)?;
-                Ok(b.len() + LEN_SIZE)
+                if cfg!(target_endian = "little") &&
+                    mem::size_of::<T>() % mem::align_of::<T>() == 0
+                {
+                    // special case with no padding and it is stored as little endian so we can
+                    // treat it as a raw byte array
+                    let b: &[u8] = unsafe {
+                        std::slice::from_raw_parts(
+                            ary.as_ptr() as *const u8,
+                            ary.len() * core::mem::size_of::<T>(),
+                        )
+                    };
+                    serialize_byte_slice(dest, b)
+                } else {
+                    // there is padding in the array so we can't just treat it as raw bytes
+                    write_len(dest, zelf.len())?;
+                    let mut i = LEN_SIZE;
+                    for v in ary {
+                        i += v._serialize_chained(dest)?;
+                    }
+                    Ok(i)
+                }
             }
         }
-    }
+    });
 
     fn _deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
         let len = read_len(raw)?;
-        let bytes = len * std::mem::size_of::<T>() + LEN_SIZE;
+        let bytes = len * mem::size_of::<T>() + LEN_SIZE;
         if bytes > raw.len() {
             return Err(DeserializeError::MoreDataExpected(bytes - raw.len()));
         }
         Ok((
             bytes,
-            if std::mem::align_of::<T>() == 1 {
+            if mem::size_of::<T>() % mem::align_of::<T>() == 0
+                && raw.as_ptr().align_offset(mem::align_of::<T>()) == 0
+            {
+                // if the size of T is evenly divisible by the alignment of T AND the start of the
+                // array is aligned to T, the representation is already the same as if it were &[T].
                 SliceWrapper::from_cooked(unsafe {
                     std::slice::from_raw_parts((&raw[LEN_SIZE..bytes]).as_ptr() as *const T, len)
                 })
@@ -548,4 +572,11 @@ fn write_len_test() {
     assert_eq!(buf[3..7], [0, 0, 0, 0]);
     assert_eq!(buf[7..11], [123, 0, 0, 0]);
     assert_eq!(buf[11..], [247, 85, 1, 0]);
+}
+
+#[inline(always)]
+fn serialize_byte_slice<W: Write>(dest: &mut W, raw: &[u8]) -> SeResult<usize> {
+    write_len(dest, raw.len())?;
+    dest.write_all(raw)?;
+    Ok(LEN_SIZE + raw.len())
 }
