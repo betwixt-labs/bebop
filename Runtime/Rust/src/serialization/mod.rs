@@ -279,10 +279,10 @@ where
         let mut m = HashMap::with_capacity(len);
         for _ in 0..len {
             let (read, k) =
-                K::_deserialize_chained(&raw.get(i..).ok_or(DeserializeError::CorruptFrame)?)?;
+                K::_deserialize_chained(raw.get(i..).ok_or(DeserializeError::CorruptFrame)?)?;
             i += read;
             let (read, v) =
-                V::_deserialize_chained(&raw.get(i..).ok_or(DeserializeError::CorruptFrame)?)?;
+                V::_deserialize_chained(raw.get(i..).ok_or(DeserializeError::CorruptFrame)?)?;
             i += read;
             m.insert(k, v);
         }
@@ -351,7 +351,7 @@ impl<'raw> SubRecord<'raw> for Date {
 
     #[inline]
     fn _deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
-        let (read, date) = u64::_deserialize_chained(&raw)?;
+        let (read, date) = u64::_deserialize_chained(raw)?;
         Ok((read, Date::from_ticks(date)))
     }
 }
@@ -441,7 +441,7 @@ where
                 // if the size of T is evenly divisible by the alignment of T AND the start of the
                 // array is aligned to T, the representation is already the same as if it were &[T].
                 SliceWrapper::from_cooked(unsafe {
-                    std::slice::from_raw_parts((&raw[LEN_SIZE..bytes]).as_ptr() as *const T, len)
+                    std::slice::from_raw_parts((raw[LEN_SIZE..bytes]).as_ptr() as *const T, len)
                 })
             } else {
                 SliceWrapper::from_raw(&raw[LEN_SIZE..bytes])
@@ -557,7 +557,7 @@ impl_record_for_num!(f64);
 /// hacking.
 #[inline(always)]
 pub fn read_len(raw: &[u8]) -> DeResult<usize> {
-    Ok(Len::_deserialize_chained(&raw)?.1 as usize)
+    Ok(Len::_deserialize_chained(raw)?.1 as usize)
 }
 
 #[test]
