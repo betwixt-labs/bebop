@@ -1,12 +1,9 @@
-use std::mem::size_of;
-
-use crate::{FixedSized, SubRecord};
 use std::iter::FusedIterator;
+use std::mem::size_of;
 use std::ops::Deref;
 use std::ptr::slice_from_raw_parts;
 
-#[cfg(test)]
-use crate::packed_read;
+use crate::{FixedSized, SubRecord};
 
 /// This allows us to either wrap an existing &[T] slice to serialize it OR to store a raw byte
 /// slice from an encoding and access its potentially unaligned values.
@@ -175,8 +172,13 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{DeResult, FixedSized, packed_read, packed_serialize, SliceWrapper, SubRecord};
     use std::convert::TryInto;
+    use std::io::Write;
+
+    use crate::{
+        define_serialize_chained, packed_read, DeResult, FixedSized, SeResult, SliceWrapper,
+        SubRecord,
+    };
 
     #[repr(packed)]
     #[derive(Debug, Eq, PartialEq, Copy, Clone)]
@@ -207,12 +209,9 @@ mod test {
             Self::SERIALIZED_SIZE
         }
 
-        fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
-            self.a._serialize_chained(dest)?;
-            #[allow(unaligned_references)]
-            self.b._serialize_chained(dest)?;
-            Ok(9)
-        }
+        define_serialize_chained!(*Fixed => |zelf, dest| {
+            Ok(zelf.a._serialize_chained(dest)? + packed_read!(zelf.b)._serialize_chained(dest)?)
+        });
 
         fn _deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
             Ok((

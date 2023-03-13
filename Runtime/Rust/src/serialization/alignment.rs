@@ -1,5 +1,5 @@
 /// Assert that a type or value implements a given list of traits at compile time.
-#[macro_export]
+#[macro_export(local_inner_macros)]
 macro_rules! const_assert_impl {
     ($val:ident: $tr:path) => {{
         const fn value_must_impl<T: $tr>(_: &T) {}
