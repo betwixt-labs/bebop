@@ -480,6 +480,35 @@ fn serialization_slicewrapper_i16_cooked() {
     );
 }
 
+// u8 is a special case among numbers because it has an alignment of 1.
+impl<'raw> SubRecord<'raw> for u8 {
+    const MIN_SERIALIZED_SIZE: usize = Self::SERIALIZED_SIZE;
+    const EXACT_SERIALIZED_SIZE: Option<usize> = Some(Self::SERIALIZED_SIZE);
+
+    #[inline]
+    fn serialized_size(&self) -> usize {
+        Self::SERIALIZED_SIZE
+    }
+
+    #[inline]
+    unsafe fn _serialize_chained_unaligned<W: Write>(
+        zelf: *const Self,
+        dest: &mut W,
+    ) -> SeResult<usize> {
+        dest.write_all(&[*zelf])?;
+        Ok(1)
+    }
+
+    #[inline]
+    fn _deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
+        if raw.is_empty() {
+            Err(DeserializeError::MoreDataExpected(1))
+        } else {
+            Ok((1, raw[0]))
+        }
+    }
+}
+
 macro_rules! impl_record_for_num {
     ($t:ty) => {
         impl<'raw> SubRecord<'raw> for $t {
@@ -512,7 +541,6 @@ macro_rules! impl_record_for_num {
     };
 }
 
-impl_record_for_num!(u8);
 // no signed byte type at this time
 impl_record_for_num!(u16);
 impl_record_for_num!(i16);
