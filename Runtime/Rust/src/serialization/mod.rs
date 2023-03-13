@@ -6,15 +6,11 @@ use std::convert::TryInto;
 use std::hash::Hash;
 use std::io::Write;
 use std::mem;
-use std::path::Component::ParentDir;
 
 pub use error::*;
 pub use fixed_sized::*;
 
-use crate::{
-    const_assert_align, const_assert_impl, define_serialize_chained, test_serialization,
-    unaligned_do, unaligned_read, Date, Guid, SliceWrapper,
-};
+use crate::{define_serialize_chained, test_serialization, Date, Guid, SliceWrapper};
 // not sure why but this is "unused"
 #[allow(unused_imports)]
 use crate::collection;
@@ -49,10 +45,7 @@ pub trait Record<'raw>: SubRecord<'raw> {
     /// Serialize this record. It is highly recommend to use a buffered writer.
     #[inline(always)]
     fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
-        unsafe {
-            // safe because `self` was a reference so we know it is a valid pointer.
-            Self::_serialize_chained(self, dest)
-        }
+        Self::_serialize_chained(self, dest)
     }
 
     // TODO: support async serialization
@@ -498,11 +491,10 @@ macro_rules! impl_record_for_num {
                 Self::SERIALIZED_SIZE
             }
 
-            #[inline]
-            fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
-                dest.write_all(&self.to_le_bytes())?;
+            define_serialize_chained!(*$t => |zelf, dest| {
+                dest.write_all(&zelf.to_le_bytes())?;
                 Ok(core::mem::size_of::<$t>())
-            }
+            });
 
             #[inline]
             fn _deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
