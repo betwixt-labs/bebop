@@ -79,11 +79,11 @@ namespace Core.Generators
         public static string BaseClassName(this Definition definition) => $"Base{definition.Name.ToPascalCase()}";
 
         /// <summary>
-        /// Gets the generic argument index for a branch of a union. 
+        /// Gets the generic argument index for a branch of a union.
         /// </summary>
         /// <returns>The index of the union as a generic positional argument.</returns>
         /// <remarks>
-        ///  Generic arguments start at "0" whereas Bebop union branches start at "1". This just offsets the discriminator by 1 to retrieve the correct index. 
+        ///  Generic arguments start at "0" whereas Bebop union branches start at "1". This just offsets the discriminator by 1 to retrieve the correct index.
         /// </remarks>
         public static int GenericIndex(this UnionBranch branch) => branch.Discriminator - 1;
 

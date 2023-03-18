@@ -178,19 +178,19 @@ namespace Core.Generators.Rust
             {
                 builder
                     .CodeBlock("::bebop::bitflags!", _tab, () =>
-                {
-                    builder
-                        .AppendLine("#[repr(transparent)]")
-                        .CodeBlock($"pub struct {name}: {type}", _tab, () =>
                     {
-                        foreach (var m in d.Members)
-                        {
-                            WriteDocumentation(builder, m.Documentation);
-                            WriteDeprecation(builder, m.DeprecatedAttribute);
-                            builder.AppendLine($"const {MakeConstIdent(m.Name)} = {m.ConstantValue};");
-                        }
-                    });
-                }).AppendLine();
+                        builder
+                            .AppendLine("#[repr(transparent)]")
+                            .CodeBlock($"pub struct {name}: {type}", _tab, () =>
+                            {
+                                foreach (var m in d.Members)
+                                {
+                                    WriteDocumentation(builder, m.Documentation);
+                                    WriteDeprecation(builder, m.DeprecatedAttribute);
+                                    builder.AppendLine($"const {MakeConstIdent(m.Name)} = {m.ConstantValue};");
+                                }
+                            });
+                    }).AppendLine();
             }
             else
             {
