@@ -25,16 +25,16 @@ impl Display for DeserializeError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             DeserializeError::MoreDataExpected(bytes) => {
-                write!(f, "Deserialization Error, {} more bytes expected", bytes)
+                write!(f, "Deserialization Error, {bytes} more bytes expected")
             }
             DeserializeError::CorruptFrame => {
                 write!(f, "Deserialization Error, corrupt frame data")
             }
             DeserializeError::Utf8EncodingError(err) => {
-                write!(f, "Deserialization Error, Utf-8 encoding error: {}", err)
+                write!(f, "Deserialization Error, Utf-8 encoding error: {err}")
             }
             DeserializeError::InvalidEnumDiscriminator(d) => {
-                write!(f, "Deserialization Error, Invalid enum discriminator {}", d)
+                write!(f, "Deserialization Error, Invalid enum discriminator {d}")
             }
             DeserializeError::DuplicateMessageField => write!(
                 f,
@@ -67,7 +67,7 @@ impl From<io::Error> for SerializeError {
 impl Display for SerializeError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            SerializeError::IoError(err) => write!(f, "Serialization Error, IO Error: {}", err),
+            SerializeError::IoError(err) => write!(f, "Serialization Error, IO Error: {err}"),
             SerializeError::LengthExceeds32Bits => write!(
                 f,
                 "Serialization Error, length value does not fit within 32 bits"

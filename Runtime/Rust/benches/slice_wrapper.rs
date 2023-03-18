@@ -1,6 +1,6 @@
 use bebop::error::{DeResult, SeResult};
 use bebop::fixed_sized::FixedSized;
-use bebop::{define_serialize_chained, SubRecord, packed_read};
+use bebop::{define_serialize_chained, packed_read, SubRecord};
 use bebop::{SliceWrapper, LEN_SIZE};
 use criterion::{black_box, criterion_group, Criterion};
 use std::convert::TryInto;

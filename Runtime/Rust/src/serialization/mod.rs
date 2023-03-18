@@ -264,7 +264,7 @@ where
             .iter()
             .sorted_unstable_by(|(k1, _), (k2, _)| k1.cmp(k2));
         #[cfg(not(feature = "sorted_maps"))]
-        let iter = self.iter();
+        let iter = zelf.iter();
 
         for (k, v) in iter {
             i += k._serialize_chained(dest)?;
@@ -397,9 +397,11 @@ where
     }
 
     define_serialize_chained!(*SliceWrapper<'raw, T> => |zelf, dest| {
+        write_len(dest, zelf.len())?;
         match zelf {
             SliceWrapper::Raw(raw) => {
-                serialize_byte_slice(dest, raw)
+                dest.write_all(raw)?;
+                Ok(LEN_SIZE + raw.len())
             }
             SliceWrapper::Cooked(ary) => {
                 if cfg!(target_endian = "little") &&
@@ -413,10 +415,10 @@ where
                             ary.len() * core::mem::size_of::<T>(),
                         )
                     };
-                    serialize_byte_slice(dest, b)
+                    dest.write_all(b)?;
+                    Ok(LEN_SIZE + b.len())
                 } else {
                     // there is padding in the array so we can't just treat it as raw bytes
-                    write_len(dest, zelf.len())?;
                     let mut i = LEN_SIZE;
                     for v in ary {
                         i += v._serialize_chained(dest)?;
@@ -476,7 +478,11 @@ fn serialization_slicewrapper_i16_cooked() {
     assert_eq!(read, LEN);
     assert_eq!(
         deserialized,
-        SliceWrapper::Raw(&[12, 0, 32, 0, 31, 2, 140, 2, 233, 255])
+        if cfg!(target_endian = "little") {
+            SliceWrapper::Cooked(&[12, 32, 543, 652, -23])
+        } else {
+            SliceWrapper::Raw(&[12, 0, 32, 0, 31, 2, 140, 2, 233, 255])
+        }
     );
 }
 

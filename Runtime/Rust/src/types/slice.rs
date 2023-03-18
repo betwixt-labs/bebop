@@ -74,7 +74,7 @@ where
                 } else {
                     let raw: &'a [u8] = unsafe {
                         &*slice_from_raw_parts(
-                            raw.as_ptr().offset((i * size_of::<T>()) as isize),
+                            raw.as_ptr().add(i * size_of::<T>()),
                             size_of::<T>(),
                         )
                     };
