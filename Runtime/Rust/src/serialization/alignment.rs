@@ -69,12 +69,6 @@ macro_rules! unaligned_read {
 macro_rules! unaligned_ref_read {
     ($ptr:ident as $ty:ty) => {{
         debug_assert!(!$ptr.is_null());
-        // let r: $ty = if $ptr.align_offset(::std::mem::align_of::<$ty>()) == 0 {
-        //     unsafe { &*$ptr }
-        // } else {
-        //     unsafe { $ptr.read_unaligned() }
-        // };
-        // r
         let r: $ty = unsafe { $ptr.read_unaligned() };
         r
     }};
@@ -85,16 +79,6 @@ macro_rules! unaligned_ref_read {
 macro_rules! unaligned_do {
     ($ptr:ident as $ty:ty => |$arg:ident| $closure:expr) => {{
         debug_assert!(!$ptr.is_null());
-        // if $ptr.align_offset(::std::mem::align_of::<$ty>()) == 0 {
-        //     let $arg: &$ty = unsafe { &*$ptr };
-        //     $closure
-        // } else {
-        //     let $arg: $ty = unsafe { $ptr.read_unaligned() };
-        //     let _returned = $closure;
-        //     // we must FORGET this because `read_unaligned` makes a shallow copy.
-        //     ::std::mem::forget($arg);
-        //     _returned
-        // }
         let $arg: $ty = unsafe { $ptr.read_unaligned() };
         let _returned = $closure;
         // we must FORGET this because `read_unaligned` makes a shallow copy.
@@ -102,17 +86,6 @@ macro_rules! unaligned_do {
         _returned
     }};
 }
-
-// /// # Safety
-// /// Pointer must point to a valid `T` object that may or may not be aligned.
-// #[inline]
-// pub unsafe fn unaligned_do<T, R>(ptr: *const T, closure: impl FnOnce(&T) -> R) -> R {
-//     debug_assert!(!ptr.is_null());
-//     let arg = ptr.read_unaligned();
-//     let returned = closure(&arg);
-//     mem::forget(arg);
-//     returned
-// }
 
 /// Serialize values from a packed type.
 /// Use `fn _serialize_chained` to generate a chain serialization function for use within
