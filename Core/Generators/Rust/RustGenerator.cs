@@ -373,8 +373,8 @@ namespace Core.Generators.Rust
                         }
                     }).AppendLine();
 
-                    builder.AppendLine("#[allow(unaligned_references)]").CodeBlock(
-                        "fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
+                    builder.CodeBlock(
+                        "unsafe fn _serialize_chained_unaligned<W: ::std::io::Write>(zelf: *const Self, dest: &mut W) -> ::bebop::SeResult<usize>",
                         _tab, () =>
                         {
                             if (d.Fields.Count == 0)
@@ -388,7 +388,8 @@ namespace Core.Generators.Rust
                                 {
                                     builder.AppendLine(string.Join(" +\n",
                                         d.Fields.Select(
-                                            (f) => $"self.{MakeAttrIdent(f.Name)}._serialize_chained(dest)?")));
+                                            (f) =>
+                                                $"::bebop::SubRecord::_serialize_chained_unaligned(::std::ptr::addr_of!((*zelf).{MakeAttrIdent(f.Name)}), dest)?")));
                                 }, "", ")");
                             }
                         }).AppendLine();
