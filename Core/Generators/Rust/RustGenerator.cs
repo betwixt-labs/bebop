@@ -512,13 +512,12 @@ namespace Core.Generators.Rust
                             WriteMessageSizeBound(builder, d);
                         })
                         .AppendLine()
-                        .AppendLine("#[allow(unaligned_references)]")
                         .CodeBlock(
-                            "fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
+                            "::bebop::define_serialize_chained!(Self => |zelf, dest|",
                             _tab, () =>
                             {
                                 WriteMessageSerialization(builder, d);
-                            }).AppendLine();
+                            }, "{", "});").AppendLine();
 
                     builder.CodeBlock("fn _deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)>",
                         _tab,
@@ -557,7 +556,7 @@ namespace Core.Generators.Rust
         }
 
         private void WriteMessageSerialization(IndentedStringBuilder builder, MessageDefinition d,
-            bool calcSize = true, string obj = "self")
+            bool calcSize = true, string obj = "zelf")
         {
             obj = string.IsNullOrEmpty(obj) ? "_" : $"{obj}.";
             if (calcSize)
