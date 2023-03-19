@@ -1,4 +1,4 @@
-use bebop::error::{DeResult};
+use bebop::error::DeResult;
 use bebop::fixed_sized::FixedSized;
 use bebop::{define_serialize_chained, packed_read, SubRecord};
 use bebop::{SliceWrapper, LEN_SIZE};
