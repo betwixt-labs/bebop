@@ -342,7 +342,7 @@ impl<'raw> ::bebop::SubRecord<'raw> for Album<'raw> {
     });
 
     fn _deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)> {
-        let len = ::bebop::read_len(&raw)? + ::bebop::LEN_SIZE + 1;
+        let len = ::bebop::read_len(raw)? + ::bebop::LEN_SIZE + 1;
         let mut i = ::bebop::LEN_SIZE + 1;
         let de = match raw[::bebop::LEN_SIZE] {
             1 => {
@@ -811,7 +811,7 @@ pub mod owned {
         });
 
         fn _deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)> {
-            let len = ::bebop::read_len(&raw)? + ::bebop::LEN_SIZE + 1;
+            let len = ::bebop::read_len(raw)? + ::bebop::LEN_SIZE + 1;
             let mut i = ::bebop::LEN_SIZE + 1;
             let de = match raw[::bebop::LEN_SIZE] {
                 1 => {
