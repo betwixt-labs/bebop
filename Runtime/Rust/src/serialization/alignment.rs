@@ -95,14 +95,14 @@ macro_rules! define_serialize_chained {
     // It is a fat pointer type (e.g. &str or &[u8])
     (&$ty:ty => |$zelf:ident, $dest:ident| $closure:expr) => {
         #[inline]
-        fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+        fn _serialize_chained<W: Write>(&self, dest: &mut W) -> $crate::SeResult<usize> {
             let $zelf: &$ty = self;
             let $dest = dest;
             $closure
         }
 
         #[inline]
-        unsafe fn _serialize_chained_unaligned<W: Write>(zelf: *const Self, dest: &mut W) -> SeResult<usize> {
+        unsafe fn _serialize_chained_unaligned<W: ::std::io::Write>(zelf: *const Self, dest: &mut W) -> $crate::SeResult<usize> {
             let $zelf: &$ty = unaligned_ref_read!(zelf as &$ty);
             let $dest = dest;
             $closure
@@ -111,14 +111,14 @@ macro_rules! define_serialize_chained {
     // It is a copy type
     (*$ty:ty => |$zelf:ident, $dest:ident| $closure:expr) => {
         #[inline]
-        fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+        fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> $crate::SeResult<usize> {
             let $zelf: $ty = *self;
             let $dest = dest;
             $closure
         }
 
         #[inline]
-        unsafe fn _serialize_chained_unaligned<W: Write>(zelf: *const Self, dest: &mut W) -> SeResult<usize> {
+        unsafe fn _serialize_chained_unaligned<W: ::std::io::Write>(zelf: *const Self, dest: &mut W) -> $crate::SeResult<usize> {
             let $zelf: $ty = unaligned_read!(zelf);
             let $dest = dest;
             $closure
@@ -127,14 +127,14 @@ macro_rules! define_serialize_chained {
     // It is not a fat pointer and it is not Copy
     ($ty:ty => |$zelf:ident, $dest:ident| $closure:expr) => {
         #[inline]
-        fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
+        fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> $crate::SeResult<usize> {
             let $zelf: &$ty = self;
             let $dest = dest;
             $closure
         }
 
         #[inline]
-        unsafe fn _serialize_chained_unaligned<W: Write>(zelf: *const Self, dest: &mut W) -> SeResult<usize> {
+        unsafe fn _serialize_chained_unaligned<W: ::std::io::Write>(zelf: *const Self, dest: &mut W) -> $crate::SeResult<usize> {
             let $dest = dest;
             unaligned_do!(zelf as $ty => |$zelf| $closure)
         }
