@@ -373,8 +373,9 @@ namespace Core.Generators.Rust
                         }
                     }).AppendLine();
 
+                    var prefix = isFixedSize ? "*" : "";
                     builder.CodeBlock(
-                        "unsafe fn _serialize_chained_unaligned<W: ::std::io::Write>(zelf: *const Self, dest: &mut W) -> ::bebop::SeResult<usize>",
+                        $"::bebop::define_serialize_chained!({prefix}Self => |zelf, dest|",
                         _tab, () =>
                         {
                             if (d.Fields.Count == 0)
@@ -388,11 +389,12 @@ namespace Core.Generators.Rust
                                 {
                                     builder.AppendLine(string.Join(" +\n",
                                         d.Fields.Select(
-                                            (f) =>
-                                                $"::bebop::SubRecord::_serialize_chained_unaligned(::std::ptr::addr_of!((*zelf).{MakeAttrIdent(f.Name)}), dest)?")));
+                                            (f) => isFixedSize
+                                                ? $"::bebop::packed_read!(zelf.{MakeAttrIdent(f.Name)})._serialize_chained(dest)?"
+                                                : $"zelf.{MakeAttrIdent(f.Name)}._serialize_chained(dest)?")));
                                 }, "", ")");
                             }
-                        }).AppendLine();
+                        }, "{", "});").AppendLine();
 
                     builder.CodeBlock("fn _deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)>",
                         _tab,
