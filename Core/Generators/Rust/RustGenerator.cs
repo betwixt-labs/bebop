@@ -883,7 +883,7 @@ namespace Core.Generators.Rust
                     {
                         builder
                             // add 1 for discriminator
-                            .AppendLine("let len = ::bebop::read_len(&raw)? + ::bebop::LEN_SIZE + 1;")
+                            .AppendLine("let len = ::bebop::read_len(raw)? + ::bebop::LEN_SIZE + 1;")
                             .AppendLine("let mut i = ::bebop::LEN_SIZE + 1;");
 
                         builder.CodeBlock("let de = match raw[::bebop::LEN_SIZE]", _tab, () =>
