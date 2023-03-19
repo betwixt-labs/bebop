@@ -254,16 +254,14 @@ namespace Core.Generators.Rust
                     .AppendLine("#[inline]")
                     .AppendLine($"fn serialized_size(&self) -> usize {{ ::std::mem::size_of::<{type}>() }}")
                     .AppendLine()
-                    .AppendLine("#[inline]")
-                    .AppendLine("#[allow(unaligned_references)]")
                     .CodeBlock(
-                        "fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
+                        "::bebop::define_serialize_chained!(*Self => |zelf, dest|",
                         _tab,
                         () =>
                         {
-                            var conv = d.IsBitFlags ? "(*self).bits()" : $"{type}::from(*self)";
+                            var conv = d.IsBitFlags ? "(zelf).bits()" : $"{type}::from(zelf)";
                             builder.AppendLine($"{conv}._serialize_chained(dest)");
-                        })
+                        }, "{", "});")
                     .AppendLine()
                     .AppendLine("#[inline]")
                     .CodeBlock("fn _deserialize_chained(raw: &[u8]) -> ::bebop::DeResult<(usize, Self)>", _tab,
