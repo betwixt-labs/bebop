@@ -1,10 +1,9 @@
-use bebop::error::{DeResult, SeResult};
+use bebop::error::{DeResult};
 use bebop::fixed_sized::FixedSized;
 use bebop::{define_serialize_chained, packed_read, SubRecord};
 use bebop::{SliceWrapper, LEN_SIZE};
 use criterion::{black_box, criterion_group, Criterion};
 use std::convert::TryInto;
-use std::io::Write;
 
 /// a struct designed to be a nightmare for alignment
 #[repr(packed)]

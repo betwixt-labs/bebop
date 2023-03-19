@@ -173,10 +173,9 @@ where
 #[cfg(test)]
 mod test {
     use std::convert::TryInto;
-    use std::io::Write;
 
     use crate::{
-        define_serialize_chained, packed_read, DeResult, FixedSized, SeResult, SliceWrapper,
+        define_serialize_chained, packed_read, DeResult, FixedSized, SliceWrapper,
         SubRecord,
     };
 

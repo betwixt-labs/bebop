@@ -22,7 +22,7 @@ pub mod testing;
 
 pub type Len = u32;
 /// Size of length data
-pub const LEN_SIZE: usize = core::mem::size_of::<Len>();
+pub const LEN_SIZE: usize = mem::size_of::<Len>();
 /// Size of an enum
 pub const ENUM_SIZE: usize = 4;
 
@@ -412,7 +412,7 @@ where
                     let b: &[u8] = unsafe {
                         std::slice::from_raw_parts(
                             ary.as_ptr() as *const u8,
-                            ary.len() * core::mem::size_of::<T>(),
+                            ary.len() * mem::size_of::<T>(),
                         )
                     };
                     dest.write_all(b)?;
@@ -528,19 +528,19 @@ macro_rules! impl_record_for_num {
 
             define_serialize_chained!(*$t => |zelf, dest| {
                 dest.write_all(&zelf.to_le_bytes())?;
-                Ok(core::mem::size_of::<$t>())
+                Ok(mem::size_of::<$t>())
             });
 
             #[inline]
             fn _deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
-                if raw.len() < core::mem::size_of::<$t>() {
+                if raw.len() < mem::size_of::<$t>() {
                     return Err(DeserializeError::MoreDataExpected(
-                        core::mem::size_of::<$t>() - raw.len(),
+                        mem::size_of::<$t>() - raw.len(),
                     ));
                 }
                 Ok((
-                    core::mem::size_of::<$t>(),
-                    <$t>::from_le_bytes(raw[0..core::mem::size_of::<$t>()].try_into().unwrap()),
+                    mem::size_of::<$t>(),
+                    <$t>::from_le_bytes(raw[0..mem::size_of::<$t>()].try_into().unwrap()),
                 ))
             }
         }
