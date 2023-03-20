@@ -397,21 +397,6 @@ jobs:
           npm install -g vsce
           vsce publish --packagePath ./vscode-bebop/vscode-bebop-${{ steps.dotenv.outputs.version }}.vsix -p ${{ secrets.VSCE_TOKEN }}
 
-      - name: Stage Website
-        run: |
-          mkdir -p homepage/repl && cp -a bebop-repl-${{ steps.dotenv.outputs.version }}/. homepage/repl
-          sed 's/0.0.0/${{ steps.dotenv.outputs.version }}/' ${{env.TOOLS_ROOT}}/bash/install.sh > homepage/install.sh
-
-      - name: Publish Website
-        uses: jakejarvis/s3-sync-action@master
-        env:
-          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          SOURCE_DIR: homepage
-        with:
-          args: --delete
-
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
