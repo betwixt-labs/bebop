@@ -5,6 +5,7 @@
     <OutputType>Exe</OutputType>
     <LangVersion>10</LangVersion>
     <TargetFramework>net6.0</TargetFramework>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
   </PropertyGroup>
 
   <ItemGroup>

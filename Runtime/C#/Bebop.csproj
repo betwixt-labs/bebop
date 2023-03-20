@@ -22,6 +22,7 @@
     <RepositoryUrl>https://github.com/RainwayApp/bebop.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>binary serialization bebop encoding decoding</PackageTags>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
   </PropertyGroup>
 
   <ItemGroup Condition="$(TargetFramework.StartsWith('net4')) Or $(TargetFramework.StartsWith('netcoreapp')) Or $(TargetFramework.StartsWith('netstandard'))">
