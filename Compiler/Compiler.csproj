@@ -18,6 +18,7 @@
     <PublishDir>../bin/compiler/$(Configuration)/publish/$(RuntimeIdentifier)</PublishDir>
     <Platforms>AnyCPU</Platforms>
     <Configurations>Debug;Release</Configurations>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
   </PropertyGroup>
 
 	<ItemGroup>
