@@ -1,9 +1,9 @@
-use std::mem::size_of;
-
-use crate::{FixedSized, SubRecord};
 use std::iter::FusedIterator;
+use std::mem::size_of;
 use std::ops::Deref;
 use std::ptr::slice_from_raw_parts;
+
+use crate::{FixedSized, SubRecord};
 
 /// This allows us to either wrap an existing &[T] slice to serialize it OR to store a raw byte
 /// slice from an encoding and access its potentially unaligned values.
@@ -74,7 +74,7 @@ where
                 } else {
                     let raw: &'a [u8] = unsafe {
                         &*slice_from_raw_parts(
-                            raw.as_ptr().offset((i * size_of::<T>()) as isize),
+                            raw.as_ptr().add(i * size_of::<T>()),
                             size_of::<T>(),
                         )
                     };
@@ -172,9 +172,12 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{DeResult, FixedSized, SeResult, SliceWrapper, SubRecord};
     use std::convert::TryInto;
-    use std::io::Write;
+
+    use crate::{
+        define_serialize_chained, packed_read, DeResult, FixedSized, SliceWrapper,
+        SubRecord,
+    };
 
     #[repr(packed)]
     #[derive(Debug, Eq, PartialEq, Copy, Clone)]
@@ -205,12 +208,9 @@ mod test {
             Self::SERIALIZED_SIZE
         }
 
-        fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
-            self.a._serialize_chained(dest)?;
-            #[allow(unaligned_references)]
-            self.b._serialize_chained(dest)?;
-            Ok(9)
-        }
+        define_serialize_chained!(*Fixed => |zelf, dest| {
+            Ok(zelf.a._serialize_chained(dest)? + packed_read!(zelf.b)._serialize_chained(dest)?)
+        });
 
         fn _deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
             Ok((
@@ -257,12 +257,12 @@ mod test {
     }
 
     #[test]
-    #[allow(unaligned_references)]
     fn get_raw_fixed_struct() {
         // only happens for big-endian systems or systems where `repr(packed)` is not supported
         let s = <SliceWrapper<Fixed>>::Raw(&[0x01, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
-        assert_eq!(s.get(0).unwrap().a, 1);
-        assert_eq!(s.get(0).unwrap().b, 2);
+        let s0 = s.get(0).unwrap();
+        assert_eq!(packed_read!(s0.a), 1);
+        assert_eq!(packed_read!(s0.b), 2);
     }
 
     #[test]
@@ -283,15 +283,14 @@ mod test {
     }
 
     #[test]
-    #[allow(unaligned_references)]
     fn iter_raw() {
         let s = <SliceWrapper<Fixed>>::Raw(&[
             0x01, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x04, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00,
         ]);
         for (i, v) in s.iter().enumerate() {
-            assert_eq!(v.a, (i * 2 + 1) as u8);
-            assert_eq!(v.b, (i * 2 + 2) as u64);
+            assert_eq!(packed_read!(v.a), (i * 2 + 1) as u8);
+            assert_eq!(packed_read!(v.b), (i * 2 + 2) as u64);
         }
     }
 

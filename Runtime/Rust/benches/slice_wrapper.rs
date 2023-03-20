@@ -1,10 +1,9 @@
-use bebop::error::{DeResult, SeResult};
+use bebop::error::DeResult;
 use bebop::fixed_sized::FixedSized;
-use bebop::SubRecord;
+use bebop::{define_serialize_chained, packed_read, SubRecord};
 use bebop::{SliceWrapper, LEN_SIZE};
-use criterion::{black_box, criterion_group, BenchmarkId, Criterion};
+use criterion::{black_box, criterion_group, Criterion};
 use std::convert::TryInto;
-use std::io::Write;
 
 /// a struct designed to be a nightmare for alignment
 #[repr(packed)]
@@ -24,12 +23,9 @@ impl<'raw> SubRecord<'raw> for Fixed {
         Self::SERIALIZED_SIZE
     }
 
-    fn _serialize_chained<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
-        self.a._serialize_chained(dest)?;
-        #[allow(unaligned_references)]
-        self.b._serialize_chained(dest)?;
-        Ok(9)
-    }
+    define_serialize_chained!(*Fixed => |zelf, dest| {
+        Ok(zelf.a._serialize_chained(dest)? + packed_read!(zelf.b)._serialize_chained(dest)?)
+    });
 
     fn _deserialize_chained(raw: &'raw [u8]) -> DeResult<(usize, Self)> {
         Ok((

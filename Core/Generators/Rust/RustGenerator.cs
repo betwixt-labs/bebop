@@ -178,19 +178,19 @@ namespace Core.Generators.Rust
             {
                 builder
                     .CodeBlock("::bebop::bitflags!", _tab, () =>
-                {
-                    builder
-                        .AppendLine("#[repr(transparent)]")
-                        .CodeBlock($"pub struct {name}: {type}", _tab, () =>
                     {
-                        foreach (var m in d.Members)
-                        {
-                            WriteDocumentation(builder, m.Documentation);
-                            WriteDeprecation(builder, m.DeprecatedAttribute);
-                            builder.AppendLine($"const {MakeConstIdent(m.Name)} = {m.ConstantValue};");
-                        }
-                    });
-                }).AppendLine();
+                        builder
+                            .AppendLine("#[repr(transparent)]")
+                            .CodeBlock($"pub struct {name}: {type}", _tab, () =>
+                            {
+                                foreach (var m in d.Members)
+                                {
+                                    WriteDocumentation(builder, m.Documentation);
+                                    WriteDeprecation(builder, m.DeprecatedAttribute);
+                                    builder.AppendLine($"const {MakeConstIdent(m.Name)} = {m.ConstantValue};");
+                                }
+                            });
+                    }).AppendLine();
             }
             else
             {
@@ -254,16 +254,14 @@ namespace Core.Generators.Rust
                     .AppendLine("#[inline]")
                     .AppendLine($"fn serialized_size(&self) -> usize {{ ::std::mem::size_of::<{type}>() }}")
                     .AppendLine()
-                    .AppendLine("#[inline]")
-                    .AppendLine("#[allow(unaligned_references)]")
                     .CodeBlock(
-                        "fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
+                        "::bebop::define_serialize_chained!(*Self => |zelf, dest|",
                         _tab,
                         () =>
                         {
-                            var conv = d.IsBitFlags ? "(*self).bits()" : $"{type}::from(*self)";
+                            var conv = d.IsBitFlags ? "(zelf).bits()" : $"{type}::from(zelf)";
                             builder.AppendLine($"{conv}._serialize_chained(dest)");
-                        })
+                        }, "{", "});")
                     .AppendLine()
                     .AppendLine("#[inline]")
                     .CodeBlock("fn _deserialize_chained(raw: &[u8]) -> ::bebop::DeResult<(usize, Self)>", _tab,
@@ -373,8 +371,9 @@ namespace Core.Generators.Rust
                         }
                     }).AppendLine();
 
-                    builder.AppendLine("#[allow(unaligned_references)]").CodeBlock(
-                        "fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
+                    var prefix = isFixedSize ? "*" : "";
+                    builder.CodeBlock(
+                        $"::bebop::define_serialize_chained!({prefix}Self => |zelf, dest|",
                         _tab, () =>
                         {
                             if (d.Fields.Count == 0)
@@ -388,10 +387,12 @@ namespace Core.Generators.Rust
                                 {
                                     builder.AppendLine(string.Join(" +\n",
                                         d.Fields.Select(
-                                            (f) => $"self.{MakeAttrIdent(f.Name)}._serialize_chained(dest)?")));
+                                            (f) => isFixedSize
+                                                ? $"::bebop::packed_read!(zelf.{MakeAttrIdent(f.Name)})._serialize_chained(dest)?"
+                                                : $"zelf.{MakeAttrIdent(f.Name)}._serialize_chained(dest)?")));
                                 }, "", ")");
                             }
-                        }).AppendLine();
+                        }, "{", "});").AppendLine();
 
                     builder.CodeBlock("fn _deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)>",
                         _tab,
@@ -511,13 +512,12 @@ namespace Core.Generators.Rust
                             WriteMessageSizeBound(builder, d);
                         })
                         .AppendLine()
-                        .AppendLine("#[allow(unaligned_references)]")
                         .CodeBlock(
-                            "fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
+                            "::bebop::define_serialize_chained!(Self => |zelf, dest|",
                             _tab, () =>
                             {
                                 WriteMessageSerialization(builder, d);
-                            }).AppendLine();
+                            }, "{", "});").AppendLine();
 
                     builder.CodeBlock("fn _deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)>",
                         _tab,
@@ -556,7 +556,7 @@ namespace Core.Generators.Rust
         }
 
         private void WriteMessageSerialization(IndentedStringBuilder builder, MessageDefinition d,
-            bool calcSize = true, string obj = "self")
+            bool calcSize = true, string obj = "zelf")
         {
             obj = string.IsNullOrEmpty(obj) ? "_" : $"{obj}.";
             if (calcSize)
@@ -828,16 +828,16 @@ namespace Core.Generators.Rust
                 }).AppendLine();
 
 
-                builder.AppendLine("#[allow(unaligned_references)]").CodeBlock(
-                    "fn _serialize_chained<W: ::std::io::Write>(&self, dest: &mut W) -> ::bebop::SeResult<usize>",
+                builder.CodeBlock(
+                    "::bebop::define_serialize_chained!(Self => |zelf, dest|",
                     _tab, () =>
                     {
-                        builder.AppendLine("let size = self.serialized_size();")
+                        builder.AppendLine("let size = zelf.serialized_size();")
                             // the length and discriminators are not part of the body
                             .AppendLine("::bebop::write_len(dest, size - ::bebop::LEN_SIZE - 1)?;");
-                        builder.CodeBlock("match self", _tab, () =>
+                        builder.CodeBlock("match zelf", _tab, () =>
                         {
-                            builder.CodeBlock($"{ident}::Unknown =>", _tab, () =>
+                            builder.CodeBlock("Self::Unknown =>", _tab, () =>
                             {
                                 builder.AppendLine(
                                     "return Err(::bebop::SerializeError::CannotSerializeUnknownUnion);");
@@ -875,7 +875,7 @@ namespace Core.Generators.Rust
 
                         builder
                             .AppendLine("Ok(size)");
-                    }).AppendLine();
+                    }, "{", "});").AppendLine();
 
                 builder.CodeBlock("fn _deserialize_chained(raw: &'raw [u8]) -> ::bebop::DeResult<(usize, Self)>",
                     _tab,
@@ -883,7 +883,7 @@ namespace Core.Generators.Rust
                     {
                         builder
                             // add 1 for discriminator
-                            .AppendLine("let len = ::bebop::read_len(&raw)? + ::bebop::LEN_SIZE + 1;")
+                            .AppendLine("let len = ::bebop::read_len(raw)? + ::bebop::LEN_SIZE + 1;")
                             .AppendLine("let mut i = ::bebop::LEN_SIZE + 1;");
 
                         builder.CodeBlock("let de = match raw[::bebop::LEN_SIZE]", _tab, () =>
