@@ -64,7 +64,7 @@ namespace Core.Generators.TypeScript
 
         private string CompileEncodeMessage(MessageDefinition definition)
         { 
-            var builder = new IndentedStringBuilder(6);
+            var builder = new IndentedStringBuilder(0);
             builder.AppendLine($"const pos = view.reserveMessageLength();");
             builder.AppendLine($"const start = view.length;");
             foreach (var field in definition.Fields)
@@ -73,9 +73,9 @@ namespace Core.Generators.TypeScript
                 {
                     continue;
                 }
-                builder.AppendLine($"if (message.{field.Name.ToCamelCase()} != null) {{");
+                builder.AppendLine($"if (record.{field.Name.ToCamelCase()} != null) {{");
                 builder.AppendLine($"  view.writeByte({field.ConstantValue});");
-                builder.AppendLine($"  {CompileEncodeField(field.Type, $"message.{field.Name.ToCamelCase()}")}");
+                builder.AppendLine($"  {CompileEncodeField(field.Type, $"record.{field.Name.ToCamelCase()}")}");
                 builder.AppendLine($"}}");
             }
             builder.AppendLine("view.writeByte(0);");
@@ -86,25 +86,25 @@ namespace Core.Generators.TypeScript
 
         private string CompileEncodeStruct(StructDefinition definition)
         {
-            var builder = new IndentedStringBuilder(6);
+            var builder = new IndentedStringBuilder(0);
             foreach (var field in definition.Fields)
             {
-                builder.AppendLine(CompileEncodeField(field.Type, $"message.{field.Name.ToCamelCase()}"));
+                builder.AppendLine(CompileEncodeField(field.Type, $"record.{field.Name.ToCamelCase()}"));
             }
             return builder.ToString();
         }
 
         private string CompileEncodeUnion(UnionDefinition definition)
         {
-            var builder = new IndentedStringBuilder(6);
+            var builder = new IndentedStringBuilder(0);
             builder.AppendLine($"const pos = view.reserveMessageLength();");
             builder.AppendLine($"const start = view.length + 1;");
-            builder.AppendLine($"view.writeByte(message.discriminator);");
-            builder.AppendLine($"switch (message.discriminator) {{");
+            builder.AppendLine($"view.writeByte(record.data.discriminator);");
+            builder.AppendLine($"switch (record.data.discriminator) {{");
             foreach (var branch in definition.Branches)
             {
                 builder.AppendLine($"  case {branch.Discriminator}:");
-                builder.AppendLine($"    {branch.Definition.Name}.encodeInto(message.value, view);");
+                builder.AppendLine($"    {branch.ClassName()}.encodeInto(record.data.value, view);");
                 builder.AppendLine($"    break;");
             }
             builder.AppendLine("}");
@@ -182,7 +182,8 @@ namespace Core.Generators.TypeScript
         /// <returns>The generated TypeScript <c>decode</c> function body.</returns>
         private string CompileDecodeMessage(MessageDefinition definition)
         {
-            var builder = new IndentedStringBuilder(4);
+            var builder = new IndentedStringBuilder(0);
+            var discString = string.Empty;
             builder.AppendLine($"let message: I{definition.Name} = {{}};");
             builder.AppendLine("const length = view.readMessageLength();");
             builder.AppendLine("const end = view.index + length;");
@@ -190,7 +191,7 @@ namespace Core.Generators.TypeScript
             builder.Indent(2);
             builder.AppendLine("switch (view.readByte()) {");
             builder.AppendLine("  case 0:");
-            builder.AppendLine("    return message;");
+            builder.AppendLine("    return new this(message);");
             builder.AppendLine("");
             foreach (var field in definition.Fields)
             {
@@ -201,7 +202,7 @@ namespace Core.Generators.TypeScript
             }
             builder.AppendLine("  default:");
             builder.AppendLine("    view.index = end;");
-            builder.AppendLine("    return message;");
+            builder.AppendLine("    return new this(message);");
             builder.AppendLine("}");
             builder.Dedent(2);
             builder.AppendLine("}");
@@ -210,7 +211,7 @@ namespace Core.Generators.TypeScript
         
         private string CompileDecodeStruct(StructDefinition definition)
         {
-            var builder = new IndentedStringBuilder(4);
+            var builder = new IndentedStringBuilder(0);
             int i = 0;
             foreach (var field in definition.Fields)
             {
@@ -218,7 +219,7 @@ namespace Core.Generators.TypeScript
                 builder.AppendLine(CompileDecodeField(field.Type, $"field{i}"));
                 i++;
             }
-            builder.AppendLine($"let message: I{definition.Name} = {{");
+            builder.AppendLine($"let message: I{definition.ClassName()} = {{");
             i = 0;
             foreach (var field in definition.Fields)
             {
@@ -226,20 +227,20 @@ namespace Core.Generators.TypeScript
                 i++;
             }
             builder.AppendLine("};");
-            builder.AppendLine("return message;");
+            builder.AppendLine("return new this(message);");
             return builder.ToString();
         }
 
         private string CompileDecodeUnion(UnionDefinition definition)
         {
-            var builder = new IndentedStringBuilder(4);
+            var builder = new IndentedStringBuilder(0);
             builder.AppendLine("const length = view.readMessageLength();");
             builder.AppendLine("const end = view.index + 1 + length;");
             builder.AppendLine("switch (view.readByte()) {");
             foreach (var branch in definition.Branches)
             {
                 builder.AppendLine($"  case {branch.Discriminator}:");
-                builder.AppendLine($"    return {{ discriminator: {branch.Discriminator}, value: {branch.Definition.Name}.readFrom(view) }};");
+                builder.AppendLine($"    return this.from{branch.Definition.ClassName().ToCamelCase()}({branch.Definition.ClassName()}.readFrom(view));");
             }
             builder.AppendLine("  default:");
             builder.AppendLine("    view.index = end;");
@@ -334,8 +335,9 @@ namespace Core.Generators.TypeScript
                 case MapType mt:
                     return $"Map<{TypeName(mt.KeyType)}, {TypeName(mt.ValueType)}>";
                 case DefinedType dt:
-                    var isEnum = Schema.Definitions[dt.Name] is EnumDefinition;
-                    return (isEnum ? "" : "I") + dt.Name;
+                    var skipPrefix = Schema.Definitions[dt.Name] is EnumDefinition or UnionDefinition; 
+                    
+                    return (skipPrefix ? string.Empty : "I") + dt.Name.ToPascalCase();
             }
             throw new InvalidOperationException($"GetTypeName: {type}");
         }
@@ -445,50 +447,123 @@ namespace Core.Generators.TypeScript
                             builder.AppendLine($"  {(fd is StructDefinition { IsReadOnly: true } ? "readonly " : "")}{field.Name.ToCamelCase()}{(fd is MessageDefinition ? "?" : "")}: {type};");
                         }
                         builder.AppendLine("}");
-                        builder.AppendLine("");
-                    }
+                        builder.AppendLine();
+                        builder.CodeBlock($"export class {td.ClassName()} implements I{td.ClassName()}", indentStep, () =>
+                        {
+                            if (td.OpcodeAttribute is not null)
+                            {
+                                builder.AppendLine($"public static readonly opcode: number = {td.OpcodeAttribute.Value} as {td.OpcodeAttribute.Value};");
+                            }
+                            if (td.DiscriminatorInParent != null)
+                            {
+                                // We codegen "1 as 1", "2 as 2"... because TypeScript otherwise infers the type "number" for this field, whereas a literal type is necessary to discriminate unions.
+                                builder.AppendLine($"public readonly discriminator: number = {td.DiscriminatorInParent} as {td.DiscriminatorInParent};");
+                            }
+                            for (var i = 0; i < fd.Fields.Count; i++)
+                            {
+                                var field = fd.Fields.ElementAt(i);
+                                var type = TypeName(field.Type);
+                                builder.AppendLine($"public {(fd is StructDefinition { IsReadOnly: true } ? "readonly " : "")}{field.Name.ToCamelCase()}{(fd is MessageDefinition ? "?" : "")}: {type};");
+                                
+                            }
+                            builder.AppendLine();
+                            const string paramaterName = "record";
+                            builder.CodeBlock($"constructor({paramaterName}: I{td.ClassName()})", indentStep, () =>
+                            {
+                                for (var i = 0; i < fd.Fields.Count; i++)
+                                {
+                                    var field = fd.Fields.ElementAt(i);
+                                    var fieldName = field.Name.ToCamelCase();
+                                    builder.AppendLine($"this.{fieldName} = {paramaterName}.{fieldName};");
+                                }
+                            });
+                        }, close: string.Empty);
+                     }
                     else if (definition is UnionDefinition ud)
                     {
                         var expression = string.Join("\n  | ", ud.Branches.Select(b => $"{{ discriminator: {b.Discriminator}, value: I{b.Definition.Name} }}"));
                         if (string.IsNullOrWhiteSpace(expression)) expression = "never";
-                        builder.AppendLine($"export type I{ud.Name}\n  = {expression};");
-                        builder.AppendLine("");
-                    }
+                        builder.AppendLine($"export type I{ud.Name}Type\n  = {expression};");
 
-                    builder.AppendLine($"export const {td.Name} = {{");
-                    if (td.OpcodeAttribute != null)
-                    {
-                        builder.AppendLine($"  opcode: {td.OpcodeAttribute.Value},");
+                        builder.AppendLine();
+                       
+    
+                        builder.CodeBlock($"export interface I{ud.ClassName()}", indentStep, () =>
+                        {
+                            builder.AppendLine($"readonly data: I{ud.Name}Type;");
+                        });
+
+                        builder.CodeBlock($"export class {ud.ClassName()} implements I{ud.ClassName()}", indentStep, () =>
+                        {
+                            builder.AppendLine();
+                            builder.AppendLine($"public readonly data: I{ud.Name}Type;");
+                            builder.AppendLine();
+                            builder.CodeBlock($"private constructor(data: I{ud.ClassName()}Type)", indentStep, () =>
+                            {
+                                builder.AppendLine($"this.data = data;");
+                            });
+                            builder.AppendLine();
+                            builder.CodeBlock($"public get discriminator()", indentStep, () =>
+                            {
+                                builder.AppendLine($"return this.data.discriminator;");
+                            });
+                            builder.AppendLine();
+                            builder.CodeBlock($"public get value()", indentStep, () =>
+                            {
+                                builder.AppendLine($"return this.data.value;");
+                            });
+                            builder.AppendLine();
+                            foreach (var b in ud.Branches)
+                            {
+                                builder.CodeBlock($"public static from{b.ClassName().ToCamelCase()}(value: I{b.ClassName()})", indentStep, () =>
+                                {
+                                    builder.AppendLine($"return new this({{ discriminator: {b.Discriminator}, value: value}});");
+                                });
+                                builder.AppendLine();
+                            }
+                        }, close: string.Empty);
                     }
-                    if (td.DiscriminatorInParent != null)
+               
+                    builder.Indent(indentStep);
+                    builder.CodeBlock($"public encode(): Uint8Array", indentStep, () =>
                     {
-                        // We codegen "1 as 1", "2 as 2"... because TypeScript otherwise infers the type "number" for this field, whereas a literal type is necessary to discriminate unions.
-                        builder.AppendLine($"  discriminator: {td.DiscriminatorInParent} as {td.DiscriminatorInParent},");
-                    }
-                    builder.AppendLine($"  encode(message: I{td.Name}): Uint8Array {{");
-                    builder.AppendLine("    const view = BebopView.getInstance();");
-                    builder.AppendLine("    view.startWriting();");
-                    builder.AppendLine("    this.encodeInto(message, view);");
-                    builder.AppendLine("    return view.toArray();");
-                    builder.AppendLine("  },");
-                    builder.AppendLine("");
-                    builder.AppendLine($"  encodeInto(message: I{td.Name}, view: BebopView): number {{");
-                    builder.AppendLine("    const before = view.length;");
-                    builder.AppendLine(CompileEncode(td));
-                    builder.AppendLine("    const after = view.length;");
-                    builder.AppendLine("    return after - before;");
-                    builder.AppendLine("  },");
-                    builder.AppendLine("");
-                    builder.AppendLine($"  decode(buffer: Uint8Array): I{td.Name} {{");
-                    builder.AppendLine($"    const view = BebopView.getInstance();");
-                    builder.AppendLine($"    view.startReading(buffer);");
-                    builder.AppendLine($"    return this.readFrom(view);");
-                    builder.AppendLine($"  }},");
-                    builder.AppendLine($"");
-                    builder.AppendLine($"  readFrom(view: BebopView): I{td.Name} {{");
-                    builder.AppendLine(CompileDecode(td));
-                    builder.AppendLine("  },");
-                    builder.AppendLine("};");
+                        builder.AppendLine($"return {td.ClassName()}.encode(this);");
+                    });
+                    builder.AppendLine();
+
+                    builder.CodeBlock($"public static encode(record: I{td.ClassName()}): Uint8Array", indentStep, () =>
+                    {
+                        builder.AppendLine("const view = BebopView.getInstance();");
+                        builder.AppendLine("view.startWriting();");
+                        builder.AppendLine($"this.encodeInto(record, view);");
+                        builder.AppendLine("return view.toArray();");
+                    });
+
+                    builder.AppendLine();
+               
+                    builder.CodeBlock($"public static encodeInto(record: I{td.ClassName()}, view: BebopView): number", indentStep, () =>
+                    {
+                        builder.AppendLine("const before = view.length;");
+                        builder.AppendLine(CompileEncode(td));
+                        builder.AppendLine("const after = view.length;");
+                        builder.AppendLine("return after - before;");
+                    });
+                    builder.AppendLine();
+                    var targetType = td is UnionDefinition ? td.ClassName() : $"I{td.ClassName()}";
+                    builder.CodeBlock($"public static decode(buffer: Uint8Array): {targetType}", indentStep, () =>
+                    {
+                        builder.AppendLine($"const view = BebopView.getInstance();");
+                        builder.AppendLine($"view.startReading(buffer);");
+                        builder.AppendLine($"return this.readFrom(view);");
+                    });
+                    builder.AppendLine();
+                    builder.CodeBlock($"public static readFrom(view: BebopView): {targetType}", indentStep, () =>
+                    {
+                        builder.AppendLine(CompileDecode(td));
+                    });
+                 
+                    builder.Dedent(indentStep);
+                    builder.AppendLine("}");
                     builder.AppendLine("");
                 }
                 else if (definition is ConstDefinition cd)

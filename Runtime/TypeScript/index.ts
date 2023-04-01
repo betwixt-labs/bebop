@@ -1,14 +1,14 @@
 ﻿
 const hexDigits = "0123456789abcdef";
 const asciiToHex = [
-    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-    0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  0,  0,  0,  0,  0,  0,
-    0, 10, 11, 12, 13, 14, 15,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-    0, 10, 11, 12, 13, 14, 15,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0,
+    0, 10, 11, 12, 13, 14, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 10, 11, 12, 13, 14, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 ];
 
 const ticksBetweenEpochs = 621355968000000000n;
@@ -32,6 +32,33 @@ export class BebopRuntimeError extends Error {
         this.name = "BebopRuntimeError";
     }
 }
+/**
+ * `BebopRecord` is an interface that all generated records
+ * (struct/message/union) extend. It represents a Bebop record.
+ */
+export interface BebopRecord {
+    /**
+     * Optional `discriminator` property present when the record is
+     * defined within a union, representing its tag.
+     */
+    readonly discriminator?: number;
+
+    /**
+     * Optional `encode` method to convert the record into a `Uint8Array`.
+     * Must be implemented in the concrete class that extends this interface.
+     */
+    encode?(): Uint8Array;
+
+    /**
+     * Optional `encodeInto` method to encode the record into a `BebopView`.
+     * Must be implemented in the concrete class that extends this interface.
+     *
+     * @param view - The `BebopView` to encode the record into.
+     * @returns The number of bytes written to the view.
+     */
+    encodeInto?(view: BebopView): number;
+}
+
 
 export class BebopView {
     private static textDecoder = new TextDecoder();
@@ -94,23 +121,23 @@ export class BebopView {
         return this.buffer.subarray(0, this.length);
     }
 
-    readByte():    number { return this.buffer[this.index++]; }
-    readUint16():  number { const result = this.view.getUint16(this.index, true);    this.index += 2; return result; }
-    readInt16():   number { const result = this.view.getInt16(this.index, true);     this.index += 2; return result; }
-    readUint32():  number { const result = this.view.getUint32(this.index, true);    this.index += 4; return result; }
-    readInt32():   number { const result = this.view.getInt32(this.index, true);     this.index += 4; return result; }
-    readUint64():  bigint { const result = this.view.getBigUint64(this.index, true); this.index += 8; return result; }
-    readInt64():   bigint { const result = this.view.getBigInt64(this.index, true);  this.index += 8; return result; }
-    readFloat32(): number { const result = this.view.getFloat32(this.index, true);   this.index += 4; return result; }
-    readFloat64(): number { const result = this.view.getFloat64(this.index, true);   this.index += 8; return result; }
+    readByte(): number { return this.buffer[this.index++]; }
+    readUint16(): number { const result = this.view.getUint16(this.index, true); this.index += 2; return result; }
+    readInt16(): number { const result = this.view.getInt16(this.index, true); this.index += 2; return result; }
+    readUint32(): number { const result = this.view.getUint32(this.index, true); this.index += 4; return result; }
+    readInt32(): number { const result = this.view.getInt32(this.index, true); this.index += 4; return result; }
+    readUint64(): bigint { const result = this.view.getBigUint64(this.index, true); this.index += 8; return result; }
+    readInt64(): bigint { const result = this.view.getBigInt64(this.index, true); this.index += 8; return result; }
+    readFloat32(): number { const result = this.view.getFloat32(this.index, true); this.index += 4; return result; }
+    readFloat64(): number { const result = this.view.getFloat64(this.index, true); this.index += 8; return result; }
 
-    writeByte(value: number):    void { const index = this.length; this.growBy(1); this.buffer[index] = value; }
-    writeUint16(value: number):  void { const index = this.length; this.growBy(2); this.view.setUint16(index, value, true); }
-    writeInt16(value: number):   void { const index = this.length; this.growBy(2); this.view.setInt16(index, value, true); }
-    writeUint32(value: number):  void { const index = this.length; this.growBy(4); this.view.setUint32(index, value, true); }
-    writeInt32(value: number):   void { const index = this.length; this.growBy(4); this.view.setInt32(index, value, true); }
-    writeUint64(value: bigint):  void { const index = this.length; this.growBy(8); this.view.setBigUint64(index, value, true); }
-    writeInt64(value: bigint):   void { const index = this.length; this.growBy(8); this.view.setBigInt64(index, value, true); }
+    writeByte(value: number): void { const index = this.length; this.growBy(1); this.buffer[index] = value; }
+    writeUint16(value: number): void { const index = this.length; this.growBy(2); this.view.setUint16(index, value, true); }
+    writeInt16(value: number): void { const index = this.length; this.growBy(2); this.view.setInt16(index, value, true); }
+    writeUint32(value: number): void { const index = this.length; this.growBy(4); this.view.setUint32(index, value, true); }
+    writeInt32(value: number): void { const index = this.length; this.growBy(4); this.view.setInt32(index, value, true); }
+    writeUint64(value: bigint): void { const index = this.length; this.growBy(8); this.view.setBigUint64(index, value, true); }
+    writeInt64(value: bigint): void { const index = this.length; this.growBy(8); this.view.setBigInt64(index, value, true); }
     writeFloat32(value: number): void { const index = this.length; this.growBy(4); this.view.setFloat32(index, value, true); }
     writeFloat64(value: number): void { const index = this.length; this.growBy(8); this.view.setFloat64(index, value, true); }
 
@@ -276,50 +303,51 @@ export class BebopView {
         return s;
     }
 
+
     writeGuid(value: string): void {
         const v = this.view, i = this.length;
         this.growBy(16);
         var p = 0, a = 0;
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
         p += (value.charCodeAt(p) === 45) as any;
         v.setUint32(i, a, true);
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
         p += (value.charCodeAt(p) === 45) as any;
         v.setUint16(i + 4, a, true);
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
         p += (value.charCodeAt(p) === 45) as any;
         v.setUint16(i + 6, a, true);
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
         p += (value.charCodeAt(p) === 45) as any;
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
         v.setUint32(i + 8, a, false);
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
-        a = a<<4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
+        a = a << 4 | asciiToHex[value.charCodeAt(p++)];
         v.setUint32(i + 12, a, false);
     }
 
