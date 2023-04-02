@@ -515,9 +515,9 @@ namespace Core.Generators.TypeScript
                             builder.AppendLine();
                             foreach (var b in ud.Branches)
                             {
-                                builder.CodeBlock($"public static from{b.ClassName().ToCamelCase()}(value: I{b.ClassName()})", indentStep, () =>
+                                builder.CodeBlock($"public static from{b.ClassName()}(value: I{b.ClassName()})", indentStep, () =>
                                 {
-                                    builder.AppendLine($"return new this({{ discriminator: {b.Discriminator}, value: value}});");
+                                    builder.AppendLine($"return new this({{ discriminator: {b.Discriminator}, value: new {b.ClassName()}(value)}});");
                                 });
                                 builder.AppendLine();
                             }
