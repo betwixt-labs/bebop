@@ -430,7 +430,7 @@ namespace Core.Generators.TypeScript
                 {
                     if (definition is FieldsDefinition fd)
                     {
-                        builder.AppendLine($"export interface I{fd.Name} {{");
+                        builder.AppendLine($"export interface I{fd.ClassName()} {{");
                         for (var i = 0; i < fd.Fields.Count; i++)
                         {
                             var field = fd.Fields.ElementAt(i);
