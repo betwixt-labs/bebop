@@ -1,24 +1,26 @@
-﻿import { Library, ILibrary, Instrument, Album } from "./schema"
+﻿import { Library, ILibrary, Instrument, Album, Song } from "./schema"
 
 export function makelib(): Library {
     return new Library({
         albums: new Map([
             ["Giant Steps", Album.fromStudioAlbum({
                 tracks: [
-                    {
+                    new Song({
                         title: "Giant Steps",
                         year: 1959,
                         performers: [{ name: "John Coltrane", plays: Instrument.Piano }],
-                    }, {
+                    }),
+                    new Song({
                         title: "A Night in Tunisia",
                         year: 1942,
                         performers: [
                             { name: "Dizzy Gillespie", plays: Instrument.Trumpet },
                             { name: "Count Basie", plays: Instrument.Piano },
                         ]
-                    }, {
+                    }),
+                    new Song({
                         title: "Groovin' High"
-                    }
+                    })
                 ]
             })],
             ["Adam's Apple", Album.fromLiveAlbum({
@@ -32,14 +34,16 @@ export function makelib(): Library {
             ],
             ["Brilliant Corners", Album.fromLiveAlbum({
                 venueName: "Night's Palace",
-                tracks: [{
-                    year: 1965,
-                    performers: [
-                        { name: "Carmell Jones", plays: Instrument.Trumpet },
-                        { name: "Joe Henderson", plays: Instrument.Sax },
-                        { name: "Teddy Smith", plays: Instrument.Clarinet }
-                    ]
-                }]
+                tracks: [
+                    new Song({
+                        year: 1965,
+                        performers: [
+                            { name: "Carmell Jones", plays: Instrument.Trumpet },
+                            { name: "Joe Henderson", plays: Instrument.Sax },
+                            { name: "Teddy Smith", plays: Instrument.Clarinet }
+                        ]
+                    })
+                ]
             })
             ],
         ])
