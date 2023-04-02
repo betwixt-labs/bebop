@@ -4,8 +4,9 @@ import { BebopView } from 'bebop';
 const suite = new benchmark.Suite();
 
 for (const length of [400, 380, 360, 340, 320, 300, 280, 260, 240, 220, 200]) {
-    const m = { strings: ['ab', 'cd', 'ef', 'gh', 'ij'].map(x => x.repeat(length/2)) };
-    const bm = ArrayOfStrings.encode(m);
+    const m = { strings: ['ab', 'cd', 'ef', 'gh', 'ij'].map(x => x.repeat(length / 2)) };
+    const aos = new ArrayOfStrings(m);
+    const bm = ArrayOfStrings.encode(aos);
     const jm = JSON.stringify(m);
     ArrayOfStrings.decode(bm).strings[4][0]; // as a test
 
@@ -20,13 +21,13 @@ for (const length of [400, 380, 360, 340, 320, 300, 280, 260, 240, 220, 200]) {
     suite.add(`JSON decode ${length} byte string`, function () { JSON.parse(jm).strings[4][0]; })
 
     suite.add(`Bebop encode ${length} byte string (manual)`, function () {
-        ArrayOfStrings.encode(m);
+        ArrayOfStrings.encode(aos);
     })
     suite.add(`JSON stringify ${length} byte string`, function () { JSON.stringify(m); })
 }
 
 suite.on('cycle', cycle)
 suite.run()
-function cycle (e) {
-  console.log(e.target.toString())
+function cycle(e) {
+    console.log(e.target.toString())
 }
