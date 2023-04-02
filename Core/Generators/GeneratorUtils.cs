@@ -68,6 +68,14 @@ namespace Core.Generators
         /// <remarks>
         ///  Used by the <see cref="CSharpGenerator"/> and other languages where classes are pascal case.
         /// </remarks>
+        public static string ClassName(this UnionBranch branch) => branch.Definition.ClassName();
+        /// <summary>
+        /// Gets the formatted class name for a <see cref="Definition"/>.
+        /// </summary>
+        /// <returns>The class name.</returns>
+        /// <remarks>
+        ///  Used by the <see cref="CSharpGenerator"/> and other languages where classes are pascal case.
+        /// </remarks>
         public static string ClassName(this Definition definition) => definition.Name.ToPascalCase();
         /// <summary>
         /// Gets the formatted base class name for a <see cref="Definition"/>.
