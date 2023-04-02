@@ -240,7 +240,7 @@ namespace Core.Generators.TypeScript
             foreach (var branch in definition.Branches)
             {
                 builder.AppendLine($"  case {branch.Discriminator}:");
-                builder.AppendLine($"    return this.from{branch.Definition.ClassName().ToCamelCase()}({branch.Definition.ClassName()}.readFrom(view));");
+                builder.AppendLine($"    return this.from{branch.Definition.ClassName()}({branch.Definition.ClassName()}.readFrom(view));");
             }
             builder.AppendLine("  default:");
             builder.AppendLine("    view.index = end;");
