@@ -32,33 +32,6 @@ export class BebopRuntimeError extends Error {
         this.name = "BebopRuntimeError";
     }
 }
-/**
- * `BebopRecord` is an interface that all generated records
- * (struct/message/union) extend. It represents a Bebop record.
- */
-export interface BebopRecord {
-    /**
-     * Optional `discriminator` property present when the record is
-     * defined within a union, representing its tag.
-     */
-    readonly discriminator?: number;
-
-    /**
-     * Optional `encode` method to convert the record into a `Uint8Array`.
-     * Must be implemented in the concrete class that extends this interface.
-     */
-    encode?(): Uint8Array;
-
-    /**
-     * Optional `encodeInto` method to encode the record into a `BebopView`.
-     * Must be implemented in the concrete class that extends this interface.
-     *
-     * @param view - The `BebopView` to encode the record into.
-     * @returns The number of bytes written to the view.
-     */
-    encodeInto?(view: BebopView): number;
-}
-
 
 export class BebopView {
     private static textDecoder = new TextDecoder();
