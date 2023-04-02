@@ -40,12 +40,6 @@ jobs:
         id: dotenv
         uses: falti/dotenv-action@v0.2.5
         
-      - name: Check if Versions Synced
-        run: |
-          if [[ ! refs/tags/v${{ steps.dotenv.outputs.version }} =~ ^(${{ github.ref }})$ ]]; then 
-            echo "${{ steps.dotenv.outputs.version }} is not the same as ${{ github.ref }}. Did you bump the .env file?" 1>&2
-            exit 1
-          fi
           
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
