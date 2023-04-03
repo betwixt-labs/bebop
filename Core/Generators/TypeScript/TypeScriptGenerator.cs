@@ -430,7 +430,7 @@ namespace Core.Generators.TypeScript
                 {
                     if (definition is FieldsDefinition fd)
                     {
-                        builder.AppendLine($"export interface I{fd.ClassName()} implements BebopRecord {{");
+                        builder.AppendLine($"export interface I{fd.ClassName()} extends BebopRecord {{");
                         for (var i = 0; i < fd.Fields.Count; i++)
                         {
                             var field = fd.Fields.ElementAt(i);
@@ -488,7 +488,7 @@ namespace Core.Generators.TypeScript
                         builder.AppendLine();
                        
     
-                        builder.CodeBlock($"export interface I{ud.ClassName()} implements BebopRecord", indentStep, () =>
+                        builder.CodeBlock($"export interface I{ud.ClassName()} extends BebopRecord", indentStep, () =>
                         {
                             builder.AppendLine($"readonly data: I{ud.Name}Type;");
                         });
