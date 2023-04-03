@@ -32,7 +32,13 @@ export class BebopRuntimeError extends Error {
         this.name = "BebopRuntimeError";
     }
 }
+/**
+ * An interface which all generated Bebop interfaces implement.
+ * @note this interface is not currently used by the runtime; it is reserved for future use.
+ */
+export interface BebopRecord {
 
+}
 export class BebopView {
     private static textDecoder = new TextDecoder();
     private static writeBuffer: Uint8Array = new Uint8Array(256);

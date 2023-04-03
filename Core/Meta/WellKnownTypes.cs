@@ -16,6 +16,7 @@ namespace Core.Meta
             "BebopView",
             "BebopReader",
             "BebopWriter",
+            "IBebopRecord",
             "BebopRecord",
             "BebopMirror",
             "BebopConstants",
