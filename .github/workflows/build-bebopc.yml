@@ -18,7 +18,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-18.04]
+        os: [windows-latest, macos-latest, ubuntu-22.04]
         include:
           - os: macos-latest
             IDENTIFIER: osx
@@ -28,7 +28,7 @@ jobs:
             IDENTIFIER: win
             ARTIFACT: bebopc.exe
 
-          - os: ubuntu-18.04
+          - os: ubuntu-22.04
             IDENTIFIER: linux
             ARTIFACT: bebopc
 
@@ -46,7 +46,7 @@ jobs:
         id: dotenv
         uses: falti/dotenv-action@v0.2.5
 
-      - if: matrix.os == 'ubuntu-18.04'
+      - if: matrix.os == 'ubuntu-22.04'
         name: Install Dependencies
         run: |
           sudo apt-get update
@@ -72,7 +72,7 @@ jobs:
           zip -j ${{env.BUILD_ZIP_ARTIFACT_X86_64}} ${{env.BUILD_ARTIFACT_X86_64}}
           zip -j ${{env.BUILD_ZIP_ARTIFACT_ARM64}} ${{env.BUILD_ARTIFACT_ARM64}}
 
-      - if: matrix.os == 'ubuntu-18.04'
+      - if: matrix.os == 'ubuntu-22.04'
         name: ZIP Linux Build
         run: |
           zip -j ${{env.BUILD_ZIP_ARTIFACT_X86_64}} ${{env.BUILD_ARTIFACT_X86_64}}

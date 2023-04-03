@@ -10,7 +10,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-18.04]
+        os: [windows-latest, macos-latest, ubuntu-22.04]
         include:
           - os: macos-latest
             IDENTIFIER: osx
@@ -20,7 +20,7 @@ jobs:
             IDENTIFIER: win
             ARTIFACT: bebopc.exe
 
-          - os: ubuntu-18.04
+          - os: ubuntu-22.04
             IDENTIFIER: linux
             ARTIFACT: bebopc
     env:
@@ -37,7 +37,7 @@ jobs:
         uses: falti/dotenv-action@v0.2.5
 
       # ubuntu is the fastest OS to spin up and if one fails they all fail.
-      - if: matrix.os == 'ubuntu-18.04'
+      - if: matrix.os == 'ubuntu-22.04'
         name: Check if Versions Synced
         run: |
           if [[ ! refs/tags/v${{ steps.dotenv.outputs.version }} =~ ^(${{ github.ref }})$ ]]; then 
@@ -45,7 +45,7 @@ jobs:
             exit 1
           fi
 
-      - if: matrix.os == 'ubuntu-18.04'
+      - if: matrix.os == 'ubuntu-22.04'
         name: Install Dependencies
         run: |
           sudo apt-get update
@@ -95,7 +95,7 @@ jobs:
           zip -j ${{env.BUILD_ZIP_ARTIFACT_ARM64}} ./bebopc
           rm -f ./bebopc
 
-      - if: matrix.os == 'ubuntu-18.04'
+      - if: matrix.os == 'ubuntu-22.04'
         name: ZIP Linux Build
         run: |
           zip -j ${{env.BUILD_ZIP_ARTIFACT_X86_64}} ${{env.BUILD_ARTIFACT_X86_64}}
@@ -128,7 +128,7 @@ jobs:
       TS_RUNTIME_ROOT: ${{github.workspace}}/Runtime/TypeScript
       RUST_RUNTIME_ROOT: ${{github.workspace}}/Runtime/Rust
       RUST_TEST_ROOT: ${{github.workspace}}/Laboratory/Rust
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     needs: build-compiler
     steps:
       - uses: actions/checkout@v1
@@ -241,7 +241,7 @@ jobs:
       TOOLS_ROOT: ${{github.workspace}}/Tools
       BEBOPC_PATH: ${{github.workspace}}/Tools/bebopc
     needs: build-compiler
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v1
       - name: Setup Rust
@@ -332,7 +332,7 @@ jobs:
     env:
       RUST_RUNTIME_ROOT: ${{github.workspace}}/Runtime/Rust
       TOOLS_ROOT: ${{github.workspace}}/Tools
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     needs: [build-compiler, build-runtimes, build-tools]
     steps:
       - uses: actions/checkout@v1

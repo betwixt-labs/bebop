@@ -7,7 +7,7 @@ on:
   pull_request:
 jobs:
   test-dart:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v1
       - uses: dart-lang/setup-dart@v1

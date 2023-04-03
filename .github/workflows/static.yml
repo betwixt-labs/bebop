@@ -34,38 +34,38 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-        
+
       - uses: actions/checkout@v1
       - name: Get Environment Variables
         id: dotenv
         uses: falti/dotenv-action@v0.2.5
-        
-          
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: "7.0.x" # SDK Version to use; x will use the latest version of the 7.0 channel
           include-prerelease: true
-          
+
       - name: Build REPL
         run: |
           dotnet restore
           dotnet publish -c Release -p:ReleaseVersion=${{ steps.dotenv.outputs.version }}
         working-directory: ./Repl/
-        
+
       - name: Stage Repl
         run: |
           mkdir -p homepage/repl && cp -a /home/runner/work/bebop/bebop/bin/repl/Release/net7.0/wwwroot/. homepage/repl
           sed 's/0.0.0/${{ steps.dotenv.outputs.version }}/' ${{env.TOOLS_ROOT}}/bash/install.sh > homepage/install.sh
-        
+
       - name: Setup Pages
         uses: actions/configure-pages@v3
-        
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
         with:
           # Upload entire repository
           path: homepage
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v2
