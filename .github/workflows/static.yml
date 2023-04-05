@@ -54,7 +54,7 @@ jobs:
 
       - name: Stage Repl
         run: |
-          mkdir -p homepage/repl && cp -a /home/runner/work/bebop/bebop/bin/repl/Release/net7.0/wwwroot/. homepage/repl
+          mkdir -p homepage/repl && cp -a ./bin/repl/Release/publish/wwwroot/. homepage/repl
           sed 's/0.0.0/${{ steps.dotenv.outputs.version }}/' ${{env.TOOLS_ROOT}}/bash/install.sh > homepage/install.sh
           
       - name: Deploy 🚀
