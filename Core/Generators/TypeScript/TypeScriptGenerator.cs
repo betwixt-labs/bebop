@@ -535,7 +535,7 @@ namespace Core.Generators.TypeScript
                     {
                         builder.AppendLine("const view = BebopView.getInstance();");
                         builder.AppendLine("view.startWriting();");
-                        builder.AppendLine($"this.encodeInto(record, view);");
+                        builder.AppendLine($"{td.ClassName()}.encodeInto(record, view);");
                         builder.AppendLine("return view.toArray();");
                     });
 
@@ -554,7 +554,7 @@ namespace Core.Generators.TypeScript
                     {
                         builder.AppendLine($"const view = BebopView.getInstance();");
                         builder.AppendLine($"view.startReading(buffer);");
-                        builder.AppendLine($"return this.readFrom(view);");
+                        builder.AppendLine($"return {td.ClassName()}.readFrom(view);");
                     });
                     builder.AppendLine();
                     builder.CodeBlock($"public static readFrom(view: BebopView): {targetType}", indentStep, () =>
