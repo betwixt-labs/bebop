@@ -1,0 +1,57 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Bebop REPL</title>
+    <base href="./" />
+    <link href="css/app.css" rel="stylesheet" />
+    <link href="css/prism.css" rel="stylesheet" />
+    <link href="Repl.styles.css" rel="stylesheet" />
+    <script src="prism.js" data-manual></script>
+    <script>
+        window.assemblyName = "Repl";
+        window.Prism = window.Prism || {};
+        Prism.manual = true;
+        window.showOutput = function (lang, ok, res) {
+            const code = document.getElementById('output');
+            code.textContent = ok ? res : res.split('\n')[0];
+            code.className = ok ? 'language-' + lang : 'bebop-error';
+            if (ok) Prism.highlightElement(code);
+        }
+        window.hasExampleParam = function () {
+            var url_string = "http://www.example.com/t.html?a=1&b=3&c=m2-m3-m4-m5"; //window.location.href
+            var url = new URL(window.location.href);
+            var c = url.searchParams.get("example");
+            return c == "1";
+        }
+        window.setExampleSchema = function () {
+            const exampleSchema = window.DotNet.invokeMethod(assemblyName, 'GetExampleSchema');
+            const schemaTextArea = document.getElementById('schema');
+            schemaTextArea.value = exampleSchema;
+        }
+
+        /*
+        window.bebopc = {
+            version: function() {
+                return window.DotNet.invokeMethodAsync(assemblyName, 'GetCompilerVersion');
+            },
+            test: async function () {
+                return window.DotNet.invokeMethodAsync(assemblyName, 'TestSchema');
+            },
+            compile: async function (textualSchema, generatorAlias) {
+                return window.DotNet.invokeMethodAsync(assemblyName, 'CompileSchema', textualSchema, generatorAlias);
+            }
+        };
+        */
+    </script>
+</head>
+
+<body>
+    <div id="app">Loading...</div>
+    <script src="_framework/blazor.webassembly.js"></script>
+</body>
+
+</html>

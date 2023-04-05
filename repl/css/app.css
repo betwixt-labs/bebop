@@ -1,0 +1,54 @@
+* { box-sizing: border-box; }
+
+body {
+    font: 14px 'Fira Code', monospace;
+    letter-spacing: -0.75px; 
+    margin: 0px;
+    background: #2F2D83;
+    color: rgb(245, 244, 252);
+}
+
+select { font: 14px 'Fira Code', monospace; letter-spacing: -0.75px; }
+
+div.container { max-width: 1200px; margin-left: auto; margin-right: auto; }
+div.side-by-side { display: flex; justify-content: center; }
+section { flex: 1; margin: 4px; overflow: auto; }
+section.code-section { flex: 1.5; }
+div.toolbar { margin: 4px; text-align: right; }
+
+textarea, pre {
+    resize: none;
+    padding: .5em;
+	white-space: pre-wrap;
+    display: block;
+    background: #2d2d2d;
+    color: #cccccc;
+    width: 100%;
+    height: calc(100vh - 50px);
+    overflow-y: scroll;
+    margin: 0;
+    border: 1px solid #00000040;
+}
+
+textarea:focus {
+    outline: none;
+    border: 1px solid #cccccc40;
+}
+
+textarea, code, pre {
+    font-family: 'Fira Code', monospace !important;
+    letter-spacing: -0.75px;
+    font-size: 14px;
+}
+
+code, pre {
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+}
+
+.bebop-error { color: #ff5555; }
+
+::-webkit-scrollbar { width: 8px;  }
+::-webkit-scrollbar-track { background: none; }
+::-webkit-scrollbar-thumb { background: #cccccc80; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #ccccccc0; }
