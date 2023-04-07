@@ -97,7 +97,8 @@ export class BebopView {
     }
 
     toArray(): Uint8Array {
-        return this.buffer.subarray(0, this.length);
+        // allocate a new space in memory and copy the items from the original array between the start and end indices
+        return this.buffer.slice(0, this.length);
     }
 
     readByte(): number { return this.buffer[this.index++]; }
