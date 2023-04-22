@@ -1,0 +1,28 @@
+message InnerM2 { 1 -> int32 x; }
+
+/**
+ * This union is so documented!
+ */
+[opcode("yeah")]
+union U {
+    1 -> message A { 1 -> uint32 b; }
+    /**
+     * This branch is, too!
+     */
+    2 -> struct B { bool c; }
+    3 -> struct C { }
+    4 -> struct D { InnerM2 msg; }
+    /* You can't do this, nested unions are not allowed.
+    5 -> union W {
+        1 -> struct D { string e; }
+        2 -> struct X { bool z; }
+    }
+    */
+}
+
+union WeirdOrder {
+    2 -> struct TwoComesFirst { byte b; }
+    4 -> struct ThreeIsSkipped {}
+    1 -> struct OneComesLast {}
+}
+

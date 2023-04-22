@@ -1,0 +1,16 @@
+[package]
+name = "functionality-testing"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+
+[dependencies]
+bebop = { path = "../../../Runtime/Rust" }
+
+[build-dependencies]
+bebop-tools = { path = "../../../Tools/cargo", default-features = false }
+
+[features]
+default = ["bebop-owned-all"]
+bebop-owned-all = []

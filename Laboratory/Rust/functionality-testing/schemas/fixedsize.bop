@@ -1,0 +1,9 @@
+struct FixedSizeStruct {
+    byte a;
+    int32 b;
+    int64 c;
+}
+
+struct StructWithArrayOfFixedSizeType {
+    FixedSizeStruct[] ary;
+}

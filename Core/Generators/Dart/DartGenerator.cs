@@ -3,17 +3,18 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
 using Core.Meta;
 using Core.Meta.Extensions;
-using Core.Meta.Interfaces;
 
 namespace Core.Generators.Dart
 {
-    public class DartGenerator : Generator
+    public class DartGenerator : BaseGenerator
     {
         const int indentStep = 2;
 
-        public DartGenerator(ISchema schema) : base(schema) { }
+        public DartGenerator(BebopSchema schema) : base(schema) { }
 
         private string FormatDocumentation(string documentation, int spaces)
         {
@@ -52,9 +53,10 @@ namespace Core.Generators.Dart
                 {
                     continue;
                 }
-                builder.AppendLine($"if (message.{field.Name} != null) {{");
+                builder.AppendLine($"final m_{field.Name} = message.{field.Name};");
+                builder.AppendLine($"if (m_{field.Name} != null) {{");
                 builder.AppendLine($"  view.writeByte({field.ConstantValue});");
-                builder.AppendLine($"  {CompileEncodeField(field.Type, $"message.{field.Name}")}");
+                builder.AppendLine($"  {CompileEncodeField(field.Type, $"m_{field.Name}")}");
                 builder.AppendLine($"}}");
             }
             builder.AppendLine("view.writeByte(0);");
@@ -191,24 +193,26 @@ namespace Core.Generators.Dart
                 ArrayType at =>
                     $"{{" + nl +
                     $"{tab}var length{depth} = view.readUint32();" + nl +
-                    $"{tab}{target} = {TypeName(at)}(length{depth});" + nl +
+                    $"{tab}var array{depth} = <{TypeName(at.MemberType)}>[];" + nl +
                     $"{tab}for (var {i} = 0; {i} < length{depth}; {i}++) {{" + nl +
                     $"{tab}{tab}{TypeName(at.MemberType)} x{depth};" + nl +
                     $"{tab}{tab}{CompileDecodeField(at.MemberType, $"x{depth}", depth + 1)}" + nl +
-                    $"{tab}{tab}{target}[{i}] = x{depth};" + nl +
+                    $"{tab}{tab}array{depth}.add(x{depth});" + nl +
                     $"{tab}}}" + nl +
+                    $"{tab}{target} = array{depth};" + nl +
                     $"}}",
                 MapType mt =>
                     $"{{" + nl +
                     $"{tab}var length{depth} = view.readUint32();" + nl +
-                    $"{tab}{target} = {TypeName(mt)}();" + nl +
+                    $"{tab}var map{depth} = {TypeName(mt)}();" + nl +
                     $"{tab}for (var {i} = 0; {i} < length{depth}; {i}++) {{" + nl +
                     $"{tab}{tab}{TypeName(mt.KeyType)} k{depth};" + nl +
                     $"{tab}{tab}{TypeName(mt.ValueType)} v{depth};" + nl +
                     $"{tab}{tab}{CompileDecodeField(mt.KeyType, $"k{depth}", depth + 1)}" + nl +
                     $"{tab}{tab}{CompileDecodeField(mt.ValueType, $"v{depth}", depth + 1)}" + nl +
-                    $"{tab}{tab}{target}[k{depth}] = v{depth};" + nl +
+                    $"{tab}{tab}map{depth}[k{depth}] = v{depth};" + nl +
                     $"{tab}}}" + nl +
+                    $"{tab}{target} = map{depth};" + nl +
                     $"}}",
                 ScalarType st => st.BaseType switch
                 {
@@ -266,11 +270,33 @@ namespace Core.Generators.Dart
             throw new InvalidOperationException($"GetTypeName: {type}");
         }
 
+        private static string EscapeStringLiteral(string value)
+        {
+            // Dart accepts \u0000 style escape sequences, so we can escape the string JSON-style.
+            var options = new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+            return JsonSerializer.Serialize(value, options);
+        }
+
+        private string EmitLiteral(Literal literal) {
+            return literal switch
+            {
+                BoolLiteral bl => bl.Value ? "true" : "false",
+                IntegerLiteral il => il.Value,
+                FloatLiteral fl when fl.Value == "inf" => $"{TypeName(literal.Type)}.infinity",
+                FloatLiteral fl when fl.Value == "-inf" => $"{TypeName(literal.Type)}.negativeInfinity",
+                FloatLiteral fl when fl.Value == "nan" => $"{TypeName(literal.Type)}.nan",
+                FloatLiteral fl => fl.Value,
+                StringLiteral sl => EscapeStringLiteral(sl.Value),
+                GuidLiteral gl => EscapeStringLiteral(gl.Value.ToString("D")),
+                _ => throw new ArgumentOutOfRangeException(literal.ToString()),
+            };
+        }
+
         /// <summary>
         /// Generate code for a Bebop schema.
         /// </summary>
         /// <returns>The generated code.</returns>
-        public override string Compile()
+        public override string Compile(Version? languageVersion, bool writeGeneratedNotice = true)
         {
             var builder = new StringBuilder();
             builder.AppendLine("import 'dart:typed_data';");
@@ -321,7 +347,8 @@ namespace Core.Generators.Dart
                                 builder.AppendLine($"  /// @deprecated {field.DeprecatedAttribute.Value}");
                             }
                             var final = fd is StructDefinition { IsReadOnly: true } ? "final " : "";
-                            builder.AppendLine($"  {final}{type} {field.Name};");
+                            var optional = fd is MessageDefinition ? "?" : "";
+                            builder.AppendLine($"  {final}{type}{optional} {field.Name};");
                         }
                         if (fd is MessageDefinition)
                         {
@@ -332,7 +359,7 @@ namespace Core.Generators.Dart
                             builder.AppendLine($"  {(fd is StructDefinition { IsReadOnly: true } ? "const " : "")}{fd.Name}({{");
                             foreach (var field in fd.Fields)
                             {
-                                builder.AppendLine($"    @required this.{field.Name},");
+                                builder.AppendLine($"    required this.{field.Name},");
                             }
                             builder.AppendLine("  });");
                         }
@@ -348,8 +375,11 @@ namespace Core.Generators.Dart
                         builder.AppendLine("    return writer.toList();");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  static void encodeInto({fd.Name} message, BebopWriter view) {{");
+                        builder.AppendLine($"  static int encodeInto({fd.Name} message, BebopWriter view) {{");
+                        builder.AppendLine("    final before = view.length;");
                         builder.Append(CompileEncode(fd));
+                        builder.AppendLine("    final after = view.length;");
+                        builder.AppendLine("    return after - before;");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
                         builder.AppendLine($"  static {fd.Name} decode(Uint8List buffer) => {fd.Name}.readFrom(BebopReader(buffer));");
@@ -360,6 +390,12 @@ namespace Core.Generators.Dart
                         builder.AppendLine("}");
                         builder.AppendLine("");
                         break;
+                    case ConstDefinition cd:
+                        builder.AppendLine($"final {TypeName(cd.Value.Type)} {cd.Name} = {EmitLiteral(cd.Value)};");
+                        builder.AppendLine("");
+                        break;
+                    default:
+                        throw new InvalidOperationException($"unsupported definition {definition}");
                 }
             }
 

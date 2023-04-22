@@ -1,0 +1,5 @@
+union A {
+  1 -> union B {
+    1 -> struct Cx { int32 x; }
+  }
+}

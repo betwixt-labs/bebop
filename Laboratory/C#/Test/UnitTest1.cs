@@ -7,22 +7,17 @@ using NUnit.Framework;
 
 namespace Test
 {
-    enum TestEnum : uint
-    {
-        Bad = 0,
-        Ok = uint.MaxValue
-    }
     public class RuntimeTest
     {
 
         [SetUp]
         public void Setup()
         {
-            
+
         }
 
         /// <summary>
-        /// Ensures values are being written and read at the correct alignment. 
+        /// Ensures values are being written and read at the correct alignment.
         /// </summary>
         [Test]
         public void WriteRead()
@@ -51,12 +46,11 @@ namespace Test
             input.WriteGuid(testGuid);
             input.WriteDate(testDate);
             input.WriteBytes(testBytes);
-            input.WriteEnum(TestEnum.Ok);
 
 
             var output = BebopReader.From(input.ToImmutableArray());
 
-            // test byte 
+            // test byte
             Assert.AreEqual(0, output.ReadByte());
             Assert.AreEqual(byte.MaxValue, output.ReadByte());
             // test short
@@ -97,8 +91,6 @@ namespace Test
             Assert.AreEqual(testDate, output.ReadDate());
             // test byte array
             CollectionAssert.AreEqual(testBytes, output.ReadBytes());
-            // test enum
-            Assert.AreEqual(TestEnum.Ok, output.ReadEnum<TestEnum>());
 
             Assert.Pass();
         }
@@ -111,15 +103,34 @@ namespace Test
             {
                 Title = "Donna Lee",
                 Year = 1974,
-                Performers = new BaseMusician[]
+                Performers = new Musician[]
                 {
                     new Musician {Name = "Charlie Parker", Plays = Instrument.Sax},
                     new Musician {Name = "Miles Davis", Plays = Instrument.Trumpet}
                 }
             };
-            var library = new Library {Songs = new Dictionary<Guid, BaseSong> {{testGuid, song}}};
-            var decodedLibrary = Library.Decode(library.EncodeAsImmutable());
+            var library = new Library {Songs = new Dictionary<Guid, Song> {{testGuid, song}}};
+            var decodedLibrary = Library.Decode(library.EncodeImmutably());
             Assert.AreEqual(library, decodedLibrary);
+        }
+
+        [Test]
+        public void FlagsEnum()
+        {
+            Assert.AreEqual((int)TestFlags.Read, 1);
+            Assert.AreEqual((int)TestFlags.Write, 2);
+            Assert.AreEqual((int)TestFlags.Eight, 8);
+            Assert.AreEqual((int)TestFlags.MinusEight, -8);
+            Assert.AreEqual(TestFlags.ReadWrite, TestFlags.Read | TestFlags.Write);
+            // Check that the [Flags] attribute is doing its job:
+            Assert.AreEqual((TestFlags.Read | TestFlags.SomethingElse).ToString(), "Read, SomethingElse");
+        }
+
+        [Test]
+        public void EnumSizes()
+        {
+            Assert.AreEqual(Enum.GetUnderlyingType(typeof(SmallEnum)), typeof(byte));
+            Assert.AreEqual(Enum.GetUnderlyingType(typeof(HugeEnum)), typeof(long));
         }
     }
 }

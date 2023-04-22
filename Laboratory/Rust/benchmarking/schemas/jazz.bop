@@ -1,0 +1,33 @@
+enum Instrument {
+    Sax = 0;
+    Trumpet = 1;
+    Clarinet = 2;
+    Piano = 3;
+    Cello = 4;
+}
+
+struct Performer {
+    string name;
+    Instrument plays;
+}
+
+message Song {
+    1 -> string title;
+    2 -> uint16 year;
+    3 -> Performer[] performers;
+}
+
+union Album {
+    1 -> struct StudioAlbum {
+        Song[] tracks;
+    }
+    2 -> message LiveAlbum {
+        1 -> Song[] tracks;
+        2 -> string venueName;
+        3 -> date concertDate;
+    }
+}
+
+struct Library {
+    map[string, Album] albums;
+}

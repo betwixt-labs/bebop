@@ -18,26 +18,27 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-18.04]
+        os: [windows-latest, macos-latest, ubuntu-22.04]
         include:
           - os: macos-latest
-            CONFIGURATION: macOS-Release
-            RUNTIME: osx-x64
+            IDENTIFIER: osx
             ARTIFACT: bebopc
 
           - os: windows-latest
-            CONFIGURATION: Windows-Release
-            RUNTIME: win-x64
+            IDENTIFIER: win
             ARTIFACT: bebopc.exe
 
-          - os: ubuntu-18.04
-            CONFIGURATION: Linux-Release
-            RUNTIME: linux-x64
+          - os: ubuntu-22.04
+            IDENTIFIER: linux
             ARTIFACT: bebopc
 
     env:
-      BUILD_ARTIFACT: ./bin/compiler/${{matrix.CONFIGURATION}}/publish/${{matrix.ARTIFACT}}
-      BUILD_ZIP_ARTIFACT: ./bin/compiler/${{matrix.CONFIGURATION}}/publish/${{matrix.ARTIFACT}}.zip
+      CONFIGURATION: Release
+      BUILD_ARTIFACT_X86_64: ./bin/compiler/Release/publish/${{matrix.IDENTIFIER}}-x64/${{matrix.ARTIFACT}}
+      BUILD_ARTIFACT_ARM64: ./bin/compiler/Release/publish/${{matrix.IDENTIFIER}}-arm64/${{matrix.ARTIFACT}}
+      BUILD_ZIP_ARTIFACT_X86_64: ./bin/compiler/Release/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-x64.zip
+      BUILD_ZIP_ARTIFACT_ARM64: ./bin/compiler/Release/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-arm64.zip
+
     steps:
       - uses: actions/checkout@v1
 
@@ -45,7 +46,7 @@ jobs:
         id: dotenv
         uses: falti/dotenv-action@v0.2.5
 
-      - if: matrix.os == 'ubuntu-18.04'
+      - if: matrix.os == 'ubuntu-22.04'
         name: Install Dependencies
         run: |
           sudo apt-get update
@@ -54,29 +55,44 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: "5.0.x" # SDK Version to use; x will use the latest version of the 5.0 channel
+          dotnet-version: "7.0.x" # SDK Version to use; x will use the latest version of the 7.0 channel
+          include-prerelease: true
       - name: Restore Solution
         run: dotnet restore
+
       - name: Build bebopc
-        run: dotnet publish -c ${{matrix.CONFIGURATION}} -r ${{matrix.RUNTIME}} -p:ReleaseVersion=${{ steps.dotenv.outputs.version }}
+        run: |
+          dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-x64 -p:ReleaseVersion=${{ steps.dotenv.outputs.version }} -p:PublishTrimmed=false -p:PublishSingleFile=true --self-contained
+          dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-arm64 -p:ReleaseVersion=${{ steps.dotenv.outputs.version }} -p:PublishTrimmed=false -p:PublishSingleFile=true --self-contained
         working-directory: ./Compiler/
 
       - if: matrix.os == 'macos-latest'
-        name: ZIP macOS Build
-        run: zip -j ${{env.BUILD_ZIP_ARTIFACT}} ${{env.BUILD_ARTIFACT}}
+        name: Zip macOS Binary
+        run: |
+          zip -j ${{env.BUILD_ZIP_ARTIFACT_X86_64}} ${{env.BUILD_ARTIFACT_X86_64}}
+          zip -j ${{env.BUILD_ZIP_ARTIFACT_ARM64}} ${{env.BUILD_ARTIFACT_ARM64}}
 
-      - if: matrix.os == 'ubuntu-18.04'
+      - if: matrix.os == 'ubuntu-22.04'
         name: ZIP Linux Build
-        run: zip -j ${{env.BUILD_ZIP_ARTIFACT}} ${{env.BUILD_ARTIFACT}}
+        run: |
+          zip -j ${{env.BUILD_ZIP_ARTIFACT_X86_64}} ${{env.BUILD_ARTIFACT_X86_64}}
+          zip -j ${{env.BUILD_ZIP_ARTIFACT_ARM64}} ${{env.BUILD_ARTIFACT_ARM64}}
 
       - if: matrix.os == 'windows-latest'
         name: ZIP Windows Build
         shell: powershell
         run: |
-          Compress-Archive -Path ${{env.BUILD_ARTIFACT}} -DestinationPath ${{env.BUILD_ZIP_ARTIFACT}}
+          Compress-Archive -Path ${{env.BUILD_ARTIFACT_X86_64}} -DestinationPath ${{env.BUILD_ZIP_ARTIFACT_X86_64}}
+          Compress-Archive -Path ${{env.BUILD_ARTIFACT_ARM64}} -DestinationPath ${{env.BUILD_ZIP_ARTIFACT_ARM64}}
 
-      - name: Upload Build
+      - name: Upload X86_64 Build
         uses: actions/upload-artifact@v2
         with:
-          name: ${{matrix.RUNTIME}}
-          path: ${{env.BUILD_ZIP_ARTIFACT}}
+          name: ${{matrix.IDENTIFIER}}-x64
+          path: ${{env.BUILD_ZIP_ARTIFACT_X86_64}}
+
+      - name: Upload ARM64 Build
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{matrix.IDENTIFIER}}-arm64
+          path: ${{env.BUILD_ZIP_ARTIFACT_ARM64}}

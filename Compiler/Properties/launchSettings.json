@@ -4,10 +4,25 @@
       "commandName": "Project",
       "commandLineArgs": "--version"
     },
-    "Generate Test Code": {
+    "Generate Test Code Rust": {
       "commandName": "Project",
-      "commandLineArgs": "--lang cs --namespace Bebop.Codegen --files ..\\Laboratory\\Schemas\\lab.bop ..\\Laboratory\\Schemas\\jazz.bop --cs ..\\Laboratory\\C#\\GeneratedTestCode\\Output.g.cs",
-      "workingDirectory": "C:\\Users\\Andrew\\PierogiVNext\\Compiler"
+      "commandLineArgs": "--files ../Laboratory/Schemas/struct.bop --rust ../Laboratory/Rust/manual-testing/src/lib.rs",
+      "workingDirectory": "$(MSBuildProjectDirectory)"
+    },
+    "Multiple Errors": {
+      "commandName": "Project",
+      "commandLineArgs": "--log-format JSON --check ShouldFail/multiple_errors.bop",
+      "workingDirectory": "$(MSBuildProjectDirectory)/../Laboratory/Schemas"
+    },
+    "Compile Files": {
+      "commandName": "Project",
+      "commandLineArgs": "--files ../Laboratory/Schemas/ShouldFail/rpc.bop --rust ../Laboratory/Rust/manual-testing/src/lib.rs",
+      "workingDirectory": "$(MSBuildProjectDirectory)"
+    },
+    "Oops All Failures": {
+      "commandName": "Project",
+      "commandLineArgs": "--check",
+      "workingDirectory": "$(MSBuildProjectDirectory)/../Laboratory/Schemas/ShouldFail"
     }
   }
 }

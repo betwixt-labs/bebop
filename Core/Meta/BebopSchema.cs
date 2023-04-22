@@ -1,23 +1,51 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using Core.Exceptions;
-using Core.Meta.Interfaces;
+using Core.Lexer.Tokenization.Models;
+using Core.Meta.Extensions;
+using Core.Parser.Extensions;
 
 namespace Core.Meta
 {
-    /// <inheritdoc/>
-    public struct BebopSchema : ISchema
+    /// <summary>
+    /// Represents the contents of a textual Bebop schema 
+    /// </summary>
+    public struct BebopSchema
     {
-        public BebopSchema(string nameSpace, Dictionary<string, Definition> definitions)
+        private static string[] _enumZeroNames = new[] { "Default", "Unknown", "Invalid", "Null", "None", "Zero", "False" };
+        private List<SpanException> _parsingErrors;
+        private List<SpanException> _validationErrors;
+        private List<SpanException> _validationWarnings;
+
+        /// <summary>
+        /// Errors found while validating this schema.
+        /// </summary>
+        public List<SpanException> Errors => _parsingErrors.Concat(_validationErrors).ToList();
+        public List<SpanException> Warnings => _validationWarnings;
+
+        public List<string> Imports { get; }
+
+        public BebopSchema(string nameSpace, Dictionary<string, Definition> definitions, HashSet<(Token, Token)> typeReferences, List<SpanException>? parsingErrors = null, List<string>? imports = null)
         {
             Namespace = nameSpace;
             Definitions = definitions;
+            Imports = imports ?? new List<string>();
+
             _sortedDefinitions = null;
+            _validationErrors = new();
+            _validationWarnings = new();
+            _parsingErrors = parsingErrors ?? new();
+            _typeReferences = typeReferences;
         }
-        /// <inheritdoc/>
+        /// <summary>
+        /// An optional namespace that is provided to the compiler.
+        /// </summary>
         public string Namespace { get; }
-        /// <inheritdoc/>
+        /// <summary>
+        /// All Bebop definitions in this schema, keyed by their name.
+        /// </summary>
         public Dictionary<string, Definition> Definitions { get; }
 
         /// <summary>
@@ -25,7 +53,11 @@ namespace Core.Meta
         /// </summary>
         private List<Definition>? _sortedDefinitions;
 
-        /// <inheritdoc/>
+        private HashSet<(Token, Token)> _typeReferences;
+
+        /// <summary>
+        /// A topologically sorted list of definitions.
+        /// </summary>
         public List<Definition> SortedDefinitions()
         {
             // Return the cached result if it exists.
@@ -86,86 +118,147 @@ namespace Core.Meta
             return _sortedDefinitions;
         }
 
-        /// <inheritdoc/>
-        public void Validate()
+        /// <summary>
+        /// Validates that the schema is made up of well-formed values.
+        /// </summary>
+        public List<SpanException> Validate()
         {
+            var errors = new List<SpanException>();
+            foreach (var (typeToken, definitionToken) in _typeReferences)
+            {
+                if (!Definitions.ContainsKey(typeToken.Lexeme))
+                {
+                    errors.Add(new UnrecognizedTypeException(typeToken, definitionToken.Lexeme));
+                    continue;
+                }
+                var reference = Definitions[typeToken.Lexeme];
+                var referenceScope = reference.Scope;
+                var definition = Definitions[definitionToken.Lexeme];
+                var definitionScope = definition.Scope;
 
+                // You're not allowed to reference types declared within a union from elsewhere
+                // Check if reference has a union in scope but definition does not have the same union in scope
+                // Throw ReferenceScopeException if so
+                if (referenceScope.Find((parent) => parent is UnionDefinition) is UnionDefinition union)
+                {
+                    if (!definitionScope.Contains(union))
+                    {
+                        errors.Add(new ReferenceScopeException(definition, reference, "union"));
+                    }
+                }
+            }
             foreach (var definition in Definitions.Values)
             {
                 if (Definitions.Values.Count(d => d.Name.Equals(definition.Name, StringComparison.OrdinalIgnoreCase)) > 1)
                 {
-                    throw new MultipleDefinitionsException(definition);
+                    errors.Add(new MultipleDefinitionsException(definition));
                 }
                 if (ReservedWords.Identifiers.Contains(definition.Name))
                 {
-                    throw new ReservedIdentifierException(definition.Name, definition.Span);
+                    errors.Add(new ReservedIdentifierException(definition.Name, definition.Span));
                 }
-                if (definition is TopLevelDefinition td && td.OpcodeAttribute != null)
+                if (definition is RecordDefinition td && td.OpcodeAttribute != null)
                 {
                     if (!td.OpcodeAttribute.TryValidate(out var opcodeReason))
                     {
-                        throw new InvalidOpcodeAttributeValueException(td, opcodeReason);
+                        errors.Add(new InvalidOpcodeAttributeValueException(td, opcodeReason));
                     }
-                    if (Definitions.Values.Count(d => d is TopLevelDefinition td2 && td2.OpcodeAttribute != null && td2.OpcodeAttribute.Value.Equals(td.OpcodeAttribute.Value)) > 1)
+                    if (Definitions.Values.Count(d => d is RecordDefinition td2 && td2.OpcodeAttribute != null && td2.OpcodeAttribute.Value.Equals(td.OpcodeAttribute.Value)) > 1)
                     {
-                        throw new DuplicateOpcodeException(td);
+                        errors.Add(new DuplicateOpcodeException(td));
                     }
                 }
                 if (definition is FieldsDefinition fd) foreach (var field in fd.Fields)
                 {
                     if (ReservedWords.Identifiers.Contains(field.Name))
                     {
-                        throw new ReservedIdentifierException(field.Name, field.Span);
+                        errors.Add(new ReservedIdentifierException(field.Name, field.Span));
                     }
                     if (field.DeprecatedAttribute != null && fd is StructDefinition)
                     {
-                        throw new InvalidDeprecatedAttributeUsageException(field);
+                        errors.Add(new InvalidDeprecatedAttributeUsageException(field));
                     }
                     if (fd.Fields.Count(f => f.Name.Equals(field.Name, StringComparison.OrdinalIgnoreCase)) > 1)
                     {
-                        throw new DuplicateFieldException(field, fd);
+                        errors.Add(new DuplicateFieldException(field, fd));
                     }
                     switch (fd)
                     {
                         case StructDefinition when field.Type is DefinedType dt && fd.Name.Equals(dt.Name):
                         {
-                            throw new InvalidFieldException(field, "Struct contains itself");
+                            errors.Add(new InvalidFieldException(field, "Struct contains itself"));
+                            break;
                         }
                         case MessageDefinition when fd.Fields.Count(f => f.ConstantValue == field.ConstantValue) > 1:
                         {
-                            throw new InvalidFieldException(field, "Message index must be unique");
+                            errors.Add(new InvalidFieldException(field, "Message index must be unique"));
+                            break;
                         }
                         case MessageDefinition when field.ConstantValue <= 0:
                         {
-                            throw new InvalidFieldException(field, "Message member index must start at 1");
+                            errors.Add(new InvalidFieldException(field, "Message member index must start at 1"));
+                            break;
                         }
                         case MessageDefinition when field.ConstantValue > fd.Fields.Count:
                         {
-                            throw new InvalidFieldException(field, "Message index is greater than field count");
+                            errors.Add(new InvalidFieldException(field, "Message index is greater than field count"));
+                            break;
                         }
                         default:
                             break;
                     }
                 }
+                if (definition is ServiceDefinition sd)
+                {
+                    var usedFunctionNames = new HashSet<string>();
+                    
+                    foreach (var b in sd.Branches)
+                    {
+                        var fnd = b.Definition;
+                        if (!usedFunctionNames.Add(fnd.Name.ToSnakeCase()))
+                        {
+                            errors.Add(new DuplicateServiceFunctionNameException(b.Discriminator, sd.Name, fnd.Name, fnd.Span));
+                        }
+                        if (fnd.Parent != sd)
+                        {
+                            throw new Exception("A function was registered to multiple services, this is an error in bebop core.");
+                        }
+                    }
+                }
                 if (definition is EnumDefinition ed)
                 {
-                    var values = new HashSet<uint>();
+                    var values = new HashSet<BigInteger>();
                     var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                     foreach (var field in ed.Members)
                     {
-                        if (values.Contains(field.ConstantValue))
+                        if (!ed.IsBitFlags && values.Contains(field.ConstantValue))
                         {
-                            throw new InvalidFieldException(field, "Enum value must be unique");
+                            errors.Add(new InvalidFieldException(field, "Enum value must be unique if the enum is not a [flags] enum"));
                         }
                         if (names.Contains(field.Name))
                         {
-                            throw new DuplicateFieldException(field, ed);
+                            errors.Add(new DuplicateFieldException(field, ed));
+                        }
+                        if (!ed.BaseType.CanRepresent(field.ConstantValue))
+                        {
+                            var min = BaseTypeHelpers.MinimumInteger(ed.BaseType);
+                            var max = BaseTypeHelpers.MaximumInteger(ed.BaseType);
+                            errors.Add(new InvalidFieldException(field,
+                                $"Enum member '{field.Name}' has a value ({field.ConstantValue}) that " +
+                                $"is outside the domain of underlying type '{ed.BaseType.BebopName()}'. " +
+                                $"Valid values range from {min} to {max}."));
+                        }
+                        if (field.ConstantValue == 0 && !_enumZeroNames.Any(x => x.Equals(field.Name, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            Warnings.Add(new EnumZeroWarning(field));
                         }
                         values.Add(field.ConstantValue);
                         names.Add(field.Name);
                     }
                 }
             }
+            _validationErrors = errors;
+            return errors;
         }
     }
 }

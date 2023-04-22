@@ -45,8 +45,8 @@ void main() {
       var buffer = Library.encode(test);
       var decoded = Library.decode(buffer);
       expect(decoded.songs, hasLength(2));
-      expect(decoded.songs[donna].performers, hasLength(2));
-      expect(decoded.songs[donna].performers[1].name, equals('Miles Davis'));
+      expect(decoded.songs[donna]?.performers, hasLength(2));
+      expect(decoded.songs[donna]?.performers?[1]?.name, equals('Miles Davis'));
     });
 
     test('Library from binary', () async {
@@ -54,9 +54,9 @@ void main() {
       var decoded = Library.decode(buffer);
       expect(decoded.songs, hasLength(1));
       var mySong = '81c6987b-48b7-495f-ad01-ec20cc5f5be1';
-      expect(decoded.songs[mySong].title, equals('Donna Lee'));
-      expect(decoded.songs[mySong].performers, hasLength(2));
-      expect(decoded.songs[mySong].performers[1].name, equals('Miles Davis'));
+      expect(decoded.songs[mySong]?.title, equals('Donna Lee'));
+      expect(decoded.songs[mySong]?.performers, hasLength(2));
+      expect(decoded.songs[mySong]?.performers?[1]?.name, equals('Miles Davis'));
     });
   });
 }

@@ -4,17 +4,19 @@ on:
     branches:
       - master
       - test-action-new-cli
+  pull_request:
 jobs:
   test-typescript:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v1
       - uses: actions/setup-node@v1
         with:
-          node-version: '12'
+          node-version: "12"
       - uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: '5.0.x' # SDK Version to use; x will use the latest version of the 5.0 channel
+          dotnet-version: "7.0.x" # SDK Version to use; x will use the latest version of the 7.0 channel
+          include-prerelease: true
       - name: Build and run tests
         run: |
           npm install

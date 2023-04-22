@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using Core.Meta.Extensions;
 
 namespace Core.Lexer.Tokenization.Models
 {
@@ -98,12 +99,6 @@ namespace Core.Lexer.Tokenization.Models
             if (c != 0) return c;
             c = EndColumn.CompareTo(other.EndColumn);
             return c;
-        }
-
-
-        public string ToJson()
-        {
-            return $"{{\"FileName\":\"{FileName.Replace("\\", "\\\\")}\",\"StartLine\":{StartLine},\"EndLine\":{EndLine},\"StartColumn\":{StartColumn},\"EndColumn\":{EndColumn},\"Lines\":{Lines}}}";
         }
 
         public override bool Equals(object? obj) => obj is Span span && Equals(span);

@@ -1,11 +1,18 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
 using Core.Lexer.Tokenization;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta;
-using Core.Meta.Interfaces;
 
 namespace Core.Exceptions
 {
+    public enum Severity
+    {
+        Warning,
+        Error,
+    }
+
     [Serializable]
     public class CompilerException : Exception
     {
@@ -26,11 +33,13 @@ namespace Core.Exceptions
         /// A unique error code identifying the type of exception
         /// </summary>
         public int ErrorCode { get; }
+        public Severity Severity { get; }
 
-        public SpanException(string message, Span span, int errorCode) : base(message)
+        public SpanException(string message, Span span, int errorCode, Severity severity = Severity.Error) : base(message)
         {
             Span = span;
             ErrorCode = errorCode;
+            Severity = severity;
         }
     }
     [Serializable]
@@ -55,7 +64,7 @@ namespace Core.Exceptions
     [Serializable]
     class InvalidFieldException : SpanException
     {
-        public InvalidFieldException(IField field, string reason)
+        public InvalidFieldException(Field field, string reason)
             : base(reason, field.Span, 103) { }
     }
     [Serializable]
@@ -63,7 +72,16 @@ namespace Core.Exceptions
     {
         public UnexpectedTokenException(TokenKind expectedKind, Token token, string? hint = null)
             : base($"Expected {expectedKind}, but found '{token.Lexeme}' of kind {token.Kind}."
-                + (string.IsNullOrWhiteSpace(hint) ? "" : $" (Hint: {hint})"), token.Span, 104) { }
+                + (string.IsNullOrWhiteSpace(hint) ? "" : $" (Hint: {hint})"), token.Span, 104)
+        { }
+        public UnexpectedTokenException(Token token, string? hint = null)
+            : base($"Encountered unexpected token '{token.Lexeme}' of kind {token.Kind}."
+                + (string.IsNullOrWhiteSpace(hint) ? "" : $" (Hint: {hint})"), token.Span, 104)
+        { }
+        public UnexpectedTokenException(IEnumerable<TokenKind> expectedKinds, Token token, string? hint = null)
+            : base($"Expected {string.Join(" or ", expectedKinds)}, but found '{token.Lexeme}' of kind {token.Kind}."
+                + (string.IsNullOrWhiteSpace(hint) ? "" : $" (Hint: {hint})"), token.Span, 104)
+        { }
     }
     [Serializable]
     class UnrecognizedTypeException : SpanException
@@ -80,7 +98,7 @@ namespace Core.Exceptions
     [Serializable]
     class InvalidDeprecatedAttributeUsageException : SpanException
     {
-        public InvalidDeprecatedAttributeUsageException(IField field)
+        public InvalidDeprecatedAttributeUsageException(Field field)
             : base($"The field '{field.Name}' cannot be marked as 'deprecated' as it is not a member of a message or enum", field.Span, 107) { }
     }
     [Serializable]
@@ -102,7 +120,7 @@ namespace Core.Exceptions
     [Serializable]
     class DuplicateOpcodeException : SpanException
     {
-        public DuplicateOpcodeException(TopLevelDefinition definition)
+        public DuplicateOpcodeException(RecordDefinition definition)
             : base($"Multiple definitions for opcode '{definition.OpcodeAttribute?.Value}'", definition.Span, 110) { }
     }
 
@@ -116,15 +134,15 @@ namespace Core.Exceptions
     [Serializable]
     class DuplicateFieldException : SpanException
     {
-        public DuplicateFieldException(IField field, Definition definition)
+        public DuplicateFieldException(Field field, Definition definition)
             : base($"The type '{definition.Name}' already contains a definition for '{field.Name}'.", field.Span, 112) { }
     }
 
     [Serializable]
-    class InvalidUnionBranchException : SpanException
+    public class InvalidUnionBranchException : SpanException
     {
         public InvalidUnionBranchException(Definition definition)
-            : base($"The definition '{definition.Name}' cannot be used as a union branch. Valid union branches are messages, structs, or unions.", definition.Span, 113)
+            : base($"The definition '{definition.Name}' cannot be used as a union branch. Valid union branches are messages and structs.", definition.Span, 113)
         { }
     }
 
@@ -148,8 +166,135 @@ namespace Core.Exceptions
     class CyclicDefinitionsException : SpanException
     {
         public CyclicDefinitionsException(Definition definition)
-            : base($"The schema contains an invalid cycle of definitions, involving '{definition.Name}'.", definition.Span, 115)
+            : base($"The schema contains an invalid cycle of definitions, involving '{definition.Name}'.", definition.Span, 116)
         { }
     }
 
+    [Serializable]
+    class ImportFileNotFoundException : SpanException
+    {
+        public ImportFileNotFoundException(Token pathLiteral)
+            : base($"No such file: {pathLiteral.Lexeme}.", pathLiteral.Span, 117)
+        { }
+    }
+
+    [Serializable]
+    class ImportFileReadException : SpanException
+    {
+        public ImportFileReadException(Token pathToken)
+            : base($"Error reading file: {pathToken.Lexeme}.", pathToken.Span, 118)
+        { }
+    }
+
+    [Serializable]
+    class UnsupportedConstTypeException : SpanException
+    {
+        public UnsupportedConstTypeException(string reason, Span span)
+            : base(reason, span, 119)
+        { }
+    }
+
+    [Serializable]
+    class InvalidLiteralException : SpanException
+    {
+        public InvalidLiteralException(Token token, TypeBase type)
+            : base($"'{token.Lexeme}' is an invalid literal for type {type.AsString}.", token.Span, 120)
+        { }
+    }
+
+    [Serializable]
+    class FieldNameException : SpanException
+    {
+        public FieldNameException(Token token)
+            : base($"Field names cannot be the same as their enclosing type.", token.Span, 121)
+        { }
+    }
+
+    [Serializable]
+    class DuplicateConstDefinitionException : SpanException
+    {
+        public DuplicateConstDefinitionException(ConstDefinition definition)
+            : base($"An illegal redefinition for the constant '{definition.Name}' was found in '{Path.GetFileName(definition.Span.FileName)}'", definition.Span, 122)
+        { }
+    }
+
+    [Serializable]
+    public class ReferenceScopeException : SpanException
+    {
+        public ReferenceScopeException(Definition definition, Definition reference, string scopeLabel)
+            : base($"Cannot reference {reference.Name} within {scopeLabel} from {definition.Name}.", definition.Span, 123)
+        {}
+    }
+
+    [Serializable]
+    public class UnknownIdentifierException : SpanException
+    {
+        public UnknownIdentifierException(Token identifier)
+            : base($"The identifier '{identifier.Lexeme}' is not defined at this point. (Try reordering your enum branches.)", identifier.Span, 124)
+        { }
+    }
+
+    [Serializable]
+    public class UnknownAttributeException : SpanException
+    {
+        public UnknownAttributeException(Token attribute)
+            : base($"The attribute '{attribute.Lexeme}' is recognized.", attribute.Span, 125)
+        { }
+    }
+
+    [Serializable]
+    public class UnmatchedParenthesisException : SpanException
+    {
+        public UnmatchedParenthesisException(Token parenthesis)
+            : base($"This parenthesis is unmatched.", parenthesis.Span, 126)
+        { }
+    }
+
+    [Serializable]
+    public class MalformedExpressionException : SpanException
+    {
+        public MalformedExpressionException(Token token)
+            : base($"The expression could not be parsed past this point.", token.Span, 127)
+        { }
+    }
+
+    [Serializable]
+    public class InvalidEnumTypeException : SpanException
+    {
+        public InvalidEnumTypeException(TypeBase t)
+            : base($"Enums must have an integer underlying type, not {t}.", t.Span, 128)
+        { }
+    }
+
+    [Serializable]
+    class DuplicateServiceDiscriminatorException : SpanException
+    {
+        public DuplicateServiceDiscriminatorException(Token discriminator, string serviceName)
+            : base($"The discriminator index {discriminator.Lexeme} was used more than once in service '{serviceName}'.", discriminator.Span, 129)
+        { }
+    }
+    
+    [Serializable]
+    class DuplicateServiceFunctionNameException : SpanException
+    {
+        public DuplicateServiceFunctionNameException(ushort discriminator, string serviceName, string functionName, Span span)
+            : base($"Index {discriminator} duplicates the function name '{functionName}' which can only be used once in service '{serviceName}'.", span, 130)
+        { }
+    }
+
+    [Serializable]
+    class DuplicateArgumentName : SpanException
+    {
+        public DuplicateArgumentName(Span span, string serviceName, string serviceIndex, string argumentName)
+            : base($"Index {serviceIndex} in service '{serviceName}' has duplicated argument name {argumentName}.", span, 131)
+        { }
+    }
+    
+    [Serializable]
+    public class EnumZeroWarning : SpanException
+    {
+        public EnumZeroWarning(Field field)
+            : base($"Bebop recommends that 0 in an enum be reserved for a value named 'Unknown', 'Default', or similar. See https://github.com/RainwayApp/bebop/wiki/Why-should-0-be-a-%22boring%22-value-in-an-enum%3F for more info.", field.Span, 200, Severity.Warning)
+        { }
+    }
 }

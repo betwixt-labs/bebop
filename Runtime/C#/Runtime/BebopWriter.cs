@@ -16,6 +16,10 @@ namespace Bebop.Runtime
         // ReSharper disable once InconsistentNaming
         private static readonly UTF8Encoding UTF8 = new();
 
+        /// <summary>
+        /// Track if the <see cref="_buffer"/> variable can be grown to a new instance
+        /// </summary>
+        private bool _allowBufferResizing;
 
         /// <summary>
         ///     A contiguous region of memory that contains the contents of a Bebop message
@@ -41,21 +45,26 @@ namespace Bebop.Runtime
         private static ImmutableArray<T> AsImmutable<T>(T[] array) => As<T[], ImmutableArray<T>>(ref array);
 
         /// <summary>
-        /// Converts the specified <paramref name="enum"/> to an unsigned integer without boxing.
-        /// </summary>
-        /// <typeparam name="T">The type of enum.</typeparam>
-        /// <param name="enum">The enum member to convert.</param>
-        /// <returns>The constant of the provided <paramref name="enum"/></returns>
-        [MethodImpl(BebopConstants.HotPath)]
-        private static uint ConvertEnum<T>(T @enum) where T : struct, Enum =>
-            As<T, uint>(ref @enum);
-
-        /// <summary>
         ///     Allocates a new <see cref="BebopWriter"/> instance backed by an empty array.
         /// </summary>
         /// <returns></returns>
         [MethodImpl(BebopConstants.HotPath)]
-        public static BebopWriter Create() => new(Array.Empty<byte>());
+        public static BebopWriter Create() => new(Array.Empty<byte>(), allowBufferResizing: true);
+
+        /// <summary>
+        ///     Allocates a new <see cref="BebopWriter"/> instance backed by a new array of the given size.
+        /// </summary>
+        /// <returns></returns>
+        [MethodImpl(BebopConstants.HotPath)]
+        public static BebopWriter Create(int initialCapacity) => new(new byte[initialCapacity], allowBufferResizing: true);
+
+        /// <summary>
+        ///     Allocates a new <see cref="BebopWriter"/> instance backed by the given array instance.
+        /// </summary>
+        /// <returns></returns>
+        [MethodImpl(BebopConstants.HotPath)]
+        public static BebopWriter Create(byte[] buffer) => new(buffer, allowBufferResizing: false);
+
         /// <summary>
         /// Creates a new <see cref="BebopWriter"/> instance from the specified <paramref name="buffer"/>
         /// </summary>
@@ -69,14 +78,14 @@ namespace Bebop.Runtime
         /// <param name="buffer">The buffer a Bebop record will be written to.</param>
         /// <returns>The initialized <see cref="BebopWriter"/></returns>
         [MethodImpl(BebopConstants.HotPath)]
-        public static BebopWriter From(byte[] buffer) => new(buffer);
+        public static BebopWriter From(byte[] buffer) => new(buffer, allowBufferResizing: true);
         /// <summary>
         /// Creates a new <see cref="BebopWriter"/> instance from the specified <paramref name="buffer"/>
         /// </summary>
         /// <param name="buffer">The buffer a Bebop record will be written to.</param>
         /// <returns>The initialized <see cref="BebopWriter"/></returns>
         [MethodImpl(BebopConstants.HotPath)]
-        public static BebopWriter From(Span<byte> buffer) => new(buffer);
+        public static BebopWriter From(Span<byte> buffer) => new(buffer, allowBufferResizing: true);
 
         /// <summary>
         ///     Creates a read-only slice of the underlying <see cref="_buffer"/> containing all currently written data.
@@ -100,13 +109,15 @@ namespace Bebop.Runtime
         /// Creates a new writer from the specified <paramref name="buffer"/>.
         /// </summary>
         /// <param name="buffer"></param>
-        private BebopWriter(Span<byte> buffer)
+        /// <param name="allowBufferResizing"></param>
+        private BebopWriter(Span<byte> buffer, bool allowBufferResizing)
         {
             if (!BitConverter.IsLittleEndian)
             {
                 throw new BebopViewException("Big-endian systems are not supported by Bebop.");
             }
             _buffer = buffer;
+            _allowBufferResizing = allowBufferResizing;
             Length = 0;
         }
 
@@ -123,9 +134,16 @@ namespace Bebop.Runtime
             }
             if (Length + amount > _buffer.Length)
             {
-                var newBuffer = new Span<byte>(new byte[(Length + amount) << 1]);
-                _buffer.CopyTo(newBuffer);
-                _buffer = newBuffer;
+                if (_allowBufferResizing)
+                {
+                    var newBuffer = new Span<byte>(new byte[(Length + amount) << 1]);
+                    _buffer.CopyTo(newBuffer);
+                    _buffer = newBuffer;
+                }
+                else
+                {
+                    throw new BebopViewException("This Bebop View cannot grow the buffer.");
+                }
             }
             Length += amount;
         }
@@ -155,18 +173,6 @@ namespace Bebop.Runtime
             var index = Length;
             GrowBy(size);
             _buffer[index] = value;
-        }
-
-        /// <summary>
-        ///     Writes an <see cref="Enum"/> value with an unsigned integer integral type to the current buffer and advances the
-        ///     position by four bytes.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="value"></param>
-        [MethodImpl(BebopConstants.HotPath)]
-        public void WriteEnum<T>(T value) where T : struct, Enum
-        {
-            WriteUInt32(ConvertEnum(value));
         }
 
         /// <summary>

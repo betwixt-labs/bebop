@@ -1,0 +1,16 @@
+{
+    "source": [
+        "/Users/runner/work/bebop/bebop/bin/compiler/Release/publish/osx-x64/bebopc"
+    ],
+    "bundle_id": "sh.bebop",
+    "apple_id": {
+        "password": "@env:AC_PASSWORD"
+    },
+    "sign": {
+        "application_identity": "FB328BC574FB712798E2C79A237759ADB0839AAF",
+        "entitlements_file": "/Users/runner/work/bebop/bebop/bebopc.entitlements"
+    },
+    "zip": {
+        "output_path": "/Users/runner/work/bebop/bebop/notarized-osx-x64.zip"
+    }
+}

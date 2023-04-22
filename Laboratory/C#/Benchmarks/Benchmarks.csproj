@@ -1,12 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
-		<TargetFrameworks>net5.0;net472</TargetFrameworks>
+		<TargetFrameworks>net6.0;net5.0;net472</TargetFrameworks>
 		<Nullable>enable</Nullable>
 		<LangVersion>9.0</LangVersion>
 	</PropertyGroup>
 	<ItemGroup>
-	  <PackageReference Include="BenchmarkDotNet" Version="0.12.1" />
+	  <PackageReference Include="BenchmarkDotNet" Version="0.13.1" />
 	</ItemGroup>
 	<ItemGroup>
 	  <ProjectReference Include="..\..\..\Runtime\C#\Bebop.csproj" />

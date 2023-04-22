@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Core.IO.Interfaces;
+using System.Threading.Tasks;
+using Core.Lexer.Extensions;
 using Core.Lexer.Tokenization.Models;
 
 namespace Core.IO
@@ -10,7 +11,7 @@ namespace Core.IO
     /// <summary>
     ///     SchemaReader is a read-only specialized wrapper that can look-ahead without consuming the underlying bytes, making it useful for tokenization.
     /// </summary>
-    public class SchemaReader : ISchemaReader
+    public class SchemaReader
     {
         // Name and contents of the schema files we're processing.
         private readonly List<(string, string)> _schemas;
@@ -35,7 +36,7 @@ namespace Core.IO
 
         public static SchemaReader FromSchemaPaths(IEnumerable<string> schemaPaths)
         {
-            return new SchemaReader(schemaPaths.Select(path => (path, $"{File.ReadAllText(path)}{Environment.NewLine}")).ToList());
+            return new SchemaReader(schemaPaths.Select(path => (path, File.ReadAllText(path))).ToList());
         }
 
         private string CurrentFile => _schemas[_schemaIndex].Item2;
@@ -45,26 +46,51 @@ namespace Core.IO
         private bool AtEndOfCurrentFile => !NoFilesLeft && _position >= CurrentFileLength;
 
         private string CurrentFileName => _schemas[_schemaIndex].Item1;
-        public Span CurrentSpan() => NoFilesLeft ? new Span("(eof)", 0, 0) : new Span(CurrentFileName, _currentLine, _currentColumn);
 
-        /// <inheritdoc/>
-        public int Peek()
-        {
-            if (NoFilesLeft) return -1;
-            return CurrentChar;
-        }
+        /// <summary>
+        ///     Returns an empty span at the current schema position.
+        /// </summary>
+        public Span CurrentSpan() => NoFilesLeft ? _latestEofSpan : new Span(CurrentFileName, _currentLine, _currentColumn);
 
-        /// <inheritdoc/>
+        private Span _latestEofSpan = new Span("(unknown file)", 0, 0);
+        /// <summary>
+        ///     Returns an empty span at the most recent end-of-file position.
+        /// </summary>
+        public Span LatestEofSpan() => _latestEofSpan;
+
+        /// <summary>
+        ///     Returns the next available character but does not consume it.
+        /// </summary>
+        /// <returns>
+        ///     A char literal, or \0 if there are no characters left to be read.
+        ///     At the end of each individual input file, an artificial <see cref="CharExtensions.FileSeparator"/> is returned.
+        /// </returns>
         public char PeekChar()
         {
             if (NoFilesLeft) return '\0';
+            if (AtEndOfCurrentFile) return CharExtensions.FileSeparator;
             return CurrentChar;
         }
 
-        /// <inheritdoc/>
+        /// <summary>
+        ///     Reads the next character from the input stream and advances the character position by one character.
+        /// </summary>
+        /// <returns>
+        ///     A char literal, or \0 if there are no characters left to be read.
+        ///     At the end of each individual input file, an artificial <see cref="CharExtensions.FileSeparator"/> is returned.
+        /// </returns>
         public char GetChar()
         {
             if (NoFilesLeft) return '\0';
+            if (AtEndOfCurrentFile)
+            {
+                _latestEofSpan = CurrentSpan();
+                _schemaIndex++;
+                _position = 0;
+                _currentLine = 0;
+                _currentColumn = 0;
+                return CharExtensions.FileSeparator;
+            }
             var ch = CurrentChar;
             if (ch == '\n')
             {
@@ -75,14 +101,40 @@ namespace Core.IO
                 _currentColumn++;
             }
             _position++;
-            while (AtEndOfCurrentFile)
-            {
-                _schemaIndex++;
-                _position = 0;
-                _currentLine = 0;
-                _currentColumn = 0;
-            }
             return ch;
+        }
+
+        /// <summary>
+        ///     Append a file path to be read.
+        /// </summary>
+        /// <returns>True if a new file was actually added and must now be tokenized; false if this path was a duplicate.</returns>
+        public async Task<bool> AddFile(string absolutePath)
+        {
+            var fullPath = Path.GetFullPath(absolutePath);
+            if (!_schemas.Any(t => Path.GetFullPath(t.Item1) == fullPath))
+            {
+                var text = await File.ReadAllTextAsync(fullPath);
+                _schemas.Add((fullPath, text));
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Add an arbitrary bebop string to the parser.
+        /// </summary>
+        /// <param name="uniqueName">The unique name for this schema string. Duplicates will not be added. This takes the place of the "path".</param>
+        /// <param name="str">Arbitrary bebop string to append to the parser.</param>
+        /// <returns>True if the string was added and now must be tokenized; false if it had already been added.</returns>
+        public bool AddString(string uniqueName, string str)
+        {
+            if (_schemas.Any(t => t.Item1 == uniqueName))
+            {
+                return false;
+            }
+
+            _schemas.Add((uniqueName, str));
+            return true;
         }
     }
 }

@@ -1,0 +1,9 @@
+
+union Whattheheck {
+  1 -> struct Sxxx { bool xxxx; }
+  2 -> struct Syyy { bool yy; }
+}
+
+struct O {
+  Sxxx y;
+}

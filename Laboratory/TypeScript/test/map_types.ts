@@ -1,5 +1,5 @@
 import { BebopView } from 'bebop';
-import { ISomeMaps, SomeMaps } from './generated/map_types';
+import { ISomeMaps, SomeMaps } from './generated/gen';
 import * as assert from "assert";
 
 it("Map types roundtrip", () => {

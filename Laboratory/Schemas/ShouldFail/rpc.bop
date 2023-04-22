@@ -1,0 +1,12 @@
+message Msg {
+    1 -> string name;
+    2 -> date time;
+    3 -> byte[] data;
+}
+
+service Hello {
+    1 -> void world();
+    2 -> string[] get_messages(uint32 max);
+    4 -> bool check(string name, byte[] hash);
+    5 -> Msg respond(Msg input);
+}

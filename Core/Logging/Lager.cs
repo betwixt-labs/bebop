@@ -1,12 +1,23 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Core.Exceptions;
+using Core.Lexer.Tokenization.Models;
 using Core.Meta;
 
 namespace Core.Logging
 {
+    public class MiscErrorCodes
+    {
+        public const int FileNotFound = 404;
+        public const int Unknown = 1000;
+    }
+
+    public record Diagnostic(Severity Severity, string Message, int ErrorCode, Span? Span) {}
 
     /// <summary>
     /// A central logging factory
@@ -25,7 +36,7 @@ namespace Core.Logging
         /// </summary>
         public static async Task StandardOut(string message)
         {
-            await Console.Out.WriteLineAsync(message).ConfigureAwait(false);
+            await Console.Out.WriteLineAsync(message);
         }
 
         /// <summary>
@@ -33,71 +44,76 @@ namespace Core.Logging
         /// </summary>
         public static async Task StandardError(string message)
         {
-            await Console.Error.WriteLineAsync(message).ConfigureAwait(false);
+            await Console.Error.WriteLineAsync(message);
         }
 
-        /// <summary>
-        /// Format and write a <see cref="SpanException"/> 
-        /// </summary>
-        private async Task WriteSpanError(SpanException ex)
+        private string FormatDiagnostic(Diagnostic diagnostic)
         {
-            var message = Formatter switch
+            var span = diagnostic.Span;
+            var message = diagnostic.Message;
+            if (diagnostic.Severity == Severity.Warning)
             {
-                LogFormatter.MSBuild => $"{ex.Span.FileName}({ex.Span.StartColonString(',')}) : error BOP{ex.ErrorCode}: {ex.Message}",
-                LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] Issue located in '{ex.Span.FileName}' at {ex.Span.StartColonString()}: {ex.Message}",
-                LogFormatter.JSON => $@"{{""Message"": ""{ex.Message}"", ""Span"": {ex.Span.ToJson()}}}",
-                _ => throw new ArgumentOutOfRangeException()
+                message += $" (To disable this warning, run bebopc with `--no-warn {diagnostic.ErrorCode}`)";
+            }
+            switch (Formatter)
+            {
+                case LogFormatter.MSBuild:
+                    var where = span == null ? ReservedWords.CompilerName : $"{span?.FileName}({span?.StartColonString(',')})";
+                    return $"{where} : {diagnostic.Severity.ToString().ToLowerInvariant()} BOP{diagnostic.ErrorCode}: {message}";
+                case LogFormatter.Structured:
+                    where = span == null ? "" : $"Issue located in '{span?.FileName}' at {span?.StartColonString()}: ";
+                    return $"[{DateTime.Now}][Compiler][{diagnostic.Severity}] {where}{message}";
+                case LogFormatter.JSON:
+                    var options = new JsonSerializerOptions { Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) } };
+                    return JsonSerializer.Serialize(diagnostic, options);
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+
+        private string FormatSpanError(SpanException ex) =>
+            FormatDiagnostic(new(ex.Severity, ex.Message, ex.ErrorCode, ex.Span));
+
+        /// <summary>
+        /// Format and write a list of <see cref="SpanException"/>
+        /// </summary>
+        public async Task WriteSpanErrors(List<SpanException> exs)
+        {
+            var messages = exs.Select(FormatSpanError);
+            var joined = Formatter switch
+            {
+                LogFormatter.JSON => "[" + string.Join(",\n", messages) + "]",
+                _ => string.Join("\n", messages),
             };
-            await Console.Error.WriteLineAsync(message).ConfigureAwait(false);
+
+            if (string.IsNullOrWhiteSpace(joined))
+            {
+                // Don't print a single blank line.
+                return;
+            }
+            await Console.Error.WriteLineAsync(joined);
         }
 
         /// <summary>
         /// Format and write a <see cref="FileNotFoundException"/> 
         /// </summary>
-        private async Task WriteFileNotFoundError(FileNotFoundException ex)
-        {
-            const int msBuildErrorCode = 404;
-            var message = Formatter switch
-            {
-                LogFormatter.MSBuild => $"{ReservedWords.CompilerName} : fatal error BOP{msBuildErrorCode}: cannot open file '{ex.FileName}'",
-                LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] Unable to open file '{ex.FileName}'",
-                LogFormatter.JSON => $@"{{""Message"": ""{ex.Message}"", ""FileName"": {ex.FileName}}}",
-                _ => throw new ArgumentOutOfRangeException()
-            };
-            await Console.Error.WriteLineAsync(message).ConfigureAwait(false);
-        }
+        private async Task WriteFileNotFoundError(FileNotFoundException ex) =>
+            await Console.Error.WriteLineAsync(FormatDiagnostic(new(
+                Severity.Error, "Unable to open file: " + ex?.FileName, MiscErrorCodes.FileNotFound, null)));
 
         /// <summary>
         /// Format and write a <see cref="CompilerException"/> 
         /// </summary>
-        private async Task WriteCompilerException(CompilerException ex)
-        {
-            var message = Formatter switch
-            {
-                LogFormatter.MSBuild => $"{ReservedWords.CompilerName} : fatal error BOP{ex.ErrorCode}: {ex.Message}",
-                LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] {ex.Message}",
-                LogFormatter.JSON => $@"{{""Message"": ""{ex.Message}""}}",
-                _ => throw new ArgumentOutOfRangeException()
-            };
-            await Console.Error.WriteLineAsync(message).ConfigureAwait(false);
-        }
+        private async Task WriteCompilerException(CompilerException ex) =>
+            await Console.Error.WriteLineAsync(FormatDiagnostic(new(
+                Severity.Error, ex.Message, ex.ErrorCode, null)));
 
         /// <summary>
         /// Writes an exception with no dedicated formatting method.
         /// </summary>
-        private async Task WriteBaseError(Exception ex)
-        {
-            // for when we don't know the actual error.
-            const int msBuildErrorCode = 1000;
-            var message = Formatter switch
-            {
-                LogFormatter.MSBuild => $"{ReservedWords.CompilerName} : fatal error BOP{msBuildErrorCode}: {ex.Message}",
-                LogFormatter.Structured => $"[{DateTime.Now}][Compiler][Error] {ex.Message}",
-                LogFormatter.JSON => $@"{{""Message"": ""{ex.Message}""}}",
-                _ => throw new ArgumentOutOfRangeException()
-            };
-            await Console.Error.WriteLineAsync(message).ConfigureAwait(false);
-        }
+        private async Task WriteBaseError(Exception ex) =>
+            await Console.Error.WriteLineAsync(FormatDiagnostic(new(
+                Severity.Error, ex.Message, MiscErrorCodes.Unknown, null)));
 
         /// <summary>
         /// Writes an exception to standard error.
@@ -107,16 +123,16 @@ namespace Core.Logging
             switch (ex)
             {
                 case SpanException span:
-                    await WriteSpanError(span).ConfigureAwait(false);
+                    await WriteSpanErrors(new List<SpanException>() { span });
                     break;
                 case FileNotFoundException file:
-                    await WriteFileNotFoundError(file).ConfigureAwait(false);
+                    await WriteFileNotFoundError(file);
                     break;
                 case CompilerException compiler:
-                    await WriteCompilerException(compiler).ConfigureAwait(false);
+                    await WriteCompilerException(compiler);
                     break;
                 default:
-                    await WriteBaseError(ex).ConfigureAwait(false);
+                    await WriteBaseError(ex);
                     break;
             }
         }

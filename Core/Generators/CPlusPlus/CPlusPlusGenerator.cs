@@ -3,18 +3,19 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Core.Meta;
 using Core.Meta.Extensions;
-using Core.Meta.Interfaces;
 
 namespace Core.Generators.CPlusPlus
 {
-    public class CPlusPlusGenerator : Generator
+    public class CPlusPlusGenerator : BaseGenerator
     {
         const int indentStep = 2;
 
-        public CPlusPlusGenerator(ISchema schema) : base(schema) { }
+        public CPlusPlusGenerator(BebopSchema schema) : base(schema) { }
 
         private string FormatDocumentation(string documentation, int spaces)
         {
@@ -28,11 +29,11 @@ namespace Core.Generators.CPlusPlus
         }
 
         /// <summary>
-        /// Generate the body of the <c>encode</c> function for the given <see cref="TopLevelDefinition"/>.
+        /// Generate the body of the <c>encode</c> function for the given <see cref="RecordDefinition"/>.
         /// </summary>
         /// <param name="definition">The definition to generate code for.</param>
         /// <returns>The generated CPlusPlus <c>encode</c> function body.</returns>
-        public string CompileEncode(TopLevelDefinition definition)
+        public string CompileEncode(RecordDefinition definition)
         {
             return definition switch
             {
@@ -83,10 +84,11 @@ namespace Core.Generators.CPlusPlus
             builder.AppendLine($"writer.writeByte(discriminator);");
             builder.AppendLine($"const auto start = writer.length();");
             builder.AppendLine($"switch (discriminator) {{");
+            int i = 0;
             foreach (var branch in definition.Branches)
             {
                 builder.AppendLine($" case {branch.Discriminator}:");
-                builder.AppendLine($"  {branch.Definition.Name}::encodeInto(std::get<{branch.Discriminator - 1}>(message.variant), writer);");
+                builder.AppendLine($"  {branch.Definition.Name}::encodeInto(std::get<{i++}>(message.variant), writer);");
                 builder.AppendLine($"  break;");
             }
             builder.AppendLine($"}}");
@@ -134,19 +136,19 @@ namespace Core.Generators.CPlusPlus
                     BaseType.Date => $"writer.writeDate({target});",
                     _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                 },
-                DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition =>
-                    $"writer.writeUint32(static_cast<uint32_t>({target}));",
+                DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition ed =>
+                    CompileEncodeField(ed.ScalarType, $"static_cast<{TypeName(ed.ScalarType)}>({target})", depth, indentDepth),
                 DefinedType dt => $"{dt.Name}::encodeInto({target}, writer);",
                 _ => throw new InvalidOperationException($"CompileEncodeField: {type}")
             };
         }
 
         /// <summary>
-        /// Generate the body of the <c>decode</c> function for the given <see cref="TopLevelDefinition"/>.
+        /// Generate the body of the <c>decode</c> function for the given <see cref="RecordDefinition"/>.
         /// </summary>
         /// <param name="definition">The definition to generate code for.</param>
         /// <returns>The generated CPlusPlus <c>decode</c> function body.</returns>
-        public string CompileDecode(TopLevelDefinition definition)
+        public string CompileDecode(RecordDefinition definition)
         {
             return definition switch
             {
@@ -207,19 +209,41 @@ namespace Core.Generators.CPlusPlus
             builder.AppendLine("const auto length = reader.readLengthPrefix();");
             builder.AppendLine("const auto end = reader.pointer() + length + 1;");
             builder.AppendLine("switch (reader.readByte()) {");
+            int i = 0;
             foreach (var branch in definition.Branches)
             {
-                var i = branch.Discriminator - 1;
                 builder.AppendLine($"  case {branch.Discriminator}:");
                 builder.AppendLine($"    target.variant.emplace<{i}>();");
                 builder.AppendLine($"    {branch.Definition.Name}::decodeInto(reader, std::get<{i}>(target.variant));");
                 builder.AppendLine("    break;");
+                i++;
             }
             builder.AppendLine("  default:");
             builder.AppendLine("    reader.seek(end); // do nothing?");
             builder.AppendLine("    return reader.bytesRead();");
             builder.AppendLine("}");
             return builder.ToString();
+        }
+
+        private string ReadBaseType(BaseType baseType)
+        {
+            return baseType switch
+            {
+                BaseType.Bool => "reader.readBool()",
+                BaseType.Byte => "reader.readByte()",
+                BaseType.UInt32 => "reader.readUint32()",
+                BaseType.Int32 => "reader.readInt32()",
+                BaseType.Float32 => "reader.readFloat32()",
+                BaseType.String => "reader.readString()",
+                BaseType.Guid => "reader.readGuid()",
+                BaseType.UInt16 => "reader.readUint16()",
+                BaseType.Int16 => "reader.readInt16()",
+                BaseType.UInt64 => "reader.readUint64()",
+                BaseType.Int64 => "reader.readInt64()",
+                BaseType.Float64 => "reader.readFloat64()",
+                BaseType.Date => "reader.readDate()",
+                _ => throw new ArgumentOutOfRangeException()
+            };
         }
 
         private string CompileDecodeField(TypeBase type, string target, int depth = 0, int indentDepth = 0, bool isOptional = false)
@@ -253,25 +277,9 @@ namespace Core.Generators.CPlusPlus
                     $"{tab}{tab}{CompileDecodeField(mt.ValueType, $"v{depth}", depth + 1, indentDepth + 2, false)}" + nl +
                     $"{tab}}}" + nl +
                     $"}}",
-                ScalarType st => st.BaseType switch
-                {
-                    BaseType.Bool => $"{target} = reader.readBool();",
-                    BaseType.Byte => $"{target} = reader.readByte();",
-                    BaseType.UInt16 => $"{target} = reader.readUint16();",
-                    BaseType.Int16 => $"{target} = reader.readInt16();",
-                    BaseType.UInt32 => $"{target} = reader.readUint32();",
-                    BaseType.Int32 => $"{target} = reader.readInt32();",
-                    BaseType.UInt64 => $"{target} = reader.readUint64();",
-                    BaseType.Int64 => $"{target} = reader.readInt64();",
-                    BaseType.Float32 => $"{target} = reader.readFloat32();",
-                    BaseType.Float64 => $"{target} = reader.readFloat64();",
-                    BaseType.String => $"{target} = reader.readString();",
-                    BaseType.Guid => $"{target} = reader.readGuid();",
-                    BaseType.Date => $"{target} = reader.readDate();",
-                    _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
-                },
-                DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition =>
-                    $"{target} = static_cast<{dt.Name}>(reader.readUint32());",
+                ScalarType st => $"{target} = {ReadBaseType(st.BaseType)};",
+                DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition ed =>
+                    $"{target} = static_cast<{dt.Name}>({ReadBaseType(ed.BaseType)});",
                 DefinedType dt when isOptional => $"{target}.emplace({dt.Name}::decode(reader));",
                 DefinedType dt => $"{dt.Name}::decodeInto(reader, {target});",
                 _ => throw new InvalidOperationException($"CompileDecodeField: {type}")
@@ -318,18 +326,41 @@ namespace Core.Generators.CPlusPlus
             throw new InvalidOperationException($"GetTypeName: {type}");
         }
 
-        private string Optional(string type) {
-            return "std::optional<" + type + ">";
+        private static string Optional(string type) => "std::optional<" + type + ">";
+
+        private static string EscapeStringLiteral(string value)
+        {
+            // C++ accepts \u0000 style escape sequences, so we can escape the string JSON-style.
+            var options = new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+            return JsonSerializer.Serialize(value, options);
+        }
+
+        private string EmitLiteral(Literal literal) {
+            return literal switch
+            {
+                BoolLiteral bl => bl.Value ? "true" : "false",
+                IntegerLiteral il => il.Value,
+                FloatLiteral fl when fl.Value == "inf" => $"std::numeric_limits<{TypeName(literal.Type)}>::infinity()",
+                FloatLiteral fl when fl.Value == "-inf" => $"-std::numeric_limits<{TypeName(literal.Type)}>::infinity()",
+                FloatLiteral fl when fl.Value == "nan" => $"std::numeric_limits<{TypeName(literal.Type)}>::quiet_NaN()",
+                FloatLiteral fl => fl.Value,
+                StringLiteral sl => EscapeStringLiteral(sl.Value),
+                GuidLiteral gl => $"::bebop::Guid::fromString(\"{gl.Value}\")",
+                _ => throw new ArgumentOutOfRangeException(literal.ToString()),
+            };
         }
 
         /// <summary>
         /// Generate code for a Bebop schema.
         /// </summary>
         /// <returns>The generated code.</returns>
-        public override string Compile()
+        public override string Compile(Version? languageVersion, bool writeGeneratedNotice = true)
         {
             var builder = new StringBuilder();
-            builder.AppendLine(GeneratorUtils.GetXmlAutoGeneratedNotice());
+            if (writeGeneratedNotice)
+            {
+                builder.AppendLine(GeneratorUtils.GetXmlAutoGeneratedNotice());
+            }
             builder.AppendLine("#pragma once");
             builder.AppendLine("#include <cstddef>");
             builder.AppendLine("#include <cstdint>");
@@ -357,7 +388,7 @@ namespace Core.Generators.CPlusPlus
                 switch (definition)
                 {
                     case EnumDefinition ed:
-                        builder.AppendLine($"enum class {definition.Name} {{");
+                        builder.AppendLine($"enum class {definition.Name} : {TypeName(ed.ScalarType)} {{");
                         for (var i = 0; i < ed.Members.Count; i++)
                         {
                             var field = ed.Members.ElementAt(i);
@@ -374,7 +405,7 @@ namespace Core.Generators.CPlusPlus
                         builder.AppendLine("};");
                         builder.AppendLine("");
                         break;
-                    case TopLevelDefinition td:
+                    case RecordDefinition td:
                         builder.AppendLine($"struct {td.Name} {{");
                         builder.AppendLine($"  static const size_t minimalEncodedSize = {td.MinimalEncodedSize(Schema)};");
                         if (td.OpcodeAttribute != null)
@@ -412,17 +443,20 @@ namespace Core.Generators.CPlusPlus
                             throw new InvalidOperationException($"unsupported definition {td}");
                         }
 
-                        builder.AppendLine($"  static void encodeInto(const {td.Name}& message, std::vector<uint8_t>& targetBuffer) {{");
+                        builder.AppendLine($"  static size_t encodeInto(const {td.Name}& message, std::vector<uint8_t>& targetBuffer) {{");
                         builder.AppendLine("    ::bebop::Writer writer{targetBuffer};");
-                        builder.AppendLine($"    {td.Name}::encodeInto(message, writer);");
+                        builder.AppendLine($"    return {td.Name}::encodeInto(message, writer);");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  template<typename T = ::bebop::Writer> static void encodeInto(const {td.Name}& message, T& writer) {{");
+                        builder.AppendLine($"  template<typename T = ::bebop::Writer> static size_t encodeInto(const {td.Name}& message, T& writer) {{");
+                        builder.AppendLine("    size_t before = writer.length();");
                         builder.Append(CompileEncode(td));
+                        builder.AppendLine("    size_t after = writer.length();");
+                        builder.AppendLine("    return after - before;");
                         builder.AppendLine("  }");
                         builder.AppendLine("");
-                        builder.AppendLine($"  void encodeInto(std::vector<uint8_t>& targetBuffer) {{ {td.Name}::encodeInto(*this, targetBuffer); }}");
-                        builder.AppendLine($"  void encodeInto(::bebop::Writer& writer) {{ {td.Name}::encodeInto(*this, writer); }}");
+                        builder.AppendLine($"  size_t encodeInto(std::vector<uint8_t>& targetBuffer) {{ return {td.Name}::encodeInto(*this, targetBuffer); }}");
+                        builder.AppendLine($"  size_t encodeInto(::bebop::Writer& writer) {{ return {td.Name}::encodeInto(*this, writer); }}");
                         builder.AppendLine("");
                         builder.AppendLine($"  static {td.Name} decode(const uint8_t* sourceBuffer, size_t sourceBufferSize) {{");
                         builder.AppendLine($"    {td.Name} result;");
@@ -462,6 +496,12 @@ namespace Core.Generators.CPlusPlus
                         builder.AppendLine("};");
                         builder.AppendLine("");
                         break;
+                    case ConstDefinition cd:
+                        builder.AppendLine($"const {TypeName(cd.Value.Type)} {cd.Name} = {EmitLiteral(cd.Value)};");
+                        builder.AppendLine("");
+                        break;
+                    default:
+                        throw new InvalidOperationException($"unsupported definition {definition}");
                 }
             }
 
@@ -492,10 +532,10 @@ namespace Core.Generators.CPlusPlus
             {
                 if (reader.ReadLine() is string line)
                 {
-                    if (_majorRegex.IsMatch(line)) line = _majorRegex.Replace(line, VersionInfo.Major.ToString());
-                    if (_minorRegex.IsMatch(line)) line = _minorRegex.Replace(line, VersionInfo.Minor.ToString());
-                    if (_patchRegex.IsMatch(line)) line = _patchRegex.Replace(line, VersionInfo.Patch.ToString());
-                    if (_informationalRegex.IsMatch(line)) line = _informationalRegex.Replace(line, $"\"{VersionInfo.Informational}\"");
+                    if (_majorRegex.IsMatch(line)) line = _majorRegex.Replace(line, DotEnv.Generated.Environment.Major.ToString());
+                    if (_minorRegex.IsMatch(line)) line = _minorRegex.Replace(line, DotEnv.Generated.Environment.Minor.ToString());
+                    if (_patchRegex.IsMatch(line)) line = _patchRegex.Replace(line, DotEnv.Generated.Environment.Patch.ToString());
+                    if (_informationalRegex.IsMatch(line)) line = _informationalRegex.Replace(line, $"\"{DotEnv.Generated.Environment.Version}\"");
                     builder.AppendLine(line);
 
                 }

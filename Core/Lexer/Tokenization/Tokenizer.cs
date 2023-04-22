@@ -3,19 +3,18 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using Core.Exceptions;
-using Core.IO.Interfaces;
+using Core.IO;
 using Core.Lexer.Extensions;
-using Core.Lexer.Tokenization.Interfaces;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta.Extensions;
 
 namespace Core.Lexer.Tokenization
 {
-    public class Tokenizer : ITokenizer
+    public class Tokenizer
     {
-        private ISchemaReader _reader;
+        private SchemaReader _reader;
 
-        public Tokenizer(ISchemaReader reader)
+        public Tokenizer(SchemaReader reader)
         {
             _reader = reader;
         }
@@ -26,28 +25,50 @@ namespace Core.Lexer.Tokenization
 
         private Token MakeToken(TokenKind kind, string lexeme)
         {
-            var tokenEnd = _reader.CurrentSpan();
-            var span = TokenStart.Combine(tokenEnd);
+            var span = kind == TokenKind.EndOfFile ? _reader.LatestEofSpan() : TokenStart.Combine(_reader.CurrentSpan());
             return new Token(kind, lexeme, span, TokenCount++);
         }
 
-        /// <summary>
-        /// Assigns a reader for working on a schema
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="reader"></param>
-        public void AssignReader<T>(T reader) where T : ISchemaReader
+        private List<Token> _tokens = new List<Token>();
+        bool _newFilesToTokenize = true;
+
+        public List<Token> Tokens
         {
-            _reader = reader;
+            get
+            {
+                if (_newFilesToTokenize) _tokens.AddRange(GetPendingTokens());
+                return _tokens;
+            }
         }
 
+        public async Task AddFile(string absolutePath)
+        {
+            if (await _reader.AddFile(absolutePath))
+            {
+                _newFilesToTokenize = true;
+            }
+        }
+        
         /// <summary>
-        /// Yields back a a stream of tokens asynchronously 
+        /// Add an arbitrary bebop string to the token stream.
+        /// </summary>
+        /// <param name="uniqueName">The unique name for this schema string. Duplicates will not be added. This takes the place of the "path".</param>
+        /// <param name="str">Arbitrary bebop string to append to the token stream.</param>
+        public void AddString(string uniqueName, string str)
+        {
+            if (_reader.AddString(uniqueName, str))
+            {
+                _newFilesToTokenize = true;
+            }
+        }
+
+
+        /// <summary>
+        /// Yields all pending tokens from the reader.
         /// </summary>
         /// <returns></returns>
-        public async IAsyncEnumerable<Token> TokenStream()
+        private IEnumerable<Token> GetPendingTokens()
         {
-            TokenCount = 0;
             while (true)
             {
                 var current = GetCharSkippingTrivia();
@@ -58,14 +79,14 @@ namespace Core.Lexer.Tokenization
                     throw new UnrecognizedTokenException(current, TokenStart);
                 }
 
-                yield return await Task.FromResult(scan.Value);
+                yield return scan.Value;
             }
-            yield return MakeToken(TokenKind.EndOfFile, string.Empty);
+            _newFilesToTokenize = false;
         }
 
         /// <summary>
         /// Skip over whitespace and comments, then return the first char of the next token.
-        /// (This may be '\0' if the end of file is reached.)
+        /// (This may be '\0' if the end of the token stream is reached.)
         /// </summary>
         /// <returns>The first char of the next token.</returns>
         public char GetCharSkippingTrivia()
@@ -74,10 +95,13 @@ namespace Core.Lexer.Tokenization
             while (true)
             {
                 var c = _reader.PeekChar();
-                
-                // Report EOF no matter what.
+
+                // Report end of token stream no matter what.
                 if (c == '\0') return c;
-                
+
+                // Report (and skip over) a file separator no matter what.
+                if (c == CharExtensions.FileSeparator) return _reader.GetChar();
+
                 // Parse \r or \n or \r\n as a newline.
                 var isNewLine = false;
                 if (c == '\r')
@@ -125,17 +149,18 @@ namespace Core.Lexer.Tokenization
         /// <returns></returns>
         public Token? TryScan(char surrogate) => surrogate switch
         {
+            _ when surrogate == CharExtensions.FileSeparator => MakeToken(TokenKind.EndOfFile, ""),
             _ when IsBlockComment(surrogate, out var b) => b,
+            _ when IsNumber(surrogate, out var n) => n,
             _ when IsSymbol(surrogate, out var s) => s,
             _ when IsIdentifier(surrogate, out var i) => i,
             _ when IsLiteral(surrogate, out var l) => l,
-            _ when IsNumber(surrogate, out var n) => n,
             _ => null
         };
 
 
-      
-      
+
+
         /// <summary>
         /// Determines if a surrogate leads into a block comment.
         /// </summary>
@@ -149,7 +174,7 @@ namespace Core.Lexer.Tokenization
             {
                 return false;
             }
-           
+
             _reader.GetChar();
             var builder = new StringBuilder();
             var currentChar = _reader.GetChar();
@@ -180,7 +205,9 @@ namespace Core.Lexer.Tokenization
 
 
         /// <summary>
-        /// Determines if a surrogate is a integral token
+        /// Determines if a surrogate starts a numeric token.
+        /// A numeric token matches the regex: [0-9-][0-9A-Za-z_.]*
+        /// This is a little "greedy": it includes things like GUID literals starting with a decimal digit, or "-inf".
         /// </summary>
         /// <param name="surrogate"></param>
         /// <param name="token"></param>
@@ -188,34 +215,26 @@ namespace Core.Lexer.Tokenization
         private bool IsNumber(char surrogate, out Token token)
         {
             token = default;
-            if (surrogate != '-' && !surrogate.IsDecimalDigit())
+            if (!surrogate.IsDecimalDigit())
             {
                 return false;
             }
             var builder = new StringBuilder();
             builder.Append(surrogate);
-            if (surrogate == '0' && _reader.PeekChar() == 'x')
+
+            char c;
+            while ((c = _reader.PeekChar()).IsIdentifierFollow() || c == '.')
             {
                 builder.Append(_reader.GetChar());
-                while (_reader.PeekChar().IsHexDigit())
-                {
-                    builder.Append(_reader.GetChar());
-                }
             }
-            else
-            {
-                while (_reader.PeekChar().IsDecimalDigit())
-                {
-                    builder.Append(_reader.GetChar());
-                }
-            }
-           
+
+            var tokenString = builder.ToString();
             token = MakeToken(TokenKind.Number, builder.ToString());
             return true;
         }
 
         /// <summary>
-        /// Determines if a surrogate is the beginning of a literal token
+        /// Determines if a surrogate is the beginning of a string literal token
         /// </summary>
         /// <param name="surrogate"></param>
         /// <param name="token"></param>
@@ -225,59 +244,27 @@ namespace Core.Lexer.Tokenization
             token = default;
             return surrogate switch
             {
-                _ when surrogate.IsSingleQuote() => ScanStringLiteral(out token),
-                _ when surrogate.IsDoubleQuote() => ScanStringExpandable(out token),
+                '\'' => ScanString(out token, '\''),
+                '"' => ScanString(out token, '\"'),
                 _ => false
             };
         }
-
-        /// <summary>
-        /// Reads a string that is wrapped in double quotes
-        /// </summary>
-        /// <param name="token"></param>
-        /// <returns></returns>
-        private bool ScanStringExpandable(out Token token)
-        {
-            token = default;
-            var builder = new StringBuilder();
-            var currentChar = _reader.GetChar();
-            while (currentChar != '\0')
-            {
-                if (currentChar.IsDoubleQuote())
-                {
-                    if (!_reader.PeekChar().IsDoubleQuote())
-                    {
-                        break;
-                    }
-                    currentChar = _reader.GetChar();
-                }
-                builder.Append(currentChar);
-                currentChar = _reader.GetChar();
-            }
-            if (currentChar == '\0')
-            {
-                // EOF
-                return false;
-            }
-            token = MakeToken(TokenKind.StringExpandable, builder.ToString());
-            return true;
-        }
-
         /// <summary>
         /// Reads a string that is wrapped in single quotes.
         /// </summary>
         /// <param name="token"></param>
         /// <returns></returns>
-        private bool ScanStringLiteral(out Token token)
+        private bool ScanString(out Token token, char quote)
         {
             token = default;
             var builder = new StringBuilder();
             var currentChar = _reader.GetChar();
             while (currentChar != '\0')
             {
-                if (currentChar.IsSingleQuote())
+                if (currentChar == quote)
                 {
-                    if (!_reader.PeekChar().IsSingleQuote())
+                    // Quotes are escaped by doubling them. "Hello ""world""!" corresponds to: Hello "world"!
+                    if (_reader.PeekChar() != quote)
                     {
                         break;
                     }
@@ -291,7 +278,7 @@ namespace Core.Lexer.Tokenization
                 // EOF
                 return false;
             }
-            token = MakeToken(TokenKind.StringLiteral, builder.ToString());
+            token = MakeToken(TokenKind.String, builder.ToString());
             return true;
         }
 

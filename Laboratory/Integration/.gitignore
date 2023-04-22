@@ -1,0 +1,7 @@
+schema.cs
+schema.hpp
+schema.ts
+bebop.hpp
+*.enc
+Rust/src/schema.rs
+target

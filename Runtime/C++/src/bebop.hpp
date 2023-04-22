@@ -422,7 +422,7 @@ public:
     }
 
     void writeDate(TickDuration duration) {
-        writeUint64(duration.count() + ticksBetweenEpochs);
+        writeUint64((duration.count() + ticksBetweenEpochs) & 0x3fffffffffffffff);
     }
 
     /// Reserve some space to write a message's length prefix, and return its index.

@@ -6,4 +6,3 @@
 library bebop_dart;
 
 export 'src/bebop.dart';
-

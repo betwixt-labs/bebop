@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Core.Lexer.Tokenization;
@@ -9,7 +9,7 @@ namespace Core.Parser.Extensions
 {
     public static class TypeExtensions
     {
-        private static readonly Dictionary<string, BaseType> BaseTypeNames = new Dictionary<string, BaseType>
+        public static readonly Dictionary<string, BaseType> BaseTypeNames = new Dictionary<string, BaseType>
         {
             {"bool", BaseType.Bool},
             {"byte", BaseType.Byte},
@@ -26,49 +26,8 @@ namespace Core.Parser.Extensions
             {"guid", BaseType.Guid},
             {"date", BaseType.Date},
         };
-        public static int FindToken(this Token[] tokens, Func<KeyValuePair<Token, int>, bool> predicate)
-        {
-            try
-            {
-                return tokens
-                    .Select((token, index) => new KeyValuePair<Token, int>(token, index))
-                    .First(predicate)
-                    .Value;
-            }
-            catch (InvalidOperationException)
-            {
-                return -1;
-            }
-        }
 
-        public static bool IsHybridValue(this TokenKind kind)
-        {
-            return kind switch
-            {
-                TokenKind.Opcode => true,
-                TokenKind.Deprecated => false,
-                _ => false
-            };
-        }
-
-
-        public static bool IsAggregateKind(this Token token, out AggregateKind? kind)
-        {
-            kind = token.Kind switch
-            {
-                TokenKind.Struct => AggregateKind.Struct,
-                TokenKind.Enum => AggregateKind.Enum,
-                TokenKind.Message => AggregateKind.Message,
-                _ => null
-            };
-            return token.Kind switch
-            {
-                TokenKind.Struct => true,
-                TokenKind.Message => true,
-                TokenKind.Enum => true,
-                _ => false
-            };
-        }
+        public static string BebopName(this BaseType baseType) => BaseTypeNames.First(kv => kv.Value == baseType).Key;
 
         public static bool TryParseBaseType(this Token token, out BaseType? typeCode)
         {

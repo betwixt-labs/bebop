@@ -34,18 +34,6 @@ namespace Core.Lexer.Tokenization
         ReadOnly,
 
         /// <summary>
-        ///     The 'deprecated' keyword which is reserved by the compiler
-        /// </summary>
-        [Keyword("deprecated")]
-        Deprecated,
-
-        /// <summary>
-        ///     The 'opcode' keyword which is reserved by the compiler
-        /// </summary>
-        [Keyword("opcode")]
-        Opcode,
-
-        /// <summary>
         ///     The 'map' keyword which is reserved by the compiler
         /// </summary>
         [Keyword("map")]
@@ -62,6 +50,12 @@ namespace Core.Lexer.Tokenization
         /// </summary>
         [Keyword("union")]
         Union,
+        
+        /// <summary>
+        ///     The 'service' keyword which is reserved by the compiler
+        /// </summary>
+        [Keyword("service")]
+        Service,
 
     #endregion
 
@@ -70,14 +64,9 @@ namespace Core.Lexer.Tokenization
         Identifier,
 
         /// <summary>
-        ///     A single quoted string literal.
+        ///     A string literal.
         /// </summary>
-        StringLiteral,
-
-        /// <summary>
-        ///     A double quoted string literal.
-        /// </summary>
-        StringExpandable,
+        String,
 
         /// <summary>
         ///     Any numerical literal token.
@@ -119,13 +108,13 @@ namespace Core.Lexer.Tokenization
         CloseCaret,
 
         /// <summary>
-        ///     <![CDATA[ { }]]>
+        ///     <![CDATA[ { ]]>
         /// </summary>
         [Symbol('{')]
         OpenBrace,
 
         /// <summary>
-        ///     <![CDATA[ }]]>
+        ///     <![CDATA[ } ]]>
         /// </summary>
         [Symbol('}')]
         CloseBrace,
@@ -183,6 +172,25 @@ namespace Core.Lexer.Tokenization
         /// </summary>
         [Symbol('=')]
         Eq,
+
+        /// <summary>
+        ///      <![CDATA[ & ]]>
+        /// </summary>
+        [Symbol('&')]
+        Ampersand,
+
+        /// <summary>
+        ///      <![CDATA[ | ]]>
+        /// </summary>
+        [Symbol('|')]
+        VerticalLine,
+
+        /// <summary>
+        ///      <![CDATA[ ~ ]]>
+        /// </summary>
+        [Symbol('~')]
+        Tilde,
+
         /// <summary>
         ///      <![CDATA[ - ]]>
         /// </summary>

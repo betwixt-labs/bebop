@@ -1,4 +1,4 @@
-import { ILibrary, Instrument, Library, ISong, Song, Musician } from '../test/generated/jazz';
+import { ILibrary, Instrument, Library, ISong, Song, Musician } from '../test/generated/gen';
 import benchmark = require('benchmark');
 import msgpack = require("@msgpack/msgpack");
 import Pbf = require('pbf');
@@ -8,14 +8,14 @@ import Pbf = require('pbf');
 var PbfSong = require('./jazz_protobuf.gen').Song;
 
 // I'd benchmark "Library", but it contains a Map(), which causes problems.
-const song1: ISong = {
+const song1 = new Song({
     title: 'Donna Lee',
     year: 1947,
     performers: [
         { name: 'Charlie Parker', plays: Instrument.Sax },
         { name: 'Miles Davis', plays: Instrument.Trumpet },
     ],
-};
+});
 
 const bebopEncodedSong = Song.encode(song1);
 const jsonEncodedSong = JSON.stringify(song1);

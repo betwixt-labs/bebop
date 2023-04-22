@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -13,7 +13,17 @@ using Core.Meta;
 
 namespace Compiler
 {
-#region FlagAttribute
+    #region Records
+    /// <summary>
+    /// Represents a code generator passed to bebopc.
+    /// </summary>
+    /// <param name="Alias">The alias of the code generator.</param>
+    /// <param name="OutputFile">The quailified file that the generator will produce.</param>
+    /// <param name="LangVersion">If set this value defines the version of the language generated code will use.</param>
+    public record CodeGenerator(string Alias, string OutputFile, Version? LangVersion);
+    #endregion
+
+    #region FlagAttribute
 
     /// <summary>
     ///     Models an application command-line flag.
@@ -31,7 +41,9 @@ namespace Compiler
         public CommandLineFlagAttribute(string name,
             string helpText,
             string usageExample = "",
-            bool isGeneratorFlag = false)
+            bool isGeneratorFlag = false,
+            bool valuesRequired = true,
+            bool hideFromHelp = false)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -45,7 +57,10 @@ namespace Compiler
             HelpText = helpText;
             UsageExample = usageExample;
             IsGeneratorFlag = isGeneratorFlag;
+            ValuesRequired = valuesRequired;
+            HideFromHelp = hideFromHelp;
         }
+
 
         /// <summary>
         ///     The name command-line flag. This name is usually a single english word.
@@ -69,13 +84,24 @@ namespace Compiler
         ///     If this property is set to true the attributed command-line flag is used to instantiate a code generator.
         /// </summary>
         public bool IsGeneratorFlag { get; }
+
+        /// <summary>
+        ///     If this property is true, the flag requires values (arguments) to be set.
+        /// </summary>
+        public bool ValuesRequired { get; }
+
+        /// <summary>
+        ///     If this property is true, the command-line flag will be hidden from help output.
+        /// </summary>
+        public bool HideFromHelp { get; }
     }
 
-#endregion
+    #endregion
     /// <summary>
     /// Static extension methods for the command-line flag types.
     /// </summary>
-    public static class CommandLineExtensions {
+    public static class CommandLineExtensions
+    {
         /// <summary>
         /// Determines if the provided <paramref name="flags"/> contains the specified <paramref name="flagName"/>
         /// </summary>
@@ -118,7 +144,7 @@ namespace Compiler
         /// Indicates if the current flag has any values assigned to it.
         /// </summary>
         /// <returns>true if the flag has values, otherwise false.</returns>
-        public bool HasValues() => Values is {Length: > 0};
+        public bool HasValues() => Values is { Length: > 0 };
 
         /// <summary>
         /// Returns the first value associated with the current flag.
@@ -153,33 +179,40 @@ namespace Compiler
             "--config bebop.json")]
         public string? ConfigFile { get; private set; }
 
+        [CommandLineFlag("cpp", "Generate C++ source code to the specified file",
+            "--cpp ./my/output/HelloWorld.hpp", true)]
+        public string? CPlusPlusOutput { get; private set; }
+
         [CommandLineFlag("cs", "Generate C# source code to the specified file", "--cs ./my/output/HelloWorld.cs",
             true)]
         public string? CSharpOutput { get; private set; }
-
-        [CommandLineFlag("ts", "Generate TypeScript source code to the specified file",
-            "--ts ./my/output/HelloWorld.ts", true)]
-        public string? TypeScriptOutput { get; private set; }
 
         [CommandLineFlag("dart", "Generate Dart source code to the specified file",
             "--dart ./my/output/HelloWorld.dart", true)]
         public string? DartOutput { get; private set; }
 
-        [CommandLineFlag("cpp", "Generate C++ source code to the specified file",
-            "--cpp ./my/output/HelloWorld.hpp", true)]
-        public string? CPlusPlusOutput { get; private set; }
+        [CommandLineFlag("rust", "Generate Rust source code to the specified file", "--rust ./my/output/HelloWorld.rs",
+            true)]
+        public string? RustOutput { get; private set; }
+
+        [CommandLineFlag("ts", "Generate TypeScript source code to the specified file",
+            "--ts ./my/output/HelloWorld.ts", true)]
+        public string? TypeScriptOutput { get; private set; }
 
         [CommandLineFlag("namespace", "When this option is specified generated code will use namespaces",
-            "--lang cs --namespace [package]")]
+            "--cs --namespace [package]")]
         public string? Namespace { get; private set; }
 
-        [CommandLineFlag("dir", "Parse and generate code from a directory of schemas", "--lang ts --dir [input dir]")]
+        [CommandLineFlag("skip-generated-notice", "Flag to disable generating the file header announcing the file was autogenerated by bebop.", "--rust --skip-generation-notice", valuesRequired: false)]
+        public bool SkipGeneratedNotice { get; private set; }
+
+        [CommandLineFlag("dir", "Parse and generate code from a directory of schemas", "--ts --dir [input dir]")]
         public string? SchemaDirectory { get; private set; }
 
         [CommandLineFlag("files", "Parse and generate code from a list of schemas", "--files [file1] [file2] ...")]
         public List<string>? SchemaFiles { get; private set; }
 
-        [CommandLineFlag("check", "Checks that the provided schema files are valid", "--check [file.bop] [file2.bop] ...")]
+        [CommandLineFlag("check", "Checks that the provided schema files are valid, or entire project defined by bebop.json if no files provided", "--check [file.bop] [file2.bop] ...", false, false)]
         public List<string>? CheckSchemaFiles { get; private set; }
 
         [CommandLineFlag("check-schema", "Reads a schema from stdin and validates it.", "--check-schema < [schema text]")]
@@ -197,6 +230,12 @@ namespace Compiler
         [CommandLineFlag("help", "Show this text and exit.", "--help")]
         public bool Help { get; private set; }
 
+        [CommandLineFlag("langserv", "Starts the language server", "--langserv", hideFromHelp: true)]
+        public bool LanguageServer { get; private set; }
+
+        [CommandLineFlag("debug", "Waits for a debugger to attach", "--debug", hideFromHelp: true)]
+        public bool Debug { get; private set; }
+
         /// <summary>
         ///     Controls how loggers format data.
         /// </summary>
@@ -204,23 +243,48 @@ namespace Compiler
             "--log-format (structured|msbuild|json)")]
         public LogFormatter LogFormatter { get; private set; }
 
+        /// <summary>
+        ///     An optional flag to set the version of a language a code generator will use. 
+        /// </summary>
+        [CommandLineFlag("cs-version", "Defines the C# language version the C# generator will target.",
+            "--cs ./my/output/HelloWorld.cs --cs-version (9.0|8.0)")]
+        public Version? CSharpVersion { get; private set; }
+
+        [CommandLineFlag("no-warn", "Disable a list of warning codes", "--no-warn 200 201 202")]
+        public List<string>? NoWarn { get; private set; }
+
         public string HelpText { get; }
+
+        /// <summary>
+        /// Finds a language version flag set for a generator.
+        /// </summary>
+        private Version? GetGeneratorVersion(CommandLineFlagAttribute attribute)
+        {
+            foreach (var flag in GetFlagAttributes())
+            {
+                if ($"{attribute.Name}-version".Equals(flag.Attribute.Name, StringComparison.OrdinalIgnoreCase) && flag.Property.GetValue(this) is Version value)
+                {
+                    return value;
+                }
+            }
+            return null;
+        }
 
         /// <summary>
         ///     Returns the alias and output file of all command-line specified code generators.
         /// </summary>
-        public IEnumerable<(string Alias, string OutputFile)> GetParsedGenerators()
+        public IEnumerable<CodeGenerator> GetParsedGenerators()
         {
             foreach (var flag in GetFlagAttributes())
             {
                 if (flag.Attribute.IsGeneratorFlag && flag.Property.GetValue(this) is string value)
                 {
-                    yield return (flag.Attribute.Name, value);
+                    yield return new CodeGenerator(flag.Attribute.Name, value, GetGeneratorVersion(flag.Attribute));
                 }
             }
         }
 
-    #region Static
+        #region Static
 
         /// <summary>
         ///     Walks all properties in <see cref="CommandLineFlags"/> and maps them to their assigned
@@ -233,7 +297,7 @@ namespace Compiler
                     let attr = p.GetCustomAttributes(typeof(CommandLineFlagAttribute), true)
                     where attr.Length == 1
                     select (p, attr.First() as CommandLineFlagAttribute))
-                .Select(t => ((PropertyInfo, CommandLineFlagAttribute)) t)
+                .Select(t => ((PropertyInfo, CommandLineFlagAttribute))t)
                 .ToList();
         }
 
@@ -255,12 +319,12 @@ namespace Compiler
             var configFile = Directory.GetFiles(workingDirectory, ConfigFileName).FirstOrDefault();
             while (string.IsNullOrWhiteSpace(configFile))
             {
-                if (Directory.GetParent(workingDirectory) is not {Exists: true} parent)
+                if (Directory.GetParent(workingDirectory) is not { Exists: true } parent)
                 {
                     break;
                 }
                 workingDirectory = parent.FullName;
-                if (parent.GetFiles(ConfigFileName)?.FirstOrDefault() is {Exists: true} file)
+                if (parent.GetFiles(ConfigFileName)?.FirstOrDefault() is { Exists: true } file)
                 {
                     configFile = file.FullName;
                 }
@@ -268,9 +332,9 @@ namespace Compiler
             return configFile;
         }
 
-    #endregion
+        #endregion
 
-    #region Parsing
+        #region Parsing
 
         /// <summary>
         ///     Parses an array of command-line flags into dictionary.
@@ -286,7 +350,7 @@ namespace Compiler
                 {
                     var key = new string(token.SkipWhile(c => c == '-').ToArray()).ToLowerInvariant();
                     var value = args.SkipWhile(i => i != $"--{key}").Skip(1).TakeWhile(i => !i.StartsWith("--")).ToArray();
-                    
+
                     flags.Add(new CommandLineFlag(key, value));
                 }
             }
@@ -346,7 +410,7 @@ namespace Compiler
             stringBuilder.AppendLine(string.Empty);
             stringBuilder.AppendLine("Options:");
             stringBuilder.Indent(4);
-            foreach (var prop in props)
+            foreach (var prop in props.Where(p => !p.Attribute.HideFromHelp))
             {
                 stringBuilder.AppendLine($"--{prop.Attribute.Name}  {prop.Attribute.HelpText}");
             }
@@ -378,13 +442,15 @@ namespace Compiler
                 return true;
             }
 
-            // if the config flag is passed in load settings from that path, otherwise search for it.
-            var bebopConfig = parsedFlags.HasFlag("config")
-                ? parsedFlags.GetFlag("config").GetValue()
-                : FindBebopConfig();
-            // if bebop.json exist load it. the values in the JSON file are written to the store.
-            if (!string.IsNullOrWhiteSpace(bebopConfig))
+            // if the config flag is passed in load settings from that specified path.
+            if (parsedFlags.HasFlag("config"))
             {
+                var bebopConfig = parsedFlags.GetFlag("config").GetValue();
+                if (string.IsNullOrWhiteSpace(bebopConfig))
+                {
+                    errorMessage = $"'--config' must be followed by the explicit path to a bebop.json config";
+                    return false;
+                }
                 if (new FileInfo(bebopConfig).Exists)
                 {
                     if (!TryParseConfig(flagStore, bebopConfig))
@@ -429,7 +495,7 @@ namespace Compiler
                     flag.Property.SetValue(flagStore, true);
                     continue;
                 }
-                if (!parsedFlag.HasValues())
+                if (flag.Attribute.ValuesRequired && !parsedFlag.HasValues())
                 {
                     errorMessage = $"command-line flag '{flag.Attribute.Name}' was not assigned any values.";
                     return false;
@@ -442,7 +508,7 @@ namespace Compiler
                         errorMessage = $"Failed to activate '{flag.Property.Name}'.";
                         return false;
                     }
-   
+
                     // file paths wrapped in quotes may contain spaces. 
                     foreach (var item in parsedFlag.Values)
                     {
@@ -464,6 +530,13 @@ namespace Compiler
                     }
                     flag.Property.SetValue(flagStore, parsedEnum, null);
                 }
+                else if (propertyType == typeof(Version))
+                {
+                    if (System.Version.TryParse(parsedFlag.GetValue(), out var version) && version is Version)
+                    {
+                        flag.Property.SetValue(flagStore, version, null);
+                    }
+                }
                 else
                 {
                     flag.Property.SetValue(flagStore, Convert.ChangeType(parsedFlag.GetValue(), flag.Property.PropertyType),
@@ -483,6 +556,7 @@ namespace Compiler
         /// <returns>true if the config could be parsed without error, otherwise false.</returns>
         private static bool TryParseConfig(CommandLineFlags flagStore, string? configPath)
         {
+
             if (string.IsNullOrWhiteSpace(configPath))
             {
                 return false;
@@ -491,6 +565,8 @@ namespace Compiler
             {
                 return false;
             }
+            var configFile = new FileInfo(configPath);
+
             using var doc = JsonDocument.Parse(File.ReadAllText(configPath));
             var root = doc.RootElement;
             if (root.TryGetProperty("inputFiles", out var inputFileElement))
@@ -498,16 +574,20 @@ namespace Compiler
                 flagStore.SchemaFiles = new List<string>(inputFileElement.GetArrayLength());
                 foreach (var fileElement in inputFileElement.EnumerateArray())
                 {
-                    if (fileElement.GetString() is not { } filePath)
+                    if (fileElement.GetString() is not { } filePath || configFile.DirectoryName is null)
                     {
                         continue;
                     }
-                    flagStore.SchemaFiles.Add(filePath);
+                    flagStore.SchemaFiles.Add(Path.GetFullPath(Path.Combine(configFile.DirectoryName, filePath)));
                 }
             }
-            if (root.TryGetProperty("inputDirectory", out var inputDirectoryElement))
+            if (root.TryGetProperty("inputDirectory", out var inputDirectoryElement) && configFile.DirectoryName is not null)
             {
-                flagStore.SchemaDirectory = inputDirectoryElement.GetString();
+                var inputDirectory = inputDirectoryElement.GetString();
+                if (inputDirectory is not null)
+                {
+                    flagStore.SchemaDirectory = Path.GetFullPath(Path.Combine(configFile.DirectoryName, inputDirectory));
+                }
             }
             if (root.TryGetProperty("namespace", out var nameSpaceElement))
             {
@@ -524,8 +604,25 @@ namespace Compiler
                             .Where(flagAttribute => flagAttribute.Attribute.IsGeneratorFlag &&
                                 flagAttribute.Attribute.Name.Equals(aliasElement.GetString())))
                         {
-                            flagAttribute.Property.SetValue(flagStore, outputElement.GetString());
+                            var outputElementPath = outputElement.GetString();
+                            if (configFile.DirectoryName is not null && outputElementPath is not null)
+                            {
+                                flagAttribute.Property.SetValue(flagStore, Path.GetFullPath(Path.Combine(configFile.DirectoryName, outputElementPath)));
+                            }
+                            if (generatorElement.TryGetProperty("langVersion", out var langVersion) && System.Version.TryParse(langVersion.ToString(), out var version))
+                            {
+
+                                foreach (var flag in GetFlagAttributes())
+                                {
+                                    if ($"{flagAttribute.Attribute.Name}-version".Equals(flag.Attribute.Name, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        flag.Property.SetValue(flagStore, version, null);
+                                    }
+                                }
+
+                            }
                         }
+
                     }
                 }
             }
@@ -533,5 +630,5 @@ namespace Compiler
         }
     }
 
-#endregion
+    #endregion
 }

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+     
+    <OutputType>Exe</OutputType>
+    <LangVersion>10</LangVersion>
+    <TargetFramework>net6.0</TargetFramework>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../Runtime/C#/Bebop.csproj" />
+  </ItemGroup>
+
+</Project>
