@@ -4,15 +4,14 @@ using System.Linq;
 using System.Text;
 using Core.Meta;
 using Core.Meta.Extensions;
-using Core.Meta.Interfaces;
 
 namespace Core.Generators.Python
 {
-    public class PythonGenerator : Generator
+    public class PythonGenerator : BaseGenerator
     {
         const int indentStep = 4;
 
-        public PythonGenerator(ISchema schema) : base(schema) { }
+        public PythonGenerator(BebopSchema schema) : base(schema) { }
 
         private string FormatDocumentation(string documentation){
             var builder = new StringBuilder();
@@ -20,6 +19,17 @@ namespace Core.Generators.Python
             {
                 builder.AppendLine($"# {line}");
             }
+            return builder.ToString();
+        }
+
+        private static string FormatDeprecationDoc(string deprecationReason, int spaces)
+        {
+            var builder = new IndentedStringBuilder();
+            builder.Indent(spaces);
+            builder.AppendLine("\"\"\"");
+            builder.Indent(1);
+            builder.AppendLine($"@deprecated {deprecationReason}");
+            builder.AppendLine("\"\"\"");
             return builder.ToString();
         }
 
@@ -268,11 +278,11 @@ namespace Core.Generators.Python
         /// Generate code for a Bebop schema.
         /// </summary>
         /// <returns>The generated code.</returns>
-        public override string Compile()
+        public override string Compile(Version? languageVersion, bool writeGeneratedNotice = true)
         {
             var builder = new IndentedStringBuilder();
             builder.AppendLine("from enum import Enum");
-            builder.AppendLine("import python-bebop");
+            builder.AppendLine("import python_bebop");
             builder.AppendLine("from uuid import UUID");
             builder.AppendLine("from datetime import datetime");
             builder.AppendLine("");

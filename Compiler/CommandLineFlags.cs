@@ -199,6 +199,10 @@ namespace Compiler
             "--ts ./my/output/HelloWorld.ts", true)]
         public string? TypeScriptOutput { get; private set; }
 
+        [CommandLineFlag("py", "Generate Python source code to the specified file",
+            "--py ./my/output/HelloWorld.py", true)]
+        public string? PythonOutput { get; private set; }
+
         [CommandLineFlag("namespace", "When this option is specified generated code will use namespaces",
             "--cs --namespace [package]")]
         public string? Namespace { get; private set; }

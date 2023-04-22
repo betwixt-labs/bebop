@@ -83,7 +83,8 @@
                   "ts",
                   "cpp",
                   "dart",
-                  "rust"
+                  "rust",
+                  "python"
                 ]
               },
               "outputFile": {
