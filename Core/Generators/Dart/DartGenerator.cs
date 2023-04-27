@@ -296,7 +296,7 @@ namespace Core.Generators.Dart
         /// Generate code for a Bebop schema.
         /// </summary>
         /// <returns>The generated code.</returns>
-        public override string Compile(Version? languageVersion, bool writeGeneratedNotice = true)
+        public override string Compile(Version? languageVersion, XrpcServices services = XrpcServices.Both, bool writeGeneratedNotice = true)
         {
             var builder = new StringBuilder();
             builder.AppendLine("import 'dart:typed_data';");
@@ -393,6 +393,8 @@ namespace Core.Generators.Dart
                     case ConstDefinition cd:
                         builder.AppendLine($"final {TypeName(cd.Value.Type)} {cd.Name} = {EmitLiteral(cd.Value)};");
                         builder.AppendLine("");
+                        break;
+                    case ServiceDefinition:
                         break;
                     default:
                         throw new InvalidOperationException($"unsupported definition {definition}");

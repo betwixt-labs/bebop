@@ -5,6 +5,7 @@ using System.Numerics;
 using Core.Exceptions;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta.Extensions;
+using Core.Parser;
 using Core.Parser.Extensions;
 
 namespace Core.Meta
@@ -210,15 +211,28 @@ namespace Core.Meta
                 }
                 if (definition is ServiceDefinition sd)
                 {
-                    var usedFunctionNames = new HashSet<string>();
-                    
-                    foreach (var b in sd.Branches)
+                    var usedMethodNames = new HashSet<string>();
+                    var usedMethodIds = new HashSet<uint>();
+                    foreach (var b in sd.Methods)
                     {
                         var fnd = b.Definition;
-                        if (!usedFunctionNames.Add(fnd.Name.ToSnakeCase()))
+                        if (!usedMethodNames.Add(fnd.Name.ToSnakeCase()))
                         {
-                            errors.Add(new DuplicateServiceFunctionNameException(b.Discriminator, sd.Name, fnd.Name, fnd.Span));
+                            errors.Add(new DuplicateServiceMethodNameException(b.Id, sd.Name, fnd.Name, fnd.Span));
                         }
+                        if (!usedMethodIds.Add(b.Id))
+                        {
+                            errors.Add(new DuplicateServiceMethodIdException(b.Id, sd.Name, fnd.Name, fnd.Span));
+                        }
+                        if (!fnd.ArgumentDefinition.IsAggregate(this))
+                        {
+                            errors.Add(new InvalidServiceRequestTypeException(sd.Name, fnd.Name, fnd.ArgumentDefinition,  fnd.Span));
+                        }
+                        if (!fnd.ReturnDefintion.IsAggregate(this))
+                        {
+                            errors.Add(new InvalidServiceReturnTypeException(sd.Name, fnd.Name,  fnd.ReturnDefintion, fnd.Span));
+                        }
+
                         if (fnd.Parent != sd)
                         {
                             throw new Exception("A function was registered to multiple services, this is an error in bebop core.");
@@ -254,6 +268,19 @@ namespace Core.Meta
                         }
                         values.Add(field.ConstantValue);
                         names.Add(field.Name);
+                    }
+                }
+            }
+            var methodIds = new Dictionary<uint, (string serviceName, string methodName)>();
+
+            foreach (var service in Definitions.Values.OfType<ServiceDefinition>())
+            {
+                foreach (var method in service.Methods)
+                {
+                    if (methodIds.ContainsKey(method.Id))
+                    {
+                        var (firstServiceName, firstMethodName) = methodIds[method.Id];
+                        errors.Add(new ServiceMethodIdCollisionException(firstServiceName, firstMethodName, service.Name, method.Definition.Name, method.Id, service.Span));
                     }
                 }
             }

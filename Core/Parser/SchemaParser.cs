@@ -55,7 +55,13 @@ namespace Core.Parser
         /// <param name="definition"></param>
         private void AddDefinition(Definition definition)
         {
-            if (_definitions.ContainsKey(definition.Name)) return;
+          
+            if (_definitions.ContainsKey(definition.Name))
+            {
+                _errors.Add(new MultipleDefinitionsException(definition));
+                return;
+            }
+     
             _definitions.Add(definition.Name, definition);
             if (_scopes.Count > 0)
             {
@@ -369,10 +375,6 @@ namespace Core.Parser
                 {
                     throw new UnexpectedTokenException(TokenKind.Service, CurrentToken, "Did not expect service definition after opcode. (Services are not allowed opcodes).");
                 }
-
-                _tokenizer.AddString("rpc_request_header", RpcSchema.RpcRequestHeader);
-                _tokenizer.AddString("rpc_response_header", RpcSchema.RpcResponseHeader);
-                _tokenizer.AddString("rpc_datagram", RpcSchema.RpcDatagram);
                 return ParseServiceDefinition(CurrentToken, definitionDocumentation);
             }
             if (Eat(TokenKind.Union))
@@ -730,10 +732,13 @@ namespace Core.Parser
                 return null;
             }
             StartScope();
-            var name = definitionToken.Lexeme;
-            var branches = new List<ServiceBranch>();
-            var usedDiscriminators = new HashSet<uint>(){0};
-            
+            var serviceName = $"{definitionToken.Lexeme.ToPascalCase()}Service";
+           
+
+            var methods = new List<ServiceMethod>();
+            var usedMethodIds = new HashSet<uint>(){0};
+            var usedMethodNames = new HashSet<string>() { string.Empty};
+
             var definitionEnd = CurrentToken.Span;
             var errored = false;
             var serviceFieldFollowKinds = new HashSet<TokenKind>() { TokenKind.BlockComment, TokenKind.Number, TokenKind.CloseBrace };
@@ -752,29 +757,40 @@ namespace Core.Parser
                     break;
                 }
 
-                const string indexHint = "Branches in a service must be explicitly indexed: service U { 1 -> void doThing(int32 myarg); 2 -> bool foo(float32 a, float32 b); }";
-                var indexToken = CurrentToken;
-                var indexLexeme = indexToken.Lexeme;
-                uint discriminator;
+                // The start of the function is the definition token of the function
                 try
                 {
-                    Expect(TokenKind.Number, indexHint);
-                    if (!indexLexeme.TryParseUInt(out discriminator))
+                    var functionStart = CurrentToken.Span;
+                    const string hint = "A function must be defined with name, request type, and return type,  such as 'myFunction(MyRequest): MyResponse;'";
+                    var indexToken = CurrentToken;
+                    var methodName = ExpectLexeme(TokenKind.Identifier, hint).ToCamelCase();
+                    if (usedMethodNames.Contains(methodName))
                     {
-                        throw new UnexpectedTokenException(TokenKind.Number, indexToken, "A function id must be an unsigned integer.");
+                        _errors.Add(new DuplicateServiceDiscriminatorException(indexToken, serviceName));
                     }
-                    if (discriminator < 1 || discriminator > 0xffff)
+                    usedMethodNames.Add(methodName);
+                    var methodId = RpcSchema.GetMethodId(serviceName, methodName);
+                    if (usedMethodIds.Contains(methodId))
                     {
-                        _errors.Add(new UnexpectedTokenException(TokenKind.Number, indexToken, "A function id must be between 1 and 65535."));
+                        _errors.Add(new DuplicateServiceDiscriminatorException(indexToken, serviceName));
                     }
-                    if (usedDiscriminators.Contains(discriminator))
+                    Expect(TokenKind.OpenParenthesis, hint);
+                    var paramType = ParseType(CurrentToken);
+                    Expect(TokenKind.CloseParenthesis, hint);
+                    Expect(TokenKind.Colon, hint);
+                    var returnType = ParseType(CurrentToken);
+                    var returnTypeSpan = functionStart.Combine(CurrentToken.Span);
+                    Expect(TokenKind.Semicolon, "Function definition must end with a ';' semicolon");
+                    var functionSpan = functionStart.Combine(CurrentToken.Span);
+                    var function = new FunctionDefinition(methodName, functionSpan, documentation, paramType, returnType);
+                    if (function is null)
                     {
-                        _errors.Add(new DuplicateServiceDiscriminatorException(indexToken, name));
+                        // Just escape out of there if there's a parsing error in one of the definitions.
+                        CancelScope();
+                        return null;
                     }
-                    usedDiscriminators.Add(discriminator);
-                    // Parse an arrow ("->").
-                    Expect(TokenKind.Hyphen, indexHint);
-                    Expect(TokenKind.CloseCaret, indexHint);
+                    definitionEnd = CurrentToken.Span;
+                    methods.Add(new(methodId, function));
                 }
                 catch (SpanException e)
                 {
@@ -783,120 +799,16 @@ namespace Core.Parser
                     SkipAndSkipUntil(new HashSet<TokenKind>(serviceFieldFollowKinds.Concat(_universalFollowKinds)));
                     continue;
                 }
-                var definition = ParseFunctionDefinition(name, indexLexeme);
-                if (definition is null)
-                {
-                    // Just escape out of there if there's a parsing error in one of the definitions.
-                    CancelScope();
-                    return null;
-                }
-                Eat(TokenKind.Semicolon);
-                definitionEnd = CurrentToken.Span;
-                branches.Add(new((ushort)discriminator, definition));
             }
 
             var definitionSpan = definitionToken.Span.Combine(definitionEnd);
-            
-            // add the implicit "ServiceName" function
-            var serviceNameReturnStruct = new StructDefinition($"_{name}NameReturn", definitionSpan, "", null, new List<Field>(){new("serviceName", new ScalarType(BaseType.String, definitionSpan, "name"), definitionSpan, null, 0, "")}, true);
-            AddDefinition(serviceNameReturnStruct);
-            var serviceNameArgsStruct = new StructDefinition($"_{name}NameArgs", definitionSpan, "",
-                null, new List<Field>() { }, true);
-            AddDefinition(serviceNameArgsStruct);
-            var serviceNameSignature =
-                MakeFunctionSignature(name, serviceNameReturnStruct, serviceNameArgsStruct, "name", definitionSpan);
-            AddDefinition(serviceNameSignature);
-            var serviceNameDefinition = new FunctionDefinition("name", definitionSpan, "", serviceNameSignature, serviceNameArgsStruct, serviceNameReturnStruct);
-            branches.Add(new(0, serviceNameDefinition));
-            
+   
             // make the service itself
-            var serviceDefinition = new ServiceDefinition(name, definitionSpan, definitionDocumentation, branches);
+            var serviceDefinition = new ServiceDefinition(serviceName, definitionSpan, definitionDocumentation, methods);
             CloseScope(serviceDefinition);
             return serviceDefinition;
         }
 
-        /// <summary>
-        ///     Parses an rpc function definition and adds its types to the <see cref="_definitions"/> collection.
-        /// </summary>
-        /// <param name="serviceName">Name of the service this function is part of.</param>
-        /// <para name="serviceIndex">Index of this function within the service.</para>
-        /// <returns>The parsed rpc function definition.</returns>
-        private FunctionDefinition? ParseFunctionDefinition(string serviceName, string serviceIndex)
-        {
-            var definitionDocumentation = ConsumeBlockComments();
-            
-            // The start of the function is the definition token of the function
-            var definitionToken = CurrentToken;
-            var functionStart = CurrentToken.Span;
-
-            var isReadonly = Eat(TokenKind.ReadOnly);
-            var returnType = EatPseudoKeyword("void") ? null : ParseType(definitionToken);
-            var returnTypeSpan = functionStart.Combine(CurrentToken.Span);
-
-            const string hint = "A function must be defined with a return type, name, and arguments such as 'RetType myFunction(ArgType arg1, OtherArg arg2);' or 'void emptyFn();'";
-            var name = ExpectLexeme(TokenKind.Identifier, hint);
-            
-            Expect(TokenKind.OpenParenthesis, hint);
-
-            var argList = new List<Field>();
-            var argsStart = CurrentToken.Span;
-            
-            // read parameter list
-            while (!Eat(TokenKind.CloseParenthesis))
-            {
-                if (argList.Count > 0)
-                {
-                    Expect(TokenKind.Comma, "Function arguments must be separated by commas");
-                }
-                var paramStart = CurrentToken.Span;
-                var paramType = ParseType(definitionToken);
-                var paramName = ExpectLexeme(TokenKind.Identifier, hint);
-                var paramSpan = paramStart.Combine(CurrentToken.Span);
-                
-                if (argList.Any(t => t.Name.Equals(paramName)))
-                {
-                    _errors.Add(new DuplicateArgumentName(definitionToken.Span.Combine(CurrentToken.Span), serviceName, serviceIndex, paramName));
-                }
-                else
-                {
-                    argList.Add(new Field(paramName, paramType, paramSpan, null, 0, ""));
-                }
-            }
-            
-            var argsSpan = argsStart.Combine(CurrentToken.Span);
-            
-            Expect(TokenKind.Semicolon, "Function definition must end with a ';' semicolon");
-
-            var functionSpan = functionStart.Combine(CurrentToken.Span);
-            
-            var returnStruct = new StructDefinition(
-                $"_{serviceName.ToPascalCase()}{name.ToPascalCase()}Return",
-                returnTypeSpan,
-                $"Wrapped return type of '{name}' in rpc service '{serviceName}'.",
-                null,
-                returnType is null
-                    ? new List<Field> {}
-                    : new List<Field> {new("value", returnType, returnTypeSpan, null, 0, "")},
-                isReadonly
-            );
-            AddDefinition(returnStruct);
-
-            var argumentStruct = new StructDefinition(
-                $"_{serviceName.ToPascalCase()}{name.ToPascalCase()}Args",
-                argsSpan,
-                $"Wrapped arguments type of '{name}' in rpc service '{serviceName}'.",
-                null,
-                argList,
-                isReadonly
-            );
-            AddDefinition(argumentStruct);
-            
-            var signature = MakeFunctionSignature(serviceName, returnStruct, argumentStruct, name, functionSpan);
-            AddDefinition(signature);
-            
-            var function = new FunctionDefinition(name, functionSpan, definitionDocumentation, signature, argumentStruct, returnStruct);
-            return function;
-        }
 
         /// <summary>
         ///     Parses a union definition and adds it to the <see cref="_definitions"/> collection.
@@ -1221,24 +1133,6 @@ namespace Core.Parser
             return success;
         }
         
-        private ConstDefinition MakeFunctionSignature(string serviceName, StructDefinition returnStruct,
-            StructDefinition argumentStruct, string functionName, Span functionSpan)
-        {
-            var builder = new StringBuilder();
-            TypeSignature(builder, returnStruct);
-            TypeSignature(builder, argumentStruct);
-            var textSignature = builder.ToString();
-            
-            var binarySignature = ShortMD5(textSignature);
-            var signature = new ConstDefinition(
-                $"_{serviceName.ToPascalCase()}{functionName.ToPascalCase()}Signature",
-                functionSpan,
-                $"hash(\"{textSignature}\")",
-                new IntegerLiteral(new ScalarType(BaseType.Int32, functionSpan, "signature"), functionSpan,
-                    $"0x{binarySignature:x8}")
-            );
-            return signature;
-        }
 
         /// <summary>
         /// Create a text signature of this type. It should include all details which pertain to the binary

@@ -214,14 +214,14 @@ namespace Core.Meta
         }
     }
     
-    public readonly struct ServiceBranch
+    public readonly struct ServiceMethod
     {
-        public readonly ushort Discriminator;
+        public readonly uint Id;
         public readonly FunctionDefinition Definition;
 
-        public ServiceBranch(ushort discriminator, FunctionDefinition definition)
+        public ServiceMethod(uint id, FunctionDefinition definition)
         {
-            Discriminator = discriminator;
+            Id = id;
             Definition = definition;
         }
     }
@@ -246,19 +246,31 @@ namespace Core.Meta
     
     public class ServiceDefinition : Definition
     {
-        public ServiceDefinition(string name, Span span, string documentation, ICollection<ServiceBranch> branches) : base(name, span, documentation)
+        public ServiceDefinition(string name, Span span, string documentation, ICollection<ServiceMethod> methods) : base(name, span, documentation)
         {
-            foreach (var b in branches)
+            foreach (var m in methods)
             {
-                b.Definition.Parent = this;
+                m.Definition.Parent = this;
             }
 
-            Branches = branches;
+            Methods = methods;
         }
 
-        public ICollection<ServiceBranch> Branches { get; }
+        public ICollection<ServiceMethod> Methods { get; }
 
-        public override IEnumerable<string> Dependencies() => Branches.SelectMany(f => f.Definition.Dependencies());
+        public override IEnumerable<string> Dependencies() => Methods.SelectMany(f => f.Definition.Dependencies());
+
+        public override string ToString()
+        {
+            var builder = new StringBuilder();
+            builder.AppendLine($"Service: {Name}");
+            builder.AppendLine("Methods ->");
+            foreach(var method in Methods)
+            {
+                builder.AppendLine($"    {method.Definition.Name}({method.Definition.ArgumentDefinition}): {method.Definition.ReturnDefintion} ({method.Id})");
+            }
+            return builder.ToString();
+        }
     }
 
     /// <summary>
@@ -266,20 +278,18 @@ namespace Core.Meta
     /// </summary>
     public class FunctionDefinition : Definition
     {
-        public FunctionDefinition(string name, Span span, string documentation, ConstDefinition signature, StructDefinition argumentStruct, StructDefinition returnStruct, Definition? parent = null)
+        public FunctionDefinition(string name, Span span, string documentation, TypeBase argumentDefinition, TypeBase returnDefintion, Definition? parent = null)
             : base(name, span, documentation, parent)
         {
-            Signature = signature;
-            ArgumentStruct = argumentStruct;
-            ReturnStruct = returnStruct;
+            ArgumentDefinition = argumentDefinition;
+            ReturnDefintion = returnDefintion;
         }
 
-        public ConstDefinition Signature { get; }
-        public StructDefinition ArgumentStruct { get; }
-        public StructDefinition ReturnStruct { get; }
+        public TypeBase ArgumentDefinition { get; }
+        public TypeBase ReturnDefintion { get; }
 
         public override IEnumerable<string> Dependencies() =>
-            ArgumentStruct.Dependencies().Concat(ReturnStruct.Dependencies());
+            ArgumentDefinition.Dependencies().Concat(ReturnDefintion.Dependencies());
     }
 
     public class ConstDefinition : Definition

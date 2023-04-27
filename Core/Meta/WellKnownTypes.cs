@@ -20,7 +20,8 @@ namespace Core.Meta
             "BebopRecord",
             "BebopMirror",
             "BebopConstants",
-            "BopConstants"
+            "BopConstants",
+            "Service"
         };
     }
 
