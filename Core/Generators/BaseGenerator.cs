@@ -19,9 +19,10 @@ namespace Core.Generators
         /// Generate code for a Bebop schema.
         /// </summary>
         /// <param name="languageVersion">Determines a default language version the generated code will target.</param>
+        /// <param name="services">Determines which components of a service will be generated. default to both client and server.</param>
         /// <param name="writeGeneratedNotice">Whether a generation notice should be written at the top of files. This is true by default.</param>
         /// <returns>The generated code.</returns>
-        public abstract string Compile(Version? languageVersion, bool writeGeneratedNotice = true);
+        public abstract string Compile(Version? languageVersion, XrpcServices services = XrpcServices.Both, bool writeGeneratedNotice = true);
 
         /// <summary>
         /// Write auxiliary files to an output directory path.

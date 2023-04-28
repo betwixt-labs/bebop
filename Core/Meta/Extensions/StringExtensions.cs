@@ -13,7 +13,17 @@ namespace Core.Meta.Extensions
 
         private static readonly string[] NewLines = { "\r\n", "\r", "\n" };
 
-      
+        public static string ReplaceLastOccurrence(this string source, string find, string replace)
+        {
+            int place = source.LastIndexOf(find);
+
+            if (place == -1)
+                return source;
+
+            return source.Remove(place, find.Length).Insert(place, replace);
+        }
+
+
         /// <summary>
         ///     Splits the specified <paramref name="value"/> based on line ending.
         /// </summary>

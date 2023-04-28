@@ -275,21 +275,46 @@ namespace Core.Exceptions
     }
     
     [Serializable]
-    class DuplicateServiceFunctionNameException : SpanException
+    class DuplicateServiceMethodNameException : SpanException
     {
-        public DuplicateServiceFunctionNameException(ushort discriminator, string serviceName, string functionName, Span span)
+        public DuplicateServiceMethodNameException(uint discriminator, string serviceName, string functionName, Span span)
             : base($"Index {discriminator} duplicates the function name '{functionName}' which can only be used once in service '{serviceName}'.", span, 130)
         { }
     }
 
     [Serializable]
-    class DuplicateArgumentName : SpanException
+    class DuplicateServiceMethodIdException : SpanException
     {
-        public DuplicateArgumentName(Span span, string serviceName, string serviceIndex, string argumentName)
-            : base($"Index {serviceIndex} in service '{serviceName}' has duplicated argument name {argumentName}.", span, 131)
+        public DuplicateServiceMethodIdException(uint id, string serviceName, string methodName, Span span)
+            : base($"Index {id} duplicates the function name '{methodName}' which can only be used once in service '{serviceName}'.", span, 131)
         { }
     }
-    
+
+    [Serializable]
+    class InvalidServiceRequestTypeException : SpanException
+    {
+        public InvalidServiceRequestTypeException(string serviceName, string methodName, TypeBase type, Span span)
+              : base($"The request type of method '{methodName}' in service '{serviceName}' is '{type.AsString}'  must be a message, struct, or union.", span, 132)
+        { }
+    }
+    [Serializable]
+    class InvalidServiceReturnTypeException : SpanException
+    {
+        public InvalidServiceReturnTypeException(string serviceName, string methodName, TypeBase type, Span span)
+            : base($"The return type of method '{methodName}' in service '{serviceName}' is '{type.AsString}' but must be a message, struct, or union.", span, 133)
+        { }
+    }
+
+    [Serializable]
+    class ServiceMethodIdCollisionException : SpanException
+    {
+        public ServiceMethodIdCollisionException(string serviceOneName, string methodOneName, string serviceTwoName, string methodTwoName, uint id, Span span)
+            : base($"The hashed ID of service '{serviceOneName}' and method '{methodOneName}' collides with the hashed ID of service '{serviceTwoName}' and '{methodTwoName}' (id: {id}).", span, 134)
+        { }
+    }
+
+
+
     [Serializable]
     public class EnumZeroWarning : SpanException
     {
