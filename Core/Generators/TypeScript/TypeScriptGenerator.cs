@@ -622,8 +622,9 @@ namespace Core.Generators.TypeScript
                                 builder.AppendLine("const service = Reflect.construct(constructor, [undefined]);");
                                 builder.CodeBlock("if (XrpcServiceRegistry.staticServiceInstances.has(serviceName))", indentStep, () =>
                                 {
-                                    builder.AppendLine("throw new Error(`Duplicate service registered: ${name}`);");
+                                    builder.AppendLine("throw new Error(`Duplicate service registered: ${serviceName}`);");
                                 });
+                                builder.AppendLine("XrpcServiceRegistry.staticServiceInstances.set(serviceName, service);");
                             });
 
                         });
