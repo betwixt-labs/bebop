@@ -22,7 +22,7 @@ namespace Core.Generators
         /// <param name="services">Determines which components of a service will be generated. default to both client and server.</param>
         /// <param name="writeGeneratedNotice">Whether a generation notice should be written at the top of files. This is true by default.</param>
         /// <returns>The generated code.</returns>
-        public abstract string Compile(Version? languageVersion, XrpcServices services = XrpcServices.Both, bool writeGeneratedNotice = true);
+        public abstract string Compile(Version? languageVersion, TempoServices services = TempoServices.Both, bool writeGeneratedNotice = true);
 
         /// <summary>
         /// Write auxiliary files to an output directory path.

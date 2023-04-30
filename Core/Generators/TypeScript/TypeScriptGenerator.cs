@@ -369,7 +369,7 @@ namespace Core.Generators.TypeScript
         /// Generate code for a Bebop schema.
         /// </summary>
         /// <returns>The generated code.</returns>
-        public override string Compile(Version? languageVersion, XrpcServices services = XrpcServices.Both, bool writeGeneratedNotice = true)
+        public override string Compile(Version? languageVersion, TempoServices services = TempoServices.Both, bool writeGeneratedNotice = true)
         {
             var builder = new IndentedStringBuilder();
             if (writeGeneratedNotice)
@@ -379,14 +379,14 @@ namespace Core.Generators.TypeScript
             builder.AppendLine("import { BebopView, BebopRuntimeError, BebopRecord } from \"bebop\";");
             if (Schema.Definitions.Values.OfType<ServiceDefinition>().Any())
             {
-                if (services is XrpcServices.Client or XrpcServices.Both)
+                if (services is TempoServices.Client or TempoServices.Both)
                 {
-                    builder.AppendLine("import { Metadata } from \"@xrpc/common\";");
-                    builder.AppendLine("import {  BaseClient, MethodInfo, CallOptions } from \"@xrpc/client\";");
+                    builder.AppendLine("import { Metadata } from \"@tempojs/common\";");
+                    builder.AppendLine("import {  BaseClient, MethodInfo, CallOptions } from \"@tempojs/client\";");
                 }
-                if (services is XrpcServices.Server or XrpcServices.Both)
+                if (services is TempoServices.Server or TempoServices.Both)
                 {
-                    builder.AppendLine("import { ServiceRegistry, BaseService, ServerContext, BebopMethodAny, BebopMethod } from \"@xrpc/server\";");
+                    builder.AppendLine("import { ServiceRegistry, BaseService, ServerContext, BebopMethodAny, BebopMethod } from \"@tempojs/server\";");
                 }
             }
             
@@ -595,9 +595,9 @@ namespace Core.Generators.TypeScript
                 }
             }
             var serviceDefinitions = Schema.Definitions.Values.OfType<ServiceDefinition>();
-            if (serviceDefinitions is not null && serviceDefinitions.Any() && services is not XrpcServices.None)
+            if (serviceDefinitions is not null && serviceDefinitions.Any() && services is not TempoServices.None)
             {
-                if (services is XrpcServices.Server or XrpcServices.Both)
+                if (services is TempoServices.Server or TempoServices.Both)
                 {
                     foreach(var service in serviceDefinitions)
                     {
@@ -612,7 +612,7 @@ namespace Core.Generators.TypeScript
                         builder.AppendLine();
                     }
 
-                    builder.CodeBlock("export class XrpcServiceRegistry extends ServiceRegistry", indentStep, () =>
+                    builder.CodeBlock("export class TempoServiceRegistry extends ServiceRegistry", indentStep, () =>
                     {
                         builder.AppendLine("private static readonly staticServiceInstances: Map<string, BaseService> = new Map<string, BaseService>();");
                         builder.CodeBlock("public static register(serviceName: string)", indentStep, () =>
@@ -620,17 +620,17 @@ namespace Core.Generators.TypeScript
                             builder.CodeBlock("return (constructor: Function) =>", indentStep, () =>
                             {
                                 builder.AppendLine("const service = Reflect.construct(constructor, [undefined]);");
-                                builder.CodeBlock("if (XrpcServiceRegistry.staticServiceInstances.has(serviceName))", indentStep, () =>
+                                builder.CodeBlock("if (TempoServiceRegistry.staticServiceInstances.has(serviceName))", indentStep, () =>
                                 {
                                     builder.AppendLine("throw new Error(`Duplicate service registered: ${serviceName}`);");
                                 });
-                                builder.AppendLine("XrpcServiceRegistry.staticServiceInstances.set(serviceName, service);");
+                                builder.AppendLine("TempoServiceRegistry.staticServiceInstances.set(serviceName, service);");
                             });
 
                         });
                         builder.CodeBlock("public static tryGetService(serviceName: string): BaseService", indentStep, () =>
                         {
-                            builder.AppendLine("const service = XrpcServiceRegistry.staticServiceInstances.get(serviceName);");
+                            builder.AppendLine("const service = TempoServiceRegistry.staticServiceInstances.get(serviceName);");
                             builder.CodeBlock("if (service === undefined)", indentStep, () =>
                             {
                                 builder.AppendLine("throw new Error(`Unable to retreive service '${serviceName}' - it is not registered.`);");
@@ -649,13 +649,13 @@ namespace Core.Generators.TypeScript
                             {
 
                                 builder.AppendLine($"serviceName = '{service.ClassName()}';");
-                                builder.AppendLine($"service = XrpcServiceRegistry.tryGetService(serviceName);");
+                                builder.AppendLine($"service = TempoServiceRegistry.tryGetService(serviceName);");
                                 builder.CodeBlock($"if (!(service instanceof {service.BaseClassName()}))", indentStep, () =>
                                 {
                                     builder.AppendLine("throw new Error('todo');");
                                 });
                                 builder.AppendLine($"service.setLogger(this.logger.clone(serviceName));");
-                                builder.AppendLine("XrpcServiceRegistry.staticServiceInstances.delete(serviceName);");
+                                builder.AppendLine("TempoServiceRegistry.staticServiceInstances.delete(serviceName);");
                                 builder.AppendLine("this.serviceInstances.push(service);");
                                 foreach (var method in service.Methods)
                                 {
@@ -688,7 +688,7 @@ namespace Core.Generators.TypeScript
 
                 }
 
-                if (services is XrpcServices.Client or XrpcServices.Both)
+                if (services is TempoServices.Client or TempoServices.Both)
                 {
                     foreach (var service in serviceDefinitions)
                     {

@@ -4,7 +4,7 @@ namespace Core.Generators
 	/// <summary>
 	/// An enum that defines which parts of a service are generated 
 	/// </summary>
-	public enum XrpcServices
+	public enum TempoServices
 	{
 		/// <summary>
 		/// Indicates no service code should be generated 
