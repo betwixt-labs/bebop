@@ -26,10 +26,9 @@ for (const x of hexDigits) {
 if (typeof require !== 'undefined') {
 	// If 'TextDecoder' is not defined in the global scope, require it from the 'util' module and assign it to the global scope.
 	if (typeof TextDecoder === 'undefined' && typeof TextEncoder === 'undefined') {
-		import('util').then((util) => {
-			(global as any).TextDecoder = util.TextDecoder;
-			(global as any).TextEncoder = util.TextEncoder;
-		});
+		const util = await import('util');
+        (global as any).TextDecoder = util.TextDecoder;
+		(global as any).TextEncoder = util.TextEncoder;
 	}
 }
 
