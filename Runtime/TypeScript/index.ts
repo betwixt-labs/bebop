@@ -22,9 +22,17 @@ for (const x of hexDigits) {
     }
 }
 
+// Check if 'require' is defined, indicating a Node.js environment.
 if (typeof require !== 'undefined') {
-    if (typeof TextDecoder === 'undefined') (global as any).TextDecoder = require('util').TextDecoder;
+	// If 'TextDecoder' is not defined in the global scope, require it from the 'util' module and assign it to the global scope.
+	if (typeof TextDecoder === 'undefined' && typeof TextEncoder === 'undefined') {
+		import('util').then((util) => {
+			(global as any).TextDecoder = util.TextDecoder;
+			(global as any).TextEncoder = util.TextEncoder;
+		});
+	}
 }
+
 
 export class BebopRuntimeError extends Error {
     constructor(message) {
