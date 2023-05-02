@@ -11,7 +11,10 @@
 
 Bebop is a schema-based binary serialization technology, similar to Protocol Buffers or MessagePack. In particular, Bebop tries to be a good fit for client–server or distributed web apps that need something faster, more concise, and more type-safe than JSON or MessagePack, while also avoiding some of the complexity of Protocol Buffers, FlatBuffers and the like.
 
-Bebop is fast! Read the [initial release blog](https://rainway.com/blog/2020/12/09/bebop-an-efficient-schema-based-binary-serialization-format/) for benchmarks and more info.
+Bebop is fast!
+
+![P12CpmA](https://user-images.githubusercontent.com/1297077/235745675-fc8a18e2-361f-4b7b-b9c9-47155e511b0a.png)
+
 
 ## Releases
 
