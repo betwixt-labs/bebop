@@ -1,4 +1,4 @@
-﻿{
+{
     "$schema": "http://json-schema.org/draft-04/schema#",
     "id": "https://json.schemastore.org/bebop",
     "title": "JSON schema for the Bebop compiler's configuration file",
