@@ -38,6 +38,12 @@
         "configuration": "./language-configuration.json"
       }
     ],
+    "jsonValidation": [
+      {
+        "fileMatch": ["bebop.json", "*bebop.json"],
+        "url": "./schemas/bebop-schema.json"
+      }
+    ],
     "grammars": [
       {
         "language": "bebop",
