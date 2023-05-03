@@ -1,0 +1,143 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "id": "https://json.schemastore.org/bebop",
+    "title": "JSON schema for the Bebop compiler's configuration file",
+    "type": "object",
+    "definitions": {
+        "//": {
+            "explainer": "https://github.com/RainwayApp/bebop/wiki",
+            "reference": "https://github.com/RainwayApp/bebop/wiki/bebop.json-configuration"
+        },
+        "excludeDefinition": {
+            "properties": {
+                "exclude": {
+                    "description": "Specifies an array of filenames or patterns that should be skipped when resolving include. The 'exclude' property only affects the files included via the 'include' property.",
+                    "type": "array",
+                    "uniqueItems": true,
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "includeDefinition": {
+            "properties": {
+                "include": {
+                    "description": "Specifies an array of filenames or patterns to compile. These filenames are resolved relative to the directory containing the bebop.json file. If no 'include' property is present in a bebop.json, the compiler defaults to including all files in the containing directory and subdirectories except those specified by 'exclude'.",
+                    "type": "array",
+                    "uniqueItems": true,
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "namespaceDefinition": {
+            "properties": {
+                "namespace": {
+                    "description": "Specifies a namespace that generated code will use.",
+                    "type": "string",
+                    "minLength": 1
+                }
+            }
+        },
+        "generatorsDefinition": {
+            "properties": {
+                "generators": {
+                    "description": "Specifies a list of code generators to target during compilation.",
+                    "type": "array",
+                    "uniqueItems": true,
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "alias": {
+                                "description": "Specify the code generator schemas will be compiled to.",
+                                "type": "string",
+                                "enum": [
+                                    "cs",
+                                    "ts",
+                                    "cpp",
+                                    "dart",
+                                    "rust"
+                                ]
+                            },
+                            "outFile": {
+                                "description": "Specify a file that bundles all generated code into one file.",
+                                "type": "string"
+                            },
+                            "langVersion": {
+                                "description": "Specify the version of the language the code generator should target.",
+                                "type": "string"
+                            },
+                            "noGenerationNotice": {
+                                "default": false,
+                                "description": "Specify if the code generator should produces a notice at the start of the output file stating code was auto-generated.",
+                                "type": "boolean"
+                            },
+                            "services": {
+                                "default": "both",
+                                "description": "By default, bebopc generates a concrete client and a service base class. This property can be used to limit bebopc asset generation.",
+                                "type": "string",
+                                "enum": [
+                                    "none",
+                                    "client",
+                                    "server",
+                                    "both"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "alias",
+                            "outFile"
+                        ],
+                        "additionalProperties": false
+                    }
+                }
+            }
+        },
+        "watchOptionsDefinition": {
+            "properties": {
+                "watchOptions": {
+                    "type": "object",
+                    "description": "Settings for the watch mode in bebopc.",
+                    "properties": {
+                        "excludeFiles": {
+                            "description": "Remove a list of files from the watch mode's processing.",
+                            "type": "array",
+                            "uniqueItems": true,
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "excludeDirectories": {
+                            "description": "Remove a list of directories from the watch process.",
+                            "type": "array",
+                            "uniqueItems": true,
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            }
+        }
+    },
+    "allOf": [
+        {
+            "$ref": "#/definitions/generatorsDefinition"
+        },
+        {
+            "$ref": "#/definitions/namespaceDefinition"
+        },
+        {
+            "$ref": "#/definitions/includeDefinition"
+        },
+        {
+            "$ref": "#/definitions/excludeDefinition"
+        },
+        {
+            "$ref": "#/definitions/watchOptionsDefinition"
+        }
+    ]
+}

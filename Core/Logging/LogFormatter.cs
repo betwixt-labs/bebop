@@ -1,4 +1,6 @@
-﻿namespace Core.Logging
+﻿using System;
+
+namespace Core.Logging
 {
     /// <summary>
     ///     Formatters that control the way <see cref="Lager"/> writes data.
@@ -8,6 +10,7 @@
         /// <summary>
         ///     Data is formatted using structured logging. This is the default formatter.
         /// </summary>
+        [Obsolete("Use Enhanced instead of Structure")]
         Structured,
 
         /// <summary>
@@ -21,6 +24,10 @@
         /// <summary>
         /// Data is serialized to JSON before being written.
         /// </summary>
-        JSON
+        JSON,
+        /// <summary>
+        /// Data is rendered in a human-readable, enhanced format.
+        /// </summary>
+        Enhanced
     }
 }

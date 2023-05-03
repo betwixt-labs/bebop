@@ -4,12 +4,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Text.Json;
-using System.Text.RegularExpressions;
 using Core.Generators;
 using Core.Logging;
 using Core.Meta;
+using Microsoft.Extensions.FileSystemGlobbing;
 
 namespace Compiler
 {
@@ -19,8 +17,9 @@ namespace Compiler
     /// </summary>
     /// <param name="Alias">The alias of the code generator.</param>
     /// <param name="OutputFile">The quailified file that the generator will produce.</param>
+    /// <param name="Services">The control for which service compontents will be generated.</param>
     /// <param name="LangVersion">If set this value defines the version of the language generated code will use.</param>
-    public record CodeGenerator(string Alias, string OutputFile, Version? LangVersion);
+    public record CodeGenerator(string Alias, string OutputFile, TempoServices Services, Version? LangVersion);
     #endregion
 
     #region FlagAttribute
@@ -236,6 +235,18 @@ namespace Compiler
         [CommandLineFlag("debug", "Waits for a debugger to attach", "--debug", hideFromHelp: true)]
         public bool Debug { get; private set; }
 
+        [CommandLineFlag("watch", "Watches schemas for changes and regenerates code", "--watch")]
+        public bool Watch { get; private set; }
+
+        [CommandLineFlag("watch-excluded-directories", "Directories which willbe excluded from the watch process. Supports globs.", "--watch-excluded-directories [directory1] [directory2] ...")]
+        public List<string>? WatchExcludeDirectories { get; private set; }
+
+        [CommandLineFlag("watch-excluded-files", "Files which willbe excluded from the watch process. Supports globs.", "--watch-excluded-files [file1] [file2] ...")]
+        public List<string>? WatchExcludeFiles { get; private set; }
+
+        [CommandLineFlag("preserve-watch-output", "Whether to keep outdated console output in watch mode instead of clearing the screen every time a change happened.", "--watch --preserve-watch-output")]
+        public bool PreserveWatchOutput { get; private set; }
+
         /// <summary>
         ///     Controls how loggers format data.
         /// </summary>
@@ -254,6 +265,17 @@ namespace Compiler
         public List<string>? NoWarn { get; private set; }
 
         public string HelpText { get; }
+
+        public string WorkingDirectory { get; private set; }
+
+        private readonly Dictionary<string, TempoServices> ServiceConfigs = new Dictionary<string, TempoServices>()
+        {
+            ["cpp"] = TempoServices.Both,
+            ["cs"] = TempoServices.Both,
+            ["dart"] = TempoServices.Both,
+            ["rust"] = TempoServices.Both,
+            ["ts"] = TempoServices.Both
+        };
 
         /// <summary>
         /// Finds a language version flag set for a generator.
@@ -279,7 +301,7 @@ namespace Compiler
             {
                 if (flag.Attribute.IsGeneratorFlag && flag.Property.GetValue(this) is string value)
                 {
-                    yield return new CodeGenerator(flag.Attribute.Name, value, GetGeneratorVersion(flag.Attribute));
+                    yield return new CodeGenerator(flag.Attribute.Name, value, ServiceConfigs[flag.Attribute.Name], GetGeneratorVersion(flag.Attribute));
                 }
             }
         }
@@ -376,7 +398,7 @@ namespace Compiler
                     return parsedEnum;
                 }
             }
-            return LogFormatter.Structured;
+            return LogFormatter.Enhanced;
         }
 
 
@@ -419,13 +441,52 @@ namespace Compiler
 
             var parsedFlags = GetFlags(args);
 
-            if (parsedFlags.Count == 0)
+
+            string? configPath;
+            if (parsedFlags.HasFlag("config"))
             {
-                // if no flags passed in try and find the bebop.json config
-                if (TryParseConfig(flagStore, FindBebopConfig()))
+                configPath = parsedFlags.GetFlag("config").GetValue();
+                if (string.IsNullOrWhiteSpace(configPath))
                 {
-                    return true;
+                    errorMessage = $"'--config' must be followed by the explicit path to a bebop.json config";
+                    return false;
                 }
+            }
+            else
+            {
+                configPath = FindBebopConfig();
+            }
+
+            var rootDirectory = !string.IsNullOrWhiteSpace(configPath) ? Path.GetDirectoryName(configPath) : Directory.GetCurrentDirectory();
+            if (string.IsNullOrWhiteSpace(rootDirectory))
+            {
+                errorMessage = "Failed to determine the working directory.";
+                return false;
+            }
+
+            flagStore.WorkingDirectory = rootDirectory;
+
+
+            var parsedConfig = false;
+            // always parse the config, we'll override any values with command-line flags
+            if (!string.IsNullOrWhiteSpace(configPath))
+            {
+                if (!new FileInfo(configPath).Exists)
+                {
+                    errorMessage = $"Bebop configuration file not found at '{configPath}'";
+                    return false;
+                }
+                parsedConfig = TryParseConfig(flagStore, configPath);
+                if (!parsedConfig)
+                {
+                    errorMessage = $"Failed to parse Bebop configuration file at '{configPath}'";
+                    return false;
+                }
+            }
+
+            // if we didn't parse a 'bebop.json' and no flags were passed, we can't continue.
+            if (!parsedConfig && parsedFlags.Count == 0)
+            {
                 errorMessage = "No command-line flags found.";
                 return false;
             }
@@ -442,29 +503,6 @@ namespace Compiler
                 return true;
             }
 
-            // if the config flag is passed in load settings from that specified path.
-            if (parsedFlags.HasFlag("config"))
-            {
-                var bebopConfig = parsedFlags.GetFlag("config").GetValue();
-                if (string.IsNullOrWhiteSpace(bebopConfig))
-                {
-                    errorMessage = $"'--config' must be followed by the explicit path to a bebop.json config";
-                    return false;
-                }
-                if (new FileInfo(bebopConfig).Exists)
-                {
-                    if (!TryParseConfig(flagStore, bebopConfig))
-                    {
-                        errorMessage = $"Failed to parse bebop configuration file at '{bebopConfig}'";
-                        return false;
-                    }
-                }
-                else
-                {
-                    errorMessage = $"Bebop configuration file not found at '{bebopConfig}'";
-                    return false;
-                }
-            }
 
             var validFlagNames = props.Select(p => p.Attribute.Name).ToHashSet();
             if (parsedFlags.Find(x => !validFlagNames.Contains(x.Name)) is CommandLineFlag unrecognizedFlag)
@@ -509,17 +547,25 @@ namespace Compiler
                         return false;
                     }
 
-                    // file paths wrapped in quotes may contain spaces. 
-                    foreach (var item in parsedFlag.Values)
+                    if (flag.Attribute.Name.Equals("watch-excluded-directories") || flag.Attribute.Name.Equals("watch-excluded-files"))
                     {
-                        if (string.IsNullOrWhiteSpace(item))
-                        {
-                            continue;
-                        }
-                        // remove double quotes from the string so file paths can be parsed properly.
-                        genericList.Add(Convert.ChangeType(item.Trim(), itemType));
+                        var excluded = FindFiles(rootDirectory, parsedFlag.Values, Array.Empty<string>());
+                        flag.Property.SetValue(flagStore, excluded, null);
                     }
-                    flag.Property.SetValue(flagStore, genericList, null);
+                    else
+                    {
+                        // file paths wrapped in quotes may contain spaces. 
+                        foreach (var item in parsedFlag.Values)
+                        {
+                            if (string.IsNullOrWhiteSpace(item))
+                            {
+                                continue;
+                            }
+                            // remove double quotes from the string so file paths can be parsed properly.
+                            genericList.Add(Convert.ChangeType(item.Trim(), itemType));
+                        }
+                        flag.Property.SetValue(flagStore, genericList, null);
+                    }
                 }
                 else if (propertyType.IsEnum)
                 {
@@ -543,9 +589,18 @@ namespace Compiler
                         null);
                 }
             }
-
             errorMessage = string.Empty;
             return true;
+        }
+
+
+        private static List<string> FindFiles(string rootDirectory, string[] includes, string[] excludes)
+        {
+            var matcher = new Matcher();
+            matcher.AddIncludePatterns(includes);
+            matcher.AddExcludePatterns(excludes);
+            IEnumerable<string> matchingFiles = matcher.GetResultsInFullPath(rootDirectory);
+            return matchingFiles.ToList();
         }
 
         /// <summary>
@@ -556,74 +611,77 @@ namespace Compiler
         /// <returns>true if the config could be parsed without error, otherwise false.</returns>
         private static bool TryParseConfig(CommandLineFlags flagStore, string? configPath)
         {
-
             if (string.IsNullOrWhiteSpace(configPath))
             {
                 return false;
             }
-            if (!new FileInfo(configPath).Exists)
+            var configFile = new FileInfo(configPath);
+            if (!configFile.Exists)
             {
                 return false;
             }
-            var configFile = new FileInfo(configPath);
+            var configDirectory = configFile.DirectoryName;
+            if (string.IsNullOrWhiteSpace(configDirectory))
+            {
+                return false;
+            }
 
-            using var doc = JsonDocument.Parse(File.ReadAllText(configPath));
-            var root = doc.RootElement;
-            if (root.TryGetProperty("inputFiles", out var inputFileElement))
+            var bebopConfig = BebopConfig.FromJson(File.ReadAllText(configPath));
+            if (bebopConfig is null)
             {
-                flagStore.SchemaFiles = new List<string>(inputFileElement.GetArrayLength());
-                foreach (var fileElement in inputFileElement.EnumerateArray())
+                return false;
+            }
+
+            const string defaultIncludeGlob = "**/*.bop";
+            var includeGlob = bebopConfig.Include ?? new string[] { defaultIncludeGlob };
+            var excludeGlob = bebopConfig.Exclude ?? Array.Empty<string>();
+            flagStore.SchemaFiles = FindFiles(configDirectory, includeGlob, excludeGlob);
+            flagStore.Namespace = bebopConfig.Namespace;
+            if (bebopConfig.Generators is null)
+            {
+                return false;
+            }
+            foreach (var generator in bebopConfig.Generators)
+            {
+                if (generator.Alias is null || generator.OutFile is null)
                 {
-                    if (fileElement.GetString() is not { } filePath || configFile.DirectoryName is null)
-                    {
-                        continue;
-                    }
-                    flagStore.SchemaFiles.Add(Path.GetFullPath(Path.Combine(configFile.DirectoryName, filePath)));
+                    return false;
                 }
-            }
-            if (root.TryGetProperty("inputDirectory", out var inputDirectoryElement) && configFile.DirectoryName is not null)
-            {
-                var inputDirectory = inputDirectoryElement.GetString();
-                if (inputDirectory is not null)
-                {
-                    flagStore.SchemaDirectory = Path.GetFullPath(Path.Combine(configFile.DirectoryName, inputDirectory));
-                }
-            }
-            if (root.TryGetProperty("namespace", out var nameSpaceElement))
-            {
-                flagStore.Namespace = nameSpaceElement.GetString();
-            }
-            if (root.TryGetProperty("generators", out var generatorsElement))
-            {
-                foreach (var generatorElement in generatorsElement.EnumerateArray())
-                {
-                    if (generatorElement.TryGetProperty("alias", out var aliasElement) &&
-                        generatorElement.TryGetProperty("outputFile", out var outputElement))
-                    {
-                        foreach (var flagAttribute in GetFlagAttributes()
+                foreach (var flagAttribute in GetFlagAttributes()
                             .Where(flagAttribute => flagAttribute.Attribute.IsGeneratorFlag &&
-                                flagAttribute.Attribute.Name.Equals(aliasElement.GetString())))
+                                flagAttribute.Attribute.Name.Equals(generator.Alias)))
+                {
+                    flagAttribute.Property.SetValue(flagStore, Path.GetFullPath(Path.Combine(configDirectory, generator.OutFile)));
+                    if (generator.Services.HasValue)
+                    {
+                        flagStore.ServiceConfigs[generator.Alias] = generator.Services.Value;
+                    }
+                    else
+                    {
+                        flagStore.ServiceConfigs[generator.Alias] = TempoServices.Both;
+                    }
+                    if (generator.LangVersion is not null && System.Version.TryParse(generator.LangVersion, out var version))
+                    {
+                        foreach (var flag in GetFlagAttributes())
                         {
-                            var outputElementPath = outputElement.GetString();
-                            if (configFile.DirectoryName is not null && outputElementPath is not null)
+                            if ($"{flagAttribute.Attribute.Name}-version".Equals(flag.Attribute.Name, StringComparison.OrdinalIgnoreCase))
                             {
-                                flagAttribute.Property.SetValue(flagStore, Path.GetFullPath(Path.Combine(configFile.DirectoryName, outputElementPath)));
-                            }
-                            if (generatorElement.TryGetProperty("langVersion", out var langVersion) && System.Version.TryParse(langVersion.ToString(), out var version))
-                            {
-
-                                foreach (var flag in GetFlagAttributes())
-                                {
-                                    if ($"{flagAttribute.Attribute.Name}-version".Equals(flag.Attribute.Name, StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        flag.Property.SetValue(flagStore, version, null);
-                                    }
-                                }
-
+                                flag.Property.SetValue(flagStore, version, null);
                             }
                         }
-
                     }
+                }
+            }
+
+            if (bebopConfig.WatchOptions is not null)
+            {
+                if (bebopConfig.WatchOptions.ExcludeDirectories is not null)
+                {
+                    flagStore.WatchExcludeDirectories = bebopConfig.WatchOptions.ExcludeDirectories.ToList();
+                }
+                if (bebopConfig.WatchOptions.ExcludeFiles is not null)
+                {
+                    flagStore.WatchExcludeFiles = bebopConfig.WatchOptions.ExcludeFiles.ToList();
                 }
             }
             return true;
