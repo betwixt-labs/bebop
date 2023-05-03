@@ -268,7 +268,14 @@ namespace Compiler
 
         public string WorkingDirectory { get; private set; }
 
-        private readonly Dictionary<string, TempoServices> ServiceConfigs = new Dictionary<string, TempoServices>();
+        private readonly Dictionary<string, TempoServices> ServiceConfigs = new Dictionary<string, TempoServices>()
+        {
+            ["cpp"] = TempoServices.Both,
+            ["cs"] = TempoServices.Both,
+            ["dart"] = TempoServices.Both,
+            ["rust"] = TempoServices.Both,
+            ["ts"] = TempoServices.Both
+        };
 
         /// <summary>
         /// Finds a language version flag set for a generator.
@@ -469,7 +476,7 @@ namespace Compiler
                     errorMessage = $"Bebop configuration file not found at '{configPath}'";
                     return false;
                 }
-                parsedConfig = TryParseConfig(flagStore, FindBebopConfig());
+                parsedConfig = TryParseConfig(flagStore, configPath);
                 if (!parsedConfig)
                 {
                     errorMessage = $"Failed to parse Bebop configuration file at '{configPath}'";
@@ -645,10 +652,13 @@ namespace Compiler
                                 flagAttribute.Attribute.Name.Equals(generator.Alias)))
                 {
                     flagAttribute.Property.SetValue(flagStore, Path.GetFullPath(Path.Combine(configDirectory, generator.OutFile)));
-                    if (generator.Services.HasValue) {
+                    if (generator.Services.HasValue)
+                    {
                         flagStore.ServiceConfigs[generator.Alias] = generator.Services.Value;
-                    } else {
-                          flagStore.ServiceConfigs[generator.Alias] = TempoServices.Both;
+                    }
+                    else
+                    {
+                        flagStore.ServiceConfigs[generator.Alias] = TempoServices.Both;
                     }
                     if (generator.LangVersion is not null && System.Version.TryParse(generator.LangVersion, out var version))
                     {
