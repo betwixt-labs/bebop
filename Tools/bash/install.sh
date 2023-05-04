@@ -474,6 +474,16 @@ EOABORT
 
     point "${ROCKET_UTF8} Installation successful!"
 
+    echo
+    ring_bell
+
+    point "Tempo, an RPC framework built on top of Bebop is in public preview. Check it out:"
+    echo "$(
+        cat <<EOS
+  ${tty_underline}${tty_white}https://tempo.im${tty_reset}
+EOS
+    )
+"
     case "${SHELL}" in
     */bash*)
         if [[ -r "${HOME}/.bash_profile" ]]; then
