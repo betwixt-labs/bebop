@@ -56,6 +56,11 @@ namespace Core.Lexer.Tokenization
         /// </summary>
         [Keyword("service")]
         Service,
+        /// <summary>
+        ///     The 'stream' keyword which is reserved by the compiler
+        /// </summary>
+        [Keyword("stream")]
+        Stream,
 
     #endregion
 

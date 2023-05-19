@@ -3,6 +3,7 @@ using System.Linq;
 using System.Text;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta.Attributes;
+using Core.Parser;
 
 namespace Core.Meta
 {
@@ -213,7 +214,7 @@ namespace Core.Meta
             Definition = definition;
         }
     }
-    
+
     public readonly struct ServiceMethod
     {
         public readonly uint Id;
@@ -243,7 +244,7 @@ namespace Core.Meta
             return 4 + 1 + (Branches.Count == 0 ? 0 : Branches.Min(b => b.Definition.MinimalEncodedSize(schema)));
         }
     }
-    
+
     public class ServiceDefinition : Definition
     {
         public ServiceDefinition(string name, Span span, string documentation, ICollection<ServiceMethod> methods) : base(name, span, documentation)
@@ -265,9 +266,9 @@ namespace Core.Meta
             var builder = new StringBuilder();
             builder.AppendLine($"Service: {Name}");
             builder.AppendLine("Methods ->");
-            foreach(var method in Methods)
+            foreach (var method in Methods)
             {
-                builder.AppendLine($"    {method.Definition.Name}({method.Definition.ArgumentDefinition}): {method.Definition.ReturnDefintion} ({method.Id})");
+                builder.AppendLine($"    {method.Definition.Name}({method.Definition.RequestDefinition}): {method.Definition.ReturnDefintion} ({method.Id})");
             }
             return builder.ToString();
         }
@@ -278,18 +279,20 @@ namespace Core.Meta
     /// </summary>
     public class FunctionDefinition : Definition
     {
-        public FunctionDefinition(string name, Span span, string documentation, TypeBase argumentDefinition, TypeBase returnDefintion, Definition? parent = null)
+        public FunctionDefinition(string name, Span span, string documentation, TypeBase requestDefinition, TypeBase returnDefintion, MethodType methodType, Definition? parent = null)
             : base(name, span, documentation, parent)
         {
-            ArgumentDefinition = argumentDefinition;
+            RequestDefinition = requestDefinition;
             ReturnDefintion = returnDefintion;
+            Type = methodType;
         }
 
-        public TypeBase ArgumentDefinition { get; }
+        public TypeBase RequestDefinition { get; }
         public TypeBase ReturnDefintion { get; }
+        public MethodType Type { get; }
 
         public override IEnumerable<string> Dependencies() =>
-            ArgumentDefinition.Dependencies().Concat(ReturnDefintion.Dependencies());
+            RequestDefinition.Dependencies().Concat(ReturnDefintion.Dependencies());
     }
 
     public class ConstDefinition : Definition

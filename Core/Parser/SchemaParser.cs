@@ -55,13 +55,13 @@ namespace Core.Parser
         /// <param name="definition"></param>
         private void AddDefinition(Definition definition)
         {
-          
+
             if (_definitions.ContainsKey(definition.Name))
             {
                 _errors.Add(new MultipleDefinitionsException(definition));
                 return;
             }
-     
+
             _definitions.Add(definition.Name, definition);
             if (_scopes.Count > 0)
             {
@@ -317,9 +317,9 @@ namespace Core.Parser
                 }
             }
             return new BebopSchema(
-                nameSpace: _nameSpace, 
-                definitions: _definitions, 
-                typeReferences: _typeReferences, 
+                nameSpace: _nameSpace,
+                definitions: _definitions,
+                typeReferences: _typeReferences,
                 parsingErrors: _errors,
                 imports: _imports
             );
@@ -403,10 +403,10 @@ namespace Core.Parser
         private ConstDefinition ParseConstDefinition(string definitionDocumentation)
         {
             var definitionStart = CurrentToken.Span;
-            
+
             TypeBase type;
             string name = "";
-            Literal? value = new IntegerLiteral(new ScalarType(BaseType.UInt32, new Span(), ""), new Span(), "") ;
+            Literal? value = new IntegerLiteral(new ScalarType(BaseType.UInt32, new Span(), ""), new Span(), "");
             try
             {
                 type = ParseType(CurrentToken);
@@ -424,7 +424,7 @@ namespace Core.Parser
             var definition = new ConstDefinition(name, definitionSpan, definitionDocumentation, value);
             if (_definitions.ContainsKey(name))
             {
-               _errors.Add(new DuplicateConstDefinitionException(definition));
+                _errors.Add(new DuplicateConstDefinitionException(definition));
             }
             else
             {
@@ -505,7 +505,7 @@ namespace Core.Parser
                 if (Eat(TokenKind.OpenParenthesis))
                 {
                     value = CurrentToken.Lexeme;
-                    if (Eat(TokenKind.String)|| (kind == "opcode" && Eat(TokenKind.Number)))
+                    if (Eat(TokenKind.String) || (kind == "opcode" && Eat(TokenKind.Number)))
                     {
                         isNumber = PeekToken(_index - 1).Kind == TokenKind.Number;
                     }
@@ -545,7 +545,7 @@ namespace Core.Parser
             BaseAttribute? opcodeAttribute,
             BaseAttribute? flagsAttribute)
         {
-            
+
             var fields = new List<Field>();
             var enumBaseType = BaseType.UInt32;
             var kindName = kind switch { AggregateKind.Enum => "enum", AggregateKind.Struct => "struct", _ => "message" };
@@ -632,7 +632,7 @@ namespace Core.Parser
                 try
                 {
 
-                
+
                     // Parse a type name, if this isn't an enum:
                     TypeBase type = kind == AggregateKind.Enum
                         ? new ScalarType(enumBaseType, definitionToken.Span, definitionToken.Lexeme)
@@ -714,7 +714,7 @@ namespace Core.Parser
             }
             return definition;
         }
-        
+
         /// <summary>
         ///     Parses an rpc service definition and adds it to the <see cref="_definitions"/> collection.
         /// </summary>
@@ -733,11 +733,11 @@ namespace Core.Parser
             }
             StartScope();
             var serviceName = $"{definitionToken.Lexeme.ToPascalCase()}Service";
-           
+
 
             var methods = new List<ServiceMethod>();
-            var usedMethodIds = new HashSet<uint>(){0};
-            var usedMethodNames = new HashSet<string>() { string.Empty};
+            var usedMethodIds = new HashSet<uint>() { 0 };
+            var usedMethodNames = new HashSet<string>() { string.Empty };
 
             var definitionEnd = CurrentToken.Span;
             var errored = false;
@@ -775,14 +775,24 @@ namespace Core.Parser
                         _errors.Add(new DuplicateServiceDiscriminatorException(indexToken, serviceName));
                     }
                     Expect(TokenKind.OpenParenthesis, hint);
-                    var paramType = ParseType(CurrentToken);
+
+                    var isRequestStream = Eat(TokenKind.Stream);
+                    var requestType = ParseType(CurrentToken);
                     Expect(TokenKind.CloseParenthesis, hint);
                     Expect(TokenKind.Colon, hint);
+                    var isResponseStream = Eat(TokenKind.Stream);
                     var returnType = ParseType(CurrentToken);
                     var returnTypeSpan = functionStart.Combine(CurrentToken.Span);
                     Expect(TokenKind.Semicolon, "Function definition must end with a ';' semicolon");
                     var functionSpan = functionStart.Combine(CurrentToken.Span);
-                    var function = new FunctionDefinition(methodName, functionSpan, documentation, paramType, returnType);
+                    MethodType GetMethodType() => (isRequestStream, isResponseStream) switch
+                    {
+                        (true, true) => MethodType.DuplexStream,
+                        (true, false) => MethodType.ClientStream,
+                        (false, true) => MethodType.ServerStream,
+                        _ => MethodType.Unary
+                    };
+                    var function = new FunctionDefinition(methodName, functionSpan, documentation, requestType, returnType, GetMethodType());
                     if (function is null)
                     {
                         // Just escape out of there if there's a parsing error in one of the definitions.
@@ -802,7 +812,7 @@ namespace Core.Parser
             }
 
             var definitionSpan = definitionToken.Span.Combine(definitionEnd);
-   
+
             // make the service itself
             var serviceDefinition = new ServiceDefinition(serviceName, definitionSpan, definitionDocumentation, methods);
             CloseScope(serviceDefinition);
@@ -833,7 +843,7 @@ namespace Core.Parser
             var branches = new List<UnionBranch>();
             var usedDiscriminators = new HashSet<uint>();
 
-            
+
             var definitionEnd = CurrentToken.Span;
             var errored = false;
             var unionFieldFollowKinds = new HashSet<TokenKind>() { TokenKind.BlockComment, TokenKind.Number, TokenKind.CloseBrace };
@@ -1000,7 +1010,8 @@ namespace Core.Parser
             var output = new Stack<Expression>();
 
             int Precedence(Token token) =>
-                token.Kind switch {
+                token.Kind switch
+                {
                     TokenKind.OpenCaret => 3,
                     TokenKind.Ampersand => 2,
                     TokenKind.VerticalLine => 1,
@@ -1132,7 +1143,7 @@ namespace Core.Parser
             if (success && negative) value = -value;
             return success;
         }
-        
+
 
         /// <summary>
         /// Create a text signature of this type. It should include all details which pertain to the binary
@@ -1179,7 +1190,7 @@ namespace Core.Parser
             {
                 case StructDefinition sd:
                     builder.Append('{');
-                    
+
                     foreach (var (f, i) in sd.Fields.Enumerated())
                     {
                         if (i > 0)
