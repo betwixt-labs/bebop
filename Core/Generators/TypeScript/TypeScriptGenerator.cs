@@ -712,9 +712,9 @@ namespace Core.Generators.TypeScript
                     {
                         return definition.Type switch
                         {
-                            MethodType.Unary => ($"I{definition.RequestDefinition}", $"I{definition.ReturnDefintion}"),
+                            MethodType.Unary => ($"I{definition.RequestDefinition}", $"Promise<I{definition.ReturnDefintion}>"),
                             MethodType.ServerStream => ($"I{definition.RequestDefinition}", $"Promise<AsyncGenerator<I{definition.ReturnDefintion}, void, undefined>>"),
-                            MethodType.ClientStream => ($"() => AsyncGenerator<I{definition.RequestDefinition}, void, undefined>", $"I{definition.ReturnDefintion}"),
+                            MethodType.ClientStream => ($"() => AsyncGenerator<I{definition.RequestDefinition}, void, undefined>", $"Promise<I{definition.ReturnDefintion}>"),
                             MethodType.DuplexStream => ($"() => AsyncGenerator<I{definition.RequestDefinition}, void, undefined>", $"Promise<AsyncGenerator<I{definition.ReturnDefintion}, void, undefined>>"),
                             _ => throw new InvalidOperationException($"Unsupported function type {definition.Type}")
                         };

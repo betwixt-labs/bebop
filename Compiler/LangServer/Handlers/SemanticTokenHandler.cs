@@ -41,6 +41,7 @@ namespace Compiler.LangServer
                 { TokenKind.Struct, SemanticTokenType.Keyword  },
                 { TokenKind.Message, SemanticTokenType.Keyword },
                 { TokenKind.Service, SemanticTokenType.Keyword },
+                { TokenKind.Stream, SemanticTokenType.Keyword },
                 { TokenKind.Number, SemanticTokenType.Number },
             };
 
