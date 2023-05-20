@@ -1,7 +1,48 @@
 ﻿namespace Core.Parser
 {
-    static class RpcSchema
+    /// <summary>
+    /// Represents the type of Tempo method.
+    /// Each method type corresponds to a different communication model.
+    /// </summary>
+    public enum MethodType
     {
+        /// <summary>
+        /// Unary method type.
+        /// Represents a method where the client sends a single request and receives a single response.
+        /// </summary>
+        Unary,
+
+        /// <summary>
+        /// ServerStream method type.
+        /// Represents a method where the client sends a single request and receives a stream of responses.
+        /// </summary>
+        ServerStream,
+
+        /// <summary>
+        /// ClientStream method type.
+        /// Represents a method where the client sends a stream of requests and receives a single response.
+        /// </summary>
+        ClientStream,
+
+        /// <summary>
+        /// DuplexStream method type.
+        /// Represents a method where the client and server send a stream of messages to each other simultaneously.
+        /// </summary>
+        DuplexStream,
+    }
+
+    internal static class RpcSchema
+    {
+        public static string GetMethodTypeName(MethodType type) {
+            return type switch
+            {
+                MethodType.Unary => "Unary",
+                MethodType.ServerStream => "ServerStream",
+                MethodType.ClientStream => "ClientStream",
+                MethodType.DuplexStream => "DuplexStream",
+                _ => throw new System.ArgumentOutOfRangeException(nameof(type), type, null)
+            };
+        }
 
         // Constants used in the hash algorithm for good distribution properties.
         private const uint Seed = 0x5AFE5EED;
@@ -15,7 +56,8 @@
         /// <param name="serviceName">The name of the service the method is on.</param>
         /// <param name="methodName">The name of the method</param>
         /// <returns>A unique unsigned 32-bit integer.</returns>
-        public static uint GetMethodId(string serviceName, string methodName) {
+        public static uint GetMethodId(string serviceName, string methodName)
+        {
             var path = $"/${serviceName}/${methodName}";
             return HashString(path);
         }

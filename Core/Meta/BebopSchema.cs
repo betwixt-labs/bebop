@@ -224,9 +224,9 @@ namespace Core.Meta
                         {
                             errors.Add(new DuplicateServiceMethodIdException(b.Id, sd.Name, fnd.Name, fnd.Span));
                         }
-                        if (!fnd.ArgumentDefinition.IsAggregate(this))
+                        if (!fnd.RequestDefinition.IsAggregate(this))
                         {
-                            errors.Add(new InvalidServiceRequestTypeException(sd.Name, fnd.Name, fnd.ArgumentDefinition,  fnd.Span));
+                            errors.Add(new InvalidServiceRequestTypeException(sd.Name, fnd.Name, fnd.RequestDefinition,  fnd.Span));
                         }
                         if (!fnd.ReturnDefintion.IsAggregate(this))
                         {

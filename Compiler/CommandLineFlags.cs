@@ -441,6 +441,13 @@ namespace Compiler
 
             var parsedFlags = GetFlags(args);
 
+            // prevent the user from passing both --langserv and --config
+            // and also for the compiler trying to find a config file when running as a language server
+            if (parsedFlags.HasFlag("langserv")) {
+                flagStore.LanguageServer = true;
+                return true;
+            }
+
 
             string? configPath;
             if (parsedFlags.HasFlag("config"))
