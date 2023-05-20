@@ -14,6 +14,7 @@ namespace Core.Meta.Attributes
 
         public OpcodeAttribute(string value, bool isNumber)
         {
+            Name = "opcode";
             _isNumber = isNumber;
             Value = value;
         }

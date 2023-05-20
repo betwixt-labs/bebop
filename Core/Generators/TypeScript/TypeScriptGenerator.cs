@@ -604,22 +604,38 @@ namespace Core.Generators.TypeScript
                 {
                     foreach (var service in serviceDefinitions)
                     {
+                        if (!string.IsNullOrWhiteSpace(service.Documentation))
+                        {
+                            builder.AppendLine(FormatDocumentation(service.Documentation, service.DeprecatedAttribute?.Value ?? string.Empty, 0));
+                        }
                         builder.CodeBlock($"export abstract class {service.BaseClassName()} extends BaseService", indentStep, () =>
                         {
                             builder.AppendLine($"public static readonly serviceName = '{service.ClassName()}';");
                             foreach (var method in service.Methods)
                             {
                                 var methodType = method.Definition.Type;
+                                if (!string.IsNullOrWhiteSpace(method.Documentation))
+                                {
+                                    builder.AppendLine(FormatDocumentation(method.Documentation, method.DeprecatedAttribute?.Value ?? string.Empty, 0));
+                                }
                                 if (methodType is MethodType.Unary)
                                 {
                                     builder.AppendLine($"public abstract {method.Definition.Name.ToCamelCase()}(record: I{method.Definition.RequestDefinition}, context: ServerContext): Promise<I{method.Definition.ReturnDefintion}>;");
-                                } else if (methodType is MethodType.ClientStream) {
+                                }
+                                else if (methodType is MethodType.ClientStream)
+                                {
                                     builder.AppendLine($"public abstract {method.Definition.Name.ToCamelCase()}(records: () => AsyncGenerator<I{method.Definition.RequestDefinition}, void, undefined>, context: ServerContext): Promise<I{method.Definition.ReturnDefintion}>;");
-                                } else if (methodType is MethodType.ServerStream) {
+                                }
+                                else if (methodType is MethodType.ServerStream)
+                                {
                                     builder.AppendLine($"public abstract {method.Definition.Name.ToCamelCase()}(record: I{method.Definition.RequestDefinition}, context: ServerContext): AsyncGenerator<I{method.Definition.ReturnDefintion}, void, undefined>;");
-                                } else if (methodType is MethodType.DuplexStream) {
+                                }
+                                else if (methodType is MethodType.DuplexStream)
+                                {
                                     builder.AppendLine($"public abstract {method.Definition.Name.ToCamelCase()}(records: () => AsyncGenerator<I{method.Definition.RequestDefinition}, void, undefined>, context: ServerContext): AsyncGenerator<I{method.Definition.ReturnDefintion}, void, undefined>;");
-                                } else {
+                                }
+                                else
+                                {
                                     throw new InvalidOperationException($"Unsupported method type {methodType}");
                                 }
 
@@ -708,7 +724,7 @@ namespace Core.Generators.TypeScript
 
                 if (services is TempoServices.Client or TempoServices.Both)
                 {
-                    static (string RequestType, string ResponseType) GetFunctionTypes(FunctionDefinition definition)
+                    static (string RequestType, string ResponseType) GetFunctionTypes(MethodDefinition definition)
                     {
                         return definition.Type switch
                         {
@@ -723,16 +739,28 @@ namespace Core.Generators.TypeScript
                     foreach (var service in serviceDefinitions)
                     {
                         var clientName = service.ClassName().ReplaceLastOccurrence("Service", "Client");
+                        if (!string.IsNullOrWhiteSpace(service.Documentation))
+                        {
+                            builder.AppendLine(FormatDocumentation(service.Documentation, service.DeprecatedAttribute?.Value ?? string.Empty, 0));
+                        }
                         builder.CodeBlock($"export interface I{clientName}", indentStep, () =>
                         {
                             foreach (var method in service.Methods)
                             {
                                 var (requestType, responseType) = GetFunctionTypes(method.Definition);
+                                if (!string.IsNullOrWhiteSpace(method.Documentation))
+                                {
+                                    builder.AppendLine(FormatDocumentation(method.Documentation, method.DeprecatedAttribute?.Value ?? string.Empty, 0));
+                                }
                                 builder.AppendLine($"{method.Definition.Name.ToCamelCase()}(request: {requestType}): {responseType};");
                                 builder.AppendLine($"{method.Definition.Name.ToCamelCase()}(request: {requestType}, metadata: Metadata): {responseType};");
                             }
                         });
                         builder.AppendLine();
+                        if (!string.IsNullOrWhiteSpace(service.Documentation))
+                        {
+                            builder.AppendLine(FormatDocumentation(service.Documentation, service.DeprecatedAttribute?.Value ?? string.Empty, 0));
+                        }
                         builder.CodeBlock($"export class {clientName} extends BaseClient implements I{clientName}", indentStep, () =>
                         {
                             foreach (var method in service.Methods)
@@ -751,6 +779,10 @@ namespace Core.Generators.TypeScript
                                     builder.AppendLine($"type: MethodType.{RpcSchema.GetMethodTypeName(methodType)},");
                                 });
 
+                                if (!string.IsNullOrWhiteSpace(method.Documentation))
+                                {
+                                    builder.AppendLine(FormatDocumentation(method.Documentation, method.DeprecatedAttribute?.Value ?? string.Empty, 0));
+                                }
                                 builder.AppendLine($"async {methodName}(request: {requestType}): {responseType};");
                                 builder.AppendLine($"async {methodName}(request: {requestType}, options: CallOptions): {responseType};");
 

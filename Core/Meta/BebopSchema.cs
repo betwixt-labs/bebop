@@ -82,7 +82,7 @@ namespace Core.Meta
                 var name = kv.Key;
                 var definition = kv.Value;
                 var deps = definition.Dependencies();
-                if (deps.Count() == 0)
+                if (!deps.Any())
                 {
                     nextQueue.Enqueue(name);
                 }

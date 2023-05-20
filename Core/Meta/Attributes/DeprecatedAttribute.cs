@@ -8,6 +8,8 @@
 
         public DeprecatedAttribute(string value)
         {
+            
+            Name = "deprecated";
             Value = value;
         }
 
