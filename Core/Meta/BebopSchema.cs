@@ -17,6 +17,7 @@ namespace Core.Meta
     {
         private static string[] _enumZeroNames = new[] { "Default", "Unknown", "Invalid", "Null", "None", "Zero", "False" };
         private List<SpanException> _parsingErrors;
+        private List<SpanException> _parsingWarnings;
         private List<SpanException> _validationErrors;
         private List<SpanException> _validationWarnings;
 
@@ -24,11 +25,11 @@ namespace Core.Meta
         /// Errors found while validating this schema.
         /// </summary>
         public List<SpanException> Errors => _parsingErrors.Concat(_validationErrors).ToList();
-        public List<SpanException> Warnings => _validationWarnings;
+        public List<SpanException> Warnings => _parsingWarnings.Concat(_validationWarnings).ToList();
 
         public List<string> Imports { get; }
 
-        public BebopSchema(string nameSpace, Dictionary<string, Definition> definitions, HashSet<(Token, Token)> typeReferences, List<SpanException>? parsingErrors = null, List<string>? imports = null)
+        public BebopSchema(string nameSpace, Dictionary<string, Definition> definitions, HashSet<(Token, Token)> typeReferences, List<SpanException>? parsingErrors = null, List<SpanException>? parsingWarnings = null, List<string>? imports = null)
         {
             Namespace = nameSpace;
             Definitions = definitions;
@@ -38,6 +39,7 @@ namespace Core.Meta
             _validationErrors = new();
             _validationWarnings = new();
             _parsingErrors = parsingErrors ?? new();
+            _parsingWarnings = parsingWarnings ?? new();
             _typeReferences = typeReferences;
         }
         /// <summary>
@@ -169,44 +171,47 @@ namespace Core.Meta
                         errors.Add(new DuplicateOpcodeException(td));
                     }
                 }
-                if (definition is FieldsDefinition fd) foreach (var field in fd.Fields)
+                if (definition is FieldsDefinition fd)
                 {
-                    if (ReservedWords.Identifiers.Contains(field.Name))
+                    foreach (var field in fd.Fields)
                     {
-                        errors.Add(new ReservedIdentifierException(field.Name, field.Span));
-                    }
-                    if (field.DeprecatedAttribute != null && fd is StructDefinition)
-                    {
-                        errors.Add(new InvalidDeprecatedAttributeUsageException(field));
-                    }
-                    if (fd.Fields.Count(f => f.Name.Equals(field.Name, StringComparison.OrdinalIgnoreCase)) > 1)
-                    {
-                        errors.Add(new DuplicateFieldException(field, fd));
-                    }
-                    switch (fd)
-                    {
-                        case StructDefinition when field.Type is DefinedType dt && fd.Name.Equals(dt.Name):
+                        if (ReservedWords.Identifiers.Contains(field.Name))
                         {
-                            errors.Add(new InvalidFieldException(field, "Struct contains itself"));
-                            break;
+                            errors.Add(new ReservedIdentifierException(field.Name, field.Span));
                         }
-                        case MessageDefinition when fd.Fields.Count(f => f.ConstantValue == field.ConstantValue) > 1:
+                        if (field.DeprecatedAttribute != null && fd is StructDefinition)
                         {
-                            errors.Add(new InvalidFieldException(field, "Message index must be unique"));
-                            break;
+                            errors.Add(new InvalidDeprecatedAttributeUsageException(field));
                         }
-                        case MessageDefinition when field.ConstantValue <= 0:
+                        if (fd.Fields.Count(f => f.Name.Equals(field.Name, StringComparison.OrdinalIgnoreCase)) > 1)
                         {
-                            errors.Add(new InvalidFieldException(field, "Message member index must start at 1"));
-                            break;
+                            errors.Add(new DuplicateFieldException(field, fd));
                         }
-                        case MessageDefinition when field.ConstantValue > fd.Fields.Count:
+                        switch (fd)
                         {
-                            errors.Add(new InvalidFieldException(field, "Message index is greater than field count"));
-                            break;
+                            case StructDefinition when field.Type is DefinedType dt && fd.Name.Equals(dt.Name):
+                                {
+                                    errors.Add(new InvalidFieldException(field, "Struct contains itself"));
+                                    break;
+                                }
+                            case MessageDefinition when fd.Fields.Count(f => f.ConstantValue == field.ConstantValue) > 1:
+                                {
+                                    errors.Add(new InvalidFieldException(field, "Message index must be unique"));
+                                    break;
+                                }
+                            case MessageDefinition when field.ConstantValue <= 0:
+                                {
+                                    errors.Add(new InvalidFieldException(field, "Message member index must start at 1"));
+                                    break;
+                                }
+                            case MessageDefinition when field.ConstantValue > fd.Fields.Count:
+                                {
+                                    errors.Add(new InvalidFieldException(field, "Message index is greater than field count"));
+                                    break;
+                                }
+                            default:
+                                break;
                         }
-                        default:
-                            break;
                     }
                 }
                 if (definition is ServiceDefinition sd)
@@ -226,11 +231,11 @@ namespace Core.Meta
                         }
                         if (!fnd.RequestDefinition.IsAggregate(this))
                         {
-                            errors.Add(new InvalidServiceRequestTypeException(sd.Name, fnd.Name, fnd.RequestDefinition,  fnd.Span));
+                            errors.Add(new InvalidServiceRequestTypeException(sd.Name, fnd.Name, fnd.RequestDefinition, fnd.Span));
                         }
                         if (!fnd.ReturnDefintion.IsAggregate(this))
                         {
-                            errors.Add(new InvalidServiceReturnTypeException(sd.Name, fnd.Name,  fnd.ReturnDefintion, fnd.Span));
+                            errors.Add(new InvalidServiceReturnTypeException(sd.Name, fnd.Name, fnd.ReturnDefintion, fnd.Span));
                         }
 
                         if (fnd.Parent != sd)
@@ -264,7 +269,7 @@ namespace Core.Meta
                         }
                         if (field.ConstantValue == 0 && !_enumZeroNames.Any(x => x.Equals(field.Name, StringComparison.OrdinalIgnoreCase)))
                         {
-                            Warnings.Add(new EnumZeroWarning(field));
+                            _validationWarnings.Add(new EnumZeroWarning(field));
                         }
                         values.Add(field.ConstantValue);
                         names.Add(field.Name);

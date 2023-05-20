@@ -322,4 +322,12 @@ namespace Core.Exceptions
             : base($"Bebop recommends that 0 in an enum be reserved for a value named 'Unknown', 'Default', or similar. See https://github.com/RainwayApp/bebop/wiki/Why-should-0-be-a-%22boring%22-value-in-an-enum%3F for more info.", field.Span, 200, Severity.Warning)
         { }
     }
+
+    [Serializable]
+    public class DeprecatedFeatureWarning : SpanException
+    {
+        public DeprecatedFeatureWarning(Span span, string reason)
+            : base(reason, span, 201, Severity.Warning)
+        { }
+    }
 }

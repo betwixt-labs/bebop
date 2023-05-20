@@ -46,7 +46,8 @@ namespace Core.Parser
         private readonly HashSet<(Token, Token)> _typeReferences = new();
         private int _index;
         private readonly string _nameSpace;
-        private List<SpanException> _errors = new();
+        private readonly List<SpanException> _errors = new();
+         private readonly List<SpanException> _warnings = new();
         private List<Token> _tokens => _tokenizer.Tokens;
 
         /// <summary>
@@ -321,6 +322,7 @@ namespace Core.Parser
                 definitions: _definitions,
                 typeReferences: _typeReferences,
                 parsingErrors: _errors,
+                parsingWarnings: _warnings,
                 imports: _imports
             );
         }
@@ -361,9 +363,12 @@ namespace Core.Parser
                 // If there's a syntax error in the attribute, we'll be skipping ahead to the next top level definition anyway.
                 _errors.Add(e);
             }
-
+            var readonlySpan = CurrentToken.Span;
             var isReadOnly = Eat(TokenKind.ReadOnly);
-
+            if (isReadOnly)
+            {
+                _warnings.Add(new DeprecatedFeatureWarning(readonlySpan, "the 'readonly' modifier will be removed in the next major version of Bebop; structs will be immutable by default, and the 'mut' modifier will be added to make them mutable."));
+            }
             ExpectAndSkip(_topLevelDefinitionKinds, _universalFollowKinds, hint: "Expecting a top-level definition.");
             if (CurrentToken.Kind == TokenKind.EndOfFile)
             {
@@ -707,6 +712,7 @@ namespace Core.Parser
             {
                 _errors.Add(new InvalidReadOnlyException(definition));
             }
+        
             if (opcodeAttribute != null && definition is not RecordDefinition)
             {
                 _errors.Add(new InvalidOpcodeAttributeUsageException(definition));
