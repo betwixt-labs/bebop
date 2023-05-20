@@ -334,6 +334,7 @@ namespace Core.Parser
                 return ParseConstDefinition(definitionDocumentation);
             }
             BaseAttribute? opcodeAttribute = null;
+            BaseAttribute? deprecatedAttribute = null;
             BaseAttribute? flagsAttribute = null;
 
             try
@@ -348,6 +349,10 @@ namespace Core.Parser
                     else if (attribute is FlagsAttribute)
                     {
                         flagsAttribute = attribute;
+                    }
+                    else if (attribute is DeprecatedAttribute)
+                    {
+                        deprecatedAttribute = attribute;
                     }
                 }
             }
@@ -375,7 +380,11 @@ namespace Core.Parser
                 {
                     throw new UnexpectedTokenException(TokenKind.Service, CurrentToken, "Did not expect service definition after opcode. (Services are not allowed opcodes).");
                 }
-                return ParseServiceDefinition(CurrentToken, definitionDocumentation);
+                 if (flagsAttribute != null)
+                {
+                    throw new UnexpectedTokenException(TokenKind.Service, CurrentToken, "Did not expect service definition after flags. (Services are not allowed flags).");
+                }
+                return ParseServiceDefinition(CurrentToken, definitionDocumentation, deprecatedAttribute);
             }
             if (Eat(TokenKind.Union))
             {
@@ -722,7 +731,7 @@ namespace Core.Parser
         /// <param name="definitionDocumentation">The documentation above the service definition.</param>
         /// <returns>The parsed rpc service definition.</returns>
         private Definition? ParseServiceDefinition(Token definitionToken,
-            string definitionDocumentation)
+            string definitionDocumentation, BaseAttribute? definitionDeprecatedAttribute)
         {
             ExpectAndSkip(TokenKind.Identifier, new(_universalFollowKinds.Append(TokenKind.OpenBrace)), "Did you forget to specify a name for this service?");
             Eat(TokenKind.Identifier);
@@ -733,7 +742,6 @@ namespace Core.Parser
             }
             StartScope();
             var serviceName = $"{definitionToken.Lexeme.ToPascalCase()}Service";
-
 
             var methods = new List<ServiceMethod>();
             var usedMethodIds = new HashSet<uint>() { 0 };
@@ -757,11 +765,16 @@ namespace Core.Parser
                     break;
                 }
 
-                // The start of the function is the definition token of the function
+                // The start of the method is the definition token of the method
                 try
                 {
-                    var functionStart = CurrentToken.Span;
-                    const string hint = "A function must be defined with name, request type, and return type,  such as 'myFunction(MyRequest): MyResponse;'";
+                    var methodDeprecatedAttribute = EatAttribute();
+                    if (methodDeprecatedAttribute is not null and not DeprecatedAttribute)
+                    {
+                        throw new UnexpectedTokenException(TokenKind.Identifier, CurrentToken, $"Service methods are not allowed to use the '{methodDeprecatedAttribute!.Name}' attribute.");
+                    }
+                    var methodStart = CurrentToken.Span;
+                    const string hint = "A method must be defined with name, request type, and return type,  such as 'myMethod(MyRequest): MyResponse;'";
                     var indexToken = CurrentToken;
                     var methodName = ExpectLexeme(TokenKind.Identifier, hint).ToCamelCase();
                     if (usedMethodNames.Contains(methodName))
@@ -782,9 +795,9 @@ namespace Core.Parser
                     Expect(TokenKind.Colon, hint);
                     var isResponseStream = Eat(TokenKind.Stream);
                     var returnType = ParseType(CurrentToken);
-                    var returnTypeSpan = functionStart.Combine(CurrentToken.Span);
-                    Expect(TokenKind.Semicolon, "Function definition must end with a ';' semicolon");
-                    var functionSpan = functionStart.Combine(CurrentToken.Span);
+                    var returnTypeSpan = methodStart.Combine(CurrentToken.Span);
+                    Expect(TokenKind.Semicolon, "Method definition must end with a ';' semicolon");
+                    var methodSpan = methodStart.Combine(CurrentToken.Span);
                     MethodType GetMethodType() => (isRequestStream, isResponseStream) switch
                     {
                         (true, true) => MethodType.DuplexStream,
@@ -792,15 +805,15 @@ namespace Core.Parser
                         (false, true) => MethodType.ServerStream,
                         _ => MethodType.Unary
                     };
-                    var function = new FunctionDefinition(methodName, functionSpan, documentation, requestType, returnType, GetMethodType());
-                    if (function is null)
+                    var method = new MethodDefinition(methodName, methodSpan, documentation, requestType, returnType, GetMethodType());
+                    if (method is null)
                     {
                         // Just escape out of there if there's a parsing error in one of the definitions.
                         CancelScope();
                         return null;
                     }
                     definitionEnd = CurrentToken.Span;
-                    methods.Add(new(methodId, function));
+                    methods.Add(new(methodId, method, documentation, methodDeprecatedAttribute));
                 }
                 catch (SpanException e)
                 {
@@ -814,7 +827,7 @@ namespace Core.Parser
             var definitionSpan = definitionToken.Span.Combine(definitionEnd);
 
             // make the service itself
-            var serviceDefinition = new ServiceDefinition(serviceName, definitionSpan, definitionDocumentation, methods);
+            var serviceDefinition = new ServiceDefinition(serviceName, definitionSpan, definitionDocumentation, methods, definitionDeprecatedAttribute);
             CloseScope(serviceDefinition);
             return serviceDefinition;
         }
@@ -1238,37 +1251,6 @@ namespace Core.Parser
             }
 
             return builder;
-        }
-
-        /// <summary>
-        /// Calculate the MD5 hash of a UTF8 string.
-        /// </summary>
-        /// <param name="input">String to hash.</param>
-        /// <returns>Hash bytes.</returns>
-        private static byte[] MD5(string input)
-        {
-            // Use input string to calculate MD5 hash
-            using var md5 = System.Security.Cryptography.MD5.Create();
-            var inputBytes = Encoding.UTF8.GetBytes(input);
-            return md5.ComputeHash(inputBytes);
-        }
-
-        /// <summary>
-        /// Calculate the shortened MD5 hash of a UTF8 string for function signatures.
-        /// </summary>
-        /// <param name="input">String to hash.</param>
-        /// <returns>The hash as 32 bits.</returns>
-        private static uint ShortMD5(string input)
-        {
-            var s = MD5(input);
-            uint d = 0;
-            for (var i = 0; i < 16; ++i)
-            {
-                // layer over itself with xor. Every 4th byte starts back at least significant bits.
-                d ^= (uint)s[i] << (i % 4 * 8);
-            }
-
-            return d;
         }
     }
 }

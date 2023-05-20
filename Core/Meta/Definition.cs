@@ -217,13 +217,17 @@ namespace Core.Meta
 
     public readonly struct ServiceMethod
     {
+        public readonly string Documentation;
         public readonly uint Id;
-        public readonly FunctionDefinition Definition;
+        public readonly MethodDefinition Definition;
+        public BaseAttribute? DeprecatedAttribute { get; }
 
-        public ServiceMethod(uint id, FunctionDefinition definition)
+        public ServiceMethod(uint id, MethodDefinition definition, string documentation, BaseAttribute? deprecatedAttribute)
         {
             Id = id;
             Definition = definition;
+            Documentation = documentation;
+            DeprecatedAttribute = deprecatedAttribute;
         }
     }
 
@@ -247,14 +251,16 @@ namespace Core.Meta
 
     public class ServiceDefinition : Definition
     {
-        public ServiceDefinition(string name, Span span, string documentation, ICollection<ServiceMethod> methods) : base(name, span, documentation)
+        public BaseAttribute? DeprecatedAttribute { get; }
+
+        public ServiceDefinition(string name, Span span, string documentation, ICollection<ServiceMethod> methods, BaseAttribute? deprecatedAttribute) : base(name, span, documentation)
         {
             foreach (var m in methods)
             {
                 m.Definition.Parent = this;
             }
-
             Methods = methods;
+            DeprecatedAttribute = deprecatedAttribute;
         }
 
         public ICollection<ServiceMethod> Methods { get; }
@@ -275,11 +281,11 @@ namespace Core.Meta
     }
 
     /// <summary>
-    /// Functions at this time are only stored within service branches and not globally.
+    /// Methods at this time are only stored within service branches and not globally.
     /// </summary>
-    public class FunctionDefinition : Definition
+    public class MethodDefinition : Definition
     {
-        public FunctionDefinition(string name, Span span, string documentation, TypeBase requestDefinition, TypeBase returnDefintion, MethodType methodType, Definition? parent = null)
+        public MethodDefinition(string name, Span span, string documentation, TypeBase requestDefinition, TypeBase returnDefintion, MethodType methodType, Definition? parent = null)
             : base(name, span, documentation, parent)
         {
             RequestDefinition = requestDefinition;
