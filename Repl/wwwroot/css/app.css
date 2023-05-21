@@ -52,3 +52,23 @@ code, pre {
 ::-webkit-scrollbar-track { background: none; }
 ::-webkit-scrollbar-thumb { background: #cccccc80; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #ccccccc0; }
+
+
+
+
+.my-editor-class { /* for a specific editor instance */
+	font-family: 'Fira Code', monospace !important;
+    letter-spacing: -0.75px;
+    font-size: 14px;
+    resize: none;
+    padding: .5em;
+	white-space: pre-wrap;
+    display: block;
+    background: #2d2d2d;
+    color: #cccccc;
+    width: 100%;
+    height: calc(100vh - 50px);
+    overflow-y: scroll;
+    margin: 0;
+    border: 1px solid #00000040;
+}

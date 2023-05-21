@@ -6,14 +6,15 @@
 
 
 <div class="container">
+    
     <div class="side-by-side">
         <section>
             <textarea id="schema" autofocus autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
                 @oninput="OnInput" placeholder="struct Point { int32 x; int32 y; }"></textarea>
         </section>
+        
         <section class="code-section">
-            @* ReSharper disable once UnknownCssClass *@
-            <pre class="language-ts"><code id="output">Generated code will appear here.</code></pre>
+            <StandaloneCodeEditor @ref="_editor" Id="sample-code-editor-123" CssClass="my-editor-class" ConstructionOptions="EditorConstructionOptions"  />
         </section>
     </div>
     <div class="toolbar">
@@ -29,6 +30,7 @@
 </div>
 
 @code {
+      private StandaloneCodeEditor _editor = null!;
     string _selectedGenerator = "ts";
     string SelectedGenerator
     {
@@ -55,6 +57,17 @@
             }
         }
     }
+
+    private StandaloneEditorConstructionOptions EditorConstructionOptions(StandaloneCodeEditor editor)
+{
+	return new StandaloneEditorConstructionOptions
+	{
+		AutomaticLayout = true,
+        Theme = "vs-dark",
+		Language = "text",
+		Value = "Generated code will appear here..."
+	};
+}
 
 
 }
@@ -151,8 +164,26 @@ struct Library {
 
     private async Task ShowOutput()
     {
+       
         var co = await CompileSchema(_schema, SelectedGenerator);
-        await JS.InvokeVoidAsync("showOutput", SelectedGenerator, co.IsOk, co.Result);
+          var languageId = SelectedGenerator switch {
+            "ts" => "typescript",
+            "cs" => "csharp",
+            "go" => "go",
+            "java" => "java",
+            "cpp" => "cpp",
+            "rust" => "rust",
+            "dart" => "dart",
+          };
+          Console.WriteLine(languageId);
+          var model = await _editor.GetModel();
+          _editor.UpdateOptions(new EditorUpdateOptions
+          {
+            ReadOnly = true
+          });
+          Global.SetModelLanguage(model,languageId);
+          _editor.SetValue(co.Result);
+          await JS.InvokeVoidAsync("disableError");
     }
 
     [JSInvokable]
