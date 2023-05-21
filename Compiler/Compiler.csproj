@@ -19,6 +19,7 @@
     <Platforms>AnyCPU</Platforms>
     <Configurations>Debug;Release</Configurations>
     <CheckEolTargetFramework>false</CheckEolTargetFramework>
+    <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
 	<ItemGroup>
