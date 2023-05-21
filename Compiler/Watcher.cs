@@ -5,11 +5,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Compiler;
-using Core.Exceptions;
 using Core.Generators;
 using Core.Logging;
 using Microsoft.Extensions.FileSystemGlobbing;
-using Microsoft.Extensions.FileSystemGlobbing.Abstractions;
 using Spectre.Console;
 
 public class Watcher
@@ -348,28 +346,37 @@ public class Watcher
     /// </returns>
     public async Task<int> CompileSchemas()
     {
-        if (!_preserveWatchOutput)
+        try
         {
-            _logger.ErrorConsole.Clear();
+            if (!_preserveWatchOutput)
+            {
+                _logger.ErrorConsole.Clear();
+            }
+            foreach (var parsedGenerator in _compiler.Flags.GetParsedGenerators())
+            {
+                if (!GeneratorUtils.ImplementedGenerators.ContainsKey(parsedGenerator.Alias))
+                {
+                    LogEvent($"[red]The alias '{parsedGenerator.Alias}' is not a recognized code generator[/]", isError: true);
+                    return BebopCompiler.Err;
+                }
+                if (string.IsNullOrWhiteSpace(parsedGenerator.OutputFile))
+                {
+                    LogEvent($"[red]No out file was specified for generator '{parsedGenerator.Alias}'[/]", isError: true);
+                    return BebopCompiler.Err;
+                }
+                var result = await _compiler.CompileSchema(GeneratorUtils.ImplementedGenerators[parsedGenerator.Alias], _trackedFiles, new FileInfo(parsedGenerator.OutputFile), _compiler.Flags.Namespace ?? string.Empty, parsedGenerator.Services, parsedGenerator.LangVersion);
+                if (result != BebopCompiler.Ok)
+                {
+                    return result;
+                }
+            }
+            return BebopCompiler.Ok;
         }
-        foreach (var parsedGenerator in _compiler.Flags.GetParsedGenerators())
+        catch (Exception ex)
         {
-            if (!GeneratorUtils.ImplementedGenerators.ContainsKey(parsedGenerator.Alias))
-            {
-                LogEvent($"[red]The alias '{parsedGenerator.Alias}' is not a recognized code generator[/]", isError: true);
-                return BebopCompiler.Err;
-            }
-            if (string.IsNullOrWhiteSpace(parsedGenerator.OutputFile))
-            {
-                LogEvent($"[red]No out file was specified for generator '{parsedGenerator.Alias}'[/]", isError: true);
-                return BebopCompiler.Err;
-            }
-            var result = await _compiler.CompileSchema(GeneratorUtils.ImplementedGenerators[parsedGenerator.Alias], _trackedFiles, new FileInfo(parsedGenerator.OutputFile), _compiler.Flags.Namespace ?? string.Empty, parsedGenerator.Services, parsedGenerator.LangVersion);
-            if (result != BebopCompiler.Ok)
-            {
-                return result;
-            }
+            await _logger.Error(ex);
+            return BebopCompiler.Err;
+
         }
-        return BebopCompiler.Ok;
     }
 }
