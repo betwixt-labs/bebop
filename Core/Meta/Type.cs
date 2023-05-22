@@ -146,6 +146,9 @@ namespace Core.Meta
             return type is DefinedType dt && schema.Definitions[dt.Name] is UnionDefinition;
         }
 
+        public static bool IsDefined(this TypeBase type, BebopSchema schema) {
+            return type is DefinedType dt && schema.Definitions.ContainsKey(dt.Name);
+        }
         public static bool IsAggregate(this TypeBase type, BebopSchema schema)
         {
             return IsUnion(type, schema) || IsMessage(type, schema) || IsStruct(type, schema);

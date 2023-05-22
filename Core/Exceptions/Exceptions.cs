@@ -294,14 +294,14 @@ namespace Core.Exceptions
     class InvalidServiceRequestTypeException : SpanException
     {
         public InvalidServiceRequestTypeException(string serviceName, string methodName, TypeBase type, Span span)
-              : base($"The request type of method '{methodName}' in service '{serviceName}' is '{type.AsString}'  must be a message, struct, or union.", span, 132)
+              : base($"The request type of method '{methodName}' in service '{serviceName}' is '{type.AsString}'  must be a defined type of message, struct, or union.", span, 132)
         { }
     }
     [Serializable]
     class InvalidServiceReturnTypeException : SpanException
     {
         public InvalidServiceReturnTypeException(string serviceName, string methodName, TypeBase type, Span span)
-            : base($"The return type of method '{methodName}' in service '{serviceName}' is '{type.AsString}' but must be a message, struct, or union.", span, 133)
+            : base($"The return type of method '{methodName}' in service '{serviceName}' is '{type.AsString}' but must be a defined type of message, struct, or union.", span, 133)
         { }
     }
 
@@ -310,6 +310,14 @@ namespace Core.Exceptions
     {
         public ServiceMethodIdCollisionException(string serviceOneName, string methodOneName, string serviceTwoName, string methodTwoName, uint id, Span span)
             : base($"The hashed ID of service '{serviceOneName}' and method '{methodOneName}' collides with the hashed ID of service '{serviceTwoName}' and '{methodTwoName}' (id: {id}).", span, 134)
+        { }
+    }
+
+    [Serializable]
+    class UnexpectedEndOfFile : SpanException
+    {
+        public UnexpectedEndOfFile(Span span)
+            : base($"Unexpected EOF.", span, 135)
         { }
     }
 

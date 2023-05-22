@@ -187,6 +187,10 @@ namespace Core.Meta
                         {
                             errors.Add(new DuplicateFieldException(field, fd));
                         }
+                        if (field.Type is DefinedType st && Definitions.TryGetValue(st.Name, out var std) && std is ServiceDefinition)
+                        {
+                            errors.Add(new InvalidFieldException(field, "Field cannot be a service"));
+                        }
                         switch (fd)
                         {
                             case StructDefinition when field.Type is DefinedType dt && fd.Name.Equals(dt.Name):
@@ -229,11 +233,11 @@ namespace Core.Meta
                         {
                             errors.Add(new DuplicateServiceMethodIdException(b.Id, sd.Name, fnd.Name, fnd.Span));
                         }
-                        if (!fnd.RequestDefinition.IsAggregate(this))
+                        if (fnd.RequestDefinition.IsDefined(this) && !fnd.RequestDefinition.IsAggregate(this))
                         {
                             errors.Add(new InvalidServiceRequestTypeException(sd.Name, fnd.Name, fnd.RequestDefinition, fnd.Span));
                         }
-                        if (!fnd.ReturnDefintion.IsAggregate(this))
+                        if (fnd.ReturnDefintion.IsDefined(this) && !fnd.ReturnDefintion.IsAggregate(this))
                         {
                             errors.Add(new InvalidServiceReturnTypeException(sd.Name, fnd.Name, fnd.ReturnDefintion, fnd.Span));
                         }

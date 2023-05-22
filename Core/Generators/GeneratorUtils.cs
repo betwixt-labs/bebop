@@ -76,7 +76,14 @@ namespace Core.Generators
         /// <remarks>
         ///  Used by the <see cref="CSharpGenerator"/> and other languages where classes are pascal case.
         /// </remarks>
-        public static string ClassName(this Definition definition) => definition.Name.ToPascalCase();
+        public static string ClassName(this Definition definition)
+        {
+            if (definition is ServiceDefinition) {
+                return $"{definition.Name.ToPascalCase()}Service";
+            }
+            return definition.Name.ToPascalCase();
+        }
+
         /// <summary>
         /// Gets the formatted base class name for a <see cref="Definition"/>.
         /// </summary>
@@ -84,7 +91,13 @@ namespace Core.Generators
         /// <remarks>
         ///  Used by the <see cref="CSharpGenerator"/> and other languages where "Base" indicates a class that can be inherited.
         /// </remarks>
-        public static string BaseClassName(this Definition definition) => $"Base{definition.Name.ToPascalCase()}";
+        public static string BaseClassName(this Definition definition)
+        {
+            if (definition is ServiceDefinition) {
+                return $"Base{definition.Name.ToPascalCase()}Service";
+            }
+            return $"Base{definition.Name.ToPascalCase()}";
+        }
 
         /// <summary>
         /// Gets the generic argument index for a branch of a union.
