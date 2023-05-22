@@ -6,31 +6,34 @@
 
 
 <div class="container">
-    
-    <div class="side-by-side">
-        <section>
-            <textarea id="schema" autofocus autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-                @oninput="OnInput" placeholder="struct Point { int32 x; int32 y; }"></textarea>
-        </section>
-        
-        <section class="code-section">
-            <StandaloneCodeEditor @ref="_editor" Id="sample-code-editor-123" CssClass="my-editor-class" ConstructionOptions="EditorConstructionOptions"  />
-        </section>
+  <div class="side-by-side">
+    <div class="editor-wrapper">
+      <StandaloneCodeEditor @ref="_schemaEditor" Id="schemaEditor" CssClass="my-editor-class" ConstructionOptions="SchemaConstructionOptions" OnKeyUp="OnInput" />
     </div>
-    <div class="toolbar">
-        <label for="generators">Generate code for:</label>
 
-        <select @bind="SelectedGenerator" id="generators">
-            @foreach (var (key, value) in GeneratorUtils.ImplementedGeneratorNames)
-            {
-                <option value="@key">@value</option>
-            }
-        </select>
+    <div class="editor-wrapper">
+      <StandaloneCodeEditor @ref="_previewEditor" Id="previewEditor" CssClass="my-editor-class" ConstructionOptions="PreviewConstructionOptions"  />
     </div>
+  </div>
+
+  <div class="toolbar">
+    <label for="generators">Generate code for:</label>
+
+    <select @bind="SelectedGenerator" id="generators">
+      @foreach (var (key, value) in GeneratorUtils.ImplementedGeneratorNames)
+      {
+        <option value="@key">@value</option>
+      }
+    </select>
+    <span>@(Core.Meta.ReservedWords.CompilerName) @(DotEnv.Generated.Environment.Version)</span>
+  </div>
 </div>
 
+
+
 @code {
-      private StandaloneCodeEditor _editor = null!;
+      private StandaloneCodeEditor _schemaEditor = null!;
+      private StandaloneCodeEditor _previewEditor = null!;
     string _selectedGenerator = "ts";
     string SelectedGenerator
     {
@@ -58,18 +61,38 @@
         }
     }
 
-    private StandaloneEditorConstructionOptions EditorConstructionOptions(StandaloneCodeEditor editor)
+       private StandaloneEditorConstructionOptions SchemaConstructionOptions(StandaloneCodeEditor editor)
+{
+	return new StandaloneEditorConstructionOptions
+	{
+		AutomaticLayout = true,
+        Theme = "vs-dark",
+		Language = "c",
+		Value = "struct Point { int32 x; int32 y; }",
+        FontLigatures = true,
+        FormatOnType = true,
+        FontFamily = "Fira Code",
+        Minimap = new EditorMinimapOptions() {
+            Enabled = false
+        }
+	};
+}
+
+    private StandaloneEditorConstructionOptions PreviewConstructionOptions(StandaloneCodeEditor editor)
 {
 	return new StandaloneEditorConstructionOptions
 	{
 		AutomaticLayout = true,
         Theme = "vs-dark",
 		Language = "text",
-		Value = "Generated code will appear here..."
+		Value = "Generated code will appear here...",
+        FontLigatures = true,
+         FontFamily = "Fira Code",
+         Minimap = new EditorMinimapOptions() {
+            Enabled = false
+        }
 	};
 }
-
-
 }
 
 @functions {
@@ -143,13 +166,16 @@ struct Library {
 
         try
         {
-            var parser = new SchemaParser(textualSchema, "Bebop.Example");
+            var parser = new SchemaParser(textualSchema, string.Empty);
             var schema = await parser.Parse();
-            schema.Validate();
+            _ = schema.Validate();
+            var diagonstics =  schema.Errors.Concat(schema.Warnings).ToList();
+            var hasErrorDiagonstics = diagonstics.Any((d) => d.Severity is Core.Exceptions.Severity.Error);
             return new CompilerOutput
             {
-                IsOk = true,
-                Result = GeneratorUtils.ImplementedGenerators[generatorAlias](schema).Compile(null)
+                IsOk = !hasErrorDiagonstics,
+                Result = hasErrorDiagonstics ? string.Empty : GeneratorUtils.ImplementedGenerators[generatorAlias](schema).Compile(null, writeGeneratedNotice: false),
+                Diagonstics = diagonstics
             };
         }
         catch (Exception e)
@@ -166,7 +192,16 @@ struct Library {
     {
        
         var co = await CompileSchema(_schema, SelectedGenerator);
-          var languageId = SelectedGenerator switch {
+          if (!co.IsOk) {
+             var model = await _previewEditor.GetModel();
+          _previewEditor.UpdateOptions(new EditorUpdateOptions
+          {
+            ReadOnly = true
+          });
+          Global.SetModelLanguage(model,"text");
+          _previewEditor.SetValue(co.Result);
+        } else {
+            var languageId = SelectedGenerator switch {
             "ts" => "typescript",
             "cs" => "csharp",
             "go" => "go",
@@ -175,21 +210,39 @@ struct Library {
             "rust" => "rust",
             "dart" => "dart",
           };
-          Console.WriteLine(languageId);
-          var model = await _editor.GetModel();
-          _editor.UpdateOptions(new EditorUpdateOptions
+          var model = await _previewEditor.GetModel();
+          _previewEditor.UpdateOptions(new EditorUpdateOptions
           {
             ReadOnly = true
           });
           Global.SetModelLanguage(model,languageId);
-          _editor.SetValue(co.Result);
-          await JS.InvokeVoidAsync("disableError");
+          _previewEditor.SetValue(co.Result);
+           
+        }
+        await JS.InvokeVoidAsync("disableError", _previewEditor.Id);
+        if(co.Diagonstics is not null) {
+             var diagonstics = new List<dynamic>();
+             foreach(var err in co.Diagonstics) {
+                var range = new BlazorMonaco.Range(err.Span.StartLine + 1, err.Span.StartColumn + 1, err.Span.EndLine  + 1, err.Span.EndColumn + 1);
+                diagonstics.Add(new {
+                  severity = err.Severity is Core.Exceptions.Severity.Error ? 8 : 4,
+                  startLineNumber = range.StartLineNumber,
+                  startColumn = range.StartColumn,
+                  endLineNumber = range.EndLineNumber,
+                  endColumn = range.EndColumn,
+                  message = err.Message,
+                });
+             }
+            await JS.InvokeVoidAsync("setMarkers", _schemaEditor.Id, diagonstics.ToArray());
+        } else {
+             await JS.InvokeVoidAsync("clearMarkers", _schemaEditor.Id);
+        }
     }
 
     [JSInvokable]
-    private async Task OnInput(ChangeEventArgs e)
+    private async Task OnInput(KeyboardEvent e)
     {
-        _schema = e.Value as string;
+        _schema = await _schemaEditor.GetValue();
         await ShowOutput();
     }
 

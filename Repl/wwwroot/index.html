@@ -13,22 +13,24 @@
     <title>Bebop REPL</title>
     <base href="./" />
     <link href="css/app.css" rel="stylesheet" />
-    <link href="css/prism.css" rel="stylesheet" />
     <link href="Repl.styles.css" rel="stylesheet" />
-    <script src="prism.js" data-manual></script>
     <script>
       window.assemblyName = "Repl";
-      window.Prism = window.Prism || {};
-      Prism.manual = true;
-      window.disableError = function () {
-        monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
-          noSemanticValidation: true,
-          noSyntaxValidation: true,
-        });
-        monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
-          noSemanticValidation: true,
-          noSyntaxValidation: true,
-        });
+      window.disableError = async (editorId)  =>{
+        var editor = blazorMonaco.editors.find(x => x.id === editorId).editor;
+        var model = await editor.getModel();
+        // Clear the markers on the model by passing an empty array
+        monaco.editor.setModelMarkers(model, "error", []);
+      };
+      window.clearMarkers = async (editorId) => {
+        var editor = blazorMonaco.editors.find(x => x.id === editorId).editor;
+        var model = await editor.getModel();
+        monaco.editor.setModelMarkers(model,"bebop", []);
+      }
+      window.setMarkers = async (editorId, markers) => {
+        var editor = blazorMonaco.editors.find(x => x.id === editorId).editor;
+        var model = await editor.getModel();
+        monaco.editor.setModelMarkers(model,"bebop", markers);
       };
       window.hasExampleParam = function () {
         var url_string = "http://www.example.com/t.html?a=1&b=3&c=m2-m3-m4-m5"; //window.location.href
