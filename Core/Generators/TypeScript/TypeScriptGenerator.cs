@@ -684,7 +684,7 @@ namespace Core.Generators.TypeScript
                                 builder.AppendLine($"service = TempoServiceRegistry.tryGetService(serviceName);");
                                 builder.CodeBlock($"if (!(service instanceof {service.BaseClassName()}))", indentStep, () =>
                                 {
-                                    builder.AppendLine("throw new Error('todo');");
+                                    builder.AppendLine("throw new Error(`No service named '${serviceName}'was registered with the TempoServiceRegistry`);");
                                 });
                                 builder.AppendLine($"service.setLogger(this.logger.clone(serviceName));");
                                 builder.AppendLine("TempoServiceRegistry.staticServiceInstances.delete(serviceName);");

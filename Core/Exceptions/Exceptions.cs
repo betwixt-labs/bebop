@@ -294,14 +294,14 @@ namespace Core.Exceptions
     class InvalidServiceRequestTypeException : SpanException
     {
         public InvalidServiceRequestTypeException(string serviceName, string methodName, TypeBase type, Span span)
-              : base($"The request type of method '{methodName}' in service '{serviceName}' is '{type.AsString}'  must be a message, struct, or union.", span, 132)
+              : base($"The request type of method '{methodName}' in service '{serviceName}' is '{type.AsString}'  must be a defined type of message, struct, or union.", span, 132)
         { }
     }
     [Serializable]
     class InvalidServiceReturnTypeException : SpanException
     {
         public InvalidServiceReturnTypeException(string serviceName, string methodName, TypeBase type, Span span)
-            : base($"The return type of method '{methodName}' in service '{serviceName}' is '{type.AsString}' but must be a message, struct, or union.", span, 133)
+            : base($"The return type of method '{methodName}' in service '{serviceName}' is '{type.AsString}' but must be a defined type of message, struct, or union.", span, 133)
         { }
     }
 

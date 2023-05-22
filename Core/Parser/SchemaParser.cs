@@ -747,7 +747,7 @@ namespace Core.Parser
                 return null;
             }
             StartScope();
-            var serviceName = $"{definitionToken.Lexeme.ToPascalCase()}Service";
+            var serviceName = $"{definitionToken.Lexeme.ToPascalCase()}";
 
             var methods = new List<ServiceMethod>();
             var usedMethodIds = new HashSet<uint>() { 0 };
@@ -796,11 +796,28 @@ namespace Core.Parser
                     Expect(TokenKind.OpenParenthesis, hint);
 
                     var isRequestStream = Eat(TokenKind.Stream);
-                    var requestType = ParseType(CurrentToken);
+                    if (CurrentToken is not { Kind: TokenKind.Identifier })
+                    {
+                        throw new UnexpectedTokenException(TokenKind.Identifier, CurrentToken, hint);
+                    }
+                    var requestType = ParseType(definitionToken);
+                    if (requestType is not DefinedType)
+                    {
+                        throw new InvalidServiceRequestTypeException(serviceName, methodName, requestType, requestType.Span);
+                    }
+                    
                     Expect(TokenKind.CloseParenthesis, hint);
                     Expect(TokenKind.Colon, hint);
                     var isResponseStream = Eat(TokenKind.Stream);
-                    var returnType = ParseType(CurrentToken);
+                    if (CurrentToken is not { Kind: TokenKind.Identifier })
+                    {
+                        throw new UnexpectedTokenException(TokenKind.Identifier, CurrentToken, hint);
+                    }
+                    var returnType = ParseType(definitionToken);
+                    if (returnType is not DefinedType)
+                    {
+                        throw new InvalidServiceReturnTypeException(serviceName, methodName, returnType, returnType.Span);
+                    }
                     var returnTypeSpan = methodStart.Combine(CurrentToken.Span);
                     Expect(TokenKind.Semicolon, "Method definition must end with a ';' semicolon");
                     var methodSpan = methodStart.Combine(CurrentToken.Span);
