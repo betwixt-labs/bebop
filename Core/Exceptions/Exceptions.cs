@@ -313,6 +313,14 @@ namespace Core.Exceptions
         { }
     }
 
+    [Serializable]
+    class UnexpectedEndOfFile : SpanException
+    {
+        public UnexpectedEndOfFile(Span span)
+            : base($"Unexpected EOF.", span, 135)
+        { }
+    }
+
 
 
     [Serializable]

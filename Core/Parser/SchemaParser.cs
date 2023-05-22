@@ -47,7 +47,7 @@ namespace Core.Parser
         private int _index;
         private readonly string _nameSpace;
         private readonly List<SpanException> _errors = new();
-         private readonly List<SpanException> _warnings = new();
+        private readonly List<SpanException> _warnings = new();
         private List<Token> _tokens => _tokenizer.Tokens;
 
         /// <summary>
@@ -247,14 +247,21 @@ namespace Core.Parser
         /// <returns>The content of the last block comment which usually proceeds a definition.</returns>
         private string ConsumeBlockComments()
         {
-
-            var definitionDocumentation = string.Empty;
-            while (CurrentToken.Kind == TokenKind.BlockComment)
+            var start = CurrentToken;
+            try
             {
-                definitionDocumentation = CurrentToken.Lexeme;
-                _index++;
+                var definitionDocumentation = string.Empty;
+                while (CurrentToken.Kind == TokenKind.BlockComment)
+                {
+                    definitionDocumentation = CurrentToken.Lexeme;
+                    _index++;
+                }
+                return definitionDocumentation;
             }
-            return definitionDocumentation;
+            catch
+            {
+                throw new UnexpectedEndOfFile(start.Span);
+            }
         }
 
         /// <summary>
@@ -329,7 +336,21 @@ namespace Core.Parser
 
         private Definition? ParseDefinition()
         {
-            var definitionDocumentation = ConsumeBlockComments();
+            string definitionDocumentation;
+            try
+            {
+                definitionDocumentation = ConsumeBlockComments();
+            }
+            catch (SpanException ex)
+            {
+                _errors.Add(ex);
+                return null;
+            }
+
+            if (CurrentToken.Kind is TokenKind.EndOfFile) {
+                return null;
+            }
+
 
             if (EatPseudoKeyword("const"))
             {
@@ -385,7 +406,7 @@ namespace Core.Parser
                 {
                     throw new UnexpectedTokenException(TokenKind.Service, CurrentToken, "Did not expect service definition after opcode. (Services are not allowed opcodes).");
                 }
-                 if (flagsAttribute != null)
+                if (flagsAttribute != null)
                 {
                     throw new UnexpectedTokenException(TokenKind.Service, CurrentToken, "Did not expect service definition after flags. (Services are not allowed flags).");
                 }
@@ -712,7 +733,7 @@ namespace Core.Parser
             {
                 _errors.Add(new InvalidReadOnlyException(definition));
             }
-        
+
             if (opcodeAttribute != null && definition is not RecordDefinition)
             {
                 _errors.Add(new InvalidOpcodeAttributeUsageException(definition));
@@ -805,7 +826,7 @@ namespace Core.Parser
                     {
                         throw new InvalidServiceRequestTypeException(serviceName, methodName, requestType, requestType.Span);
                     }
-                    
+
                     Expect(TokenKind.CloseParenthesis, hint);
                     Expect(TokenKind.Colon, hint);
                     var isResponseStream = Eat(TokenKind.Stream);
