@@ -347,7 +347,8 @@ namespace Core.Parser
                 return null;
             }
 
-            if (CurrentToken.Kind is TokenKind.EndOfFile) {
+            if (CurrentToken.Kind is TokenKind.EndOfFile)
+            {
                 return null;
             }
 
@@ -630,7 +631,17 @@ namespace Core.Parser
                 errored = false;
                 var value = BigInteger.Zero;
 
-                var fieldDocumentation = ConsumeBlockComments();
+                string fieldDocumentation;
+                try
+                {
+                    fieldDocumentation = ConsumeBlockComments();
+                }
+                catch (SpanException ex)
+                {
+                    _errors.Add(ex);
+                    errored = true;
+                    break;
+                }
                 // if we've reached the end of the definition after parsing documentation we need to exit.
                 if (Eat(TokenKind.CloseBrace))
                 {
@@ -785,7 +796,17 @@ namespace Core.Parser
                     return null;
                 }
                 errored = false;
-                var documentation = ConsumeBlockComments();
+                string documentation;
+                try
+                {
+                    documentation = ConsumeBlockComments();
+                }
+                catch (SpanException ex)
+                {
+                    _errors.Add(ex);
+                    errored = true;
+                    break;
+                }
                 // if we've reached the end of the definition after parsing documentation we need to exit.
                 if (Eat(TokenKind.CloseBrace))
                 {
@@ -912,7 +933,17 @@ namespace Core.Parser
                     return null;
                 }
                 errored = false;
-                var documentation = ConsumeBlockComments();
+                string documentation;
+                try
+                {
+                    documentation = ConsumeBlockComments();
+                }
+                catch (SpanException ex)
+                {
+                    _errors.Add(ex);
+                    errored = true;
+                    break;
+                }
                 // if we've reached the end of the definition after parsing documentation we need to exit.
                 if (Eat(TokenKind.CloseBrace))
                 {
