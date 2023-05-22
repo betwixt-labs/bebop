@@ -136,6 +136,13 @@ namespace Core.Meta
                 }
                 var reference = Definitions[typeToken.Lexeme];
                 var referenceScope = reference.Scope;
+                // TODO figure out why this is happening
+                //  it is obvious that the ServiceDefinition isn't being added
+                //  but it remains to be seen why it is still being picked up by _typeReferences
+                if (!Definitions.ContainsKey(definitionToken.Lexeme)) {
+                 //   errors.Add(new UnrecognizedTypeException(definitionToken, typeToken.Lexeme));
+                    continue;
+                }
                 var definition = Definitions[definitionToken.Lexeme];
                 var definitionScope = definition.Scope;
 
@@ -227,7 +234,7 @@ namespace Core.Meta
                         var fnd = b.Definition;
                         if (!usedMethodNames.Add(fnd.Name.ToSnakeCase()))
                         {
-                            errors.Add(new DuplicateServiceMethodNameException(b.Id, sd.Name, fnd.Name, fnd.Span));
+                            errors.Add(new DuplicateServiceMethodNameException(sd.Name, fnd.Name, fnd.Span));
                         }
                         if (!usedMethodIds.Add(b.Id))
                         {

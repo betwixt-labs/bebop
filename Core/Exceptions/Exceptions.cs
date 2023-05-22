@@ -265,20 +265,12 @@ namespace Core.Exceptions
             : base($"Enums must have an integer underlying type, not {t}.", t.Span, 128)
         { }
     }
-
-    [Serializable]
-    class DuplicateServiceDiscriminatorException : SpanException
-    {
-        public DuplicateServiceDiscriminatorException(Token discriminator, string serviceName)
-            : base($"The discriminator index {discriminator.Lexeme} was used more than once in service '{serviceName}'.", discriminator.Span, 129)
-        { }
-    }
     
     [Serializable]
     class DuplicateServiceMethodNameException : SpanException
     {
-        public DuplicateServiceMethodNameException(uint discriminator, string serviceName, string functionName, Span span)
-            : base($"Index {discriminator} duplicates the function name '{functionName}' which can only be used once in service '{serviceName}'.", span, 130)
+        public DuplicateServiceMethodNameException(string serviceName, string methodName, Span span)
+            : base($"Method '{methodName}' is defined multiple times in '{serviceName}'.", span, 130)
         { }
     }
 
@@ -286,7 +278,7 @@ namespace Core.Exceptions
     class DuplicateServiceMethodIdException : SpanException
     {
         public DuplicateServiceMethodIdException(uint id, string serviceName, string methodName, Span span)
-            : base($"Index {id} duplicates the function name '{methodName}' which can only be used once in service '{serviceName}'.", span, 131)
+            : base($"Method id '{id}' for '{methodName}' collides with another method in service '{serviceName}'.", span, 131)
         { }
     }
 

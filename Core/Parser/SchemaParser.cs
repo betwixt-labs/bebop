@@ -787,7 +787,7 @@ namespace Core.Parser
 
             var definitionEnd = CurrentToken.Span;
             var errored = false;
-            var serviceFieldFollowKinds = new HashSet<TokenKind>() { TokenKind.BlockComment, TokenKind.Number, TokenKind.CloseBrace };
+            var serviceFieldFollowKinds = new HashSet<TokenKind>() { TokenKind.BlockComment, TokenKind.Identifier, TokenKind.CloseBrace };
             while (!Eat(TokenKind.CloseBrace))
             {
                 if (errored && !serviceFieldFollowKinds.Contains(CurrentToken.Kind))
@@ -827,13 +827,13 @@ namespace Core.Parser
                     var methodName = ExpectLexeme(TokenKind.Identifier, hint).ToCamelCase();
                     if (usedMethodNames.Contains(methodName))
                     {
-                        _errors.Add(new DuplicateServiceDiscriminatorException(indexToken, serviceName));
+                          throw new DuplicateServiceMethodNameException(serviceName, methodName, indexToken.Span);
                     }
                     usedMethodNames.Add(methodName);
                     var methodId = RpcSchema.GetMethodId(serviceName, methodName);
                     if (usedMethodIds.Contains(methodId))
                     {
-                        _errors.Add(new DuplicateServiceDiscriminatorException(indexToken, serviceName));
+                        throw new DuplicateServiceMethodIdException(methodId, serviceName, methodName, indexToken.Span);
                     }
                     Expect(TokenKind.OpenParenthesis, hint);
 
@@ -861,7 +861,7 @@ namespace Core.Parser
                         throw new InvalidServiceReturnTypeException(serviceName, methodName, returnType, returnType.Span);
                     }
                     var returnTypeSpan = methodStart.Combine(CurrentToken.Span);
-                    Expect(TokenKind.Semicolon, "Method definition must end with a ';' semicolon");
+                    Eat(TokenKind.Semicolon);
                     var methodSpan = methodStart.Combine(CurrentToken.Span);
                     MethodType GetMethodType() => (isRequestStream, isResponseStream) switch
                     {
@@ -884,7 +884,7 @@ namespace Core.Parser
                 {
                     _errors.Add(e);
                     errored = true;
-                    SkipAndSkipUntil(new HashSet<TokenKind>(serviceFieldFollowKinds.Concat(_universalFollowKinds)));
+                    SkipAndSkipUntil(new HashSet<TokenKind>(serviceFieldFollowKinds));
                     continue;
                 }
             }
