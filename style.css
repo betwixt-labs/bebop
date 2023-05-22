@@ -90,3 +90,61 @@ h1 {
         width: calc(100% - 40px);
     }
 }
+
+.copyable {
+    display: flex;
+    align-items: center;
+  }
+
+  .code-block {
+    background-color: black;
+    padding: 10px;
+    margin: 0;
+    font-family: 'IBM Plex Mono', monospace;
+    white-space: pre;
+    border: 1px solid #8AB661;
+    border-radius: 4px;
+    display: inline-block;
+  }
+
+  .code-block code {
+    color: #8AB661;
+    font-weight: bold;
+  }
+
+  .copy-button {
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    background-color: transparent;
+  }
+
+  .copy-button img {
+    width: 20px;
+    height: 20px;
+  }
+
+  .copy-button[data-tooltip] {
+    position: relative;
+  }
+
+  .copy-button[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease-in-out;
+  }
+
+  .copy-button:hover[data-tooltip]::after {
+    opacity: 1;
+  }
