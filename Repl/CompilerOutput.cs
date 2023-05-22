@@ -1,4 +1,7 @@
-﻿namespace Repl
+﻿using System.Collections.Generic;
+using Core.Exceptions;
+
+namespace Repl
 {
     /// <summary>
     /// Holds results from the Bebop compiler
@@ -16,5 +19,6 @@
         /// The returned value from the compiler. Either a stacktrace or generated code.
         /// </summary>
         public string Result { get; set; }
+        public List<SpanException>? Diagonstics { get; set; }
     }
 }
