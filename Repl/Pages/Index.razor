@@ -194,15 +194,7 @@ struct Library {
     {
        
         var co = await CompileSchema(_schema, SelectedGenerator);
-          if (!co.IsOk) {
-             var model = await _previewEditor.GetModel();
-          _previewEditor.UpdateOptions(new EditorUpdateOptions
-          {
-            ReadOnly = true
-          });
-          Global.SetModelLanguage(model,"text");
-          _previewEditor.SetValue(co.Result);
-        } else {
+          if (co.IsOk) {
             var languageId = SelectedGenerator switch {
             "ts" => "typescript",
             "cs" => "csharp",
@@ -213,12 +205,12 @@ struct Library {
             "dart" => "dart",
           };
           var model = await _previewEditor.GetModel();
-          _previewEditor.UpdateOptions(new EditorUpdateOptions
+        await  _previewEditor.UpdateOptions(new EditorUpdateOptions
           {
             ReadOnly = true
           });
-          Global.SetModelLanguage(model,languageId);
-          _previewEditor.SetValue(co.Result);
+        await  Global.SetModelLanguage(model,languageId);
+         await _previewEditor.SetValue(co.Result);
            
         }
         await JS.InvokeVoidAsync("disableError", _previewEditor.Id);
