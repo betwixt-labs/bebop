@@ -48,7 +48,7 @@ Bebop is insanely fast! 🚀
 ### Features
 
 - 🧙‍♂️&nbsp; Supports [Typescript](https://github.com/betwixt-labs/bebop/wiki/Getting-Started-with-TypeScript), [C#](https://github.com/betwixt-labs/bebop/wiki/Getting-Started-with-.NET), [Rust](https://github.com/betwixt-labs/bebop/wiki/Getting-Started-with-Rust), C++, and more.
-- 🐎&nbsp; Snappy DX - integrate `bebopc` into your project with ease.
+- 🐎&nbsp; Snappy DX - integrate `bebopc` into your project with ease. Language support available in [VSCode](https://marketplace.visualstudio.com/items?itemName=rainway.vscode-bebop).
 - 🍃&nbsp; Light - Bebop has zero deps and a tiny runtime footprint. Generated code is tightly optimized.
 - 🌗&nbsp; RPC - build efficent APIs with [Tempo](https://github.com/betwixt-labs/tempo/).
 - ☁️&nbsp; Runs everywhere - browsers, serverless platforms, and on bare metal.
