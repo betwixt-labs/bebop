@@ -40,11 +40,6 @@ Bebop enables schema-based, typesafe, binary serialization and code generation. 
 
 If you want to get familiar with the schema language and see what the generated code looks like, try out the [web REPL](https://bebop.sh/repl/).
 
-Bebop is insanely fast! 🚀
-
-
- ![P12CpmA](https://user-images.githubusercontent.com/1297077/235745675-fc8a18e2-361f-4b7b-b9c9-47155e511b0a.png)
-
 ### Features
 
 - 🧙‍♂️&nbsp; Supports [Typescript](https://github.com/betwixt-labs/bebop/wiki/Getting-Started-with-TypeScript), [C#](https://github.com/betwixt-labs/bebop/wiki/Getting-Started-with-.NET), [Rust](https://github.com/betwixt-labs/bebop/wiki/Getting-Started-with-Rust), C++, and more.
@@ -54,6 +49,12 @@ Bebop is insanely fast! 🚀
 - ☁️&nbsp; Runs everywhere - browsers, serverless platforms, and on bare metal.
 
 **👉 For more information check out the [wiki](https://github.com/betwixt-labs/bebop/wiki). 👈**
+
+
+Bebop is insanely fast! 🚀
+
+
+ ![P12CpmA](https://user-images.githubusercontent.com/1297077/235745675-fc8a18e2-361f-4b7b-b9c9-47155e511b0a.png)
 
 ## Releases
 
