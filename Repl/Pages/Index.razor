@@ -43,7 +43,7 @@
             if (_selectedGenerator != value)
             {
                 _selectedGenerator = value;
-                ShowOutput().GetAwaiter().GetResult();
+                ShowOutput();
             }
         }
     }
@@ -211,7 +211,7 @@ struct Library {
             "dart" => "dart",
           };
           var model = await _previewEditor.GetModel();
-        await  _previewEditor.UpdateOptions(new EditorUpdateOptions
+         await _previewEditor.UpdateOptions(new EditorUpdateOptions
           {
             ReadOnly = true
           });
