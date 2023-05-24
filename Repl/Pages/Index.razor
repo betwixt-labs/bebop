@@ -67,7 +67,7 @@
 	{
 		AutomaticLayout = true,
         Theme = "vs-dark",
-		Language = "c",
+		Language = "bebop",
 		Value = "struct Point { int32 x; int32 y; }",
         FontLigatures = true,
         FormatOnType = true,
@@ -95,6 +95,12 @@
         }
 	};
 }
+
+protected override async Task OnInitializedAsync()
+{
+       await JS.InvokeVoidAsync("registerBebop");
+}
+
 }
 
 @functions {
