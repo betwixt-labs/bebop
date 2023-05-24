@@ -1,7 +1,9 @@
 import { BebopView } from 'bebop';
 import { ISomeMaps, SomeMaps } from './generated/gen';
 import * as assert from "assert";
-
+if (typeof require !== 'undefined') {
+    if (typeof TextDecoder === 'undefined') (global as any).TextDecoder = require('util').TextDecoder;
+}
 it("Map types roundtrip", () => {
     const obj: ISomeMaps = {
         m1: new Map([[false, true], [true, false]]),

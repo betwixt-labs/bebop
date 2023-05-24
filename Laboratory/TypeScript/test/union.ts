@@ -1,7 +1,9 @@
 import { BebopView } from 'bebop';
 import { IU, U, IWeirdOrder, WeirdOrder } from './generated/gen';
 import * as assert from "assert";
-
+if (typeof require !== 'undefined') {
+    if (typeof TextDecoder === 'undefined') (global as any).TextDecoder = require('util').TextDecoder;
+}
 it("Union roundtrip", () => {
     const obj = U.fromA({ b: 12345 });
     const bytes = U.encode(obj);
