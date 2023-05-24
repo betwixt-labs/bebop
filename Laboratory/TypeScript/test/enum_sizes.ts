@@ -10,7 +10,7 @@ it("Supports enum sizes", () => {
     const buffer = G.SmallAndHuge.encode({ small: 255, huge: 123n });
     expect(buffer.length).toEqual(1 + 8);
     const decoded = G.SmallAndHuge.decode(buffer);
-    expect(decoded.small).toEqual(123);
+    expect(decoded.small).toEqual(255);
     expect(decoded.huge.toString()).toEqual("123");
     expect(G.HugeEnum[0x7FFFFFFFFFFFFFFFn.toString()]).toEqual("MaxInt");
 });
