@@ -17,6 +17,11 @@ jobs:
         with:
           dotnet-version: "7.0.x" # SDK Version to use; x will use the latest version of the 7.0 channel
           include-prerelease: true
+      - name: Build Typescript runtime
+        run: |
+          npm install
+          npm run build
+        working-directory: ./Runtime/TypeScript
       - name: Build and run tests
         run: |
           npm install

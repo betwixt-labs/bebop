@@ -38,6 +38,11 @@ jobs:
       - name: npm install
         run: npm install
         working-directory: ${{env.TEST_ROOT}}
+      - name: Build Typescript runtime
+        run: |
+          npm install
+          npm run build
+        working-directory: ./Runtime/TypeScript
       - name: Test
         run: node run_test.js
         working-directory: ${{env.TEST_ROOT}}
