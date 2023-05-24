@@ -22,16 +22,13 @@ for (const x of hexDigits) {
     }
 }
 
-if (typeof require !== 'undefined') {
-    if (typeof TextDecoder === 'undefined') (global as any).TextDecoder = require('util').TextDecoder;
-}
-
 export class BebopRuntimeError extends Error {
-    constructor(message) {
+    constructor(message: string) {
         super(message);
         this.name = "BebopRuntimeError";
     }
 }
+
 /**
  * An interface which all generated Bebop interfaces implement.
  * @note this interface is not currently used by the runtime; it is reserved for future use.
@@ -40,7 +37,7 @@ export interface BebopRecord {
 
 }
 export class BebopView {
-    private static textDecoder = new TextDecoder();
+    private static textDecoder: TextDecoder;
     private static writeBuffer: Uint8Array = new Uint8Array(256);
     private static writeBufferView: DataView = new DataView(BebopView.writeBuffer.buffer);
     private static instance: BebopView;
@@ -151,6 +148,14 @@ export class BebopView {
             return emptyString;
         }
         if (lengthBytes >= this.minimumTextDecoderLength) {
+            if (typeof require !== 'undefined') {
+                if (typeof TextDecoder === 'undefined') {
+                    throw new BebopRuntimeError("TextDecoder is not defined on 'global'. Please include a polyfill.");
+                }
+            }
+            if (BebopView.textDecoder === undefined) {
+                BebopView.textDecoder = new TextDecoder();
+            }
             return BebopView.textDecoder.decode(this.buffer.subarray(this.index, this.index += lengthBytes));
         }
 

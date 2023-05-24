@@ -12,11 +12,16 @@ jobs:
       - uses: actions/checkout@v1
       - uses: actions/setup-node@v1
         with:
-          node-version: "12"
+          node-version: "18.16.0" # LTS
       - uses: actions/setup-dotnet@v1
         with:
           dotnet-version: "7.0.x" # SDK Version to use; x will use the latest version of the 7.0 channel
           include-prerelease: true
+      - name: Build Typescript runtime
+        run: |
+          npm install
+          npm run build
+        working-directory: ./Runtime/TypeScript
       - name: Build and run tests
         run: |
           npm install

@@ -1,6 +1,9 @@
 import { BebopView } from 'bebop';
 import { BasicArrays, IBasicArrays, TestInt32Array } from './generated/gen';
 import * as assert from "assert";
+if (typeof require !== 'undefined') {
+    if (typeof TextDecoder === 'undefined') (global as any).TextDecoder = require('util').TextDecoder;
+}
 
 it("Basic array types roundtrip", () => {
     const obj: IBasicArrays = {

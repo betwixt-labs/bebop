@@ -134,7 +134,7 @@ jobs:
       - uses: actions/checkout@v1
       - uses: actions/setup-node@v1
         with:
-          node-version: "14.15.1" # LTS
+          node-version: "18.16.0" # LTS
 
       - name: Get Environment Variables
         id: dotenv
@@ -251,7 +251,7 @@ jobs:
           profile: minimal
       - uses: actions/setup-node@v1
         with:
-          node-version: "14.15.1" # LTS
+          node-version: "18.16.0" # LTS
 
       - name: Get Environment Variables
         id: dotenv
@@ -338,7 +338,7 @@ jobs:
       - uses: actions/checkout@v1
       - uses: actions/setup-node@v1
         with:
-          node-version: "14.15.1" # LTS
+          node-version: "18.16.0" # LTS
           registry-url: https://registry.npmjs.org/
 
       - name: Get Environment Variables

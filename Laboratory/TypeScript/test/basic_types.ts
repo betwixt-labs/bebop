@@ -1,7 +1,9 @@
 import { BebopView } from 'bebop';
 import { BasicTypes } from './generated/gen';
 import * as assert from "assert";
-
+if (typeof require !== 'undefined') {
+    if (typeof TextDecoder === 'undefined') (global as any).TextDecoder = require('util').TextDecoder;
+}
 it("Basic types roundtrip", () => {
     const obj = {
         a_bool: true,

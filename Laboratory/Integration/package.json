@@ -1,15 +1,13 @@
 {
   "dependencies": {
-    "@types/node": "^14.14.6",
     "bebop": "file:../../Runtime/TypeScript",
-    "@xrpc/client": "0.0.1-alpha.1",
-    "@xrpc/server": "0.0.1-alpha.1",
-    "ts-node": "^9.0.0",
-    "typescript": "^4.1.2",
-    "deep-equal": "^2.0.5",
-    "@types/deep-equal": "^1.0.1"
+    "deep-equal": "^2.0.5"
   },
   "devDependencies": {
-    "shelljs": "0.8.5"
+    "@types/deep-equal": "^1.0.1",
+    "@types/node": "^20.2.3",
+    "shelljs": "0.8.5",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.0.4"
   }
 }

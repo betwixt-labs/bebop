@@ -16,7 +16,7 @@
   },
   "author": "The Bebop Authors",
   "license": "Apache-2.0",
-  "dependencies": {
-    "@types/node": "^14.14.7"
+  "devDependencies": {
+    "@types/node": "^20.2.3"
   }
 }

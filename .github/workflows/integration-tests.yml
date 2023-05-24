@@ -30,11 +30,16 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v1
         with:
-          node-version: "12"
+          node-version: "18.16.0" # LTS
       - name: Setup C++
         run: |
           sudo apt update
           sudo apt install gcc g++
+      - name: Build Typescript runtime
+        run: |
+          npm install
+          npm run build
+        working-directory: ./Runtime/TypeScript
       - name: npm install
         run: npm install
         working-directory: ${{env.TEST_ROOT}}
