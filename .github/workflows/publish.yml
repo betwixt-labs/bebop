@@ -203,7 +203,12 @@ jobs:
           name: bebop-runtime-rust-${{steps.dotenv.outputs.version}}
           path: ${{ env.RUST_RUNTIME_ROOT }}/target/package/bebop-${{ steps.dotenv.outputs.version }}.crate
 
-      # todo: depend on a different job
+      - name: Build Typescript runtime
+        run: |
+          npm install
+          npm run build
+        working-directory: ${{env.TS_RUNTIME_ROOT}}
+
       - name: Test TypeScript Runtime
         run: |
           npm install
@@ -211,7 +216,7 @@ jobs:
           npm run test
         working-directory: ${{env.TS_TEST_ROOT}}
 
-      - name: Build TypeScript Runtime
+      - name: Pack TypeScript Runtime
         run: |
           jq '.version = "${{ steps.dotenv.outputs.version }}"' package.json > tmp && mv tmp package.json
           npm install
