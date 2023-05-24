@@ -22,16 +22,19 @@ for (const x of hexDigits) {
     }
 }
 
-if (typeof require !== 'undefined') {
-    if (typeof TextDecoder === 'undefined') (global as any).TextDecoder = require('util').TextDecoder;
-}
-
 export class BebopRuntimeError extends Error {
-    constructor(message) {
+    constructor(message: string) {
         super(message);
         this.name = "BebopRuntimeError";
     }
 }
+
+if (typeof require !== 'undefined') {
+    if (typeof TextDecoder === 'undefined') {
+        throw new BebopRuntimeError("TextDecoder is not defined on 'global'. Please include a polyfill.");
+    }
+}
+
 /**
  * An interface which all generated Bebop interfaces implement.
  * @note this interface is not currently used by the runtime; it is reserved for future use.
