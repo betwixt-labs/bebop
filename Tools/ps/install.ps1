@@ -169,7 +169,7 @@ function Test-BebopcVersion {
     if ([System.Version]$installedVersion -gt [System.Version]$remoteVersion) {
         # Installed version is greater than the version to install
         Write-Color "$COLLISION_UTF8 bebopc $installedVersion is already installed, and and a higher version than targeted $remoteVersion." -Color Red
-        exit 1
+        break
     }
     elseif ([System.Version]$installedVersion -lt [System.Version]$remoteVersion) {
        Write-Color "bebopc $installedVersion will be upgraded to $remoteVersion." -Color White
@@ -177,7 +177,7 @@ function Test-BebopcVersion {
     else {
         # Installed version and version to install are the same
         Write-Color "$ROCKET_UTF8 bebopc $installedVersion is already installed and up to date." -Color White 
-        exit 0
+        break
     }
 }
 
@@ -203,7 +203,7 @@ function Invoke-Install {
 
     if (!(Test-Path -Path "$env:PROGRAMDATA\bebop\bebopc.exe")) {
         Write-Color "$ERROR_UTF8 bebopc failed to install." -Color Red
-        exit 1
+        break
     }
 
     # Get the current value of the PATH environment variable
@@ -232,7 +232,7 @@ function Initialize-Environment() {
 
         Write-Color "$COLLISION_UTF8 PowerShell 5 or later is required to install bebopc." -Color Red
         Write-Color "Upgrade PowerShell: https://docs.microsoft.com/en-us/powershell/scripting/setup/installing-windows-powershell" -Color Red
-        exit 1
+        break
     }
 
     # show notification to change execution policy:
@@ -241,7 +241,7 @@ function Initialize-Environment() {
         Write-Color "$COLLISION_UTF8 PowerShell requires an execution policy in [$($allowedExecutionPolicy -join ", ")] to run $app_name." -Color Red
         Write-Color "For example, to set the execution policy to 'RemoteSigned' please run :" -Color Red
         Write-Color "'Set-ExecutionPolicy RemoteSigned -scope CurrentUser'" -Color Red
-        exit 1
+        break
     }
 
     # Attempt to set highest encryption available for SecurityProtocol.
@@ -264,7 +264,7 @@ function Initialize-Environment() {
             '(2) Call [System.Net.ServicePointManager]::SecurityProtocol = 3072; in PowerShell prior to attempting installation'
         ) -join [Environment]::NewLine
         Write-Color $errorMessage -Color Red
-        exit 1
+        break
     }
 }
 
