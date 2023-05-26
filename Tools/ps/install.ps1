@@ -249,7 +249,7 @@ function Initialize-Environment() {
     # will typically produce a message for PowerShell v2 (just an info
     # message though)
     try {
-        # Set TLS 1.2 (3072) as that is the minimum required by Chocolatey.org.
+        # Set TLS 1.2 (3072) as that is the minimum required by github.com.
         # Use integers because the enumeration value for TLS 1.2 won't exist
         # in .NET 4.0, even though they are addressable if .NET 4.5+ is
         # installed (.NET 4.5 is an in-place upgrade).
@@ -262,7 +262,6 @@ function Initialize-Environment() {
             'If you see underlying connection closed or trust errors, you may need to do one or more of the following:'
             '(1) upgrade to .NET Framework 4.5+ and PowerShell v3+,'
             '(2) Call [System.Net.ServicePointManager]::SecurityProtocol = 3072; in PowerShell prior to attempting installation'
-            'See https://docs.chocolatey.org/en-us/choco/setup for all install options.'
         ) -join [Environment]::NewLine
         Write-Color $errorMessage -Color Red
         exit 1
