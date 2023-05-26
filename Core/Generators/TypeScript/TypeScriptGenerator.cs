@@ -381,9 +381,9 @@ namespace Core.Generators.TypeScript
             builder.AppendLine("import { BebopView, BebopRuntimeError, BebopRecord } from \"bebop\";");
             if (Schema.Definitions.Values.OfType<ServiceDefinition>().Any())
             {
+                builder.AppendLine("import { Metadata, MethodType } from \"@tempojs/common\";");
                 if (services is TempoServices.Client or TempoServices.Both)
                 {
-                    builder.AppendLine("import { Metadata, MethodType } from \"@tempojs/common\";");
                     builder.AppendLine("import {  BaseClient, MethodInfo, CallOptions } from \"@tempojs/client\";");
                 }
                 if (services is TempoServices.Server or TempoServices.Both)
