@@ -79,8 +79,8 @@ kWMMMMMXxlkNMMMMMXc  lNMK; .lNMMMMWo  oWMMMNl  ,KMMMMMMMMK; .dNMMMMMNd:xNMMMMMNo
         <div class="container">
             <h1>🎷No ceremony, just code. Blazing fast, typesafe binary serialization.</h1>
             <br>
-            <pre class="code-block"><code class="language-bash" data-lang="bash">&gt; bash -c "$(curl https://bebop.sh)"</code></pre>
-            <button class="copy-button" onclick="copyToClipboard('bash -c &quot;$(curl https://bebop.sh)&quot;')" aria-label="Copy" data-tooltip="Copy">
+            <pre class="code-block"><code class="language-bash" data-lang="bash" id="code-block"></code></pre>
+            <button class="copy-button" onclick="copyToClipboard()" aria-label="Copy" data-tooltip="Copy">
                 <img src="./images/copy.svg" alt="Copy">
             </button>
 
@@ -93,9 +93,18 @@ kWMMMMMXxlkNMMMMMXc  lNMK; .lNMMMMWo  oWMMMNl  ,KMMMMMMMMK; .dNMMMMMNd:xNMMMMMNo
         </div>
     </div>
     <script>
-        function copyToClipboard(text) {
+        const codeBlock = document.getElementById('code-block');
+        const code = navigator.platform.toLowerCase().indexOf('win') !== -1 ? 'irm https://bebop.sh | iex' : 'bash -c "$(curl https://bebop.sh)"';
+        if (navigator.platform.toLowerCase().indexOf('win') !== -1) {
+            // Windows OS
+            codeBlock.textContent = `> ${code}`;
+        } else {
+            // Non-Windows OS
+            codeBlock.textContent = `> ${code}`;
+        }
+        function copyToClipboard() {
             const el = document.createElement('textarea');
-            el.value = text;
+            el.value = code;
             el.setAttribute('readonly', '');
             el.style.position = 'absolute';
             el.style.left = '-9999px';
