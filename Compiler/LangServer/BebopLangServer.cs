@@ -11,23 +11,25 @@ namespace Compiler.LangServer
     {
         public static async Task RunAsync()
         {
+
             var server = await OmnisharpLanguageServer.From(options =>
-                options
-                    .WithInput(Console.OpenStandardInput())
-                    .WithOutput(Console.OpenStandardOutput())
-                    .WithLoggerFactory(new LoggerFactory())
-                    .AddDefaultLoggingProvider()
-                    .WithServices(services =>
-                    {
-                        services.AddSingleton<BufferManager>();
-                        services.AddSingleton<BebopLangServerLogger>();
-                        services.AddSingleton<BebopDiagnosticPublisher>();
-                    })
-                    .WithHandler<CompletionHandler>()
-                    .WithHandler<SemanticTokenHandler>()
-                    .WithHandler<TextDocumentSyncHandler>());
+                         options
+                             .WithInput(Console.OpenStandardInput())
+                             .WithOutput(Console.OpenStandardOutput())
+                             .WithLoggerFactory(new LoggerFactory())
+                             .AddDefaultLoggingProvider()
+                             .WithServices(services =>
+                             {
+                                 services.AddSingleton<BufferManager>();
+                                 services.AddSingleton<BebopLangServerLogger>();
+                                 services.AddSingleton<BebopDiagnosticPublisher>();
+                             })
+                             .WithHandler<CompletionHandler>()
+                             .WithHandler<SemanticTokenHandler>()
+                             .WithHandler<TextDocumentSyncHandler>());
 
             await server.WaitForExit;
+
         }
     }
 }

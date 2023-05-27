@@ -32,6 +32,7 @@ public sealed class VirtualTerminal : IAnsiConsole
         {
             Ansi = AnsiSupport.Yes,
             Out = new VirtualConsoleOutput(consoleOutput, width, height),
+            
             Interactive = InteractionSupport.No,
         }), consoleOutput);
     }

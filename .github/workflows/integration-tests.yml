@@ -21,6 +21,7 @@ jobs:
             5.0.x
             6.0.x
             7.0.x
+            8.0.x
           include-prerelease: true
       - name: Setup Rust
         uses: actions-rs/toolchain@v1

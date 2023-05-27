@@ -1,0 +1,13 @@
+{
+    "wasmHostProperties": {
+        "perHostConfig": [
+            {
+                "name": "wasmtime",
+                "Host": "wasmtime"
+            }
+        ]
+    },
+    "configProperties": {
+        "System.Globalization.Invariant": true
+      }
+}

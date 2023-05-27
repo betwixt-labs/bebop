@@ -812,7 +812,7 @@ namespace Core.Generators.TypeScript
                             {
                                 builder.CodeBlock($"public static from{b.ClassName()}(value: I{b.ClassName()})", indentStep, () =>
                                 {
-                                    builder.AppendLine($"return new {definition.ClassName()}({{ discriminator: {b.Discriminator}, value: new {b.ClassName()}(value)}});"    );
+                                    builder.AppendLine($"return new {definition.ClassName()}({{ discriminator: {b.Discriminator}, value: new {b.ClassName()}(value)}});");
                                 });
                                 builder.AppendLine();
                                 builder.CodeBlock($"public is{b.ClassName()}(): this is {{ value: {b.ClassName()} }} & {{ data: Extract<I{ud.ClassName()}Type, {{ discriminator: {b.Discriminator} }}> }}", indentStep, () =>
@@ -1114,9 +1114,12 @@ namespace Core.Generators.TypeScript
             return builder.ToString();
         }
 
+        public override AuxiliaryFile? GetAuxiliaryFile() => null;
         public override void WriteAuxiliaryFiles(string outputPath)
         {
             // There is nothing to do here now that BebopView.ts is an npm package.
         }
+
+        public override string Alias => "ts";
     }
 }

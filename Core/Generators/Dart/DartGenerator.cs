@@ -404,9 +404,12 @@ namespace Core.Generators.Dart
             return builder.ToString();
         }
 
+        public override AuxiliaryFile? GetAuxiliaryFile() => null;
         public override void WriteAuxiliaryFiles(string outputPath)
         {
             // There is nothing to do here.
         }
+
+         public override string Alias => "dart";
     }
 }

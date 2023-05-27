@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using Core.Lexer.Extensions;
 
 namespace Core.Meta.Extensions
@@ -290,5 +291,6 @@ namespace Core.Meta.Extensions
 
             return builder.ToString();
         }
+
     }
 }

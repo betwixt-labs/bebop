@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using Core.Exceptions;
 using Spectre.Console;
+using Core.Meta;
 
 namespace Core.Logging;
 
@@ -11,6 +13,7 @@ public partial class DiagnosticLogger
 {
     private static DiagnosticLogger? _instance;
     private readonly LogFormatter _formatter;
+    private bool _diagnosticsSupressed;
     private readonly IAnsiConsole _out;
     private readonly IAnsiConsole _err;
     public IAnsiConsole Out => _out;
@@ -20,7 +23,7 @@ public partial class DiagnosticLogger
     private DiagnosticLogger(LogFormatter formatter)
     {
         _formatter = formatter;
-        var isWasm = Environment.GetEnvironmentVariable("WASM") is not null;
+        var isWasm = RuntimeInformation.OSArchitecture is Architecture.Wasm;
         if (isWasm)
         {
             _out = VirtualTerminal.Create(Console.Out);
@@ -146,6 +149,13 @@ public partial class DiagnosticLogger
         _err.WriteLine(FormatDiagnostic(new(Severity.Error, ex.Message, Unknown, null)));
     }
 
+    public void WriteCompilerOutput(CompilerOutput output)
+    {
+        // TODO figure out why the virtual console breaks outputs
+        
+        Console.Out.WriteLine(FormatCompilerOutput(output));
+    }
+
     public void WriteLine(string message)
     {
         _out.WriteLine(message);
@@ -162,5 +172,10 @@ public partial class DiagnosticLogger
     public void WriteErrorLine(string message)
     {
         _err.WriteLine(message);
+    }
+
+    public void SuppressDiagnostics()
+    {
+        _diagnosticsSupressed = true;
     }
 }

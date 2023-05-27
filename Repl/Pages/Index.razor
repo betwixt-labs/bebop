@@ -143,13 +143,13 @@ struct Library {
     }
 
     [JSInvokable]
-    public static async Task<CompilerOutput> CompileSchema(string textualSchema, string generatorAlias)
+    public static async Task<Repl.CompilerOutput> CompileSchema(string textualSchema, string generatorAlias)
     {
         textualSchema = textualSchema?.Trim() ?? string.Empty;
         generatorAlias = generatorAlias?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(textualSchema))
         {
-            return new CompilerOutput
+            return new Repl.CompilerOutput
             {
                 IsOk = false,
                 Result = "No schema was provided"
@@ -157,7 +157,7 @@ struct Library {
         }
         if (string.IsNullOrWhiteSpace(generatorAlias))
         {
-            return new CompilerOutput
+            return new Repl.CompilerOutput
             {
                 IsOk = false,
                 Result = "No code generator was specified"
@@ -165,7 +165,7 @@ struct Library {
         }
         if (!GeneratorUtils.ImplementedGenerators.ContainsKey(generatorAlias))
         {
-            return new CompilerOutput
+            return new Repl.CompilerOutput
             {
                 IsOk = false,
                 Result = $"The specified generator '{generatorAlias}' is not valid."
@@ -179,7 +179,7 @@ struct Library {
             _ = schema.Validate();
             var diagonstics =  schema.Errors.Concat(schema.Warnings).ToList();
             var hasErrorDiagonstics = diagonstics.Any((d) => d.Severity is Core.Exceptions.Severity.Error);
-            return new CompilerOutput
+            return new Repl.CompilerOutput
             {
                 IsOk = !hasErrorDiagonstics,
                 Result = hasErrorDiagonstics ? string.Empty : GeneratorUtils.ImplementedGenerators[generatorAlias](schema).Compile(null, writeGeneratedNotice: false, emitBinarySchema: true),
@@ -188,7 +188,7 @@ struct Library {
         }
         catch (Exception e)
         {
-            return new CompilerOutput
+            return new Repl.CompilerOutput
             {
                 IsOk = false,
                 Result = e.ToString()

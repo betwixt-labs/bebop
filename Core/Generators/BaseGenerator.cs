@@ -5,6 +5,8 @@ namespace Core.Generators
 {
     public abstract class BaseGenerator
     {
+
+
         /// <summary>
         /// The schema to generate code from.
         /// </summary>
@@ -30,5 +32,14 @@ namespace Core.Generators
         /// </summary>
         /// <param name="outputPath">The output directory path.</param>
         public abstract void WriteAuxiliaryFiles(string outputPath);
+
+        /// <summary>
+        /// Get auxiliary file contents that should be written to disk.
+        /// </summary>
+        public abstract AuxiliaryFile? GetAuxiliaryFile();
+        /// <summary>
+        /// Get the alias of the generator.
+        /// </summary>
+        public abstract string Alias { get; }
     }
 }

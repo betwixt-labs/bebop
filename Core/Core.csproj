@@ -2,9 +2,9 @@
 
   <PropertyGroup>
     <TypeScriptCompileBlocked>true</TypeScriptCompileBlocked>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
-    <LangVersion>11.0</LangVersion>
+    <LangVersion>preview</LangVersion>
     <AssemblyName>BebopCore</AssemblyName>
     <RootNamespace>Core</RootNamespace>
     <Platforms>AnyCPU</Platforms>
@@ -13,7 +13,6 @@
     <VersionPrefix Condition="'$(ReleaseVersion)' == ''">0.0.1</VersionPrefix>
     <VersionSuffix Condition="'$(ReleaseVersion)' == ''">$([System.DateTime]::UtcNow.ToString(`yyyyMMdd-HHmm`))</VersionSuffix>
     <Configurations>Debug;Release</Configurations>
-      <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
 
