@@ -17,7 +17,6 @@ public class Watcher
     private List<string> _excludeDirectories = new List<string>();
     private List<string> _excludeFiles = new List<string>();
     private List<string> _trackedFiles = new List<string>();
-    private readonly Lager _logger;
     private readonly BebopCompiler _compiler;
     private readonly bool _preserveWatchOutput;
     private readonly TaskCompletionSource<int> _tcs;
@@ -30,9 +29,8 @@ public class Watcher
     ///</summary>
     ///<param name="watchDirectory">The directory to watch.</param>
     ///<param name="trackedFiles">The list of files to track.</param>
-    public Watcher(string watchDirectory, BebopCompiler compiler, Lager logger, bool preserveWatchOutput)
+    public Watcher(string watchDirectory, BebopCompiler compiler, bool preserveWatchOutput)
     {
-        _logger = logger;
         _compiler = compiler;
         _preserveWatchOutput = preserveWatchOutput;
         _tcs = new TaskCompletionSource<int>();
@@ -56,7 +54,7 @@ public class Watcher
     /// Starts the watcher.
     ///</summary>
     ///<returns>Returns a Task representing the watcher operation.</returns>
-    public async Task<int> Start()
+    public async Task<int> StartAsync()
     {
         var table = new Table().HeavyBorder().BorderColor(Color.Grey).Title("Watching").RoundedBorder();
         table.AddColumns("[white]Status[/]", "[white]Path[/]");
@@ -74,17 +72,16 @@ public class Watcher
         {
             table.AddRow(new Text(""), new TextPath(excludeFile));
         }
-        _logger.StandardConsole.Write(table);
-
+        DiagnosticLogger.Instance.WriteTable(table);
         return await _tcs.Task;
     }
 
     ///<summary>
     /// Handles the Error event of the FileSystemWatcher.
     ///</summary>
-    private async void OnError(object sender, ErrorEventArgs e)
+    private void OnError(object sender, ErrorEventArgs e)
     {
-        await _logger.Error(e.GetException());
+        DiagnosticLogger.Instance.WriteDiagonstic(e.GetException());
         _tcs.TrySetResult(1);
     }
 
@@ -138,7 +135,7 @@ public class Watcher
         catch (Exception ex)
         {
             // The file or directory may have been deleted or is inaccessible
-            await _logger.Error(ex);
+            DiagnosticLogger.Instance.WriteDiagonstic(ex);
             _tcs.SetResult(1);
             return;
         }
@@ -152,7 +149,7 @@ public class Watcher
                 if (_trackedFiles[i].StartsWith(oldFullPath, StringComparison.InvariantCultureIgnoreCase))
                 {
                     // Replace the old directory path with the new one
-                    _trackedFiles[i] = newFullPath + _trackedFiles[i].Substring(oldFullPath.Length);
+                    _trackedFiles[i] = string.Concat(newFullPath, _trackedFiles[i].AsSpan(oldFullPath.Length));
                 }
             }
             // If it's a file
@@ -310,7 +307,7 @@ public class Watcher
     /// <param name="newFilePath">The optional new file path to display in the log event. If null, no new file path will be displayed.</param>
     private void LogEvent(string message, string? filePath = null, string? newFilePath = null, bool isError = false)
     {
-        var console = isError ? _logger.ErrorConsole : _logger.StandardConsole;
+        var console = isError ? DiagnosticLogger.Instance.Error : DiagnosticLogger.Instance.Out;
         console.WriteLine();
         console.Markup("[white]{0}[/][grey]{1}[/][white]{2}[/] {3}{4} ", Markup.Escape("["), Markup.Escape(DateTime.Now.ToString("HH:mm:ss")), Markup.Escape("]"), message, filePath is not null ? ':' : string.Empty);
         if (filePath is not null)
@@ -350,7 +347,7 @@ public class Watcher
         {
             if (!_preserveWatchOutput)
             {
-                _logger.ErrorConsole.Clear();
+                DiagnosticLogger.Instance.Error.Clear();
             }
             foreach (var parsedGenerator in _compiler.Flags.GetParsedGenerators())
             {
@@ -374,9 +371,8 @@ public class Watcher
         }
         catch (Exception ex)
         {
-            await _logger.Error(ex);
+            DiagnosticLogger.Instance.WriteDiagonstic(ex);
             return BebopCompiler.Err;
-
         }
     }
 }

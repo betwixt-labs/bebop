@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -15,56 +16,52 @@ namespace Compiler
 {
     internal class Program
     {
-        private static readonly Lager Log = Lager.CreateLogger(LogFormatter.Enhanced);
         private static CommandLineFlags? _flags;
 
-        private static async Task WriteHelpText()
+        private static void WriteHelpText()
         {
             if (_flags is not null)
             {
-                await Lager.StandardOut(string.Empty);
-                await Lager.StandardOut(_flags.HelpText);
+                DiagnosticLogger.Instance.WriteLine(string.Empty);
+                DiagnosticLogger.Instance.WriteLine(_flags.HelpText);
             }
         }
 
         private static async Task<int> Main()
         {
             System.Console.OutputEncoding = System.Text.Encoding.UTF8;
-            Log.Formatter = CommandLineFlags.FindLogFormatter(Environment.GetCommandLineArgs());
-
+            var formatter = CommandLineFlags.FindLogFormatter(Environment.GetCommandLineArgs());
+            DiagnosticLogger.Initialize(CommandLineFlags.FindLogFormatter(Environment.GetCommandLineArgs()));
             try
             {
-
                 if (!CommandLineFlags.TryParse(Environment.GetCommandLineArgs(), out _flags, out var message))
                 {
-                    await Log.Error(new CompilerException(message));
+                   DiagnosticLogger.Instance.WriteDiagonstic(new CompilerException(message));
                     return BebopCompiler.Err;
                 }
 
                 if (_flags.Debug)
                 {
-                    var process = Process.GetCurrentProcess().Id;
-                    await Lager.StandardOut($"Waiting for debugger to attach (PID={process})...");
-
+                
+                    DiagnosticLogger.Instance.WriteLine($"Waiting for debugger to attach (PID={Helpers.ProcessId})...");
                     // Wait 5 minutes for a debugger to attach
                     var timeoutToken = new CancellationTokenSource(TimeSpan.FromMinutes(5)).Token;
                     while (!Debugger.IsAttached)
                     {
                         await Task.Delay(100, timeoutToken);
                     }
-
                     Debugger.Break();
                 }
 
                 if (_flags.Version)
                 {
-                    await Lager.StandardOut($"{ReservedWords.CompilerName} {DotEnv.Generated.Environment.Version}");
+                    DiagnosticLogger.Instance.WriteLine($"{ReservedWords.CompilerName} {DotEnv.Generated.Environment.Version}");
                     return BebopCompiler.Ok;
                 }
 
                 if (_flags.Help)
                 {
-                    await WriteHelpText();
+                    WriteHelpText();
                     return BebopCompiler.Ok;
                 }
 
@@ -74,14 +71,14 @@ namespace Compiler
                     return BebopCompiler.Ok;
                 }
 
-                var compiler = new BebopCompiler(_flags, Log);
+                var compiler = new BebopCompiler(_flags);
 
 
                 if (_flags.CheckSchemaFile is not null)
                 {
                     if (string.IsNullOrWhiteSpace(_flags.CheckSchemaFile))
                     {
-                        await Log.Error(new CompilerException("No textual schema was read from standard input."));
+                        DiagnosticLogger.Instance.WriteDiagonstic(new CompilerException("No textual schema was read from standard input."));
                         return BebopCompiler.Err;
                     }
                     return await compiler.CheckSchema(_flags.CheckSchemaFile);
@@ -112,19 +109,19 @@ namespace Compiler
                     {
                         return await compiler.CheckSchemas(paths);
                     }
-                    await Log.Error(new CompilerException("No schemas specified in check."));
+                     DiagnosticLogger.Instance.WriteDiagonstic(new CompilerException("No schemas specified in check."));
                     return BebopCompiler.Err;
                 }
 
                 if (!_flags.GetParsedGenerators().Any())
                 {
-                    await Log.Error(new CompilerException("No code generators were specified."));
+                     DiagnosticLogger.Instance.WriteDiagonstic(new CompilerException("No code generators were specified."));
                     return BebopCompiler.Err;
                 }
 
                 if (_flags.SchemaDirectory is not null && _flags.SchemaFiles is not null)
                 {
-                    await Log.Error(
+                     DiagnosticLogger.Instance.WriteDiagonstic(
                         new CompilerException("Can't specify both an input directory and individual input files"));
                     return BebopCompiler.Err;
                 }
@@ -132,7 +129,7 @@ namespace Compiler
                 if (_flags.Watch)
                 {
 
-                    var watcher = new Watcher(_flags.WorkingDirectory, compiler, Log, _flags.PreserveWatchOutput);
+                    var watcher = new Watcher(_flags.WorkingDirectory, compiler, _flags.PreserveWatchOutput);
 
                     if (_flags.WatchExcludeDirectories is not null)
                     {
@@ -142,17 +139,17 @@ namespace Compiler
                     {
                         watcher.AddExcludeFiles(_flags.WatchExcludeFiles);
                     }
-                    return await watcher.Start();
+                    return await watcher.StartAsync();
                 }
 
                 if (paths is null)
                 {
-                    await Log.Error(new CompilerException("Specify one or more input files with --dir or --files."));
+                    DiagnosticLogger.Instance.WriteDiagonstic(new CompilerException("Specify one or more input files with --dir or --files."));
                     return BebopCompiler.Err;
                 }
                 if (paths.Count == 0)
                 {
-                    await Log.Error(new CompilerException("No input files were found at the specified target location."));
+                     DiagnosticLogger.Instance.WriteDiagonstic(new CompilerException("No input files were found at the specified target location."));
                     return BebopCompiler.Err;
                 }
 
@@ -161,12 +158,12 @@ namespace Compiler
                 {
                     if (!GeneratorUtils.ImplementedGenerators.ContainsKey(parsedGenerator.Alias))
                     {
-                        await Log.Error(new CompilerException($"'{parsedGenerator.Alias}' is not a recognized code generator"));
+                         DiagnosticLogger.Instance.WriteDiagonstic(new CompilerException($"'{parsedGenerator.Alias}' is not a recognized code generator"));
                         return BebopCompiler.Err;
                     }
                     if (string.IsNullOrWhiteSpace(parsedGenerator.OutputFile))
                     {
-                        await Log.Error(new CompilerException("No output file was specified."));
+                         DiagnosticLogger.Instance.WriteDiagonstic(new CompilerException("No output file was specified."));
                         return BebopCompiler.Err;
                     }
                     var result = await compiler.CompileSchema(GeneratorUtils.ImplementedGenerators[parsedGenerator.Alias], paths, new FileInfo(parsedGenerator.OutputFile), _flags.Namespace ?? string.Empty, parsedGenerator.Services, parsedGenerator.LangVersion);
@@ -180,7 +177,7 @@ namespace Compiler
             }
             catch (Exception e)
             {
-                await Log.Error(e);
+                DiagnosticLogger.Instance.WriteDiagonstic(e);
                 return BebopCompiler.Err;
             }
         }
