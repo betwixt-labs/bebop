@@ -322,7 +322,7 @@ jobs:
       - name: Build VSCode extension
         run: |
           jq '.version = "${{ steps.dotenv.outputs.version }}"' package.json > tmp && mv tmp package.json
-          npm install -g vsce
+          npm install --global @vscode/vsce
           yarn install
           vsce package
         working-directory: ./vscode-bebop
@@ -331,7 +331,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: vscode-bebop
-          path: vscode-bebop/vscode-bebop-*.vsix
+          path: vscode-bebop/bebop-*.vsix
 
   publish-packages:
     env:
@@ -399,8 +399,8 @@ jobs:
 
       - name: Publish VSCode Extension
         run: |
-          npm install -g vsce
-          vsce publish --packagePath ./vscode-bebop/vscode-bebop-${{ steps.dotenv.outputs.version }}.vsix -p ${{ secrets.VSCE_TOKEN }}
+          npm install --global @vscode/vsce
+          vsce publish --packagePath ./vscode-bebop/bebop-${{ steps.dotenv.outputs.version }}.vsix -p ${{ secrets.VSCE_TOKEN }}
 
       - name: Create Release
         id: create_release
