@@ -11,7 +11,7 @@
   <a href="https://github.com/betwixt-labs/bebop/blob/main/LICENSE.txt">
     <img alt="Apache License" src="https://img.shields.io/github/license/betwixt-labs/bebop" />
   </a>
-  <a href="https://discord.gg/Pn8BwUnP25">
+  <a href="https://discord.gg/jVfz9sMPWv">
     <img alt="Discord" src="https://img.shields.io/discord/1102669305537110036?color=7389D8&label&logo=discord&logoColor=ffffff" />
   </a>
   <br />
@@ -43,7 +43,7 @@ If you want to get familiar with the schema language and see what the generated 
 ### Features
 
 - 🧙‍♂️&nbsp; Supports [Typescript](https://github.com/betwixt-labs/bebop/wiki/Getting-Started-with-TypeScript), [C#](https://github.com/betwixt-labs/bebop/wiki/Getting-Started-with-.NET), [Rust](https://github.com/betwixt-labs/bebop/wiki/Getting-Started-with-Rust), C++, and more.
-- 🐎&nbsp; Snappy DX - integrate `bebopc` into your project with ease. Language support available in [VSCode](https://marketplace.visualstudio.com/items?itemName=rainway.vscode-bebop).
+- 🐎&nbsp; Snappy DX - integrate `bebopc` into your project with ease. Language support available in [VSCode](https://marketplace.visualstudio.com/items?itemName=betwixt.bebop-lang).
 - 🍃&nbsp; Light - Bebop has zero deps and a tiny runtime footprint. Generated code is tightly optimized.
 - 🌗&nbsp; RPC - build efficent APIs with [Tempo](https://github.com/betwixt-labs/tempo/).
 - ☁️&nbsp; Runs everywhere - browsers, serverless platforms, and on bare metal.
