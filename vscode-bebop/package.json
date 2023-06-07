@@ -59,7 +59,8 @@
           "bebop"
         ],
         "extensions": [
-          ".bop"
+          ".bop",
+          ".🎷"
         ],
         "configuration": "./language-configuration.json"
       }
