@@ -331,7 +331,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: vscode-bebop
-          path: vscode-bebop/bebop-*.vsix
+          path: vscode-bebop/bebop-lang-*.vsix
 
   publish-packages:
     env:
@@ -400,7 +400,7 @@ jobs:
       - name: Publish VSCode Extension
         run: |
           npm install --global @vscode/vsce
-          vsce publish --packagePath ./vscode-bebop/bebop-${{ steps.dotenv.outputs.version }}.vsix -p ${{ secrets.VSCE_TOKEN }}
+          vsce publish --packagePath ./vscode-bebop/bebop-lang-${{ steps.dotenv.outputs.version }}.vsix -p ${{ secrets.VSCE_TOKEN }}
 
       - name: Create Release
         id: create_release

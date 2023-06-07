@@ -1,7 +1,7 @@
 {
-  "name": "bebop",
+  "name": "bebop-lang",
   "publisher": "betwixt",
-  "displayName": "Bebop",
+  "displayName": "Bebop Schema",
   "description": "Language support for the Bebop schema language.",
   "bugs": {
     "url": "https://github.com/betwixt-labs/bebop/issues"
