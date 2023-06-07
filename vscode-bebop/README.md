@@ -3,7 +3,7 @@ Bebop for Visual Studio Code
 </h1>
 
 <p align="center">
-  <img src="./images/header.jpg" alt="Bebop for Visual Studio Code" />
+  <img src="https://raw.githubusercontent.com/betwixt-labs/bebop/master/vscode-bebop/images/header.jpg" alt="Bebop for Visual Studio Code" />
 </p>
 
 Boost your productivity with Bebop for Visual Studio Code - a comprehensive extension that integrates the Bebop schema language into your beloved editor. Our extension facilitates a seamless coding experience with syntax highlighting, code refactoring, auto-completion, and a plethora of handy snippets that will speed up your Bebop coding across various projects. 
@@ -28,7 +28,7 @@ Our extension is compatible with **Windows**, **macOS**, and **Linux** and suppo
 - Many more features to explore
 
 <p align="center">
-  <img src="./images/ss.png" alt="Bebop for Visual Studio Code Screenshot" />
+  <img src="https://raw.githubusercontent.com/betwixt-labs/bebop/master/vscode-bebop/images/ss.png" alt="Bebop for Visual Studio Code Screenshot" />
 </p>
 
 ## Found a bug?
