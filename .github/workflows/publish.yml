@@ -323,7 +323,7 @@ jobs:
         run: |
           jq '.version = "${{ steps.dotenv.outputs.version }}"' package.json > tmp && mv tmp package.json
           npm install -g vsce
-          npm install
+          yarn install
           vsce package
         working-directory: ./vscode-bebop
 

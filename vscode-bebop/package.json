@@ -1,20 +1,47 @@
 {
-  "name": "vscode-bebop",
-  "publisher": "rainway",
+  "name": "bebop",
+  "publisher": "betwixt",
   "displayName": "Bebop",
-  "description": "Bebop language support for Visual Studio Code.",
+  "description": "Language support for the Bebop schema language.",
+  "bugs": {
+    "url": "https://github.com/betwixt-labs/bebop/issues"
+  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/RainwayApp/bebop"
+    "url": "https://github.com/betwixt-labs/bebop"
   },
-  "icon": "icon.png",
+  "icon": "images/icon.png",
+  "license": "Apache License, Version 2.0",
   "version": "0.0.1",
+  "author": "Betwixt Labs",
+  "pricing": "Free",
   "engines": {
-    "vscode": "^1.64.0"
+    "vscode": "^1.66.0"
   },
   "categories": [
-    "Other"
+    "Debuggers",
+    "Programming Languages",
+    "Linters",
+    "Snippets"
   ],
+  "keywords": [
+    "multi-root ready",
+    "proto",
+    "json",
+    "codegen",
+    ".NET",
+    "dotnet",
+    "rust",
+    "javascript",
+    "typescript",
+    "c++"
+  ],
+  "capabilities": {
+    "virtualWorkspaces": false,
+    "untrustedWorkspaces": {
+      "supported": false
+    }
+  },
   "activationEvents": [
     "onLanguage:bebop"
   ],
@@ -33,14 +60,18 @@
           "bebop"
         ],
         "extensions": [
-          ".bop"
+          ".bop",
+          ".🎷"
         ],
         "configuration": "./language-configuration.json"
       }
     ],
     "jsonValidation": [
       {
-        "fileMatch": ["bebop.json", "*bebop.json"],
+        "fileMatch": [
+          "bebop.json",
+          "*bebop.json"
+        ],
         "url": "./schemas/bebop-schema.json"
       }
     ],
@@ -53,10 +84,10 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run esbuild-base -- --minify",
+    "vscode:prepublish": "yarn esbuild-base -- --minify",
     "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
-    "esbuild": "npm run esbuild-base -- --sourcemap",
-    "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
+    "esbuild": "yarn esbuild-base -- --sourcemap",
+    "esbuild-watch": "yarn esbuild-base -- --sourcemap --watch",
     "test-compile": "tsc -p ./"
   },
   "devDependencies": {
