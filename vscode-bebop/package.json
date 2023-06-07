@@ -11,9 +11,10 @@
     "url": "https://github.com/betwixt-labs/bebop"
   },
   "icon": "images/icon.png",
-  "license": "LICENSE.TXT",
+  "license": "Apache License, Version 2.0",
   "version": "0.0.1",
   "author": "Betwixt Labs",
+  "pricing": "Free",
   "engines": {
     "vscode": "^1.66.0"
   },
