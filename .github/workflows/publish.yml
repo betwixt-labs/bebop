@@ -401,6 +401,11 @@ jobs:
         run: |
           npm install --global @vscode/vsce
           vsce publish --packagePath ./vscode-bebop/bebop-lang-${{ steps.dotenv.outputs.version }}.vsix -p ${{ secrets.VSCE_TOKEN }}
+          
+      - name: Publish Open VSX Extension
+        run: |
+          npm i -g ovsx
+          npx ovsx publish ./vscode-bebop/bebop-lang-${{ steps.dotenv.outputs.version }}.vsix -p ${{ secrets.OPENVSX }}
 
       - name: Create Release
         id: create_release
