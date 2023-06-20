@@ -1,4 +1,4 @@
-import { BebopView } from 'bebop';
+import { BebopView, Guid } from 'bebop';
 import * as G from './generated/gen';
 if (typeof require !== 'undefined') {
     if (typeof TextDecoder === 'undefined') (global as any).TextDecoder = require('util').TextDecoder;
@@ -13,6 +13,6 @@ it("Constants are generated", () => {
     expect(G.exampleConstFalse).toEqual(false);
     expect(G.exampleConstTrue).toEqual(true);
     expect(G.exampleConstString).toEqual("hello \"world\"\nwith newlines");
-    expect(G.exampleConstGuid).toEqual("e215a946-b26f-4567-a276-13136f0a1708");
+    expect(G.exampleConstGuid.equals(Guid.parseGuid("e215a946-b26f-4567-a276-13136f0a1708"))).toBe(true);
 });
 

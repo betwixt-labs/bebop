@@ -4,11 +4,25 @@
         "module": "commonjs",
         "outDir": "dist",
         "declaration": true,
-        "moduleResolution": "node"
+        "moduleResolution": "node",
+        "skipLibCheck": true,
+        "strict": true,
+        "alwaysStrict": true,    
+        "strictFunctionTypes": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "strictBindCallApply": true,
+        "strictNullChecks": true,
+        "strictPropertyInitialization": true,
+        "useUnknownInCatchVariables": true,
+        "noImplicitAny": true,
+        "noFallthroughCasesInSwitch": true,
+        "noImplicitThis": true,     
     },
     "exclude": [
         "node_modules",
         "dist",
+        "**/*.test.ts",
         ".npm"
-    ]
+      ],
 }

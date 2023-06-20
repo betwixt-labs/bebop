@@ -1,4 +1,4 @@
-import { BebopView } from 'bebop';
+import { BebopView, Guid, GuidMap } from 'bebop';
 import { ISomeMaps, SomeMaps } from './generated/gen';
 import * as assert from "assert";
 if (typeof require !== 'undefined') {
@@ -13,10 +13,11 @@ it("Map types roundtrip", () => {
             new Map([['a', [1, 2, 3]], ['b', [4, 5, 6]]]),
             new Map([['A', [11, 22, 33]], ['B', [44, 55, 66]]]),
         ],
-        m5: new Map([['01234567-0123-0123-0123-0123456789ab', { a: 1.5, b: 2.5 }]]),
+        m5: new GuidMap([[Guid.parseGuid('01234567-0123-0123-0123-0123456789ab'), { a: 1.5, b: 2.5 }]]),
     };
-    const bytes = SomeMaps.encode(obj);
+    const someMaps = new SomeMaps(obj);
+    const bytes = someMaps.encode();
     const obj2 = SomeMaps.decode(bytes);
-    expect(obj).toEqual(obj2);
+    expect(someMaps).toEqual(obj2);
 });
 

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Core.Lexer.Tokenization.Models;
+using Core.Meta.Extensions;
 
 namespace Core.Meta
 {
@@ -116,6 +117,8 @@ namespace Core.Meta
         /// The name of the defined type being referred to.
         /// </summary>
         public string Name { get; }
+
+        public string ClassName => Name.ToPascalCase();
 
         public DefinedType(string name, Span span, string asString) : base(span, asString)
         {

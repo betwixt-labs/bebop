@@ -37,11 +37,12 @@ jobs:
           sudo apt install gcc g++
       - name: Build Typescript runtime
         run: |
-          npm install
-          npm run build
+          yarn install
+          yarn test
+          yarn build
         working-directory: ./Runtime/TypeScript
-      - name: npm install
-        run: npm install
+      - name: yarn install
+        run: yarn install
         working-directory: ${{env.TEST_ROOT}}
       - name: Test
         run: node run_test.js

@@ -19,12 +19,13 @@ jobs:
           include-prerelease: true
       - name: Build Typescript runtime
         run: |
-          npm install
-          npm run build
+          yarn install
+          yarn test
+          yarn build
         working-directory: ./Runtime/TypeScript
       - name: Build and run tests
         run: |
-          npm install
+          yarn install
           bash compile-schemas.sh
-          npm run test
+          yarn test
         working-directory: ./Laboratory/TypeScript

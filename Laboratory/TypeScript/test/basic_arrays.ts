@@ -1,4 +1,4 @@
-import { BebopView } from 'bebop';
+import { BebopView, Guid } from 'bebop';
 import { BasicArrays, IBasicArrays, TestInt32Array } from './generated/gen';
 import * as assert from "assert";
 if (typeof require !== 'undefined') {
@@ -18,7 +18,7 @@ it("Basic array types roundtrip", () => {
         a_float32: [8, 88, 888],
         a_float64: [9, 99, 999],
         a_string: ['hello world', 'goodbye world'],
-        a_guid: ['01234567-0123-0123-0123-0123456789ab', 'ffffffff-eeee-dddd-cccc-bbbbbbbbbbbb'],
+        a_guid: [Guid.parseGuid('01234567-0123-0123-0123-0123456789ab'), Guid.parseGuid('ffffffff-eeee-dddd-cccc-bbbbbbbbbbbb')],
     };
     const bytes = BasicArrays.encode(obj);
     const obj2 = BasicArrays.decode(bytes);
