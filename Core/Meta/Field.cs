@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta.Attributes;
+using Core.Meta.Extensions;
 
 namespace Core.Meta
 {
@@ -24,6 +25,7 @@ namespace Core.Meta
         ///     The name of the current member.
         /// </summary>
         public string Name { get; }
+        public string NameCamelCase => Name.ToCamelCase();
 
         /// <summary>
         ///     The type of this field: a scalar, array, or defined type (enum/message/struct).

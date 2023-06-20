@@ -205,29 +205,30 @@ jobs:
 
       - name: Build Typescript runtime
         run: |
-          npm install
-          npm run build
+          yarn install
+          yarn test
+          yarn build
         working-directory: ${{env.TS_RUNTIME_ROOT}}
 
       - name: Test TypeScript Runtime
         run: |
-          npm install
+          yarn install
           bash compile-schemas.sh
-          npm run test
+          yarn test
         working-directory: ${{env.TS_TEST_ROOT}}
 
       - name: Pack TypeScript Runtime
         run: |
           jq '.version = "${{ steps.dotenv.outputs.version }}"' package.json > tmp && mv tmp package.json
-          npm install
-          npm pack
+          yarn install
+          yarn pack
         working-directory: ${{env.TS_RUNTIME_ROOT}}
 
       - name: Upload TypeScript Runtime Package
         uses: actions/upload-artifact@v2
         with:
           name: bebop-runtime-ts-${{ steps.dotenv.outputs.version }}
-          path: ${{env.TS_RUNTIME_ROOT}}/bebop-${{ steps.dotenv.outputs.version }}.tgz
+          path: ${{env.TS_RUNTIME_ROOT}}/bebop-v${{ steps.dotenv.outputs.version }}.tgz
 
       - name: Build REPL
         run: |
@@ -305,15 +306,15 @@ jobs:
       - name: Build Tools NPM Package
         run: |
           jq '.version = "${{ steps.dotenv.outputs.version }}"' package.json > tmp && mv tmp package.json
-          npm install
-          npm pack
+          yarn install
+          yarn pack
         working-directory: ${{env.TOOLS_ROOT}}/node
 
       - name: Upload NPM Artifact
         uses: actions/upload-artifact@v2
         with:
           name: bebop-tools-npm-${{ steps.dotenv.outputs.version }}
-          path: ${{env.TOOLS_ROOT}}/node/bebop-tools-${{ steps.dotenv.outputs.version }}.tgz
+          path: ${{env.TOOLS_ROOT}}/node/bebop-tools-v${{ steps.dotenv.outputs.version }}.tgz
 
       - name: Copy compiler builds for VSCode extension
         run: |
@@ -388,12 +389,12 @@ jobs:
         working-directory: ${{env.RUST_RUNTIME_ROOT}}
 
       - name: Publish NodeJS Tools
-        run: npm publish "./bebop-tools-npm-${{ steps.dotenv.outputs.version }}/bebop-tools-${{ steps.dotenv.outputs.version }}.tgz" --access public
+        run: npm publish "./bebop-tools-npm-${{ steps.dotenv.outputs.version }}/bebop-tools-v${{ steps.dotenv.outputs.version }}.tgz" --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
 
       - name: Publish TypeScript Runtime
-        run: npm publish "./bebop-runtime-ts-${{ steps.dotenv.outputs.version }}/bebop-${{ steps.dotenv.outputs.version }}.tgz" --access public
+        run: npm publish "./bebop-runtime-ts-${{ steps.dotenv.outputs.version }}/bebop-v${{ steps.dotenv.outputs.version }}.tgz" --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
 

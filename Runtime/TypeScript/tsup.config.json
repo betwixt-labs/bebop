@@ -1,0 +1,10 @@
+{
+    "clean": true,
+    "dts": true,
+    "entry": ["./index.ts"],
+    "format": ["cjs", "esm"],
+    "minify": true,
+    "sourcemap": true,
+    "splitting": false,
+    "outDir": "./dist"
+  }
