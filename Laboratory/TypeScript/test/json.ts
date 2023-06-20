@@ -15,7 +15,7 @@ it("Roundtrips a flat object to JSON-Over-Bebop", () => {
     a_float64: 9,
     a_string: "hello world",
     a_guid: Guid.parseGuid("01234567-0123-0123-0123-0123456789ab"),
-    a_date: new Date(1996, 1, 7),
+    a_date: new Date(Date.UTC(1996, 1, 7)),
   };
 
   const json = G.BasicTypes.encodeToJson(obj);
@@ -33,7 +33,7 @@ it("Roundtrips a flat object to JSON-Over-Bebop", () => {
     a_float64: 9,
     a_string: "hello world",
     a_guid: { "#btype": 5, value: "01234567-0123-0123-0123-0123456789ab" },
-    a_date: { "#btype": 2, value: "629592660000000000" },
+    a_date: { "#btype": 2, value: "629592480000000000" },
   });
   expect(() => G.BasicTypes.fromJson(json)).not.toThrow();
 });
