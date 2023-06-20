@@ -726,6 +726,7 @@ const isPrimitive = (value: any): boolean => {
  * @returns The modified value for the property, or the original value if not a BigInt or Map.
  */
 const replacer = (_key: string, value: any): any => {
+  
     if (typeof value === "bigint") {
         return { [typeMarker]: bigIntTag, value: value.toString() };
     }
@@ -774,24 +775,23 @@ const replacer = (_key: string, value: any): any => {
         return { [typeMarker]: guidTag, value: value.toString() };
     }
     if (Array.isArray(value)) {
-        if (value.every(isPrimitive)) {
-            return value;
-        } else {
-            const newValue = [];
-            for (let i = 0; i < value.length; i++) {
-                newValue[i] = replacer(i.toString(), value[i]);
+        let replaceNeeded = false;
+        for (let i = 0; i < value.length; i++) {
+            if (!replaceNeeded && !isPrimitive(value[i])) {
+                replaceNeeded = true;
             }
-            return newValue;
+            if (replaceNeeded) {
+                value[i] = replacer(i.toString(), value[i]);
+            }
         }
+        return value;
     }
     if (typeof value === "object" && value !== null) {
         for (let k in value) {
-            if (value.hasOwnProperty(k) && !isPrimitive(value[k])) {
+            if (!isPrimitive(value[k])) {
                 const obj: Record<any, any> = {};
                 for (let k in value) {
-                    if (value.hasOwnProperty(k)) {
-                        obj[k] = replacer(k, value[k]);
-                    }
+                    obj[k] = replacer(k, value[k]);
                 }
                 return obj;
             }
@@ -809,6 +809,8 @@ const replacer = (_key: string, value: any): any => {
  * @returns The modified value for the property, or the original value if not a marked type.
  */
 const reviver = (_key: string, value: any): any => {
+    if (_key === "") return value;
+
     if (value && typeof value === "object") {
         if (value[typeMarker]) {
             switch (value[typeMarker]) {
@@ -827,10 +829,8 @@ const reviver = (_key: string, value: any): any => {
                     }
                     const map = new Map();
                     for (let k in value.value) {
-                        if (value.value.hasOwnProperty(k)) {
-                            const trueKey = castScalarByTag(k, keyTag);
-                            map.set(trueKey, reviver(k, value.value[k]));
-                        }
+                        const trueKey = castScalarByTag(k, keyTag);
+                        map.set(trueKey, reviver(k, value.value[k]));
                     }
                     return map;
                 case guidTag:
@@ -838,24 +838,20 @@ const reviver = (_key: string, value: any): any => {
                     case mapGuidTag:
                     const guidMap = new GuidMap();
                     for (let k in value.value) {
-                        if (value.value.hasOwnProperty(k)) {
-                            guidMap.set(Guid.parseGuid(k), reviver(k, value.value[k]));
-                        }
+                        guidMap.set(Guid.parseGuid(k), reviver(k, value.value[k]));
                     }
                     return guidMap;
                 default:
                     throw new BebopRuntimeError(`Unknown type marker: ${value[typeMarker]}`)
             }
         } else {
-            if (Object.values(value).every(isPrimitive)) {
-                return value;
-            } else {
-                for (let k in value) {
-                    if (value.hasOwnProperty(k)) {
-                        value[k] = reviver(k, value[k]);
-                    }
+            for (let k in value) {
+                const v = value[k];
+                if (!isPrimitive(v)) {
+                    value[k] =reviver(k, v);
                 }
             }
+            return value;
         }
     }
     return value;

@@ -324,13 +324,12 @@ namespace Core.Generators.TypeScript
             builder.AppendLine(FormatDocumentation("Serializes the specified object into a JSON-Over-Bebop string", string.Empty, 0));
             builder.CodeBlock($"public static encodeToJson(record: I{definition.ClassName()}): string", indentStep, () =>
             {
-                builder.AppendLine("const clone = Object.assign(Object.create(Object.getPrototypeOf(record)), record);");
                 if (definition is UnionDefinition)
                 {
                     // delete the redundant discriminator field 
-                    builder.AppendLine("delete clone.value.discriminator;");
+                    builder.AppendLine("delete (record.data.value as any).discriminator;");
                 }
-                builder.AppendLine("return JSON.stringify(clone, BebopJson.replacer);");
+                builder.AppendLine("return JSON.stringify(record, BebopJson.replacer);");
             });
             builder.AppendLine();
 
