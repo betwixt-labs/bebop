@@ -319,7 +319,7 @@ namespace Core.Exceptions
     public class EnumZeroWarning : SpanException
     {
         public EnumZeroWarning(Field field)
-            : base($"Bebop recommends that 0 in an enum be reserved for a value named 'Unknown', 'Default', or similar. See https://github.com/RainwayApp/bebop/wiki/Why-should-0-be-a-%22boring%22-value-in-an-enum%3F for more info.", field.Span, 200, Severity.Warning)
+            : base($"Bebop recommends that 0 in an enum be reserved for a value named 'Unknown', 'Default', or similar. See https://github.com/betwixt-labs/bebop/wiki/Why-should-0-be-a-%22boring%22-value-in-an-enum%3F for more info.", field.Span, 200, Severity.Warning)
         { }
     }
 
