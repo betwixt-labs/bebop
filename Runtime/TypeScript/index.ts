@@ -708,6 +708,16 @@ const castScalarByTag = (value: any, tag: number): any => {
   }
 };
 
+const isPrimitive = (value: any): boolean => {
+    const type = typeof value;
+    return (
+        value === null ||
+        type === 'string' ||
+        type === 'number' ||
+        type === 'boolean'
+    );
+};
+
 /**
  * A custom replacer function for JSON.stringify that supports BigInt, Map,
  * Date, Uint8Array, including BigInt values inside Map and Array.
@@ -764,20 +774,29 @@ const replacer = (_key: string, value: any): any => {
         return { [typeMarker]: guidTag, value: value.toString() };
     }
     if (Array.isArray(value)) {
-        const newValue = [];
-        for (let i = 0; i < value.length; i++) {
-            newValue[i] = replacer(i.toString(), value[i]);
+        if (value.every(isPrimitive)) {
+            return value;
+        } else {
+            const newValue = [];
+            for (let i = 0; i < value.length; i++) {
+                newValue[i] = replacer(i.toString(), value[i]);
+            }
+            return newValue;
         }
-        return newValue;
     }
     if (typeof value === "object" && value !== null) {
-        const obj: Record<any, any> = {};
         for (let k in value) {
-            if (value.hasOwnProperty(k)) {
-                obj[k] = replacer(k, value[k]);
+            if (value.hasOwnProperty(k) && !isPrimitive(value[k])) {
+                const obj: Record<any, any> = {};
+                for (let k in value) {
+                    if (value.hasOwnProperty(k)) {
+                        obj[k] = replacer(k, value[k]);
+                    }
+                }
+                return obj;
             }
         }
-        return obj;
+        return value;
     }
     return value;
 };
@@ -828,9 +847,13 @@ const reviver = (_key: string, value: any): any => {
                     throw new BebopRuntimeError(`Unknown type marker: ${value[typeMarker]}`)
             }
         } else {
-            for (let k in value) {
-                if (value.hasOwnProperty(k)) {
-                    value[k] = reviver(k, value[k]);
+            if (Object.values(value).every(isPrimitive)) {
+                return value;
+            } else {
+                for (let k in value) {
+                    if (value.hasOwnProperty(k)) {
+                        value[k] = reviver(k, value[k]);
+                    }
                 }
             }
         }
