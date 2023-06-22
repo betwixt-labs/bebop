@@ -163,7 +163,7 @@ namespace Core.Meta
                 {
                     errors.Add(new MultipleDefinitionsException(definition));
                 }
-                if (ReservedWords.Identifiers.Contains(definition.Name))
+                if (ReservedWords.Identifiers.Contains(definition.Name, StringComparer.OrdinalIgnoreCase))
                 {
                     errors.Add(new ReservedIdentifierException(definition.Name, definition.Span));
                 }
