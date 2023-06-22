@@ -976,6 +976,8 @@ namespace Core.Generators.TypeScript
                                         builder.AppendLine($"invoke: service.{methodName},");
                                         builder.AppendLine($"serialize: {method.Definition.ReturnDefintion}.encode,");
                                         builder.AppendLine($"deserialize: {method.Definition.RequestDefinition}.decode,");
+                                        builder.AppendLine($"toJson: {method.Definition.ReturnDefintion}.encodeToJson,");
+                                        builder.AppendLine($"fromJson: {method.Definition.RequestDefinition}.fromJson,");
                                         builder.AppendLine($"type: MethodType.{RpcSchema.GetMethodTypeName(methodType)},");
                                     }, close: $"}} as BebopMethod<I{method.Definition.RequestDefinition}, I{method.Definition.ReturnDefintion}>);");
                                 }
@@ -1047,6 +1049,8 @@ namespace Core.Generators.TypeScript
                                     builder.AppendLine($"id: {method.Id},");
                                     builder.AppendLine($"serialize: {method.Definition.RequestDefinition}.encode,");
                                     builder.AppendLine($"deserialize: {method.Definition.ReturnDefintion}.decode,");
+                                    builder.AppendLine($"toJson: {method.Definition.RequestDefinition}.encodeToJson,");
+                                    builder.AppendLine($"fromJson: {method.Definition.ReturnDefintion}.fromJson,");
                                     builder.AppendLine($"type: MethodType.{RpcSchema.GetMethodTypeName(methodType)},");
                                 });
 
