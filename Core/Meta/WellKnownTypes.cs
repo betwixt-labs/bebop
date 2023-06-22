@@ -21,7 +21,10 @@ namespace Core.Meta
             "BebopMirror",
             "BebopConstants",
             "BopConstants",
-            "Service"
+            "Service",
+            "prototype",
+            "constructor",
+            "__proto__"
         };
     }
 

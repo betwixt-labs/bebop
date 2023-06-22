@@ -1,4 +1,10 @@
-import { BebopTypeGuard, BebopRuntimeError, BebopJson, GuidMap, Guid } from "./index";
+import {
+  BebopTypeGuard,
+  BebopRuntimeError,
+  BebopJson,
+  GuidMap,
+  Guid,
+} from "./index";
 
 import { describe, expect, it } from "vitest";
 
@@ -71,6 +77,13 @@ describe("BebopJson", () => {
         BebopJson.ensureKeysExist(["a.b.c", "d", "e"], obj)
       ).toThrow();
       expect(() => BebopJson.ensureKeysExist(["a.b.c", "e"], obj)).toThrow();
+    });
+  });
+
+  describe("security checks", () => {
+    it("should not be vulnerable to prototype pollution", () => {
+      const json = '{"user":{"__proto__":{"admin": true}}}';
+      expect(() => JSON.parse(json, BebopJson.reviver)).toThrow(BebopRuntimeError);
     });
   });
 });

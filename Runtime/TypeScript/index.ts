@@ -809,8 +809,8 @@ const replacer = (_key: string, value: any): any => {
  * @returns The modified value for the property, or the original value if not a marked type.
  */
 const reviver = (_key: string, value: any): any => {
+    if (_key === "__proto__" || _key === "prototype" || _key === "constructor") throw new BebopRuntimeError("potential prototype pollution");
     if (_key === "") return value;
-
     if (value && typeof value === "object") {
         if (value[typeMarker]) {
             switch (value[typeMarker]) {
@@ -846,6 +846,7 @@ const reviver = (_key: string, value: any): any => {
             }
         } else {
             for (let k in value) {
+                if (k === "__proto__" || k === "prototype" || k === "constructor") throw new BebopRuntimeError("potential prototype pollution");
                 const v = value[k];
                 if (!isPrimitive(v)) {
                     value[k] =reviver(k, v);
