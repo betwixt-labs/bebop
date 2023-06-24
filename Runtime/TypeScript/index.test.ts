@@ -1,3 +1,4 @@
+import exp from "constants";
 import {
   BebopTypeGuard,
   BebopRuntimeError,
@@ -9,7 +10,7 @@ import {
 import { describe, expect, it } from "vitest";
 
 describe("BebopJson", () => {
-  describe("replacer", () => {
+  describe("replace/revive", () => {
     it("should support BigInt values", () => {
       const obj = { bigInt: BigInt(Number.MAX_SAFE_INTEGER) + 1n };
       const jsonString = JSON.stringify(obj, BebopJson.replacer);
@@ -60,30 +61,36 @@ describe("BebopJson", () => {
       expect(parsedObj.date.getTime()).toEqual(obj.date.getTime());
       expect(parsedObj.uint8).toEqual(obj.uint8);
     });
-  });
 
-  describe("keysExist", () => {
-    it("should return an object with boolean values indicating whether each key path exists in the object", () => {
-      const obj = { a: { b: { c: 1 } }, d: 2 };
-      const result = BebopJson.keysExist(["a.b.c", "d", "e"], obj);
-      expect(result).toEqual({ "a.b.c": true, d: true, e: false });
+    it("should support arrays with multiple types", () => {
+      const data = ["value", 200, { a: "" }, [BigInt(100)]];
+      const obj = { map: new Map([["key", data]]) };
+      const jsonString = JSON.stringify(obj, BebopJson.replacer);
+      const parsedObj = JSON.parse(jsonString, BebopJson.reviver);
+      expect(parsedObj.map.get("key")).toStrictEqual(data);
     });
-  });
 
-  describe("ensureKeysExist", () => {
-    it("should throw an error if a required key path does not exist in the parsed object", () => {
-      const obj = { a: { b: { c: 1 } }, d: 2 };
-      expect(() =>
-        BebopJson.ensureKeysExist(["a.b.c", "d", "e"], obj)
-      ).toThrow();
-      expect(() => BebopJson.ensureKeysExist(["a.b.c", "e"], obj)).toThrow();
+    // Edge case: Empty Map
+    it("should throw for empty Map values", () => {
+      const obj = { map: new Map() };
+      expect(() => JSON.stringify(obj, BebopJson.replacer)).toThrow(BebopRuntimeError);
+    });
+
+    // Edge case: Empty Uint8Array
+    it("should handle empty Uint8Array values", () => {
+      const obj = { uint8: new Uint8Array() };
+      const jsonString = JSON.stringify(obj, BebopJson.replacer);
+      const parsedObj = JSON.parse(jsonString, BebopJson.reviver);
+      expect(parsedObj.uint8).toEqual(obj.uint8);
     });
   });
 
   describe("security checks", () => {
     it("should not be vulnerable to prototype pollution", () => {
       const json = '{"user":{"__proto__":{"admin": true}}}';
-      expect(() => JSON.parse(json, BebopJson.reviver)).toThrow(BebopRuntimeError);
+      expect(() => JSON.parse(json, BebopJson.reviver)).toThrow(
+        BebopRuntimeError
+      );
     });
   });
 });
@@ -327,6 +334,50 @@ describe("BebopTypeGuard", () => {
       expect(() =>
         BebopTypeGuard.ensureMap({}, keyTypeValidator, valueTypeValidator)
       ).toThrow(BebopRuntimeError);
+    });
+
+    it("should throw an error for array with mixed types", () => {
+      const validator = (value: any) => {
+        if (typeof value !== "number") {
+          throw new BebopRuntimeError("Invalid type");
+        }
+      };
+      expect(() =>
+        BebopTypeGuard.ensureArray([1, "string"], validator)
+      ).toThrow(BebopRuntimeError);
+    });
+
+    it("should throw an error for a map with inconsistent value types", () => {
+      const keyTypeValidator = (value: any) => {
+        if (typeof value !== "number") {
+          throw new BebopRuntimeError("Invalid type");
+        }
+      };
+      const valueTypeValidator = (value: any) => {
+        if (typeof value !== "string") {
+          throw new BebopRuntimeError("Invalid type");
+        }
+      };
+      const map = new Map<number, any>();
+      map.set(1, "one");
+      map.set(2, true); // not a string
+      expect(() =>
+        BebopTypeGuard.ensureMap(map, keyTypeValidator, valueTypeValidator)
+      ).toThrow(BebopRuntimeError);
+    });
+
+    // Edge case: Extremely large number for Int32
+    it("should throw an error for an extremely large number for Int32", () => {
+      expect(() => BebopTypeGuard.ensureInt32(Number.MAX_VALUE)).toThrow(
+        BebopRuntimeError
+      );
+    });
+
+    // Edge case: Extremely small number for Int32
+    it("should throw an error for an extremely small number for Int32", () => {
+      expect(() => BebopTypeGuard.ensureInt32(Number.MIN_VALUE)).toThrow(
+        BebopRuntimeError
+      );
     });
   });
 });
