@@ -691,7 +691,6 @@ const mapGuidTag = 6;
 const boolTag = 7;
 const stringTag = 8;
 const numberTag = 9;
-const unknownTag = 10;
 
 const castScalarByTag = (value: any, tag: number): any => {
   switch (tag) {
@@ -708,14 +707,36 @@ const castScalarByTag = (value: any, tag: number): any => {
   }
 };
 
-const isPrimitive = (value: any): boolean => {
-    const type = typeof value;
-    return (
-        value === null ||
-        type === 'string' ||
-        type === 'number' ||
-        type === 'boolean'
-    );
+
+/**
+ * Determines the tag for the keys of a given map based on the type of the first key.
+ * @param map - The map whose key tag is to be determined.
+ * @returns The tag for the keys of the map.
+ * @throws BebopRuntimeError if the map is empty or if the type of the first key is not a string, number, boolean, or BigInt.
+ */
+const getMapKeyTag = (map: Map<unknown, unknown>): number => {
+    if (map.size === 0) {
+        throw new BebopRuntimeError("Cannot determine key type of an empty map.");
+    }
+    const keyType = typeof map.keys().next().value;
+    let keyTag: number;
+    switch (keyType) {
+        case "string":
+            keyTag = stringTag;
+            break;
+        case "number":
+            keyTag = numberTag;
+            break;
+        case "boolean":
+            keyTag = boolTag;
+            break;
+        case "bigint":
+            keyTag = bigIntTag;
+            break;
+        default:
+            throw new BebopRuntimeError(`Not suitable map type tag found. Keys must be strings, numbers, booleans, or BigInts: ${keyType}`);
+    }
+    return keyTag;
 };
 
 /**
@@ -725,79 +746,64 @@ const isPrimitive = (value: any): boolean => {
  * @param value - The value of the property being stringified.
  * @returns The modified value for the property, or the original value if not a BigInt or Map.
  */
-const replacer = (_key: string, value: any): any => {
-  
-    if (typeof value === "bigint") {
-        return { [typeMarker]: bigIntTag, value: value.toString() };
+const replacer = (_key: string | number, value: any): any => {
+    if (value === null) return value;
+
+    switch (typeof value) {
+        case 'bigint':
+            return { [typeMarker]: bigIntTag, value: value.toString() };
+        case 'string':
+        case 'number':
+        case 'boolean':
+            return value;
     }
+
     if (value instanceof Date) {
         const ms = BigInt(value.getTime());
         const ticks = ms * 10000n + ticksBetweenEpochs;
         return { [typeMarker]: dateTag, value: (ticks & dateMask).toString() };
     }
+
     if (value instanceof Uint8Array) {
         return { [typeMarker]: uint8ArrayTag, value: Array.from(value) };
     }
-    if (value instanceof GuidMap) {
-        const obj: Record<any, any> = {};
-        for (let [k, v] of value.entries()) {
-            const guid = k.toString();
-            obj[guid.toString()] = replacer(guid, v);
-        }
-        return { [typeMarker]: mapGuidTag, value: obj };
-    }
-    if (value instanceof Map) {
-        const obj: Record<any, any> = {};
-        let keyTag = unknownTag;
-        const keyType = typeof value.keys().next().value;
-        switch (keyType) {
-            case "string":
-                keyTag = stringTag;
-                break;
-            case "number":
-                keyTag = numberTag;
-                break;
-            case "boolean":
-                keyTag = boolTag;
-                break;
-            case "bigint":
-                keyTag = bigIntTag;
-                break;
-            default:
-                throw new BebopRuntimeError(`Not suitable map type tag found. Keys must be strings, numbers, booleans, or BigInts: ${keyType}`);
-        }
-        for (let [k, v] of value.entries()) {
-            obj[k] = replacer(k, v);
-        }
-        return { [typeMarker]: mapTag, [keyMarker]: keyTag, value: obj };
-    }
+
     if (value instanceof Guid) {
         return { [typeMarker]: guidTag, value: value.toString() };
     }
+
+    if (value instanceof GuidMap) {
+        const obj: Record<any, any> = {};
+        for (let [k, v] of value.entries()) {
+            obj[k.toString()] = replacer(_key, v);
+        }
+        return { [typeMarker]: mapGuidTag, value: obj };
+    }
+
+    if (value instanceof Map) {
+        const obj: Record<any, any> = {};
+        let keyTag = getMapKeyTag(value);
+        if (keyTag === undefined) {
+            throw new BebopRuntimeError("Not suitable map key type tag found.");
+        }
+        for (let [k, v] of value.entries()) {
+            obj[k] = replacer(_key, v);
+        }
+        return { [typeMarker]: mapTag, [keyMarker]: keyTag, value: obj };
+    }
+
     if (Array.isArray(value)) {
-        let replaceNeeded = false;
-        for (let i = 0; i < value.length; i++) {
-            if (!replaceNeeded && !isPrimitive(value[i])) {
-                replaceNeeded = true;
-            }
-            if (replaceNeeded) {
-                value[i] = replacer(i.toString(), value[i]);
-            }
-        }
-        return value;
+        return value.map((v, i) => replacer(i, v));
     }
-    if (typeof value === "object" && value !== null) {
+
+    if (typeof value === 'object') {
+        const newObj: Record<any, any> = {};
         for (let k in value) {
-            if (!isPrimitive(value[k])) {
-                const obj: Record<any, any> = {};
-                for (let k in value) {
-                    obj[k] = replacer(k, value[k]);
-                }
-                return obj;
-            }
+            newObj[k] = replacer(k, value[k]);
         }
-        return value;
+        return newObj;
     }
+
     return value;
 };
 
@@ -808,10 +814,10 @@ const replacer = (_key: string, value: any): any => {
  * @param value - The value of the property being parsed.
  * @returns The modified value for the property, or the original value if not a marked type.
  */
-const reviver = (_key: string, value: any): any => {
-    if (_key === "__proto__" || _key === "prototype" || _key === "constructor") throw new BebopRuntimeError("potential prototype pollution");
-    if (_key === "") return value;
-    if (value && typeof value === "object") {
+const reviver = (_key: string | number, value: any): any => {
+    if (_key === "__proto__" || _key === "prototype" || _key === "constructor") 
+        throw new BebopRuntimeError("potential prototype pollution");
+    if (value && typeof value === "object" && !Array.isArray(value)) {
         if (value[typeMarker]) {
             switch (value[typeMarker]) {
                 case bigIntTag:
@@ -824,7 +830,7 @@ const reviver = (_key: string, value: any): any => {
                     return new Uint8Array(value.value);
                 case mapTag:
                     const keyTag = value[keyMarker];
-                    if (keyTag === undefined) {
+                    if (keyTag === undefined || keyTag === null) {
                         throw new BebopRuntimeError("Map key type tag not found.");
                     }
                     const map = new Map();
@@ -835,74 +841,20 @@ const reviver = (_key: string, value: any): any => {
                     return map;
                 case guidTag:
                     return Guid.parseGuid(value.value);
-                    case mapGuidTag:
+                case mapGuidTag:
                     const guidMap = new GuidMap();
                     for (let k in value.value) {
                         guidMap.set(Guid.parseGuid(k), reviver(k, value.value[k]));
                     }
                     return guidMap;
                 default:
-                    throw new BebopRuntimeError(`Unknown type marker: ${value[typeMarker]}`)
+                    throw new BebopRuntimeError(`Unknown type marker: ${value[typeMarker]}`);
             }
-        } else {
-            for (let k in value) {
-                if (k === "__proto__" || k === "prototype" || k === "constructor") throw new BebopRuntimeError("potential prototype pollution");
-                const v = value[k];
-                if (!isPrimitive(v)) {
-                    value[k] =reviver(k, v);
-                }
-            }
-            return value;
         }
     }
     return value;
 };
 
-
-/**
- * Checks if the given keys exist in the given object.
- * @param keyPaths - An array of dot-separated key paths to check for existence.
- * @param obj - The object to check for key existence.
- * @returns An object with boolean values indicating whether each key path exists in the object.
- */
-const keysExist = (
-    keyPaths: string[],
-    obj: Record<string, any>
-): Record<string, boolean> => {
-    return keyPaths.reduce((acc, keyPath) => {
-        let current = obj;
-        const keys = keyPath.split(".");
-
-        for (let i = 0; i < keys.length; i++) {
-            if (current[keys[i]] === undefined) {
-                acc[keyPath] = false;
-                return acc;
-            } else {
-                current = current[keys[i]];
-            }
-        }
-        acc[keyPath] = true;
-        return acc;
-    }, {} as Record<string, boolean>);
-};
-
-/**
- * Ensures that the given keys exist in the given object, throwing an error if any key is missing.
- * @param keyPaths - An array of dot-separated key paths to check for existence.
- * @param obj - The object to check for key existence.
- * @throws {BebopRuntimeError} - If a required key path does not exist in the parsed object.
- */
-const ensureKeysExist = (
-    keyPaths: string[],
-    obj: Record<string, any>
-): void => {
-    const results = keysExist(keyPaths, obj);
-    for (let key in results) {
-        if (!results[key]) {
-            throw new BebopRuntimeError(`Error while parsing JSON. Required Key path ${key} does not exist in the parsed object.`);
-        }
-    }
-}
 
 /**
  * A collection of functions for working with Bebop-encoded JSON.
@@ -925,22 +877,6 @@ export const BebopJson = {
      * @returns The modified value for the property, or the original value if not a marked type.
      */
     reviver,
-
-    /**
-     * Checks if the given keys exist in the given object.
-     * @param keyPaths - An array of dot-separated key paths to check for existence.
-     * @param obj - The object to check for key existence.
-     * @returns An object with boolean values indicating whether each key path exists in the object.
-     */
-    keysExist,
-
-    /**
-     * Ensures that the given keys exist in the given object, throwing an error if any key is missing.
-     * @param keyPaths - An array of dot-separated key paths to check for existence.
-     * @param obj - The object to check for key existence.
-     * @throws {BebopRuntimeError} - If a required key path does not exist in the parsed object.
-     */
-    ensureKeysExist
 }
 
 /**
