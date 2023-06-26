@@ -3,7 +3,7 @@
     "dts": true,
     "entry": ["./index.ts"],
     "format": ["cjs", "esm"],
-    "minify": true,
+    "minify": false,
     "sourcemap": true,
     "splitting": false,
     "outDir": "./dist"

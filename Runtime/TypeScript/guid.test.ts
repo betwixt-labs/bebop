@@ -1,4 +1,4 @@
-import { BebopRuntimeError, Guid, GuidMap } from "./index";
+import { BebopJson, BebopRuntimeError, Guid, GuidMap } from "./index";
 
 import { describe, expect, it } from "vitest";
 
@@ -62,6 +62,14 @@ describe("Guid class", () => {
     const readGuid = Guid.fromBytes(new Uint8Array(view.buffer), 0);
 
     expect(readGuid.equals(guid)).toBe(true);
+  });
+
+  it("it should parse uuid" ,() => {
+    const guid = Guid.parseGuid("f70ff985-a4ef-4643-bbbc-4a0ed4fc8415");
+    const view = new DataView(new ArrayBuffer(16));
+    guid.writeToView(view, 0);
+    const readGuid = Guid.fromBytes(new Uint8Array(view.buffer), 0);
+    expect(guid.toString()).toBe(readGuid.toString());
   });
 });
 
@@ -282,5 +290,14 @@ describe("GuidMap", () => {
     expect(map.size).toBe(2);
     expect(map.get(key1)).toBe(value1);
     expect(map.get(key2)).toBe(value2);
+  });
+
+  it("should replacer and revive correctly", () => {
+       const data: Record<string, unknown> = {
+          "name": "Test",
+          "id": Guid.newGuid(),
+       };
+
+       console.log(JSON.stringify(data, BebopJson.replacer));
   });
 });
