@@ -245,6 +245,17 @@ export class Guid {
         s += byteToHex[buffer[index + 15]];
         return new Guid(s);
     }
+
+     /**
+     * Converts the Guid to a string when it's used as a primitive.
+     * @returns The string representation of the Guid.
+     */
+     [Symbol.toPrimitive](hint: string): string {
+        if (hint === "string" || hint === "default") {
+            return this.toString();
+        }
+        throw new Error(`Guid cannot be converted to ${hint}`);
+    }
 }
 
 
