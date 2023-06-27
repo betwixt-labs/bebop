@@ -18,7 +18,7 @@ it("Roundtrips a flat object to JSON-Over-Bebop", () => {
     a_date: new Date(Date.UTC(1996, 1, 7)),
   };
 
-  const json = G.BasicTypes.encodeToJson(obj);
+  const json = G.BasicTypes.encodeToJSON(obj);
   const rawParse = JSON.parse(json);
   expect(rawParse).toMatchObject({
     a_bool: true,
@@ -35,7 +35,7 @@ it("Roundtrips a flat object to JSON-Over-Bebop", () => {
     a_guid: { "#btype": 5, value: "01234567-0123-0123-0123-0123456789ab" },
     a_date: { "#btype": 2, value: "629592480000000000" },
   });
-  expect(() => G.BasicTypes.fromJson(json)).not.toThrow();
+  expect(() => G.BasicTypes.fromJSON(json)).not.toThrow();
 });
 
 it("Fails to roundtrip a flat object to JSON-Over-Bebop", () => {
@@ -58,7 +58,7 @@ it("Fails to roundtrip a flat object to JSON-Over-Bebop", () => {
     obj,
     (key, value) => (typeof value === "bigint" ? value.toString() : value) // return everything else unchanged
   );
-  expect(() => G.BasicTypes.fromJson(json)).toThrow(BebopRuntimeError);
+  expect(() => G.BasicTypes.fromJSON(json)).toThrow(BebopRuntimeError);
 });
 
 it("Roundtrips a nested map object to JSON-Over-Bebop", () => {
@@ -94,8 +94,8 @@ it("Roundtrips a nested map object to JSON-Over-Bebop", () => {
       ],
     ]),
   };
-  const json = G.SomeMaps.encodeToJson(obj);
-  expect(() => G.SomeMaps.fromJson(json)).not.toThrow();
+  const json = G.SomeMaps.encodeToJSON(obj);
+  expect(() => G.SomeMaps.fromJSON(json)).not.toThrow();
 });
 
 it("Roundtrips jazz to JSON-Over-Bebop", () => {
@@ -117,6 +117,6 @@ it("Roundtrips jazz to JSON-Over-Bebop", () => {
     ]),
   };
 
-  const json = G.Library.encodeToJson(lib);
-  expect(() => G.Library.fromJson(json)).not.toThrow();
+  const json = G.Library.encodeToJSON(lib);
+  expect(() => G.Library.fromJSON(json)).not.toThrow();
 });
