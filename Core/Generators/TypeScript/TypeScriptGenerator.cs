@@ -315,14 +315,14 @@ namespace Core.Generators.TypeScript
         {
             var builder = new IndentedStringBuilder(0);
             builder.AppendLine(FormatDocumentation("Serializes the current instance into a JSON-Over-Bebop string", string.Empty, 0));
-            builder.CodeBlock($"public toJson(): string", indentStep, () =>
+            builder.CodeBlock($"public toJSON(): string", indentStep, () =>
             {
-                builder.AppendLine($"return {definition.ClassName()}.encodeToJson(this);");
+                builder.AppendLine($"return {definition.ClassName()}.encodeToJSON(this);");
             });
             builder.AppendLine();
 
             builder.AppendLine(FormatDocumentation("Serializes the specified object into a JSON-Over-Bebop string", string.Empty, 0));
-            builder.CodeBlock($"public static encodeToJson(record: I{definition.ClassName()}): string", indentStep, () =>
+            builder.CodeBlock($"public static encodeToJSON(record: I{definition.ClassName()}): string", indentStep, () =>
             {
                 if (definition is UnionDefinition)
                 {
@@ -365,11 +365,11 @@ namespace Core.Generators.TypeScript
             });
             builder.AppendLine();
             builder.AppendLine(FormatDocumentation($"Creates a new {{@link {definition.ClassName()}}} instance from a JSON-Over-Bebop string. Type checking is performed.", string.Empty, 0));
-            builder.CodeBlock($"public static fromJson(json: string): {returnType}", indentStep, () =>
+            builder.CodeBlock($"public static fromJSON(json: string): {returnType}", indentStep, () =>
             {
                 builder.CodeBlock("if (typeof json !== 'string' || json.trim().length === 0)", indentStep, () =>
                 {
-                    builder.AppendLine($"throw new BebopRuntimeError(`{definition.ClassName()}.fromJson: expected string`);");
+                    builder.AppendLine($"throw new BebopRuntimeError(`{definition.ClassName()}.fromJSON: expected string`);");
                 });
                 builder.AppendLine("const parsed = JSON.parse(json, BebopJson.reviver);");
                 builder.AppendLine($"{definition.ClassName()}.validateCompatibility(parsed);");
@@ -976,8 +976,8 @@ namespace Core.Generators.TypeScript
                                         builder.AppendLine($"invoke: service.{methodName},");
                                         builder.AppendLine($"serialize: {method.Definition.ReturnDefintion}.encode,");
                                         builder.AppendLine($"deserialize: {method.Definition.RequestDefinition}.decode,");
-                                        builder.AppendLine($"toJson: {method.Definition.ReturnDefintion}.encodeToJson,");
-                                        builder.AppendLine($"fromJson: {method.Definition.RequestDefinition}.fromJson,");
+                                        builder.AppendLine($"toJSON: {method.Definition.ReturnDefintion}.encodeToJSON,");
+                                        builder.AppendLine($"fromJSON: {method.Definition.RequestDefinition}.fromJSON,");
                                         builder.AppendLine($"type: MethodType.{RpcSchema.GetMethodTypeName(methodType)},");
                                     }, close: $"}} as BebopMethod<I{method.Definition.RequestDefinition}, I{method.Definition.ReturnDefintion}>);");
                                 }
@@ -1049,8 +1049,8 @@ namespace Core.Generators.TypeScript
                                     builder.AppendLine($"id: {method.Id},");
                                     builder.AppendLine($"serialize: {method.Definition.RequestDefinition}.encode,");
                                     builder.AppendLine($"deserialize: {method.Definition.ReturnDefintion}.decode,");
-                                    builder.AppendLine($"toJson: {method.Definition.RequestDefinition}.encodeToJson,");
-                                    builder.AppendLine($"fromJson: {method.Definition.ReturnDefintion}.fromJson,");
+                                    builder.AppendLine($"toJSON: {method.Definition.RequestDefinition}.encodeToJSON,");
+                                    builder.AppendLine($"fromJSON: {method.Definition.ReturnDefintion}.fromJSON,");
                                     builder.AppendLine($"type: MethodType.{RpcSchema.GetMethodTypeName(methodType)},");
                                 });
 

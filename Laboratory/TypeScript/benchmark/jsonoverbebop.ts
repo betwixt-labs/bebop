@@ -13,7 +13,7 @@ const song = new G.Song({
   ],
 });
 
-const encodedJsonLib =  song.toJson();
+const encodedJsonLib =  song.toJSON();
 const encodedBinaryLib = song.encode();
 const standardJson = JSON.stringify(song);
 console.log(standardJson)
@@ -23,7 +23,7 @@ suite.add(`encode binary bebop`, () => {
    G.Song.encode(song);
 });
 suite.add(`encode json-over-bebop`, function () {
-   G.Song.encodeToJson(song);
+   G.Song.encodeToJSON(song);
 });
 
 suite.add(`encode standard json`, function () {
@@ -35,7 +35,7 @@ suite.add(`decode binary bebop`, () => {
 });
 
 suite.add(`decode json-over-bebop`, function () {
-  G.Song.fromJson(encodedJsonLib);
+  G.Song.fromJSON(encodedJsonLib);
 });
 
 suite.add(`decode standard json`, function () {
