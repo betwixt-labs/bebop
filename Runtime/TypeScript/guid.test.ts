@@ -292,12 +292,9 @@ describe("GuidMap", () => {
     expect(map.get(key2)).toBe(value2);
   });
 
-  it("should replacer and revive correctly", () => {
-       const data: Record<string, unknown> = {
-          "name": "Test",
-          "id": Guid.newGuid(),
-       };
-
-       console.log(JSON.stringify(data, BebopJson.replacer));
+  it("should convert to a string primitive correctly", () => {
+    const guid = Guid.newGuid();
+    const primitive = guid+"";
+    expect(primitive).toBe(guid.toString());
   });
 });
