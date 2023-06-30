@@ -357,27 +357,16 @@ namespace Core.Parser
             {
                 return ParseConstDefinition(definitionDocumentation);
             }
-            BaseAttribute? opcodeAttribute = null;
-            BaseAttribute? deprecatedAttribute = null;
-            BaseAttribute? flagsAttribute = null;
+
+            List<BaseAttribute>? attributes = null;
 
             try
             {
                 BaseAttribute? attribute;
-                while ((attribute = EatAttribute()) != null)
+                while ((attribute = EatAttribute()) is not null)
                 {
-                    if (attribute is OpcodeAttribute)
-                    {
-                        opcodeAttribute = attribute;
-                    }
-                    else if (attribute is FlagsAttribute)
-                    {
-                        flagsAttribute = attribute;
-                    }
-                    else if (attribute is DeprecatedAttribute)
-                    {
-                        deprecatedAttribute = attribute;
-                    }
+                    attributes ??= new List<BaseAttribute>();
+                    attributes.Add(attribute);
                 }
             }
             catch (SpanException e)
@@ -403,19 +392,19 @@ namespace Core.Parser
                 {
                     throw new UnexpectedTokenException(TokenKind.Service, CurrentToken, "Did not expect service definition after readonly. (Services are not allowed to be readonly).");
                 }
-                if (opcodeAttribute != null)
+                if (attributes is not null && attributes.Any((a) => a is OpcodeAttribute))
                 {
                     throw new UnexpectedTokenException(TokenKind.Service, CurrentToken, "Did not expect service definition after opcode. (Services are not allowed opcodes).");
                 }
-                if (flagsAttribute != null)
+                if (attributes is not null && attributes.Any((a) => a is FlagsAttribute))
                 {
                     throw new UnexpectedTokenException(TokenKind.Service, CurrentToken, "Did not expect service definition after flags. (Services are not allowed flags).");
                 }
-                return ParseServiceDefinition(CurrentToken, definitionDocumentation, deprecatedAttribute);
+                return ParseServiceDefinition(CurrentToken, definitionDocumentation, attributes);
             }
             if (Eat(TokenKind.Union))
             {
-                return ParseUnionDefinition(CurrentToken, definitionDocumentation, opcodeAttribute);
+                return ParseUnionDefinition(CurrentToken, definitionDocumentation, attributes);
             }
             else
             {
@@ -432,7 +421,7 @@ namespace Core.Parser
                     // Uh oh we skipped ahead due to a missing identifier, get outta there
                     return null;
                 }
-                return ParseNonUnionDefinition(CurrentToken, kind, isReadOnly, definitionDocumentation, opcodeAttribute, flagsAttribute);
+                return ParseNonUnionDefinition(CurrentToken, kind, isReadOnly, definitionDocumentation, attributes);
             }
         }
 
@@ -578,8 +567,7 @@ namespace Core.Parser
             AggregateKind kind,
             bool isReadOnly,
             string definitionDocumentation,
-            BaseAttribute? opcodeAttribute,
-            BaseAttribute? flagsAttribute)
+            List<BaseAttribute>? definitionAttributes)
         {
 
             var fields = new List<Field>();
@@ -647,9 +635,21 @@ namespace Core.Parser
                 {
                     break;
                 }
-
-                var deprecatedAttribute = EatAttribute();
-                if (deprecatedAttribute is not DeprecatedAttribute) deprecatedAttribute = null;
+                List<BaseAttribute>? fieldAttributes = null;
+                try
+                {
+                    BaseAttribute? attribute;
+                    while ((attribute = EatAttribute()) is not null)
+                    {
+                        fieldAttributes ??= new List<BaseAttribute>();
+                        fieldAttributes.Add(attribute);
+                    }
+                }
+                catch (SpanException e)
+                {
+                    // If there's a syntax error in the attribute, we'll be skipping ahead to the next top level definition anyway.
+                    _errors.Add(e);
+                }
 
                 if (kind == AggregateKind.Message)
                 {
@@ -717,7 +717,7 @@ namespace Core.Parser
                     Expect(TokenKind.Semicolon, hint: CurrentToken.Kind == TokenKind.OpenBracket
                         ? "Try 'Type[] foo' instead of 'Type foo[]'."
                         : $"Elements in {aKindName} are delimited using semicolons.");
-                    fields.Add(new Field(fieldName, type, fieldStart.Combine(fieldEnd), deprecatedAttribute, value, fieldDocumentation));
+                    fields.Add(new Field(fieldName, type, fieldStart.Combine(fieldEnd), fieldAttributes, value, fieldDocumentation));
                     definitionEnd = CurrentToken.Span;
                 }
                 catch (SpanException e)
@@ -731,12 +731,12 @@ namespace Core.Parser
 
             var name = definitionToken.Lexeme;
             var definitionSpan = definitionToken.Span.Combine(definitionEnd);
-
+          
             Definition definition = kind switch
             {
-                AggregateKind.Enum => new EnumDefinition(name, definitionSpan, definitionDocumentation, fields, flagsAttribute != null, enumBaseType),
-                AggregateKind.Struct => new StructDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, fields, isReadOnly),
-                AggregateKind.Message => new MessageDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, fields),
+                AggregateKind.Enum => new EnumDefinition(name, definitionSpan, definitionDocumentation, fields, definitionAttributes, enumBaseType),
+                AggregateKind.Struct => new StructDefinition(name, definitionSpan, definitionDocumentation, definitionAttributes, fields, isReadOnly),
+                AggregateKind.Message => new MessageDefinition(name, definitionSpan, definitionDocumentation, definitionAttributes, fields),
                 _ => throw new InvalidOperationException("invalid kind when making definition"),
             };
 
@@ -745,7 +745,7 @@ namespace Core.Parser
                 _errors.Add(new InvalidReadOnlyException(definition));
             }
 
-            if (opcodeAttribute != null && definition is not RecordDefinition)
+            if (definitionAttributes is not null && definitionAttributes.Any((a) => a is OpcodeAttribute) && definition is not RecordDefinition)
             {
                 _errors.Add(new InvalidOpcodeAttributeUsageException(definition));
             }
@@ -769,7 +769,7 @@ namespace Core.Parser
         /// <param name="definitionDocumentation">The documentation above the service definition.</param>
         /// <returns>The parsed rpc service definition.</returns>
         private Definition? ParseServiceDefinition(Token definitionToken,
-            string definitionDocumentation, BaseAttribute? definitionDeprecatedAttribute)
+            string definitionDocumentation, List<BaseAttribute>? definitionAttributes)
         {
             ExpectAndSkip(TokenKind.Identifier, new(_universalFollowKinds.Append(TokenKind.OpenBrace)), "Did you forget to specify a name for this service?");
             Eat(TokenKind.Identifier);
@@ -816,10 +816,17 @@ namespace Core.Parser
                 // The start of the method is the definition token of the method
                 try
                 {
-                    var methodDeprecatedAttribute = EatAttribute();
-                    if (methodDeprecatedAttribute is not null and not DeprecatedAttribute)
+
+                    List<BaseAttribute>? methodAttributes = null;
+                    BaseAttribute? attribute;
+                    while ((attribute = EatAttribute()) is not null)
                     {
-                        throw new UnexpectedTokenException(TokenKind.Identifier, CurrentToken, $"Service methods are not allowed to use the '{methodDeprecatedAttribute!.Name}' attribute.");
+                        methodAttributes ??= new List<BaseAttribute>();
+                        methodAttributes.Add(attribute);
+                    }
+                    if (methodAttributes is not null && methodAttributes.Any((a) => a is FlagsAttribute or OpcodeAttribute))
+                    {
+                        throw new UnexpectedTokenException(TokenKind.Identifier, CurrentToken, $"Service methods are not allowed to use the flags and opcode attribute.");
                     }
                     var methodStart = CurrentToken.Span;
                     const string hint = "A method must be defined with name, request type, and return type,  such as 'myMethod(MyRequest): MyResponse;'";
@@ -827,7 +834,7 @@ namespace Core.Parser
                     var methodName = ExpectLexeme(TokenKind.Identifier, hint).ToCamelCase();
                     if (usedMethodNames.Contains(methodName))
                     {
-                          throw new DuplicateServiceMethodNameException(serviceName, methodName, indexToken.Span);
+                        throw new DuplicateServiceMethodNameException(serviceName, methodName, indexToken.Span);
                     }
                     usedMethodNames.Add(methodName);
                     var methodId = RpcSchema.GetMethodId(serviceName, methodName);
@@ -878,7 +885,7 @@ namespace Core.Parser
                         return null;
                     }
                     definitionEnd = CurrentToken.Span;
-                    methods.Add(new(methodId, method, documentation, methodDeprecatedAttribute));
+                    methods.Add(new(methodId, method, documentation, methodAttributes));
                 }
                 catch (SpanException e)
                 {
@@ -892,7 +899,7 @@ namespace Core.Parser
             var definitionSpan = definitionToken.Span.Combine(definitionEnd);
 
             // make the service itself
-            var serviceDefinition = new ServiceDefinition(serviceName, definitionSpan, definitionDocumentation, methods, definitionDeprecatedAttribute);
+            var serviceDefinition = new ServiceDefinition(serviceName, definitionSpan, definitionDocumentation, methods, definitionAttributes);
             CloseScope(serviceDefinition);
             return serviceDefinition;
         }
@@ -907,7 +914,7 @@ namespace Core.Parser
         /// <returns>The parsed union definition.</returns>
         private Definition? ParseUnionDefinition(Token definitionToken,
             string definitionDocumentation,
-            BaseAttribute? opcodeAttribute)
+            List<BaseAttribute>? attributes)
         {
             ExpectAndSkip(TokenKind.Identifier, new(_universalFollowKinds.Append(TokenKind.OpenBrace)), hint: $"Did you forget to specify a name for this union?");
             Eat(TokenKind.Identifier);
@@ -1008,7 +1015,7 @@ namespace Core.Parser
                 branches.Add(new UnionBranch((byte)discriminator, td));
             }
             var definitionSpan = definitionToken.Span.Combine(definitionEnd);
-            var unionDefinition = new UnionDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, branches);
+            var unionDefinition = new UnionDefinition(name, definitionSpan, definitionDocumentation, attributes, branches);
             CloseScope(unionDefinition);
             if (unionDefinition.Branches.Count == 0)
             {

@@ -668,9 +668,15 @@ namespace Core.Generators.TypeScript
 
             foreach (var definition in Schema.Definitions.Values)
             {
-                if (!string.IsNullOrWhiteSpace(definition.Documentation))
+                if (!string.IsNullOrWhiteSpace(definition.Documentation) || (definition is EnumDefinition { DeprecatedAttribute: not null }) || (definition is RecordDefinition { DeprecatedAttribute: not null }))
                 {
-                    builder.AppendLine(FormatDocumentation(definition.Documentation, string.Empty, 0));
+                    var deprecationReason = definition switch
+                    {
+                        EnumDefinition e => e?.DeprecatedAttribute?.Value,
+                        RecordDefinition r => r?.DeprecatedAttribute?.Value,
+                        _ => string.Empty
+                    } ?? string.Empty;
+                    builder.AppendLine(FormatDocumentation(definition.Documentation, deprecationReason, 0));
                 }
                 if (definition is EnumDefinition ed)
                 {
@@ -769,7 +775,6 @@ namespace Core.Generators.TypeScript
                         builder.AppendLine($"export type I{ud.ClassName()}Type\n  = {expression};");
 
                         builder.AppendLine();
-
 
                         builder.CodeBlock($"export interface I{ud.ClassName()} extends BebopRecord", indentStep, () =>
                         {
