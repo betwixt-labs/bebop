@@ -18,7 +18,7 @@ namespace Core.Generators.CSharp
         }
 
 
-        public override string Compile(Version? languageVersion, TempoServices services = TempoServices.Both, bool writeGeneratedNotice = true)
+        public override string Compile(Version? languageVersion, TempoServices services = TempoServices.Both, bool writeGeneratedNotice = true, bool emitBinarySchema = false)
         {
             if (languageVersion is not null)
             {

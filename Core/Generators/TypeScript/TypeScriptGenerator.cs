@@ -638,7 +638,7 @@ namespace Core.Generators.TypeScript
         /// Generate code for a Bebop schema.
         /// </summary>
         /// <returns>The generated code.</returns>
-        public override string Compile(Version? languageVersion, TempoServices services = TempoServices.Both, bool writeGeneratedNotice = true)
+        public override string Compile(Version? languageVersion, TempoServices services = TempoServices.Both, bool writeGeneratedNotice = true, bool emitBinarySchema = false)
         {
             var builder = new IndentedStringBuilder();
             if (writeGeneratedNotice)
@@ -666,11 +666,23 @@ namespace Core.Generators.TypeScript
                 builder.Indent(2);
             }
 
+            if (emitBinarySchema) {
+               
+                builder.AppendLine($"export {Schema.ToBinary().ConvertToTypeScriptUInt8ArrayInitializer("BEBOP_SCHEMA")}");
+                builder.AppendLine();
+            }
+
             foreach (var definition in Schema.Definitions.Values)
             {
-                if (!string.IsNullOrWhiteSpace(definition.Documentation))
+                if (!string.IsNullOrWhiteSpace(definition.Documentation) || (definition is EnumDefinition { DeprecatedAttribute: not null }) || (definition is RecordDefinition { DeprecatedAttribute: not null }))
                 {
-                    builder.AppendLine(FormatDocumentation(definition.Documentation, string.Empty, 0));
+                    var deprecationReason = definition switch
+                    {
+                        EnumDefinition e => e?.DeprecatedAttribute?.Value,
+                        RecordDefinition r => r?.DeprecatedAttribute?.Value,
+                        _ => string.Empty
+                    } ?? string.Empty;
+                    builder.AppendLine(FormatDocumentation(definition.Documentation, deprecationReason, 0));
                 }
                 if (definition is EnumDefinition ed)
                 {
@@ -769,7 +781,6 @@ namespace Core.Generators.TypeScript
                         builder.AppendLine($"export type I{ud.ClassName()}Type\n  = {expression};");
 
                         builder.AppendLine();
-
 
                         builder.CodeBlock($"export interface I{ud.ClassName()} extends BebopRecord", indentStep, () =>
                         {

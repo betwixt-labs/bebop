@@ -4,7 +4,7 @@
     /// Represents the type of Tempo method.
     /// Each method type corresponds to a different communication model.
     /// </summary>
-    public enum MethodType
+    public enum MethodType : byte
     {
         /// <summary>
         /// Unary method type.

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Core.Lexer.Tokenization.Models;
@@ -70,13 +71,17 @@ namespace Core.Meta
     /// </summary>
     public abstract class RecordDefinition : Definition
     {
-        protected RecordDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, Definition? parent = null) :
+        protected RecordDefinition(string name, Span span, string documentation, List<BaseAttribute>? attributes, Definition? parent = null) :
             base(name, span, documentation, parent)
         {
-            OpcodeAttribute = opcodeAttribute;
+            Attributes = attributes;
         }
 
-        public BaseAttribute? OpcodeAttribute { get; }
+        public BaseAttribute? OpcodeAttribute => Attributes?.FirstOrDefault((a) => a is OpcodeAttribute);
+
+        public BaseAttribute? DeprecatedAttribute => Attributes?.FirstOrDefault((a) => a is DeprecatedAttribute);
+
+        public List<BaseAttribute>? Attributes { get; }
 
         /// <summary>
         /// If this definition is part of a union branch, then this is its discriminator in the parent union.
@@ -97,8 +102,8 @@ namespace Core.Meta
     /// </summary>
     public abstract class FieldsDefinition : RecordDefinition
     {
-        protected FieldsDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<Field> fields, Definition? parent = null) :
-            base(name, span, documentation, opcodeAttribute, parent)
+        protected FieldsDefinition(string name, Span span, string documentation, List<BaseAttribute>? attributes, ICollection<Field> fields, Definition? parent = null) :
+            base(name, span, documentation, attributes, parent)
         {
             Fields = fields;
         }
@@ -116,8 +121,8 @@ namespace Core.Meta
     /// </summary>
     public class StructDefinition : FieldsDefinition
     {
-        public StructDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<Field> fields, bool isReadOnly, Definition? parent = null) :
-            base(name, span, documentation, opcodeAttribute, fields, parent)
+        public StructDefinition(string name, Span span, string documentation, List<BaseAttribute>? attributes, ICollection<Field> fields, bool isReadOnly, Definition? parent = null) :
+            base(name, span, documentation, attributes, fields, parent)
         {
             IsReadOnly = isReadOnly;
         }
@@ -152,6 +157,15 @@ namespace Core.Meta
                 _ => false
             });
         public bool IsFixedSize(BebopSchema schema) => IsFixedSize(schema.Definitions);
+
+        public byte[] EncodeSchema()
+        {
+
+
+
+
+            return Array.Empty<byte>();
+        }
     }
 
     /// <summary>
@@ -161,7 +175,7 @@ namespace Core.Meta
     /// </summary>
     public class MessageDefinition : FieldsDefinition
     {
-        public MessageDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<Field> fields, Definition? parent = null) : base(name, span, documentation, opcodeAttribute, fields, parent)
+        public MessageDefinition(string name, Span span, string documentation, List<BaseAttribute>? attributes, ICollection<Field> fields, Definition? parent = null) : base(name, span, documentation, attributes, fields, parent)
         {
         }
 
@@ -182,13 +196,14 @@ namespace Core.Meta
             Span span,
             string documentation,
             ICollection<Field> members,
-            bool isBitFlags,
+            List<BaseAttribute>? attributes,
             BaseType baseType,
             Definition? parent = null
         ) : base(name, span, documentation, parent)
         {
             Members = members;
-            IsBitFlags = isBitFlags;
+            Attributes = attributes;
+            IsBitFlags = attributes?.Any((a) => a is Attributes.FlagsAttribute) ?? false;
             BaseType = baseType;
         }
 
@@ -201,6 +216,10 @@ namespace Core.Meta
         public override IEnumerable<string> Dependencies() => Enumerable.Empty<string>();
 
         public ScalarType ScalarType => new ScalarType(BaseType);
+
+        public List<BaseAttribute>? Attributes {get; }
+
+        public BaseAttribute? DeprecatedAttribute => Attributes?.FirstOrDefault((a) => a is DeprecatedAttribute);
     }
 
     public readonly struct UnionBranch
@@ -220,20 +239,22 @@ namespace Core.Meta
         public readonly string Documentation;
         public readonly uint Id;
         public readonly MethodDefinition Definition;
-        public BaseAttribute? DeprecatedAttribute { get; }
 
-        public ServiceMethod(uint id, MethodDefinition definition, string documentation, BaseAttribute? deprecatedAttribute)
+        public BaseAttribute? DeprecatedAttribute => Attributes?.FirstOrDefault((a) => a is DeprecatedAttribute);
+        public List<BaseAttribute>? Attributes { get; }
+
+        public ServiceMethod(uint id, MethodDefinition definition, string documentation, List<BaseAttribute>? attributes)
         {
             Id = id;
             Definition = definition;
             Documentation = documentation;
-            DeprecatedAttribute = deprecatedAttribute;
+            Attributes = attributes;
         }
     }
 
     public class UnionDefinition : RecordDefinition
     {
-        public UnionDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<UnionBranch> branches, Definition? parent = null) : base(name, span, documentation, opcodeAttribute, parent)
+        public UnionDefinition(string name, Span span, string documentation, List<BaseAttribute>? attributes, ICollection<UnionBranch> branches, Definition? parent = null) : base(name, span, documentation, attributes, parent)
         {
             Branches = branches;
         }
@@ -251,18 +272,19 @@ namespace Core.Meta
 
     public class ServiceDefinition : Definition
     {
-        public BaseAttribute? DeprecatedAttribute { get; }
+       
 
-        public ServiceDefinition(string name, Span span, string documentation, ICollection<ServiceMethod> methods, BaseAttribute? deprecatedAttribute) : base(name, span, documentation)
+        public ServiceDefinition(string name, Span span, string documentation, ICollection<ServiceMethod> methods, List<BaseAttribute>? attributes) : base(name, span, documentation)
         {
             foreach (var m in methods)
             {
                 m.Definition.Parent = this;
             }
             Methods = methods;
-            DeprecatedAttribute = deprecatedAttribute;
+            Attributes = attributes;
         }
-
+        public List<BaseAttribute>? Attributes { get; }
+         public BaseAttribute? DeprecatedAttribute => Attributes?.FirstOrDefault((a) => a is DeprecatedAttribute);
         public ICollection<ServiceMethod> Methods { get; }
 
         public override IEnumerable<string> Dependencies() => Methods.SelectMany(f => f.Definition.Dependencies());

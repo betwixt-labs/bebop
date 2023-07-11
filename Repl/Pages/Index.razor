@@ -182,7 +182,7 @@ struct Library {
             return new CompilerOutput
             {
                 IsOk = !hasErrorDiagonstics,
-                Result = hasErrorDiagonstics ? string.Empty : GeneratorUtils.ImplementedGenerators[generatorAlias](schema).Compile(null, writeGeneratedNotice: false),
+                Result = hasErrorDiagonstics ? string.Empty : GeneratorUtils.ImplementedGenerators[generatorAlias](schema).Compile(null, writeGeneratedNotice: false, emitBinarySchema: true),
                 Diagonstics = diagonstics
             };
         }

@@ -54,7 +54,7 @@ namespace Core.Generators.Rust
 
         public RustGenerator(BebopSchema schema) : base(schema) { }
 
-        public override string Compile(Version? languageVersion, TempoServices services = TempoServices.Both, bool writeGeneratedNotice = true)
+        public override string Compile(Version? languageVersion, TempoServices services = TempoServices.Both, bool writeGeneratedNotice = true, bool emitBinarySchema = false)
         {
             // the main scope which is where we write the const definitions and the borrowed types (as these are the
             // primary way to use bebop in Rust)
