@@ -214,5 +214,81 @@ namespace Core.Meta.Extensions
             }
             return false;
         }
+
+        public static void PrettyPrint(byte[] data)
+        {
+            StringBuilder sb = new StringBuilder();
+            StringBuilder text = new StringBuilder();
+            for (int i = 0; i < data.Length; i++)
+            {
+                // Add byte in hex to string
+                sb.Append($"{data[i]:x2} ");
+
+                // If byte represents a printable ASCII character, add it to the text string
+                if (data[i] >= 0x20 && data[i] < 0x7F)
+                {
+                    text.Append((char)data[i]);
+                }
+                else
+                {
+                    // Replace non-printable characters with '.'
+                    text.Append('.');
+                }
+
+                // Every 16 bytes, print the hex and text strings, then clear them
+                if ((i + 1) % 16 == 0)
+                {
+                    Console.WriteLine($"{sb}  {text}");
+                    sb.Clear();
+                    text.Clear();
+                }
+            }
+
+            // Print any remaining bytes
+            if (sb.Length > 0)
+            {
+                // Pad the hex string to align with the previous lines
+                while (sb.Length < 48)
+                {
+                    sb.Append(' ');
+                }
+                Console.WriteLine($"{sb}  {text}");
+            }
+        }
+
+        public static string ConvertToTypeScriptUInt8ArrayInitializer(this byte[] byteArray, string propertyName = "schema")
+        {
+            StringBuilder builder = new StringBuilder();
+            builder.AppendLine($"const {propertyName} = new Uint8Array([");
+
+            int printWidth = 60; // Prettier default print width
+            int currentLineWidth = 0;
+
+            for (int i = 0; i < byteArray.Length; i++)
+            {
+                string byteString = byteArray[i].ToString();
+                if (i != byteArray.Length - 1)
+                {
+                    byteString += ", ";
+                }
+
+                currentLineWidth += byteString.Length;
+
+                // add new line if the current line width with this byte exceeds print width
+                if (currentLineWidth >= printWidth && i < byteArray.Length - 1)
+                {
+                    builder.AppendLine();
+                    currentLineWidth = byteString.Length; // reset the line width
+                }
+
+                builder.Append(byteString);
+            }
+
+            // Append a new line to de-indent the closing brackets.
+            builder.AppendLine();
+            builder.AppendLine("]);");
+
+            return builder.ToString();
+        }
     }
 }

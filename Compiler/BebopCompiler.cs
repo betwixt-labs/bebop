@@ -51,7 +51,7 @@ public class BebopCompiler
         if (result == Err) return Err;
         var generator = makeGenerator(schema);
         generator.WriteAuxiliaryFiles(outputFile.DirectoryName ?? string.Empty);
-        var compiled = generator.Compile(langVersion, services: services, writeGeneratedNotice: !(Flags?.SkipGeneratedNotice ?? false));
+        var compiled = generator.Compile(langVersion, services: services, writeGeneratedNotice: Flags?.SkipGeneratedNotice ?? false, emitBinarySchema: Flags?.EmitBinarySchema ?? false);
         await File.WriteAllTextAsync(outputFile.FullName, compiled);
         return Ok;
     }

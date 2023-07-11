@@ -638,7 +638,7 @@ namespace Core.Generators.TypeScript
         /// Generate code for a Bebop schema.
         /// </summary>
         /// <returns>The generated code.</returns>
-        public override string Compile(Version? languageVersion, TempoServices services = TempoServices.Both, bool writeGeneratedNotice = true)
+        public override string Compile(Version? languageVersion, TempoServices services = TempoServices.Both, bool writeGeneratedNotice = true, bool emitBinarySchema = false)
         {
             var builder = new IndentedStringBuilder();
             if (writeGeneratedNotice)
@@ -664,6 +664,12 @@ namespace Core.Generators.TypeScript
             {
                 builder.AppendLine($"export namespace {Schema.Namespace} {{");
                 builder.Indent(2);
+            }
+
+            if (emitBinarySchema) {
+               
+                builder.AppendLine($"export {Schema.ToBinary().ConvertToTypeScriptUInt8ArrayInitializer("BEBOP_SCHEMA")}");
+                builder.AppendLine();
             }
 
             foreach (var definition in Schema.Definitions.Values)

@@ -1,4 +1,5 @@
-﻿
+﻿import { BinarySchema } from "./binary";
+
 const hexDigits = "0123456789abcdef";
 const asciiToHex = [
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -1210,3 +1211,4 @@ export const BebopTypeGuard = {
     ensureGuid
 }
 
+export { BinarySchema } ;

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Core.Exceptions;
+using Core.IO;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta.Extensions;
 using Core.Parser;
@@ -302,6 +303,11 @@ namespace Core.Meta
             }
             _validationErrors = errors;
             return errors;
+        }
+        
+        public readonly byte[] ToBinary() {
+            using var writer = new BinarySchemaWriter(this);
+            return writer.Encode();
         }
     }
 }
