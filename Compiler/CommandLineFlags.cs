@@ -681,6 +681,12 @@ namespace Compiler
                             }
                         }
                     }
+                    if (generator.NoGenerationNotice is not null && generator.NoGenerationNotice.Value is true) {
+                        flagStore.SkipGeneratedNotice = true;
+                    }
+                    if (generator.EmitBinarySchema is not null && generator.EmitBinarySchema is true) {
+                        flagStore.EmitBinarySchema = true;
+                    }
                 }
             }
 

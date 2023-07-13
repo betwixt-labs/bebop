@@ -85,6 +85,14 @@ namespace Compiler
         [JsonPropertyName("noGenerationNotice")]
         public bool? NoGenerationNotice { get; set; }
 
+
+        /// <summary>
+        /// Specify if the code generator should emit a binary schema within the output file.
+        /// </summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonPropertyName("emitBinarySchema")]
+        public bool? EmitBinarySchema { get; set; }
+
         /// <summary>
         /// Specify a file that bundles all generated code into one file.
         /// </summary>

@@ -74,6 +74,11 @@
                                 "description": "Specify if the code generator should produces a notice at the start of the output file stating code was auto-generated.",
                                 "type": "boolean"
                             },
+                            "emitBinarySchema": {
+                                "default": false,
+                                "description": "Specify if the code generator should emit a binary schema in the output file that can be used for dynamic serialization.",
+                                "type": "boolean"
+                            },
                             "services": {
                                 "default": "both",
                                 "description": "By default, bebopc generates a concrete client and a service base class. This property can be used to limit bebopc asset generation.",
