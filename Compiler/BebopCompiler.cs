@@ -16,12 +16,10 @@ public class BebopCompiler
     public const int Err = 1;
 
     public CommandLineFlags Flags { get; }
-    private Lager Log { get; }
 
-    public BebopCompiler(CommandLineFlags flags, Lager log)
+    public BebopCompiler(CommandLineFlags flags)
     {
         Flags = flags;
-        Log = log;
     }
 
     private async Task<BebopSchema> ParseAndValidateSchema(List<string> schemaPaths, string nameSpace)
@@ -61,7 +59,7 @@ public class BebopCompiler
         var noWarn = Flags?.NoWarn ?? new List<string>();
         var loudWarnings = schema.Warnings.Where(x => !noWarn.Contains(x.ErrorCode.ToString()));
         var errors = loudWarnings.Concat(schema.Errors).ToList();
-        await Log.WriteSpanErrors(errors);
+        DiagnosticLogger.Instance.WriteSpanDiagonstics(errors);
         return schema.Errors.Count > 0 ? Err : Ok;
     }
 
