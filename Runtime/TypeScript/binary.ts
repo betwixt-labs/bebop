@@ -1,4 +1,10 @@
-import { BebopRuntimeError, BebopTypeGuard, BebopView, Guid, GuidMap } from "./index";
+import {
+  BebopRuntimeError,
+  BebopTypeGuard,
+  BebopView,
+  Guid,
+  GuidMap,
+} from "./index";
 
 const decoder = new TextDecoder();
 
@@ -218,7 +224,9 @@ export class RecordReader {
       case "map":
         return this.readMap(field.fieldProperties, view);
       default:
-        throw new BebopRuntimeError(`Unknown field type: ${field.fieldProperties}`);
+        throw new BebopRuntimeError(
+          `Unknown field type: ${field.fieldProperties}`
+        );
     }
   }
 
@@ -359,7 +367,9 @@ export class RecordReader {
       case WireBaseType.Int64:
         return view.readInt64();
       default:
-        throw new BebopRuntimeError(`Unknown enum base type: ${definition.baseType}`);
+        throw new BebopRuntimeError(
+          `Unknown enum base type: ${definition.baseType}`
+        );
     }
   }
 
@@ -472,7 +482,9 @@ export class RecordWriter {
     const start = view.length;
     Object.values(definition.fields).forEach((field) => {
       if (field.constantValue === undefined || field.constantValue === null) {
-        throw new BebopRuntimeError(`Missing constant value for field: ${field.name}`);
+        throw new BebopRuntimeError(
+          `Missing constant value for field: ${field.name}`
+        );
       }
       if (typeof field.constantValue !== "number") {
         throw new BebopRuntimeError(
@@ -499,7 +511,9 @@ export class RecordWriter {
     value: unknown
   ): void {
     if (typeof value !== "number" && typeof value !== "bigint") {
-      throw new BebopRuntimeError(`Expected number or bigint, got ${typeof value}`);
+      throw new BebopRuntimeError(
+        `Expected number or bigint, got ${typeof value}`
+      );
     }
     if (
       (definition.baseType === WireBaseType.Int64 ||
@@ -550,7 +564,9 @@ export class RecordWriter {
         view.writeInt64(value as bigint);
         break;
       default:
-        throw new BebopRuntimeError(`Unknown enum base type: ${definition.baseType}`);
+        throw new BebopRuntimeError(
+          `Unknown enum base type: ${definition.baseType}`
+        );
     }
   }
 
@@ -619,7 +635,9 @@ export class RecordWriter {
         this.writeMap(field.fieldProperties, view, value);
         break;
       default:
-        throw new BebopRuntimeError(`Unknown field type: ${field.fieldProperties}`);
+        throw new BebopRuntimeError(
+          `Unknown field type: ${field.fieldProperties}`
+        );
     }
   }
 
@@ -784,6 +802,7 @@ export class RecordWriter {
  */
 export class BinarySchema {
   private readonly view: DataView;
+  private readonly dataProxy: Uint8Array;
   private pos: number;
   private readonly ArrayType = -14;
   private readonly MapType = -15;
@@ -798,12 +817,35 @@ export class BinarySchema {
    * @param data - The binary data array.
    */
   constructor(private readonly data: Uint8Array) {
-    this.view = new DataView(data.buffer);
+    // copy the data to prevent modification
+    //this.data = data.subarray(0, data.length);
+    this.view = new DataView(this.data.buffer);
     this.pos = 0;
     //@ts-expect-error
     this.reader = new RecordReader(this);
     //@ts-expect-error
     this.writer = new RecordWriter(this);
+    this.dataProxy = new Proxy(this.data, {
+      get: (target: Uint8Array, prop: PropertyKey): any => {
+        // If prop is 'length', return the length of the Uint8Array
+        if (prop === "length") {
+          return target.length;
+        }
+        // If prop is a number-like string, convert it to a number and return the element at that index in the Uint8Array
+        if (typeof prop === "string" && !isNaN(Number(prop))) {
+          return target[Number(prop)];
+        }
+        // If prop is the name of a method of Uint8Array, return the function
+        if (typeof prop === 'string' && typeof (target as any)[prop] === 'function') {
+          return (target as any)[prop].bind(target);
+        }
+        // Optionally, you can throw an error or return undefined for all other properties
+        throw new BebopRuntimeError(`Cannot access property ${String(prop)}`);
+      },
+      set: (_: Uint8Array, __: PropertyKey, ___: any): boolean => {
+        throw new BebopRuntimeError("Cannot modify schema data");
+      },
+    });
   }
 
   /**
@@ -845,6 +887,12 @@ export class BinarySchema {
       this.parse();
     }
     return this.parsedSchema!;
+  }
+  /**
+   * Returns the raw binary data of the schema wrapped in an immutable Uint8Array.
+   */
+  public get raw(): Uint8Array {
+    return this.dataProxy;
   }
 
   /**

@@ -1,4 +1,4 @@
-import { BinarySchema, Guid } from "./index";
+import { BebopRuntimeError, BinarySchema, Guid } from "./index";
 
 import { describe, expect, it } from "vitest";
 
@@ -14,7 +14,7 @@ const schemaData = new Uint8Array([
   255, 255, 0, 2, 110, 101, 115, 116, 101, 100, 0, 241, 255, 255, 255, 245, 255,
   255, 255, 241, 255, 255, 255, 245, 255, 255, 255, 242, 255, 255, 255, 1, 245,
   255, 255, 255, 0, 3, 80, 111, 119, 101, 114, 0, 3, 0, 2, 1, 1, 0, 0, 0, 2, 2,
-  0, 0, 0, 0, 0, 0, 0
+  0, 0, 0, 0, 0, 0, 0,
 ]);
 
 const recordData = new Uint8Array([
@@ -63,5 +63,11 @@ describe("binary schema", () => {
     expect(data).toEqual(recordData);
     const read = schema.reader.read("Power", data);
     expect(read).toEqual(record);
+  });
+
+  it("cannot modify schema data", () => {
+    expect(() => {
+      schema.raw[0] = 0;
+    }).toThrow(BebopRuntimeError);
   });
 });
