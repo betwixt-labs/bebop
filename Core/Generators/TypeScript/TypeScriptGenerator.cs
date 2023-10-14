@@ -666,8 +666,9 @@ namespace Core.Generators.TypeScript
                 builder.Indent(2);
             }
 
-            if (emitBinarySchema) {
-               
+            if (emitBinarySchema)
+            {
+
                 builder.AppendLine($"export {Schema.ToBinary().ConvertToTypeScriptUInt8ArrayInitializer("BEBOP_SCHEMA")}");
                 builder.AppendLine();
             }
@@ -811,7 +812,12 @@ namespace Core.Generators.TypeScript
                             {
                                 builder.CodeBlock($"public static from{b.ClassName()}(value: I{b.ClassName()})", indentStep, () =>
                                 {
-                                    builder.AppendLine($"return new {definition.ClassName()}({{ discriminator: {b.Discriminator}, value: new {b.ClassName()}(value)}});");
+                                    builder.AppendLine($"return new {definition.ClassName()}({{ discriminator: {b.Discriminator}, value: new {b.ClassName()}(value)}});"    );
+                                });
+                                builder.AppendLine();
+                                builder.CodeBlock($"public is{b.ClassName()}(): this is {{ value: {b.ClassName()} }} & {{ data: Extract<I{ud.ClassName()}Type, {{ discriminator: {b.Discriminator} }}> }}", indentStep, () =>
+                                {
+                                    builder.AppendLine($"return this.data.value instanceof {b.ClassName()};");
                                 });
                                 builder.AppendLine();
                             }
