@@ -157,15 +157,15 @@ namespace Core.Generators.Python
             builder.Indent(2);
             builder.AppendLine("byte = reader.readByte()");
             builder.AppendLine("if byte == 0:");
-            builder.AppendLine("  return message");
+            builder.AppendLine("    return message");
             foreach (var field in definition.Fields)
             {
                 builder.AppendLine($"elif byte == {field.ConstantValue}:");
-                builder.AppendLine($"  {CompileDecodeField(field.Type, $"message.{field.Name}")}");
+                builder.AppendLine($"    {CompileDecodeField(field.Type, $"message.{field.Name}", 1)}");
             }
             builder.AppendLine("else:");
-            builder.AppendLine("  reader.index = end");
-            builder.AppendLine("  return message");
+            builder.AppendLine("    reader.index = end");
+            builder.AppendLine("    return message");
             builder.Dedent(2);
             return builder.ToString();
         }
@@ -407,6 +407,8 @@ namespace Core.Generators.Python
                         builder.AppendLine("");
                         break;
                     case ServiceDefinition:
+                        break;
+                    case UnionDefinition:
                         break;
                     default:
                         throw new InvalidOperationException($"unsupported definition {definition}");

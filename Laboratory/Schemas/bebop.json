@@ -1,5 +1,6 @@
 {
     "inputDirectory": "./Valid",
+    "exclude": ["./ShouldFail"],
     "generators": [
       {
         "alias": "cs",
