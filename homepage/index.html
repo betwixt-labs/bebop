@@ -5,38 +5,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bebop</title>
 
-    <meta name="description" content="An extremely simple, fast, efficient, cross-platform serialization format">
+    <meta name="description" content="🎷No ceremony, just code. Blazing fast, typesafe binary serialization.">
 
     <!-- Google / Search Engine Tags -->
 	<meta itemprop="name" content="Bebop">
-	<meta itemprop="description" content="An extremely simple, fast, efficient, cross-platform serialization format">
+	<meta itemprop="description" content="🎷No ceremony, just code. Blazing fast, typesafe binary serialization.">
 	<meta itemprop="image" content="https://bebop.sh/images/social.jpg">
 
 	<!-- Facebook Meta Tags -->
 	<meta property="og:url" content="https://bebop.sh">
 	<meta property="og:title" content="Bebop">
-	<meta property="og:description" content="An extremely simple, fast, efficient, cross-platform serialization format">
+	<meta property="og:description" content="🎷No ceremony, just code. Blazing fast, typesafe binary serialization.">
 	<meta property="og:image" content="https://bebop.sh/images/social.jpg">
 
 	<!-- Twitter Meta Tags -->
 	<meta name="twitter:card" content="summary_large_image">
 	<meta name="twitter:title" content="Bebop">
-	<meta name="twitter:description" content="An extremely simple, fast, efficient, cross-platform serialization format">
+	<meta name="twitter:description" content="🎷No ceremony, just code. Blazing fast, typesafe binary serialization.">
 	<meta name="twitter:image" content="https://bebop.sh/images/social.jpg">
 
-	<link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="./images/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="./images/favicon-16.png">
 
 
     <link rel="preconnect" href="https://fonts.gstatic.com">
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="./style.css">
 </head>
 <body>
     <div class="wrapper">
         <div class="logo">
             <div class="logo__mobile">
-                <img src="/images/logo.svg" alt="">
+                <img src="./images/logo.svg" alt="">
             </div>
             <div class="logo__desktop">
                 <pre class="logo-code">
@@ -77,15 +77,43 @@ kWMMMMMXxlkNMMMMMXc  lNMK; .lNMMMMWo  oWMMMNl  ,KMMMMMMMMK; .dNMMMMMNd:xNMMMMMNo
         </div>
 
         <div class="container">
-            <h1>An extremely simple, fast, efficient, cross-platform serialization format</h1>
+            <h1>🎷No ceremony, just code. Blazing fast, typesafe binary serialization.</h1>
+            <br>
+            <pre class="code-block"><code class="language-bash" data-lang="bash" id="code-block"></code></pre>
+            <button class="copy-button" onclick="copyToClipboard()" aria-label="Copy" data-tooltip="Copy">
+                <img src="./images/copy.svg" alt="Copy">
+            </button>
+
             <div class="links">
-                <a href="https://github.com/RainwayApp/bebop"><img src="/images/github.svg" alt=""> Github</a>
-                <a href="https://bebop.sh/repl/"><img src="/images/repl.svg" alt="">Repl</a>
-                <a href="https://github.com/RainwayApp/bebop/wiki"><img src="/images/docs.svg" alt="">Documentation</a>
+                <a href="https://github.com/betwixt-labs/bebop"><img src="./images/github.svg" alt=""> Source Code</a>
+                <a href="https://github.com/betwixt-labs/tempo"><img src="./images/github.svg" alt="">RPC</a>
+                <a href="https://bebop.sh/repl/"><img src="./images/repl.svg" alt="">Repl</a>
+                <a href="https://github.com/betwixt-labs/bebop/wiki"><img src="./images/docs.svg" alt="">Documentation</a>
             </div>
         </div>
     </div>
-
-    <script src="/logo-animation.js"></script>
+    <script>
+        const codeBlock = document.getElementById('code-block');
+        const code = navigator.platform.toLowerCase().indexOf('win') !== -1 ? 'irm https://bebop.sh | iex' : 'bash -c "$(curl https://bebop.sh)"';
+        if (navigator.platform.toLowerCase().indexOf('win') !== -1) {
+            // Windows OS
+            codeBlock.textContent = `> ${code}`;
+        } else {
+            // Non-Windows OS
+            codeBlock.textContent = `> ${code}`;
+        }
+        function copyToClipboard() {
+            const el = document.createElement('textarea');
+            el.value = code;
+            el.setAttribute('readonly', '');
+            el.style.position = 'absolute';
+            el.style.left = '-9999px';
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+        }
+    </script>
+    <script src="./logo-animation.js"></script>
 </body>
 </html>

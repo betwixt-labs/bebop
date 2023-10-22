@@ -46,7 +46,8 @@ namespace Core.Parser
         private readonly HashSet<(Token, Token)> _typeReferences = new();
         private int _index;
         private readonly string _nameSpace;
-        private List<SpanException> _errors = new();
+        private readonly List<SpanException> _errors = new();
+        private readonly List<SpanException> _warnings = new();
         private List<Token> _tokens => _tokenizer.Tokens;
 
         /// <summary>
@@ -55,7 +56,13 @@ namespace Core.Parser
         /// <param name="definition"></param>
         private void AddDefinition(Definition definition)
         {
-            if (_definitions.ContainsKey(definition.Name)) return;
+
+            if (_definitions.ContainsKey(definition.Name))
+            {
+                _errors.Add(new MultipleDefinitionsException(definition));
+                return;
+            }
+
             _definitions.Add(definition.Name, definition);
             if (_scopes.Count > 0)
             {
@@ -240,14 +247,21 @@ namespace Core.Parser
         /// <returns>The content of the last block comment which usually proceeds a definition.</returns>
         private string ConsumeBlockComments()
         {
-
-            var definitionDocumentation = string.Empty;
-            while (CurrentToken.Kind == TokenKind.BlockComment)
+            var start = CurrentToken;
+            try
             {
-                definitionDocumentation = CurrentToken.Lexeme;
-                _index++;
+                var definitionDocumentation = string.Empty;
+                while (CurrentToken.Kind == TokenKind.BlockComment)
+                {
+                    definitionDocumentation = CurrentToken.Lexeme;
+                    _index++;
+                }
+                return definitionDocumentation;
             }
-            return definitionDocumentation;
+            catch
+            {
+                throw new UnexpectedEndOfFile(start.Span);
+            }
         }
 
         /// <summary>
@@ -311,38 +325,48 @@ namespace Core.Parser
                 }
             }
             return new BebopSchema(
-                nameSpace: _nameSpace, 
-                definitions: _definitions, 
-                typeReferences: _typeReferences, 
+                nameSpace: _nameSpace,
+                definitions: _definitions,
+                typeReferences: _typeReferences,
                 parsingErrors: _errors,
+                parsingWarnings: _warnings,
                 imports: _imports
             );
         }
 
         private Definition? ParseDefinition()
         {
-            var definitionDocumentation = ConsumeBlockComments();
+            string definitionDocumentation;
+            try
+            {
+                definitionDocumentation = ConsumeBlockComments();
+            }
+            catch (SpanException ex)
+            {
+                _errors.Add(ex);
+                return null;
+            }
+
+            if (CurrentToken.Kind is TokenKind.EndOfFile)
+            {
+                return null;
+            }
+
 
             if (EatPseudoKeyword("const"))
             {
                 return ParseConstDefinition(definitionDocumentation);
             }
-            BaseAttribute? opcodeAttribute = null;
-            BaseAttribute? flagsAttribute = null;
+
+            List<BaseAttribute>? attributes = null;
 
             try
             {
                 BaseAttribute? attribute;
-                while ((attribute = EatAttribute()) != null)
+                while ((attribute = EatAttribute()) is not null)
                 {
-                    if (attribute is OpcodeAttribute)
-                    {
-                        opcodeAttribute = attribute;
-                    }
-                    else if (attribute is FlagsAttribute)
-                    {
-                        flagsAttribute = attribute;
-                    }
+                    attributes ??= new List<BaseAttribute>();
+                    attributes.Add(attribute);
                 }
             }
             catch (SpanException e)
@@ -350,9 +374,12 @@ namespace Core.Parser
                 // If there's a syntax error in the attribute, we'll be skipping ahead to the next top level definition anyway.
                 _errors.Add(e);
             }
-
+            var readonlySpan = CurrentToken.Span;
             var isReadOnly = Eat(TokenKind.ReadOnly);
-
+            if (isReadOnly)
+            {
+                _warnings.Add(new DeprecatedFeatureWarning(readonlySpan, "the 'readonly' modifier will be removed in the next major version of Bebop; structs will be immutable by default, and the 'mut' modifier will be added to make them mutable."));
+            }
             ExpectAndSkip(_topLevelDefinitionKinds, _universalFollowKinds, hint: "Expecting a top-level definition.");
             if (CurrentToken.Kind == TokenKind.EndOfFile)
             {
@@ -365,19 +392,19 @@ namespace Core.Parser
                 {
                     throw new UnexpectedTokenException(TokenKind.Service, CurrentToken, "Did not expect service definition after readonly. (Services are not allowed to be readonly).");
                 }
-                if (opcodeAttribute != null)
+                if (attributes is not null && attributes.Any((a) => a is OpcodeAttribute))
                 {
                     throw new UnexpectedTokenException(TokenKind.Service, CurrentToken, "Did not expect service definition after opcode. (Services are not allowed opcodes).");
                 }
-
-                _tokenizer.AddString("rpc_request_header", RpcSchema.RpcRequestHeader);
-                _tokenizer.AddString("rpc_response_header", RpcSchema.RpcResponseHeader);
-                _tokenizer.AddString("rpc_datagram", RpcSchema.RpcDatagram);
-                return ParseServiceDefinition(CurrentToken, definitionDocumentation);
+                if (attributes is not null && attributes.Any((a) => a is FlagsAttribute))
+                {
+                    throw new UnexpectedTokenException(TokenKind.Service, CurrentToken, "Did not expect service definition after flags. (Services are not allowed flags).");
+                }
+                return ParseServiceDefinition(CurrentToken, definitionDocumentation, attributes);
             }
             if (Eat(TokenKind.Union))
             {
-                return ParseUnionDefinition(CurrentToken, definitionDocumentation, opcodeAttribute);
+                return ParseUnionDefinition(CurrentToken, definitionDocumentation, attributes);
             }
             else
             {
@@ -394,17 +421,17 @@ namespace Core.Parser
                     // Uh oh we skipped ahead due to a missing identifier, get outta there
                     return null;
                 }
-                return ParseNonUnionDefinition(CurrentToken, kind, isReadOnly, definitionDocumentation, opcodeAttribute, flagsAttribute);
+                return ParseNonUnionDefinition(CurrentToken, kind, isReadOnly, definitionDocumentation, attributes);
             }
         }
 
         private ConstDefinition ParseConstDefinition(string definitionDocumentation)
         {
             var definitionStart = CurrentToken.Span;
-            
+
             TypeBase type;
             string name = "";
-            Literal? value = new IntegerLiteral(new ScalarType(BaseType.UInt32, new Span(), ""), new Span(), "") ;
+            Literal? value = new IntegerLiteral(new ScalarType(BaseType.UInt32, new Span(), ""), new Span(), "");
             try
             {
                 type = ParseType(CurrentToken);
@@ -422,7 +449,7 @@ namespace Core.Parser
             var definition = new ConstDefinition(name, definitionSpan, definitionDocumentation, value);
             if (_definitions.ContainsKey(name))
             {
-               _errors.Add(new DuplicateConstDefinitionException(definition));
+                _errors.Add(new DuplicateConstDefinitionException(definition));
             }
             else
             {
@@ -503,7 +530,7 @@ namespace Core.Parser
                 if (Eat(TokenKind.OpenParenthesis))
                 {
                     value = CurrentToken.Lexeme;
-                    if (Eat(TokenKind.String)|| (kind == "opcode" && Eat(TokenKind.Number)))
+                    if (Eat(TokenKind.String) || (kind == "opcode" && Eat(TokenKind.Number)))
                     {
                         isNumber = PeekToken(_index - 1).Kind == TokenKind.Number;
                     }
@@ -540,10 +567,9 @@ namespace Core.Parser
             AggregateKind kind,
             bool isReadOnly,
             string definitionDocumentation,
-            BaseAttribute? opcodeAttribute,
-            BaseAttribute? flagsAttribute)
+            List<BaseAttribute>? definitionAttributes)
         {
-            
+
             var fields = new List<Field>();
             var enumBaseType = BaseType.UInt32;
             var kindName = kind switch { AggregateKind.Enum => "enum", AggregateKind.Struct => "struct", _ => "message" };
@@ -593,15 +619,37 @@ namespace Core.Parser
                 errored = false;
                 var value = BigInteger.Zero;
 
-                var fieldDocumentation = ConsumeBlockComments();
+                string fieldDocumentation;
+                try
+                {
+                    fieldDocumentation = ConsumeBlockComments();
+                }
+                catch (SpanException ex)
+                {
+                    _errors.Add(ex);
+                    errored = true;
+                    break;
+                }
                 // if we've reached the end of the definition after parsing documentation we need to exit.
                 if (Eat(TokenKind.CloseBrace))
                 {
                     break;
                 }
-
-                var deprecatedAttribute = EatAttribute();
-                if (deprecatedAttribute is not DeprecatedAttribute) deprecatedAttribute = null;
+                List<BaseAttribute>? fieldAttributes = null;
+                try
+                {
+                    BaseAttribute? attribute;
+                    while ((attribute = EatAttribute()) is not null)
+                    {
+                        fieldAttributes ??= new List<BaseAttribute>();
+                        fieldAttributes.Add(attribute);
+                    }
+                }
+                catch (SpanException e)
+                {
+                    // If there's a syntax error in the attribute, we'll be skipping ahead to the next top level definition anyway.
+                    _errors.Add(e);
+                }
 
                 if (kind == AggregateKind.Message)
                 {
@@ -630,7 +678,7 @@ namespace Core.Parser
                 try
                 {
 
-                
+
                     // Parse a type name, if this isn't an enum:
                     TypeBase type = kind == AggregateKind.Enum
                         ? new ScalarType(enumBaseType, definitionToken.Span, definitionToken.Lexeme)
@@ -669,7 +717,7 @@ namespace Core.Parser
                     Expect(TokenKind.Semicolon, hint: CurrentToken.Kind == TokenKind.OpenBracket
                         ? "Try 'Type[] foo' instead of 'Type foo[]'."
                         : $"Elements in {aKindName} are delimited using semicolons.");
-                    fields.Add(new Field(fieldName, type, fieldStart.Combine(fieldEnd), deprecatedAttribute, value, fieldDocumentation));
+                    fields.Add(new Field(fieldName, type, fieldStart.Combine(fieldEnd), fieldAttributes, value, fieldDocumentation));
                     definitionEnd = CurrentToken.Span;
                 }
                 catch (SpanException e)
@@ -683,12 +731,12 @@ namespace Core.Parser
 
             var name = definitionToken.Lexeme;
             var definitionSpan = definitionToken.Span.Combine(definitionEnd);
-
+          
             Definition definition = kind switch
             {
-                AggregateKind.Enum => new EnumDefinition(name, definitionSpan, definitionDocumentation, fields, flagsAttribute != null, enumBaseType),
-                AggregateKind.Struct => new StructDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, fields, isReadOnly),
-                AggregateKind.Message => new MessageDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, fields),
+                AggregateKind.Enum => new EnumDefinition(name, definitionSpan, definitionDocumentation, fields, definitionAttributes, enumBaseType),
+                AggregateKind.Struct => new StructDefinition(name, definitionSpan, definitionDocumentation, definitionAttributes, fields, isReadOnly),
+                AggregateKind.Message => new MessageDefinition(name, definitionSpan, definitionDocumentation, definitionAttributes, fields),
                 _ => throw new InvalidOperationException("invalid kind when making definition"),
             };
 
@@ -696,7 +744,8 @@ namespace Core.Parser
             {
                 _errors.Add(new InvalidReadOnlyException(definition));
             }
-            if (opcodeAttribute != null && definition is not RecordDefinition)
+
+            if (definitionAttributes is not null && definitionAttributes.Any((a) => a is OpcodeAttribute) && definition is not RecordDefinition)
             {
                 _errors.Add(new InvalidOpcodeAttributeUsageException(definition));
             }
@@ -712,7 +761,7 @@ namespace Core.Parser
             }
             return definition;
         }
-        
+
         /// <summary>
         ///     Parses an rpc service definition and adds it to the <see cref="_definitions"/> collection.
         /// </summary>
@@ -720,7 +769,7 @@ namespace Core.Parser
         /// <param name="definitionDocumentation">The documentation above the service definition.</param>
         /// <returns>The parsed rpc service definition.</returns>
         private Definition? ParseServiceDefinition(Token definitionToken,
-            string definitionDocumentation)
+            string definitionDocumentation, List<BaseAttribute>? definitionAttributes)
         {
             ExpectAndSkip(TokenKind.Identifier, new(_universalFollowKinds.Append(TokenKind.OpenBrace)), "Did you forget to specify a name for this service?");
             Eat(TokenKind.Identifier);
@@ -730,13 +779,15 @@ namespace Core.Parser
                 return null;
             }
             StartScope();
-            var name = definitionToken.Lexeme;
-            var branches = new List<ServiceBranch>();
-            var usedDiscriminators = new HashSet<uint>(){0};
-            
+            var serviceName = $"{definitionToken.Lexeme.ToPascalCase()}";
+
+            var methods = new List<ServiceMethod>();
+            var usedMethodIds = new HashSet<uint>() { 0 };
+            var usedMethodNames = new HashSet<string>() { string.Empty };
+
             var definitionEnd = CurrentToken.Span;
             var errored = false;
-            var serviceFieldFollowKinds = new HashSet<TokenKind>() { TokenKind.BlockComment, TokenKind.Number, TokenKind.CloseBrace };
+            var serviceFieldFollowKinds = new HashSet<TokenKind>() { TokenKind.BlockComment, TokenKind.Identifier, TokenKind.CloseBrace };
             while (!Eat(TokenKind.CloseBrace))
             {
                 if (errored && !serviceFieldFollowKinds.Contains(CurrentToken.Kind))
@@ -745,158 +796,114 @@ namespace Core.Parser
                     return null;
                 }
                 errored = false;
-                var documentation = ConsumeBlockComments();
+                string documentation;
+                try
+                {
+                    documentation = ConsumeBlockComments();
+                }
+                catch (SpanException ex)
+                {
+                    _errors.Add(ex);
+                    errored = true;
+                    break;
+                }
                 // if we've reached the end of the definition after parsing documentation we need to exit.
                 if (Eat(TokenKind.CloseBrace))
                 {
                     break;
                 }
 
-                const string indexHint = "Branches in a service must be explicitly indexed: service U { 1 -> void doThing(int32 myarg); 2 -> bool foo(float32 a, float32 b); }";
-                var indexToken = CurrentToken;
-                var indexLexeme = indexToken.Lexeme;
-                uint discriminator;
+                // The start of the method is the definition token of the method
                 try
                 {
-                    Expect(TokenKind.Number, indexHint);
-                    if (!indexLexeme.TryParseUInt(out discriminator))
+
+                    List<BaseAttribute>? methodAttributes = null;
+                    BaseAttribute? attribute;
+                    while ((attribute = EatAttribute()) is not null)
                     {
-                        throw new UnexpectedTokenException(TokenKind.Number, indexToken, "A function id must be an unsigned integer.");
+                        methodAttributes ??= new List<BaseAttribute>();
+                        methodAttributes.Add(attribute);
                     }
-                    if (discriminator < 1 || discriminator > 0xffff)
+                    if (methodAttributes is not null && methodAttributes.Any((a) => a is FlagsAttribute or OpcodeAttribute))
                     {
-                        _errors.Add(new UnexpectedTokenException(TokenKind.Number, indexToken, "A function id must be between 1 and 65535."));
+                        throw new UnexpectedTokenException(TokenKind.Identifier, CurrentToken, $"Service methods are not allowed to use the flags and opcode attribute.");
                     }
-                    if (usedDiscriminators.Contains(discriminator))
+                    var methodStart = CurrentToken.Span;
+                    const string hint = "A method must be defined with name, request type, and return type,  such as 'myMethod(MyRequest): MyResponse;'";
+                    var indexToken = CurrentToken;
+                    var methodName = ExpectLexeme(TokenKind.Identifier, hint).ToCamelCase();
+                    if (usedMethodNames.Contains(methodName))
                     {
-                        _errors.Add(new DuplicateServiceDiscriminatorException(indexToken, name));
+                        throw new DuplicateServiceMethodNameException(serviceName, methodName, indexToken.Span);
                     }
-                    usedDiscriminators.Add(discriminator);
-                    // Parse an arrow ("->").
-                    Expect(TokenKind.Hyphen, indexHint);
-                    Expect(TokenKind.CloseCaret, indexHint);
+                    usedMethodNames.Add(methodName);
+                    var methodId = RpcSchema.GetMethodId(serviceName, methodName);
+                    if (usedMethodIds.Contains(methodId))
+                    {
+                        throw new DuplicateServiceMethodIdException(methodId, serviceName, methodName, indexToken.Span);
+                    }
+                    Expect(TokenKind.OpenParenthesis, hint);
+
+                    var isRequestStream = Eat(TokenKind.Stream);
+                    if (CurrentToken is not { Kind: TokenKind.Identifier })
+                    {
+                        throw new UnexpectedTokenException(TokenKind.Identifier, CurrentToken, hint);
+                    }
+                    var requestType = ParseType(definitionToken);
+                    if (requestType is not DefinedType)
+                    {
+                        throw new InvalidServiceRequestTypeException(serviceName, methodName, requestType, requestType.Span);
+                    }
+
+                    Expect(TokenKind.CloseParenthesis, hint);
+                    Expect(TokenKind.Colon, hint);
+                    var isResponseStream = Eat(TokenKind.Stream);
+                    if (CurrentToken is not { Kind: TokenKind.Identifier })
+                    {
+                        throw new UnexpectedTokenException(TokenKind.Identifier, CurrentToken, hint);
+                    }
+                    var returnType = ParseType(definitionToken);
+                    if (returnType is not DefinedType)
+                    {
+                        throw new InvalidServiceReturnTypeException(serviceName, methodName, returnType, returnType.Span);
+                    }
+                    var returnTypeSpan = methodStart.Combine(CurrentToken.Span);
+                    Eat(TokenKind.Semicolon);
+                    var methodSpan = methodStart.Combine(CurrentToken.Span);
+                    MethodType GetMethodType() => (isRequestStream, isResponseStream) switch
+                    {
+                        (true, true) => MethodType.DuplexStream,
+                        (true, false) => MethodType.ClientStream,
+                        (false, true) => MethodType.ServerStream,
+                        _ => MethodType.Unary
+                    };
+                    var method = new MethodDefinition(methodName, methodSpan, documentation, requestType, returnType, GetMethodType());
+                    if (method is null)
+                    {
+                        // Just escape out of there if there's a parsing error in one of the definitions.
+                        CancelScope();
+                        return null;
+                    }
+                    definitionEnd = CurrentToken.Span;
+                    methods.Add(new(methodId, method, documentation, methodAttributes));
                 }
                 catch (SpanException e)
                 {
                     _errors.Add(e);
                     errored = true;
-                    SkipAndSkipUntil(new HashSet<TokenKind>(serviceFieldFollowKinds.Concat(_universalFollowKinds)));
+                    SkipAndSkipUntil(new HashSet<TokenKind>(serviceFieldFollowKinds));
                     continue;
                 }
-                var definition = ParseFunctionDefinition(name, indexLexeme);
-                if (definition is null)
-                {
-                    // Just escape out of there if there's a parsing error in one of the definitions.
-                    CancelScope();
-                    return null;
-                }
-                Eat(TokenKind.Semicolon);
-                definitionEnd = CurrentToken.Span;
-                branches.Add(new((ushort)discriminator, definition));
             }
 
             var definitionSpan = definitionToken.Span.Combine(definitionEnd);
-            
-            // add the implicit "ServiceName" function
-            var serviceNameReturnStruct = new StructDefinition($"_{name}NameReturn", definitionSpan, "", null, new List<Field>(){new("serviceName", new ScalarType(BaseType.String, definitionSpan, "name"), definitionSpan, null, 0, "")}, true);
-            AddDefinition(serviceNameReturnStruct);
-            var serviceNameArgsStruct = new StructDefinition($"_{name}NameArgs", definitionSpan, "",
-                null, new List<Field>() { }, true);
-            AddDefinition(serviceNameArgsStruct);
-            var serviceNameSignature =
-                MakeFunctionSignature(name, serviceNameReturnStruct, serviceNameArgsStruct, "name", definitionSpan);
-            AddDefinition(serviceNameSignature);
-            var serviceNameDefinition = new FunctionDefinition("name", definitionSpan, "", serviceNameSignature, serviceNameArgsStruct, serviceNameReturnStruct);
-            branches.Add(new(0, serviceNameDefinition));
-            
+
             // make the service itself
-            var serviceDefinition = new ServiceDefinition(name, definitionSpan, definitionDocumentation, branches);
+            var serviceDefinition = new ServiceDefinition(serviceName, definitionSpan, definitionDocumentation, methods, definitionAttributes);
             CloseScope(serviceDefinition);
             return serviceDefinition;
         }
 
-        /// <summary>
-        ///     Parses an rpc function definition and adds its types to the <see cref="_definitions"/> collection.
-        /// </summary>
-        /// <param name="serviceName">Name of the service this function is part of.</param>
-        /// <para name="serviceIndex">Index of this function within the service.</para>
-        /// <returns>The parsed rpc function definition.</returns>
-        private FunctionDefinition? ParseFunctionDefinition(string serviceName, string serviceIndex)
-        {
-            var definitionDocumentation = ConsumeBlockComments();
-            
-            // The start of the function is the definition token of the function
-            var definitionToken = CurrentToken;
-            var functionStart = CurrentToken.Span;
-
-            var isReadonly = Eat(TokenKind.ReadOnly);
-            var returnType = EatPseudoKeyword("void") ? null : ParseType(definitionToken);
-            var returnTypeSpan = functionStart.Combine(CurrentToken.Span);
-
-            const string hint = "A function must be defined with a return type, name, and arguments such as 'RetType myFunction(ArgType arg1, OtherArg arg2);' or 'void emptyFn();'";
-            var name = ExpectLexeme(TokenKind.Identifier, hint);
-            
-            Expect(TokenKind.OpenParenthesis, hint);
-
-            var argList = new List<Field>();
-            var argsStart = CurrentToken.Span;
-            
-            // read parameter list
-            while (!Eat(TokenKind.CloseParenthesis))
-            {
-                if (argList.Count > 0)
-                {
-                    Expect(TokenKind.Comma, "Function arguments must be separated by commas");
-                }
-                var paramStart = CurrentToken.Span;
-                var paramType = ParseType(definitionToken);
-                var paramName = ExpectLexeme(TokenKind.Identifier, hint);
-                var paramSpan = paramStart.Combine(CurrentToken.Span);
-                
-                if (argList.Any(t => t.Name.Equals(paramName)))
-                {
-                    _errors.Add(new DuplicateArgumentName(definitionToken.Span.Combine(CurrentToken.Span), serviceName, serviceIndex, paramName));
-                }
-                else
-                {
-                    argList.Add(new Field(paramName, paramType, paramSpan, null, 0, ""));
-                }
-            }
-            
-            var argsSpan = argsStart.Combine(CurrentToken.Span);
-            
-            Expect(TokenKind.Semicolon, "Function definition must end with a ';' semicolon");
-
-            var functionSpan = functionStart.Combine(CurrentToken.Span);
-            
-            var returnStruct = new StructDefinition(
-                $"_{serviceName.ToPascalCase()}{name.ToPascalCase()}Return",
-                returnTypeSpan,
-                $"Wrapped return type of '{name}' in rpc service '{serviceName}'.",
-                null,
-                returnType is null
-                    ? new List<Field> {}
-                    : new List<Field> {new("value", returnType, returnTypeSpan, null, 0, "")},
-                isReadonly
-            );
-            AddDefinition(returnStruct);
-
-            var argumentStruct = new StructDefinition(
-                $"_{serviceName.ToPascalCase()}{name.ToPascalCase()}Args",
-                argsSpan,
-                $"Wrapped arguments type of '{name}' in rpc service '{serviceName}'.",
-                null,
-                argList,
-                isReadonly
-            );
-            AddDefinition(argumentStruct);
-            
-            var signature = MakeFunctionSignature(serviceName, returnStruct, argumentStruct, name, functionSpan);
-            AddDefinition(signature);
-            
-            var function = new FunctionDefinition(name, functionSpan, definitionDocumentation, signature, argumentStruct, returnStruct);
-            return function;
-        }
 
         /// <summary>
         ///     Parses a union definition and adds it to the <see cref="_definitions"/> collection.
@@ -907,7 +914,7 @@ namespace Core.Parser
         /// <returns>The parsed union definition.</returns>
         private Definition? ParseUnionDefinition(Token definitionToken,
             string definitionDocumentation,
-            BaseAttribute? opcodeAttribute)
+            List<BaseAttribute>? attributes)
         {
             ExpectAndSkip(TokenKind.Identifier, new(_universalFollowKinds.Append(TokenKind.OpenBrace)), hint: $"Did you forget to specify a name for this union?");
             Eat(TokenKind.Identifier);
@@ -921,7 +928,7 @@ namespace Core.Parser
             var branches = new List<UnionBranch>();
             var usedDiscriminators = new HashSet<uint>();
 
-            
+
             var definitionEnd = CurrentToken.Span;
             var errored = false;
             var unionFieldFollowKinds = new HashSet<TokenKind>() { TokenKind.BlockComment, TokenKind.Number, TokenKind.CloseBrace };
@@ -933,7 +940,17 @@ namespace Core.Parser
                     return null;
                 }
                 errored = false;
-                var documentation = ConsumeBlockComments();
+                string documentation;
+                try
+                {
+                    documentation = ConsumeBlockComments();
+                }
+                catch (SpanException ex)
+                {
+                    _errors.Add(ex);
+                    errored = true;
+                    break;
+                }
                 // if we've reached the end of the definition after parsing documentation we need to exit.
                 if (Eat(TokenKind.CloseBrace))
                 {
@@ -998,7 +1015,7 @@ namespace Core.Parser
                 branches.Add(new UnionBranch((byte)discriminator, td));
             }
             var definitionSpan = definitionToken.Span.Combine(definitionEnd);
-            var unionDefinition = new UnionDefinition(name, definitionSpan, definitionDocumentation, opcodeAttribute, branches);
+            var unionDefinition = new UnionDefinition(name, definitionSpan, definitionDocumentation, attributes, branches);
             CloseScope(unionDefinition);
             if (unionDefinition.Branches.Count == 0)
             {
@@ -1088,7 +1105,8 @@ namespace Core.Parser
             var output = new Stack<Expression>();
 
             int Precedence(Token token) =>
-                token.Kind switch {
+                token.Kind switch
+                {
                     TokenKind.OpenCaret => 3,
                     TokenKind.Ampersand => 2,
                     TokenKind.VerticalLine => 1,
@@ -1220,25 +1238,7 @@ namespace Core.Parser
             if (success && negative) value = -value;
             return success;
         }
-        
-        private ConstDefinition MakeFunctionSignature(string serviceName, StructDefinition returnStruct,
-            StructDefinition argumentStruct, string functionName, Span functionSpan)
-        {
-            var builder = new StringBuilder();
-            TypeSignature(builder, returnStruct);
-            TypeSignature(builder, argumentStruct);
-            var textSignature = builder.ToString();
-            
-            var binarySignature = ShortMD5(textSignature);
-            var signature = new ConstDefinition(
-                $"_{serviceName.ToPascalCase()}{functionName.ToPascalCase()}Signature",
-                functionSpan,
-                $"hash(\"{textSignature}\")",
-                new IntegerLiteral(new ScalarType(BaseType.Int32, functionSpan, "signature"), functionSpan,
-                    $"0x{binarySignature:x8}")
-            );
-            return signature;
-        }
+
 
         /// <summary>
         /// Create a text signature of this type. It should include all details which pertain to the binary
@@ -1285,7 +1285,7 @@ namespace Core.Parser
             {
                 case StructDefinition sd:
                     builder.Append('{');
-                    
+
                     foreach (var (f, i) in sd.Fields.Enumerated())
                     {
                         if (i > 0)
@@ -1333,37 +1333,6 @@ namespace Core.Parser
             }
 
             return builder;
-        }
-
-        /// <summary>
-        /// Calculate the MD5 hash of a UTF8 string.
-        /// </summary>
-        /// <param name="input">String to hash.</param>
-        /// <returns>Hash bytes.</returns>
-        private static byte[] MD5(string input)
-        {
-            // Use input string to calculate MD5 hash
-            using var md5 = System.Security.Cryptography.MD5.Create();
-            var inputBytes = Encoding.UTF8.GetBytes(input);
-            return md5.ComputeHash(inputBytes);
-        }
-
-        /// <summary>
-        /// Calculate the shortened MD5 hash of a UTF8 string for function signatures.
-        /// </summary>
-        /// <param name="input">String to hash.</param>
-        /// <returns>The hash as 32 bits.</returns>
-        private static uint ShortMD5(string input)
-        {
-            var s = MD5(input);
-            uint d = 0;
-            for (var i = 0; i < 16; ++i)
-            {
-                // layer over itself with xor. Every 4th byte starts back at least significant bits.
-                d ^= (uint)s[i] << (i % 4 * 8);
-            }
-
-            return d;
         }
     }
 }

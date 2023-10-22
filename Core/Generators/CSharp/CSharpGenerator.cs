@@ -18,7 +18,7 @@ namespace Core.Generators.CSharp
         }
 
 
-        public override string Compile(Version? languageVersion, bool writeGeneratedNotice = true)
+        public override string Compile(Version? languageVersion, TempoServices services = TempoServices.Both, bool writeGeneratedNotice = true, bool emitBinarySchema = false)
         {
             if (languageVersion is not null)
             {
@@ -66,6 +66,10 @@ namespace Core.Generators.CSharp
             foreach (var definition in Schema.Definitions.Values)
             {
                 if (definition is ConstDefinition)
+                {
+                    continue;
+                }
+                if (definition is ServiceDefinition)
                 {
                     continue;
                 }

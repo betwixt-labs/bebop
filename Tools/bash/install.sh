@@ -2,11 +2,9 @@
 #
 # Bebop: an extremely simple, fast, efficient, cross-platform serialization format
 # this script is responsible for installing /updating the Bebop compiler
-# https://github.com/rainwayapp/bebop
+# https://github.com/betwixt-labs/bebop
 #
 # The Apache License 2.0 License
-#
-# Copyright (c) 2017 Rainway, Inc.
 
 set -u
 
@@ -23,7 +21,7 @@ fi
 
 ### Constants
 readonly BEBOPC_VERSION="${1:-0.0.0}"
-readonly BEBOP_RELEASE_URL="https://api.github.com/repos/rainwayapp/bebop/releases/tags/v${BEBOPC_VERSION}"
+readonly BEBOP_RELEASE_URL="https://api.github.com/repos/betwixt-labs/bebop/releases/tags/v${BEBOPC_VERSION}"
 
 ### string formatters
 
@@ -479,10 +477,10 @@ EOABORT
     echo
     ring_bell
 
-    point "Bebop is maintained by Rainway. Check out our startup:"
+    point "Tempo, an RPC framework built on top of Bebop is in public preview. Check it out:"
     echo "$(
         cat <<EOS
-  ${tty_underline}${tty_white}https://rainway.com${tty_reset}
+  ${tty_underline}${tty_white}https://tempo.im${tty_reset}
 EOS
     )
 "
@@ -514,7 +512,7 @@ EOS
     cat <<EOS
 - Run ${tty_bold}bebopc --help${tty_reset} to get started
 - Further documentation:
-    ${tty_underline}${tty_white}https://github.com/RainwayApp/bebop/wiki${tty_reset}
+    ${tty_underline}${tty_white}https://github.com/betwixt-labs/bebop/wiki${tty_reset}
 EOS
 
 ) ||

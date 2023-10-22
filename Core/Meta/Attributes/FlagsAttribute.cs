@@ -5,7 +5,10 @@
     /// </summary>
     public sealed class FlagsAttribute : BaseAttribute
     {
-        public FlagsAttribute() { }
+        public FlagsAttribute()
+        {
+            Name = "flags";
+        }
 
         public override bool TryValidate(out string message)
         {

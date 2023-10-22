@@ -10,11 +10,12 @@ namespace Core.Meta.Attributes
     /// </summary>
     public sealed class OpcodeAttribute : BaseAttribute
     {
-        private readonly bool _isNumber;
+        public readonly bool IsNumber;
 
         public OpcodeAttribute(string value, bool isNumber)
         {
-            _isNumber = isNumber;
+            Name = "opcode";
+            IsNumber = isNumber;
             Value = value;
         }
 
@@ -30,7 +31,7 @@ namespace Core.Meta.Attributes
                return false;
             }
 
-            if (_isNumber)
+            if (IsNumber)
             {
                 if (!Value.TryParseUInt(out var result))
                 {

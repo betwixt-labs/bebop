@@ -4,7 +4,7 @@
     <TypeScriptCompileBlocked>true</TypeScriptCompileBlocked>
     <TargetFramework>net7.0</TargetFramework>
     <Nullable>enable</Nullable>
-    <LangVersion>9.0</LangVersion>
+    <LangVersion>11.0</LangVersion>
     <AssemblyName>BebopCore</AssemblyName>
     <RootNamespace>Core</RootNamespace>
     <Platforms>AnyCPU</Platforms>
@@ -13,6 +13,7 @@
     <VersionPrefix Condition="'$(ReleaseVersion)' == ''">0.0.1</VersionPrefix>
     <VersionSuffix Condition="'$(ReleaseVersion)' == ''">$([System.DateTime]::UtcNow.ToString(`yyyyMMdd-HHmm`))</VersionSuffix>
     <Configurations>Debug;Release</Configurations>
+      <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
 
@@ -33,6 +34,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="Errata" Version="0.11.0" />
   </ItemGroup>
   
 </Project>

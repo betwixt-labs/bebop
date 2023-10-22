@@ -3,7 +3,7 @@
 Try running:
 
 ```sh
-npm install   # Install dependencies
+yarn install   # Install dependencies
 
 # Run the platform-appropriate compile script:
 sh ./compile-schemas.sh           # On Unix

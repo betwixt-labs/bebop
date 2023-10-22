@@ -11,6 +11,8 @@ namespace Core.Meta
         public const string CompilerName = "bebopc";
         public const string SchemaExt = "bop";
 
+        public const byte SchemaLangVersion = 2;
+
         public static HashSet<string> Identifiers = new()
         {
             "BebopView",
@@ -20,7 +22,11 @@ namespace Core.Meta
             "BebopRecord",
             "BebopMirror",
             "BebopConstants",
-            "BopConstants"
+            "BopConstants",
+            "Service",
+            "prototype",
+            "constructor",
+            "__proto__"
         };
     }
 

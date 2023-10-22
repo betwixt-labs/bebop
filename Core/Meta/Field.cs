@@ -1,6 +1,9 @@
-﻿using System.Numerics;
+﻿using System.Collections.Generic;
+using System.Numerics;
+using System.Linq;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta.Attributes;
+using Core.Meta.Extensions;
 
 namespace Core.Meta
 {
@@ -9,13 +12,14 @@ namespace Core.Meta
         public Field(string name,
             in TypeBase type,
             in Span span,
-            in BaseAttribute? deprecatedAttribute,
+            in List<BaseAttribute>? attributes,
             in BigInteger constantValue, string documentation)
         {
             Name = name;
             Type = type;
             Span = span;
-            DeprecatedAttribute = deprecatedAttribute;
+            Attributes = attributes;
+            DeprecatedAttribute = attributes?.FirstOrDefault((a) => a is DeprecatedAttribute);
             ConstantValue = constantValue;
             Documentation = documentation;
         }
@@ -24,6 +28,7 @@ namespace Core.Meta
         ///     The name of the current member.
         /// </summary>
         public string Name { get; }
+        public string NameCamelCase => Name.ToCamelCase();
 
         /// <summary>
         ///     The type of this field: a scalar, array, or defined type (enum/message/struct).
@@ -34,6 +39,8 @@ namespace Core.Meta
         ///     The span where the member was found.
         /// </summary>
         public Span Span { get; }
+
+        public List<BaseAttribute>? Attributes {get; }
 
         /// <summary>
         ///     Indicates if the member has been marked as no longer recommended for use.

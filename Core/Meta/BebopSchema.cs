@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Core.Exceptions;
+using Core.IO;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta.Extensions;
+using Core.Parser;
 using Core.Parser.Extensions;
 
 namespace Core.Meta
@@ -16,6 +18,7 @@ namespace Core.Meta
     {
         private static string[] _enumZeroNames = new[] { "Default", "Unknown", "Invalid", "Null", "None", "Zero", "False" };
         private List<SpanException> _parsingErrors;
+        private List<SpanException> _parsingWarnings;
         private List<SpanException> _validationErrors;
         private List<SpanException> _validationWarnings;
 
@@ -23,11 +26,11 @@ namespace Core.Meta
         /// Errors found while validating this schema.
         /// </summary>
         public List<SpanException> Errors => _parsingErrors.Concat(_validationErrors).ToList();
-        public List<SpanException> Warnings => _validationWarnings;
+        public List<SpanException> Warnings => _parsingWarnings.Concat(_validationWarnings).ToList();
 
         public List<string> Imports { get; }
 
-        public BebopSchema(string nameSpace, Dictionary<string, Definition> definitions, HashSet<(Token, Token)> typeReferences, List<SpanException>? parsingErrors = null, List<string>? imports = null)
+        public BebopSchema(string nameSpace, Dictionary<string, Definition> definitions, HashSet<(Token, Token)> typeReferences, List<SpanException>? parsingErrors = null, List<SpanException>? parsingWarnings = null, List<string>? imports = null)
         {
             Namespace = nameSpace;
             Definitions = definitions;
@@ -37,6 +40,7 @@ namespace Core.Meta
             _validationErrors = new();
             _validationWarnings = new();
             _parsingErrors = parsingErrors ?? new();
+            _parsingWarnings = parsingWarnings ?? new();
             _typeReferences = typeReferences;
         }
         /// <summary>
@@ -81,7 +85,7 @@ namespace Core.Meta
                 var name = kv.Key;
                 var definition = kv.Value;
                 var deps = definition.Dependencies();
-                if (deps.Count() == 0)
+                if (!deps.Any())
                 {
                     nextQueue.Enqueue(name);
                 }
@@ -133,6 +137,13 @@ namespace Core.Meta
                 }
                 var reference = Definitions[typeToken.Lexeme];
                 var referenceScope = reference.Scope;
+                // TODO figure out why this is happening
+                //  it is obvious that the ServiceDefinition isn't being added
+                //  but it remains to be seen why it is still being picked up by _typeReferences
+                if (!Definitions.ContainsKey(definitionToken.Lexeme)) {
+                 //   errors.Add(new UnrecognizedTypeException(definitionToken, typeToken.Lexeme));
+                    continue;
+                }
                 var definition = Definitions[definitionToken.Lexeme];
                 var definitionScope = definition.Scope;
 
@@ -153,7 +164,7 @@ namespace Core.Meta
                 {
                     errors.Add(new MultipleDefinitionsException(definition));
                 }
-                if (ReservedWords.Identifiers.Contains(definition.Name))
+                if (ReservedWords.Identifiers.Contains(definition.Name, StringComparer.OrdinalIgnoreCase))
                 {
                     errors.Add(new ReservedIdentifierException(definition.Name, definition.Span));
                 }
@@ -168,57 +179,77 @@ namespace Core.Meta
                         errors.Add(new DuplicateOpcodeException(td));
                     }
                 }
-                if (definition is FieldsDefinition fd) foreach (var field in fd.Fields)
+                if (definition is FieldsDefinition fd)
                 {
-                    if (ReservedWords.Identifiers.Contains(field.Name))
+                    foreach (var field in fd.Fields)
                     {
-                        errors.Add(new ReservedIdentifierException(field.Name, field.Span));
-                    }
-                    if (field.DeprecatedAttribute != null && fd is StructDefinition)
-                    {
-                        errors.Add(new InvalidDeprecatedAttributeUsageException(field));
-                    }
-                    if (fd.Fields.Count(f => f.Name.Equals(field.Name, StringComparison.OrdinalIgnoreCase)) > 1)
-                    {
-                        errors.Add(new DuplicateFieldException(field, fd));
-                    }
-                    switch (fd)
-                    {
-                        case StructDefinition when field.Type is DefinedType dt && fd.Name.Equals(dt.Name):
+                        if (ReservedWords.Identifiers.Contains(field.Name))
                         {
-                            errors.Add(new InvalidFieldException(field, "Struct contains itself"));
-                            break;
+                            errors.Add(new ReservedIdentifierException(field.Name, field.Span));
                         }
-                        case MessageDefinition when fd.Fields.Count(f => f.ConstantValue == field.ConstantValue) > 1:
+                        if (field.DeprecatedAttribute != null && fd is StructDefinition)
                         {
-                            errors.Add(new InvalidFieldException(field, "Message index must be unique"));
-                            break;
+                            errors.Add(new InvalidDeprecatedAttributeUsageException(field));
                         }
-                        case MessageDefinition when field.ConstantValue <= 0:
+                        if (fd.Fields.Count(f => f.Name.Equals(field.Name, StringComparison.OrdinalIgnoreCase)) > 1)
                         {
-                            errors.Add(new InvalidFieldException(field, "Message member index must start at 1"));
-                            break;
+                            errors.Add(new DuplicateFieldException(field, fd));
                         }
-                        case MessageDefinition when field.ConstantValue > fd.Fields.Count:
+                        if (field.Type is DefinedType st && Definitions.TryGetValue(st.Name, out var std) && std is ServiceDefinition)
                         {
-                            errors.Add(new InvalidFieldException(field, "Message index is greater than field count"));
-                            break;
+                            errors.Add(new InvalidFieldException(field, "Field cannot be a service"));
                         }
-                        default:
-                            break;
+                        switch (fd)
+                        {
+                            case StructDefinition when field.Type is DefinedType dt && fd.Name.Equals(dt.Name):
+                                {
+                                    errors.Add(new InvalidFieldException(field, "Struct contains itself"));
+                                    break;
+                                }
+                            case MessageDefinition when fd.Fields.Count(f => f.ConstantValue == field.ConstantValue) > 1:
+                                {
+                                    errors.Add(new InvalidFieldException(field, "Message index must be unique"));
+                                    break;
+                                }
+                            case MessageDefinition when field.ConstantValue <= 0:
+                                {
+                                    errors.Add(new InvalidFieldException(field, "Message member index must start at 1"));
+                                    break;
+                                }
+                            case MessageDefinition when field.ConstantValue > fd.Fields.Count:
+                                {
+                                    errors.Add(new InvalidFieldException(field, "Message index is greater than field count"));
+                                    break;
+                                }
+                            default:
+                                break;
+                        }
                     }
                 }
                 if (definition is ServiceDefinition sd)
                 {
-                    var usedFunctionNames = new HashSet<string>();
-                    
-                    foreach (var b in sd.Branches)
+                    var usedMethodNames = new HashSet<string>();
+                    var usedMethodIds = new HashSet<uint>();
+                    foreach (var b in sd.Methods)
                     {
                         var fnd = b.Definition;
-                        if (!usedFunctionNames.Add(fnd.Name.ToSnakeCase()))
+                        if (!usedMethodNames.Add(fnd.Name.ToSnakeCase()))
                         {
-                            errors.Add(new DuplicateServiceFunctionNameException(b.Discriminator, sd.Name, fnd.Name, fnd.Span));
+                            errors.Add(new DuplicateServiceMethodNameException(sd.Name, fnd.Name, fnd.Span));
                         }
+                        if (!usedMethodIds.Add(b.Id))
+                        {
+                            errors.Add(new DuplicateServiceMethodIdException(b.Id, sd.Name, fnd.Name, fnd.Span));
+                        }
+                        if (fnd.RequestDefinition.IsDefined(this) && !fnd.RequestDefinition.IsAggregate(this))
+                        {
+                            errors.Add(new InvalidServiceRequestTypeException(sd.Name, fnd.Name, fnd.RequestDefinition, fnd.Span));
+                        }
+                        if (fnd.ReturnDefintion.IsDefined(this) && !fnd.ReturnDefintion.IsAggregate(this))
+                        {
+                            errors.Add(new InvalidServiceReturnTypeException(sd.Name, fnd.Name, fnd.ReturnDefintion, fnd.Span));
+                        }
+
                         if (fnd.Parent != sd)
                         {
                             throw new Exception("A function was registered to multiple services, this is an error in bebop core.");
@@ -250,15 +281,33 @@ namespace Core.Meta
                         }
                         if (field.ConstantValue == 0 && !_enumZeroNames.Any(x => x.Equals(field.Name, StringComparison.OrdinalIgnoreCase)))
                         {
-                            Warnings.Add(new EnumZeroWarning(field));
+                            _validationWarnings.Add(new EnumZeroWarning(field));
                         }
                         values.Add(field.ConstantValue);
                         names.Add(field.Name);
                     }
                 }
             }
+            var methodIds = new Dictionary<uint, (string serviceName, string methodName)>();
+
+            foreach (var service in Definitions.Values.OfType<ServiceDefinition>())
+            {
+                foreach (var method in service.Methods)
+                {
+                    if (methodIds.ContainsKey(method.Id))
+                    {
+                        var (firstServiceName, firstMethodName) = methodIds[method.Id];
+                        errors.Add(new ServiceMethodIdCollisionException(firstServiceName, firstMethodName, service.Name, method.Definition.Name, method.Id, service.Span));
+                    }
+                }
+            }
             _validationErrors = errors;
             return errors;
+        }
+        
+        public readonly byte[] ToBinary() {
+            using var writer = new BinarySchemaWriter(this);
+            return writer.Encode();
         }
     }
 }

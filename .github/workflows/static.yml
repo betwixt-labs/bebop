@@ -56,6 +56,7 @@ jobs:
         run: |
           mkdir -p homepage/repl && cp -a ./bin/repl/Release/publish/wwwroot/. homepage/repl
           sed 's/0.0.0/${{ steps.dotenv.outputs.version }}/' ${{env.TOOLS_ROOT}}/bash/install.sh > homepage/install.sh
+          sed 's/0.0.0/${{ steps.dotenv.outputs.version }}/' ${{env.TOOLS_ROOT}}/ps/install.ps1 > homepage/install.ps1
           
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@v4

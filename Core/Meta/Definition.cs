@@ -1,8 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta.Attributes;
+using Core.Parser;
 
 namespace Core.Meta
 {
@@ -69,13 +71,17 @@ namespace Core.Meta
     /// </summary>
     public abstract class RecordDefinition : Definition
     {
-        protected RecordDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, Definition? parent = null) :
+        protected RecordDefinition(string name, Span span, string documentation, List<BaseAttribute>? attributes, Definition? parent = null) :
             base(name, span, documentation, parent)
         {
-            OpcodeAttribute = opcodeAttribute;
+            Attributes = attributes;
         }
 
-        public BaseAttribute? OpcodeAttribute { get; }
+        public BaseAttribute? OpcodeAttribute => Attributes?.FirstOrDefault((a) => a is OpcodeAttribute);
+
+        public BaseAttribute? DeprecatedAttribute => Attributes?.FirstOrDefault((a) => a is DeprecatedAttribute);
+
+        public List<BaseAttribute>? Attributes { get; }
 
         /// <summary>
         /// If this definition is part of a union branch, then this is its discriminator in the parent union.
@@ -96,8 +102,8 @@ namespace Core.Meta
     /// </summary>
     public abstract class FieldsDefinition : RecordDefinition
     {
-        protected FieldsDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<Field> fields, Definition? parent = null) :
-            base(name, span, documentation, opcodeAttribute, parent)
+        protected FieldsDefinition(string name, Span span, string documentation, List<BaseAttribute>? attributes, ICollection<Field> fields, Definition? parent = null) :
+            base(name, span, documentation, attributes, parent)
         {
             Fields = fields;
         }
@@ -115,8 +121,8 @@ namespace Core.Meta
     /// </summary>
     public class StructDefinition : FieldsDefinition
     {
-        public StructDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<Field> fields, bool isReadOnly, Definition? parent = null) :
-            base(name, span, documentation, opcodeAttribute, fields, parent)
+        public StructDefinition(string name, Span span, string documentation, List<BaseAttribute>? attributes, ICollection<Field> fields, bool isReadOnly, Definition? parent = null) :
+            base(name, span, documentation, attributes, fields, parent)
         {
             IsReadOnly = isReadOnly;
         }
@@ -151,6 +157,15 @@ namespace Core.Meta
                 _ => false
             });
         public bool IsFixedSize(BebopSchema schema) => IsFixedSize(schema.Definitions);
+
+        public byte[] EncodeSchema()
+        {
+
+
+
+
+            return Array.Empty<byte>();
+        }
     }
 
     /// <summary>
@@ -160,7 +175,7 @@ namespace Core.Meta
     /// </summary>
     public class MessageDefinition : FieldsDefinition
     {
-        public MessageDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<Field> fields, Definition? parent = null) : base(name, span, documentation, opcodeAttribute, fields, parent)
+        public MessageDefinition(string name, Span span, string documentation, List<BaseAttribute>? attributes, ICollection<Field> fields, Definition? parent = null) : base(name, span, documentation, attributes, fields, parent)
         {
         }
 
@@ -181,13 +196,14 @@ namespace Core.Meta
             Span span,
             string documentation,
             ICollection<Field> members,
-            bool isBitFlags,
+            List<BaseAttribute>? attributes,
             BaseType baseType,
             Definition? parent = null
         ) : base(name, span, documentation, parent)
         {
             Members = members;
-            IsBitFlags = isBitFlags;
+            Attributes = attributes;
+            IsBitFlags = attributes?.Any((a) => a is Attributes.FlagsAttribute) ?? false;
             BaseType = baseType;
         }
 
@@ -200,6 +216,10 @@ namespace Core.Meta
         public override IEnumerable<string> Dependencies() => Enumerable.Empty<string>();
 
         public ScalarType ScalarType => new ScalarType(BaseType);
+
+        public List<BaseAttribute>? Attributes {get; }
+
+        public BaseAttribute? DeprecatedAttribute => Attributes?.FirstOrDefault((a) => a is DeprecatedAttribute);
     }
 
     public readonly struct UnionBranch
@@ -213,22 +233,28 @@ namespace Core.Meta
             Definition = definition;
         }
     }
-    
-    public readonly struct ServiceBranch
-    {
-        public readonly ushort Discriminator;
-        public readonly FunctionDefinition Definition;
 
-        public ServiceBranch(ushort discriminator, FunctionDefinition definition)
+    public readonly struct ServiceMethod
+    {
+        public readonly string Documentation;
+        public readonly uint Id;
+        public readonly MethodDefinition Definition;
+
+        public BaseAttribute? DeprecatedAttribute => Attributes?.FirstOrDefault((a) => a is DeprecatedAttribute);
+        public List<BaseAttribute>? Attributes { get; }
+
+        public ServiceMethod(uint id, MethodDefinition definition, string documentation, List<BaseAttribute>? attributes)
         {
-            Discriminator = discriminator;
+            Id = id;
             Definition = definition;
+            Documentation = documentation;
+            Attributes = attributes;
         }
     }
 
     public class UnionDefinition : RecordDefinition
     {
-        public UnionDefinition(string name, Span span, string documentation, BaseAttribute? opcodeAttribute, ICollection<UnionBranch> branches, Definition? parent = null) : base(name, span, documentation, opcodeAttribute, parent)
+        public UnionDefinition(string name, Span span, string documentation, List<BaseAttribute>? attributes, ICollection<UnionBranch> branches, Definition? parent = null) : base(name, span, documentation, attributes, parent)
         {
             Branches = branches;
         }
@@ -243,43 +269,58 @@ namespace Core.Meta
             return 4 + 1 + (Branches.Count == 0 ? 0 : Branches.Min(b => b.Definition.MinimalEncodedSize(schema)));
         }
     }
-    
+
     public class ServiceDefinition : Definition
     {
-        public ServiceDefinition(string name, Span span, string documentation, ICollection<ServiceBranch> branches) : base(name, span, documentation)
+       
+
+        public ServiceDefinition(string name, Span span, string documentation, ICollection<ServiceMethod> methods, List<BaseAttribute>? attributes) : base(name, span, documentation)
         {
-            foreach (var b in branches)
+            foreach (var m in methods)
             {
-                b.Definition.Parent = this;
+                m.Definition.Parent = this;
             }
-
-            Branches = branches;
+            Methods = methods;
+            Attributes = attributes;
         }
+        public List<BaseAttribute>? Attributes { get; }
+         public BaseAttribute? DeprecatedAttribute => Attributes?.FirstOrDefault((a) => a is DeprecatedAttribute);
+        public ICollection<ServiceMethod> Methods { get; }
 
-        public ICollection<ServiceBranch> Branches { get; }
+        public override IEnumerable<string> Dependencies() => Methods.SelectMany(f => f.Definition.Dependencies());
 
-        public override IEnumerable<string> Dependencies() => Branches.SelectMany(f => f.Definition.Dependencies());
+        public override string ToString()
+        {
+            var builder = new StringBuilder();
+            builder.AppendLine($"Service: {Name}");
+            builder.AppendLine("Methods ->");
+            foreach (var method in Methods)
+            {
+                builder.AppendLine($"    {method.Definition.Name}({method.Definition.RequestDefinition}): {method.Definition.ReturnDefintion} ({method.Id})");
+            }
+            return builder.ToString();
+        }
     }
 
     /// <summary>
-    /// Functions at this time are only stored within service branches and not globally.
+    /// Methods at this time are only stored within service branches and not globally.
     /// </summary>
-    public class FunctionDefinition : Definition
+    public class MethodDefinition : Definition
     {
-        public FunctionDefinition(string name, Span span, string documentation, ConstDefinition signature, StructDefinition argumentStruct, StructDefinition returnStruct, Definition? parent = null)
+        public MethodDefinition(string name, Span span, string documentation, TypeBase requestDefinition, TypeBase returnDefintion, MethodType methodType, Definition? parent = null)
             : base(name, span, documentation, parent)
         {
-            Signature = signature;
-            ArgumentStruct = argumentStruct;
-            ReturnStruct = returnStruct;
+            RequestDefinition = requestDefinition;
+            ReturnDefintion = returnDefintion;
+            Type = methodType;
         }
 
-        public ConstDefinition Signature { get; }
-        public StructDefinition ArgumentStruct { get; }
-        public StructDefinition ReturnStruct { get; }
+        public TypeBase RequestDefinition { get; }
+        public TypeBase ReturnDefintion { get; }
+        public MethodType Type { get; }
 
         public override IEnumerable<string> Dependencies() =>
-            ArgumentStruct.Dependencies().Concat(ReturnStruct.Dependencies());
+            RequestDefinition.Dependencies().Concat(ReturnDefintion.Dependencies());
     }
 
     public class ConstDefinition : Definition

@@ -7,8 +7,14 @@
   "author": "The Bebop Authors",
   "license": "Apache-2.0",
   "private": false,
-  "keywords": ["bebop", "binary", "serialization", "compiler"],
+  "keywords": [
+    "bebop",
+    "binary",
+    "serialization",
+    "compiler"
+  ],
   "scripts": {
+    "prepack": "tsc -p ./",
     "prepare": "tsc -p ./",
     "build": "tsc -p ./",
     "install": "node ./scripts/install.js",
@@ -17,11 +23,10 @@
   "bin": {
     "bebopc": "./bebopc.js"
   },
-  "dependencies": {
-    "@types/node": "^14.14.10"
-  },
+  "dependencies": {},
   "devDependencies": {
+    "@types/node": "^20.3.1",
     "ts-node": "^9.1.1",
-    "typescript": "^4.1.2"
+    "typescript": "^5.1.3"
   }
 }

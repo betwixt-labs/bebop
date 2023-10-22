@@ -1,106 +1,138 @@
 ﻿namespace Core.Parser
 {
-    static class RpcSchema
+    /// <summary>
+    /// Represents the type of Tempo method.
+    /// Each method type corresponds to a different communication model.
+    /// </summary>
+    public enum MethodType : byte
     {
-        public const string RpcRequestHeader = @"
-/* Static RPC request header used for all request datagrams. */
-readonly struct RpcRequestHeader {
-    /*
-        Identification for the caller to identify responses to this request.
-	        
-        The caller should ensure ids are always unique at the time of calling. Two active
-        calls with the same id is undefined behavior. Re-using an id that is not currently
-        in-flight is acceptable.
+        /// <summary>
+        /// Unary method type.
+        /// Represents a method where the client sends a single request and receives a single response.
+        /// </summary>
+        Unary,
 
-        These are unique per connection.
-    */
-    uint16 id;
+        /// <summary>
+        /// ServerStream method type.
+        /// Represents a method where the client sends a single request and receives a stream of responses.
+        /// </summary>
+        ServerStream,
 
-    /*
-        Function signature includes information about the args to ensure the caller and
-        callee are referencing precisely the same thing. There is a non-zero risk of
-        accidental signature collisions, but 32-bits is probably sufficient for peace of
-        mind.
+        /// <summary>
+        /// ClientStream method type.
+        /// Represents a method where the client sends a stream of requests and receives a single response.
+        /// </summary>
+        ClientStream,
 
-        I did some math, about a 26% chance of collision using 16-bits assuming 200 unique
-        RPC calls which is pretty high, or <0.0005% chance with 32-bits.
-    */
-    uint32 signature;
-}
-";
-
-        public const string RpcResponseHeader = @"
-/* Static RPC response header used for all response datagrams. */
-readonly struct RpcResponseHeader {
-    /* The caller-assigned identifier */
-	uint16 id;
-}
-";
-
-        public const string RpcDatagram = @"
-/*
-    All data sent over the transport MUST be represented by this union.
-
-    Note that data is sent as binary arrays to avoid depending on the generated structure
-    definitions that we cannot know in this context. Ultimately the service will be
-    responsible for determining how to interpret the data.
-*/
-union RpcDatagram {
-    1 -> struct RpcRequestDatagram {
-        RpcRequestHeader header;
-        /* The function that is to be called. */
-        uint16 opcode;
-        /* Callee can decode this given the opcode in the header. */
-        byte[] request;
+        /// <summary>
+        /// DuplexStream method type.
+        /// Represents a method where the client and server send a stream of messages to each other simultaneously.
+        /// </summary>
+        DuplexStream,
     }
 
-    2 -> struct RpcResponseOk {
-        RpcResponseHeader header;
-        /* Caller can decode this given the id in the header. */
-        byte[] data;
-    }
+    internal static class RpcSchema
+    {
+        public static string GetMethodTypeName(MethodType type) {
+            return type switch
+            {
+                MethodType.Unary => "Unary",
+                MethodType.ServerStream => "ServerStream",
+                MethodType.ClientStream => "ClientStream",
+                MethodType.DuplexStream => "DuplexStream",
+                _ => throw new System.ArgumentOutOfRangeException(nameof(type), type, null)
+            };
+        }
 
-    3 -> struct RpcResponseErr {
-        RpcResponseHeader header;
-        /*
-            User is responsible for defining what code values mean. These codes denote
-            errors that happen only once user code is being executed and are specific
-            to each domain.
-        */
-        uint32 code;
-        /* An empty string is acceptable */
-        string info;
-    }
+        // Constants used in the hash algorithm for good distribution properties.
+        private const uint Seed = 0x5AFE5EED;
+        private const uint C1 = 0xcc9e2d51;
+        private const uint C2 = 0x1b873593;
+        private const uint N = 0xe6546b64;
 
-    /* Default response if no handler was registered. */
-    0xfc -> struct CallNotSupported {
-        RpcResponseHeader header;
-    }
+        /// <summary>
+        /// Gets the unique ID of a method
+        /// </summary>
+        /// <param name="serviceName">The name of the service the method is on.</param>
+        /// <param name="methodName">The name of the method</param>
+        /// <returns>A unique unsigned 32-bit integer.</returns>
+        public static uint GetMethodId(string serviceName, string methodName)
+        {
+            var path = $"/${serviceName}/${methodName}";
+            return HashString(path);
+        }
 
-    /* Function id was unknown. */
-    0xfd -> struct RpcResponseUnknownCall {
-        RpcResponseHeader header;
-    }
 
-    /* The remote function signature did not agree with the expected signature. */
-    0xfe -> struct RpcResponseInvalidSignature {
-        RpcResponseHeader header;
-        /* The remote function signature */
-        uint32 signature;
-    }
+        /// <summary>
+        /// Computes a 32-bit hash of the given string.
+        /// </summary>
+        /// <param name="input">The string to hash.</param>
+        /// <returns>A 32-bit hash value.</returns>
+        /// <remarks>The hash is based on MurmurHash3 with some new finalization constants used to reduce collisions</remarks>
+        private static uint HashString(string input)
+        {
+            // The length of the input string.
+            int length = input.Length;
+            // The current index in the input string.
+            int currentIndex = 0;
+            // Initialize the hash value using the seed constant.
+            uint hash = Seed;
 
-    /*
-        A message received by the other end was unintelligible. This indicates a
-        fundamental flaw with our encoding and possible bebop version mismatch.
+            // Process 4 characters at a time
+            while (currentIndex + 4 <= length)
+            {
+                // Combine the 4 characters into a 32-bit unsigned integer (block).
+                uint block = ((uint)input[currentIndex] & 0xFF) |
+                             (((uint)input[currentIndex + 1] & 0xFF) << 8) |
+                             (((uint)input[currentIndex + 2] & 0xFF) << 16) |
+                             (((uint)input[currentIndex + 3] & 0xFF) << 24);
 
-        This should never occur between proper implementations of the same version.
-    */
-    0xff -> struct DecodeError {
-        /* Information provided on a best-effort basis. */
-        RpcResponseHeader header;
-        string info;
-    }
-}
-";
+                // Update the block with the constants C1 and C2.
+                block *= C1;
+                block = (block << 15) | (block >> 17); // Rotate left by 15
+                block *= C2;
+
+                // Update the hash value with the calculated block.
+                hash ^= block;
+                hash = (hash << 13) | (hash >> 19); // Rotate left by 13
+                hash = hash * 5 + N;
+
+                // Move to the next group of 4 characters.
+                currentIndex += 4;
+            }
+
+            // Process the remaining characters
+            uint tail = 0;
+            int remaining = length - currentIndex;
+
+            // Process the remaining characters based on the number left.
+            switch (remaining)
+            {
+                case 3:
+                    tail |= (uint)(input[currentIndex + 2] & 0xFF) << 16;
+                    goto case 2;
+                case 2:
+                    tail |= (uint)(input[currentIndex + 1] & 0xFF) << 8;
+                    goto case 1;
+                case 1:
+                    tail |= (uint)(input[currentIndex] & 0xFF);
+                    tail *= C1;
+                    tail = (tail << 15) | (tail >> 17); // Rotate left by 15
+                    tail *= C2;
+                    hash ^= tail;
+                    break;
+            }
+
+            // Finalization step to mix the hash value.
+            // This is where we deviate from MurmurHash3
+            hash ^= hash >> 16;
+            hash *= 0x7feb352d;
+            hash ^= hash >> 15;
+            hash *= 0x846ca68b;
+            hash ^= hash >> 16;
+
+            // Return the final 32-bit hash value.
+            return hash;
+        }
     }
 }

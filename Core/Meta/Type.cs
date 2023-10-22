@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Core.Lexer.Tokenization.Models;
+using Core.Meta.Extensions;
 
 namespace Core.Meta
 {
@@ -117,6 +118,8 @@ namespace Core.Meta
         /// </summary>
         public string Name { get; }
 
+        public string ClassName => Name.ToPascalCase();
+
         public DefinedType(string name, Span span, string asString) : base(span, asString)
         {
             Name = name;
@@ -144,6 +147,15 @@ namespace Core.Meta
         public static bool IsUnion(this TypeBase type, BebopSchema schema)
         {
             return type is DefinedType dt && schema.Definitions[dt.Name] is UnionDefinition;
+        }
+
+        public static bool IsDefined(this TypeBase type, BebopSchema schema)
+        {
+            return type is DefinedType dt && schema.Definitions.ContainsKey(dt.Name);
+        }
+        public static bool IsAggregate(this TypeBase type, BebopSchema schema)
+        {
+            return IsUnion(type, schema) || IsMessage(type, schema) || IsStruct(type, schema);
         }
 
         public static bool IsEnum(this TypeBase type, BebopSchema schema)

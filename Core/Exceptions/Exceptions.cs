@@ -265,36 +265,69 @@ namespace Core.Exceptions
             : base($"Enums must have an integer underlying type, not {t}.", t.Span, 128)
         { }
     }
-
-    [Serializable]
-    class DuplicateServiceDiscriminatorException : SpanException
-    {
-        public DuplicateServiceDiscriminatorException(Token discriminator, string serviceName)
-            : base($"The discriminator index {discriminator.Lexeme} was used more than once in service '{serviceName}'.", discriminator.Span, 129)
-        { }
-    }
     
     [Serializable]
-    class DuplicateServiceFunctionNameException : SpanException
+    class DuplicateServiceMethodNameException : SpanException
     {
-        public DuplicateServiceFunctionNameException(ushort discriminator, string serviceName, string functionName, Span span)
-            : base($"Index {discriminator} duplicates the function name '{functionName}' which can only be used once in service '{serviceName}'.", span, 130)
+        public DuplicateServiceMethodNameException(string serviceName, string methodName, Span span)
+            : base($"Method '{methodName}' is defined multiple times in '{serviceName}'.", span, 130)
         { }
     }
 
     [Serializable]
-    class DuplicateArgumentName : SpanException
+    class DuplicateServiceMethodIdException : SpanException
     {
-        public DuplicateArgumentName(Span span, string serviceName, string serviceIndex, string argumentName)
-            : base($"Index {serviceIndex} in service '{serviceName}' has duplicated argument name {argumentName}.", span, 131)
+        public DuplicateServiceMethodIdException(uint id, string serviceName, string methodName, Span span)
+            : base($"Method id '{id}' for '{methodName}' collides with another method in service '{serviceName}'.", span, 131)
         { }
     }
-    
+
+    [Serializable]
+    class InvalidServiceRequestTypeException : SpanException
+    {
+        public InvalidServiceRequestTypeException(string serviceName, string methodName, TypeBase type, Span span)
+              : base($"The request type of method '{methodName}' in service '{serviceName}' is '{type.AsString}'  must be a defined type of message, struct, or union.", span, 132)
+        { }
+    }
+    [Serializable]
+    class InvalidServiceReturnTypeException : SpanException
+    {
+        public InvalidServiceReturnTypeException(string serviceName, string methodName, TypeBase type, Span span)
+            : base($"The return type of method '{methodName}' in service '{serviceName}' is '{type.AsString}' but must be a defined type of message, struct, or union.", span, 133)
+        { }
+    }
+
+    [Serializable]
+    class ServiceMethodIdCollisionException : SpanException
+    {
+        public ServiceMethodIdCollisionException(string serviceOneName, string methodOneName, string serviceTwoName, string methodTwoName, uint id, Span span)
+            : base($"The hashed ID of service '{serviceOneName}' and method '{methodOneName}' collides with the hashed ID of service '{serviceTwoName}' and '{methodTwoName}' (id: {id}).", span, 134)
+        { }
+    }
+
+    [Serializable]
+    class UnexpectedEndOfFile : SpanException
+    {
+        public UnexpectedEndOfFile(Span span)
+            : base($"Unexpected EOF.", span, 135)
+        { }
+    }
+
+
+
     [Serializable]
     public class EnumZeroWarning : SpanException
     {
         public EnumZeroWarning(Field field)
-            : base($"Bebop recommends that 0 in an enum be reserved for a value named 'Unknown', 'Default', or similar. See https://github.com/RainwayApp/bebop/wiki/Why-should-0-be-a-%22boring%22-value-in-an-enum%3F for more info.", field.Span, 200, Severity.Warning)
+            : base($"Bebop recommends that 0 in an enum be reserved for a value named 'Unknown', 'Default', or similar. See https://github.com/betwixt-labs/bebop/wiki/Why-should-0-be-a-%22boring%22-value-in-an-enum%3F for more info.", field.Span, 200, Severity.Warning)
+        { }
+    }
+
+    [Serializable]
+    public class DeprecatedFeatureWarning : SpanException
+    {
+        public DeprecatedFeatureWarning(Span span, string reason)
+            : base(reason, span, 201, Severity.Warning)
         { }
     }
 }
