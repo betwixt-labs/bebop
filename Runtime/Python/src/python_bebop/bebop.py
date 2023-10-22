@@ -2,15 +2,14 @@ from struct import pack
 from uuid import UUID
 from datetime import datetime
 
-"""
-A wrapper around a bytearray for reading Bebop base types from it.
-
-It is used by the code that `bebopc --lang python` generates. 
-You shouldn't need to use it directly.
-"""
-
 
 class BebopReader:
+    """
+    A wrapper around a bytearray for reading Bebop base types from it.
+
+    It is used by the code that `bebopc --lang python` generates. 
+    You shouldn't need to use it directly.
+    """
 
     _emptyByteList = bytearray()
     _emptyString = ""
@@ -31,33 +30,33 @@ class BebopReader:
         return self._buffer[self.index]
 
     def read_uint16(self):
-        v = self._buffer[self.index:self.index+2]
+        v = self._buffer[self.index : self.index + 2]
         self.index += 2
         return int(v)
 
     read_int16 = read_uint16
 
     def read_uint32(self):
-        v = self._buffer[self.index:self.index+4]
+        v = self._buffer[self.index : self.index + 4]
         self.index += 4
         return int(v)
 
     read_int32 = read_uint32
 
     def read_uint64(self):
-        v = self._buffer[self.index:self.index+8]
+        v = self._buffer[self.index : self.index + 8]
         self.index += 8
         return int(v)
 
     read_int64 = read_uint64
 
     def read_float32(self):
-        v = self._buffer[self.index:self.index+4]
+        v = self._buffer[self.index : self.index + 4]
         self.index += 4
         return float(v)
 
     def read_float64(self):
-        v = self._buffer[self.index:self.index+8]
+        v = self._buffer[self.index : self.index + 8]
         self.index += 8
         return float(v)
 
@@ -68,7 +67,7 @@ class BebopReader:
         length = self.read_uint32()
         if length == 0:
             return self._emptyByteList
-        v = self._buffer[self.index:self.index+length]
+        v = self._buffer[self.index : self.index + length]
         self.index += length
         return v
 
@@ -76,18 +75,18 @@ class BebopReader:
         length = self.read_uint32()
         if length == 0:
             return self._emptyString
-        v = self._buffer[self.index:self.index+length]
+        v = self._buffer[self.index : self.index + length]
         self.index += length
         return str(v)
 
     def read_guid(self) -> UUID:
-        g = UUID(bytes_le=self._buffer[self.index:self.index+16])
+        g = UUID(bytes_le=self._buffer[self.index : self.index + 16])
         self.index += 16
         return g
 
     def read_date(self) -> datetime:
         low = self.read_uint32()
-        high = self.read_uint32() & 0x3fffffff
+        high = self.read_uint32() & 0x3FFFFFFF
         msSince1AD = 429496.7296 * high + 0.0001 * low
         return datetime.fromtimestamp(round(msSince1AD - 62135596800000))
 
@@ -97,15 +96,13 @@ class BebopReader:
     read_message_length = read_uint32
 
 
-"""
-A wrapper around a bytearray for writing Bebop base types from it.
-
-It is used by the code that `bebopc --lang dart` generates. 
-You shouldn't need to use it directly.
-"""
-
-
 class BebopWriter:
+    """
+    A wrapper around a bytearray for writing Bebop base types from it.
+
+    It is used by the code that `bebopc --lang python` generates. 
+    You shouldn't need to use it directly.
+    """
 
     def __init__(self):
         self._buffer = bytearray()
@@ -164,7 +161,7 @@ class BebopWriter:
         high = round(msSince1AD / 429496.7296) | 0x40000000
         self.write_uint32(low)
         self.write_uint32(high)
-    
+
     def write_enum(self, val: int):
         self.write_uint32(val)
 

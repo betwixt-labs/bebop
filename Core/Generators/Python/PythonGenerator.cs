@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
 using Core.Meta;
 using Core.Meta.Extensions;
 
@@ -51,22 +53,21 @@ namespace Core.Generators.Python
         private string CompileEncodeMessage(MessageDefinition definition)
         {
             var builder = new IndentedStringBuilder(4);
-            builder.AppendLine($"final pos = view.reserveMessageLength();");
-            builder.AppendLine($"final start = view.length;");
+            builder.AppendLine($"pos = writer.reserveMessageLength()");
+            builder.AppendLine($"start = writer.length");
             foreach (var field in definition.Fields)
             {
                 if (field.DeprecatedAttribute != null)
                 {
                     continue;
                 }
-                builder.AppendLine($"if (message.{field.Name} != null) {{");
-                builder.AppendLine($"  view.writeByte({field.ConstantValue});");
+                builder.AppendLine($"if message.{field.Name} is not None:");
+                builder.AppendLine($"  writer.writeByte({field.ConstantValue})");
                 builder.AppendLine($"  {CompileEncodeField(field.Type, $"message.{field.Name}")}");
-                builder.AppendLine($"}}");
             }
-            builder.AppendLine("view.writeByte(0);");
-            builder.AppendLine("final end = view.length;");
-            builder.AppendLine("view.fillMessageLength(pos, end - start);");
+            builder.AppendLine("writer.writeByte(0)");
+            builder.AppendLine("end = writer.length");
+            builder.AppendLine("writer.fillMessageLength(pos, end - start)");
             return builder.ToString();
         }
 
@@ -76,6 +77,10 @@ namespace Core.Generators.Python
             foreach (var field in definition.Fields)
             {
                 builder.AppendLine(CompileEncodeField(field.Type, $"message.{field.Name}"));
+                builder.AppendLine("");
+            }
+            if (definition.Fields.Count == 0) {
+                builder.AppendLine("pass");
             }
             return builder.ToString();
         }
@@ -87,41 +92,37 @@ namespace Core.Generators.Python
             var i = GeneratorUtils.LoopVariable(depth);
             return type switch
             {
-                ArrayType at when at.IsBytes() => $"view.writeBytes({target});",
+                ArrayType at when at.IsBytes() => $"writer.writeBytes({target})",
                 ArrayType at =>
-                    $"{{" + nl +
-                    $"{tab}final length{depth} = {target}.length;" + nl +
-                    $"{tab}view.writeUint32(length{depth});" + nl +
-                    $"{tab}for (var {i} = 0; {i} < length{depth}; {i}++) {{" + nl +
-                    $"{tab}{tab}{CompileEncodeField(at.MemberType, $"{target}[{i}]", depth + 1, indentDepth + 2)}" + nl +
-                    $"{tab}}}" + nl +
-                    $"}}",
+                    $"length{depth} = {target}.length" + nl +
+                    $"writer.writeUint32(length{depth})" + nl +
+                    $"for {i} in range(length{depth}):" + nl +
+                    $"{tab}{CompileEncodeField(at.MemberType, $"{target}[{i}]", depth + 1, indentDepth + 1)}",
                 MapType mt =>
-                    $"view.writeUint32({target}.length);" + nl +
-                    $"for (final e{depth} in {target}.entries) {{" + nl +
+                    $"writer.writeUint32({target}.length)" + nl +
+                    $"for e{depth} in {target}.entries:" + nl +
                     $"{tab}{CompileEncodeField(mt.KeyType, $"e{depth}.key", depth + 1, indentDepth + 1)}" + nl +
-                    $"{tab}{CompileEncodeField(mt.ValueType, $"e{depth}.value", depth + 1, indentDepth + 1)}" + nl +
-                    $"}}",
+                    $"{tab}{CompileEncodeField(mt.ValueType, $"e{depth}.value", depth + 1, indentDepth + 1)}" + nl,
                 ScalarType st => st.BaseType switch
                 {
-                    BaseType.Bool => $"view.writeBool({target});",
-                    BaseType.Byte => $"view.writeByte({target});",
-                    BaseType.UInt16 => $"view.writeUint16({target});",
-                    BaseType.Int16 => $"view.writeInt16({target});",
-                    BaseType.UInt32 => $"view.writeUint32({target});",
-                    BaseType.Int32 => $"view.writeInt32({target});",
-                    BaseType.UInt64 => $"view.writeUint64({target});",
-                    BaseType.Int64 => $"view.writeInt64({target});",
-                    BaseType.Float32 => $"view.writeFloat32({target});",
-                    BaseType.Float64 => $"view.writeFloat64({target});",
-                    BaseType.String => $"view.writeString({target});",
-                    BaseType.Guid => $"view.writeGuid({target});",
-                    BaseType.Date => $"view.writeDate({target});",
+                    BaseType.Bool => $"writer.writeBool({target})",
+                    BaseType.Byte => $"writer.writeByte({target})",
+                    BaseType.UInt16 => $"writer.writeUint16({target})",
+                    BaseType.Int16 => $"writer.writeInt16({target})",
+                    BaseType.UInt32 => $"writer.writeUint32({target})",
+                    BaseType.Int32 => $"writer.writeInt32({target})",
+                    BaseType.UInt64 => $"writer.writeUint64({target})",
+                    BaseType.Int64 => $"writer.writeInt64({target})",
+                    BaseType.Float32 => $"writer.writeFloat32({target})",
+                    BaseType.Float64 => $"writer.writeFloat64({target})",
+                    BaseType.String => $"writer.writeString({target})",
+                    BaseType.Guid => $"writer.writeGuid({target})",
+                    BaseType.Date => $"writer.writeDate({target})",
                     _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                 },
                 DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition =>
-                    $"view.writeEnum({target});",
-                DefinedType dt => $"{dt.Name}.encodeInto({target}, view);",
+                    $"writer.writeEnum({target})",
+                DefinedType dt => $"{dt.Name}.encodeInto({target}, writer)",
                 _ => throw new InvalidOperationException($"CompileEncodeField: {type}")
             };
         }
@@ -149,26 +150,23 @@ namespace Core.Generators.Python
         private string CompileDecodeMessage(MessageDefinition definition)
         {
             var builder = new IndentedStringBuilder(4);
-            builder.AppendLine($"var message = {definition.Name}();");
-            builder.AppendLine("final length = view.readMessageLength();");
-            builder.AppendLine("final end = view.index + length;");
-            builder.AppendLine("while (true) {");
+            builder.AppendLine($"message = {definition.Name}()");
+            builder.AppendLine("length = reader.readMessageLength()");
+            builder.AppendLine("end = reader.index + length");
+            builder.AppendLine("while True:");
             builder.Indent(2);
-            builder.AppendLine("switch (view.readByte()) {");
-            builder.AppendLine("  case 0:");
-            builder.AppendLine("    return message;");
+            builder.AppendLine("byte = reader.readByte()");
+            builder.AppendLine("if byte == 0:");
+            builder.AppendLine("  return message");
             foreach (var field in definition.Fields)
             {
-                builder.AppendLine($"  case {field.ConstantValue}:");
-                builder.AppendLine($"    {CompileDecodeField(field.Type, $"message.{field.Name}")}");
-                builder.AppendLine("    break;");
+                builder.AppendLine($"elif byte == {field.ConstantValue}:");
+                builder.AppendLine($"  {CompileDecodeField(field.Type, $"message.{field.Name}")}");
             }
-            builder.AppendLine("  default:");
-            builder.AppendLine("    view.index = end;");
-            builder.AppendLine("    return message;");
-            builder.AppendLine("}");
+            builder.AppendLine("else:");
+            builder.AppendLine("  reader.index = end");
+            builder.AppendLine("  return message");
             builder.Dedent(2);
-            builder.AppendLine("}");
             return builder.ToString();
         }
 
@@ -178,65 +176,56 @@ namespace Core.Generators.Python
             int i = 0;
             foreach (var field in definition.Fields)
             {
-                builder.AppendLine($"{TypeName(field.Type)} field{i};");
                 builder.AppendLine(CompileDecodeField(field.Type, $"field{i}"));
+                builder.AppendLine("");
                 i++;
             }
-            var args = string.Join(", ", definition.Fields.Select((field, i) => $"{field.Name}: field{i}"));
-            builder.AppendLine($"return {definition.Name}({args});");
+            var args = string.Join(", ", definition.Fields.Select((field, i) => $"{field.Name}=field{i}"));
+            builder.AppendLine($"return {definition.Name}({args})");
             return builder.ToString();
         }
 
         private string CompileDecodeField(TypeBase type, string target, int depth = 0)
         {
             var tab = new string(' ', indentStep);
-            var nl = "\n" + new string(' ', depth * 2 * indentStep);
+            var nl = "\n" + new string(' ', depth * indentStep);
             var i = GeneratorUtils.LoopVariable(depth);
             return type switch
             {
-                ArrayType at when at.IsBytes() => $"{target} = view.readBytes();",
+                ArrayType at when at.IsBytes() => $"{target} = reader.readBytes()",
                 ArrayType at =>
-                    $"{{" + nl +
-                    $"{tab}var length{depth} = view.readUint32();" + nl +
-                    $"{tab}{target} = {TypeName(at)}(length{depth});" + nl +
-                    $"{tab}for (var {i} = 0; {i} < length{depth}; {i}++) {{" + nl +
-                    $"{tab}{tab}{TypeName(at.MemberType)} x{depth};" + nl +
-                    $"{tab}{tab}{CompileDecodeField(at.MemberType, $"x{depth}", depth + 1)}" + nl +
-                    $"{tab}{tab}{target}[{i}] = x{depth};" + nl +
-                    $"{tab}}}" + nl +
-                    $"}}",
+                    $"length{depth} = reader.readUint32()" + nl +
+                    $"{target} = []" + nl +
+                    $"for {i} in range(length{depth}):" + nl +
+                    $"{tab}{CompileDecodeField(at.MemberType, $"x{depth}", depth + 1)}" + nl +
+                    $"{tab}{target}[{i}] = x{depth}" + nl,
                 MapType mt =>
-                    $"{{" + nl +
-                    $"{tab}var length{depth} = view.readUint32();" + nl +
-                    $"{tab}{target} = {TypeName(mt)}();" + nl +
-                    $"{tab}for (var {i} = 0; {i} < length{depth}; {i}++) {{" + nl +
-                    $"{tab}{tab}{TypeName(mt.KeyType)} k{depth};" + nl +
-                    $"{tab}{tab}{TypeName(mt.ValueType)} v{depth};" + nl +
-                    $"{tab}{tab}{CompileDecodeField(mt.KeyType, $"k{depth}", depth + 1)}" + nl +
-                    $"{tab}{tab}{CompileDecodeField(mt.ValueType, $"v{depth}", depth + 1)}" + nl +
-                    $"{tab}{tab}{target}[k{depth}] = v{depth};" + nl +
-                    $"{tab}}}" + nl +
-                    $"}}",
+                    $"length{depth} = reader.readUint32()" + nl +
+                    $"{target} = {{}}" + nl +
+                    $"for {i} in range(length{depth}):" + nl +
+                    $"{tab}{CompileDecodeField(mt.KeyType, $"k{depth}", depth + 1)}" + nl +
+                    $"{tab}{CompileDecodeField(mt.ValueType, $"v{depth}", depth + 1)}" + nl +
+                    $"{tab}{target}[k{depth}] = v{depth}" + nl,
                 ScalarType st => st.BaseType switch
                 {
-                    BaseType.Bool => $"{target} = view.readBool();",
-                    BaseType.Byte => $"{target} = view.readByte();",
-                    BaseType.UInt16 => $"{target} = view.readUint16();",
-                    BaseType.Int16 => $"{target} = view.readInt16();",
-                    BaseType.UInt32 => $"{target} = view.readUint32();",
-                    BaseType.Int32 => $"{target} = view.readInt32();",
-                    BaseType.UInt64 => $"{target} = view.readUint64();",
-                    BaseType.Int64 => $"{target} = view.readInt64();",
-                    BaseType.Float32 => $"{target} = view.readFloat32();",
-                    BaseType.Float64 => $"{target} = view.readFloat64();",
-                    BaseType.String => $"{target} = view.readString();",
-                    BaseType.Guid => $"{target} = view.readGuid();",
-                    BaseType.Date => $"{target} = view.readDate();",
+                    BaseType.Bool => $"{target} = reader.readBool()",
+                    BaseType.Byte => $"{target} = reader.readByte()",
+                    BaseType.UInt16 => $"{target} = reader.readUint16()",
+                    BaseType.Int16 => $"{target} = reader.readInt16()",
+                    BaseType.UInt32 => $"{target} = reader.readUint32()",
+                    BaseType.Int32 => $"{target} = reader.readInt32()",
+                    BaseType.UInt64 => $"{target} = reader.readUint64()",
+                    BaseType.Int64 => $"{target} = reader.readInt64()",
+                    BaseType.Float32 => $"{target} = reader.readFloat32()",
+                    BaseType.Float64 => $"{target} = reader.readFloat64()",
+                    BaseType.String => $"{target} = reader.readString()",
+                    BaseType.Guid => $"{target} = reader.readGuid()",
+                    BaseType.Date => $"{target} = reader.readDate()",
                     _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                 },
                 DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition =>
-                    $"{target} = {dt.Name}.fromRawValue(view.readUint32());",
-                DefinedType dt => $"{target} = {dt.Name}.readFrom(view);",
+                    $"{target} = {dt.Name}.fromRawValue(reader.readUint32())",
+                DefinedType dt => $"{target} = {dt.Name}.readFrom(reader)",
                 _ => throw new InvalidOperationException($"CompileDecodeField: {type}")
             };
         }
@@ -274,16 +263,39 @@ namespace Core.Generators.Python
             throw new InvalidOperationException($"GetTypeName: {type}");
         }
 
+        private static string EscapeStringLiteral(string value)
+        {
+            // Dart accepts \u0000 style escape sequences, so we can escape the string JSON-style.
+            var options = new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+            return JsonSerializer.Serialize(value, options);
+        }
+
+        private string EmitLiteral(Literal literal) {
+            return literal switch
+            {
+                BoolLiteral bl => bl.Value ? "true" : "false",
+                IntegerLiteral il => il.Value,
+                FloatLiteral fl when fl.Value == "inf" => $"math.inf",
+                FloatLiteral fl when fl.Value == "-inf" => $"-math.inf",
+                FloatLiteral fl when fl.Value == "nan" => $"math.nan",
+                FloatLiteral fl => fl.Value,
+                StringLiteral sl => EscapeStringLiteral(sl.Value),
+                GuidLiteral gl => EscapeStringLiteral(gl.Value.ToString("D")),
+                _ => throw new ArgumentOutOfRangeException(literal.ToString()),
+            };
+        }
+
         /// <summary>
         /// Generate code for a Bebop schema.
         /// </summary>
         /// <returns>The generated code.</returns>
-        public override string Compile(Version? languageVersion, bool writeGeneratedNotice = true)
+        public override string Compile(Version? languageVersion, TempoServices services = TempoServices.Both, bool writeGeneratedNotice = true, bool emitBinarySchema = false)
         {
             var builder = new IndentedStringBuilder();
             builder.AppendLine("from enum import Enum");
-            builder.AppendLine("import python_bebop");
+            builder.AppendLine("from python_bebop import BebopWriter, BebopReader");
             builder.AppendLine("from uuid import UUID");
+            builder.AppendLine("import math");
             builder.AppendLine("from datetime import datetime");
             builder.AppendLine("");
 
@@ -292,6 +304,7 @@ namespace Core.Generators.Python
                 if (!string.IsNullOrWhiteSpace(definition.Documentation))
                 {
                     builder.Append(FormatDocumentation(definition.Documentation));
+                    builder.AppendLine("");
                 }
                 switch (definition)
                 {
@@ -304,13 +317,16 @@ namespace Core.Generators.Python
                             if (!string.IsNullOrWhiteSpace(field.Documentation))
                             {
                                 builder.Append(FormatDocumentation(field.Documentation));
+                                builder.AppendLine("");
                             }
                             if (field.DeprecatedAttribute != null)
                             {
-                                builder.AppendLine($"# @deprecated {field.DeprecatedAttribute.Value}");
+                                
+                                builder.AppendLine($"\"\"\" @deprecated {field.DeprecatedAttribute.Value}  \"\"\"");
                             }
-                            builder.AppendLine($"  {field.Name.ToUpper()} = {field.ConstantValue}");
+                            builder.AppendLine($"{field.Name.ToUpper()} = {field.ConstantValue}");
                         }
+                        builder.AppendLine("");
                         builder.Dedent(indentStep);
                         break;
                     case FieldsDefinition fd:
@@ -322,6 +338,7 @@ namespace Core.Generators.Python
                             if (!string.IsNullOrWhiteSpace(field.Documentation))
                             {
                                 builder.Append(FormatDocumentation(field.Documentation));
+                                builder.AppendLine("");
                             }
                             if (field.DeprecatedAttribute != null)
                             {
@@ -333,55 +350,66 @@ namespace Core.Generators.Python
                             builder.AppendLine($"opcode = {fd.OpcodeAttribute.Value}");
                             builder.AppendLine("");
                         }
+                        builder.AppendLine("");
                         if (!(fd is MessageDefinition)) {
-                            builder.AppendLine("def __init__(self, ");
                             List<string> fields = new List<string>();
                             foreach (var field in fd.Fields)
                             {
-                                fields.Add($"{field.Name}: {field.Type}");
+                                fields.Add($" {field.Name}: {TypeName(field.Type)}");
                             }
-                            builder.Append(String.Join(",", fields));
-                            builder.AppendLine("):");
-                            builder.Indent(indentStep);
-                            foreach (var field in fd.Fields) {
-                                builder.AppendLine($"self.{field.Name} = {field.Name}");
+                            if (fields.Count != 0) {
+                                builder.Append("def __init__(self, ");
+                                builder.Append(string.Join(",", fields));
+                                builder.AppendLine("):");
+                                builder.Indent(indentStep);
+                                foreach (var field in fd.Fields) {
+                                    builder.AppendLine($"self.{field.Name} = {field.Name}");
+                                }
+                                builder.Dedent(indentStep);
                             }
-                            builder.Dedent(indentStep);
                         }
                         builder.AppendLine("");
 
                         builder.AppendLine("@staticmethod");
-                        builder.AppendLine($"encode(message: {fd.Name}):");
+                        builder.AppendLine($"def encode(message: \"{fd.Name}\"):");
                         builder.Indent(indentStep);
                         builder.AppendLine("writer = BebopWriter()");
                         builder.AppendLine($"{fd.Name}.encode_into(message, writer)");
                         builder.AppendLine("return writer.to_list()");
                         builder.Dedent(indentStep);
                         builder.AppendLine("");
+                        builder.AppendLine("");
 
                         builder.AppendLine("@staticmethod");
-                        builder.AppendLine($"encode_into(message: {fd.Name}, writer: BebopWriter):");
-                        builder.Indent(indentStep);
+                        builder.AppendLine($"def encode_into(message: \"{fd.Name}\", writer: BebopWriter):");
                         builder.Append(CompileEncode(fd));
-                        builder.Dedent(indentStep);
+                        builder.AppendLine("");
                         builder.AppendLine("");
 
                         builder.AppendLine("@classmethod");
-                        builder.AppendLine($"_read_from(cls, reader: BebopReader):");
-                        builder.Indent(indentStep);
+                        builder.AppendLine($"def _read_from(cls, reader: BebopReader):");
                         builder.Append(CompileDecode(fd));
-                        builder.Dedent(indentStep);
+                        builder.AppendLine("");
                         builder.AppendLine("");
 
                         builder.AppendLine("@staticmethod");
-                        builder.AppendLine($"decode(buffer) -> {fd.Name}:");
+                        builder.AppendLine($"def decode(buffer) -> \"{fd.Name}\":");
                         builder.Indent(indentStep);
                         builder.AppendLine($"return {fd.Name}._read_from(BebopReader(buffer))");
                         builder.Dedent(indentStep);
                         builder.AppendLine("");
+                        builder.AppendLine("");
 
                         builder.Dedent(indentStep);
                         break;
+                    case ConstDefinition cd:
+                        builder.AppendLine($"{cd.Name} = {EmitLiteral(cd.Value)}");
+                        builder.AppendLine("");
+                        break;
+                    case ServiceDefinition:
+                        break;
+                    default:
+                        throw new InvalidOperationException($"unsupported definition {definition}");
                 }
             }
 

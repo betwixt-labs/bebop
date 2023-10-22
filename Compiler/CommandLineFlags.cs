@@ -281,7 +281,8 @@ namespace Compiler
             ["cs"] = TempoServices.Both,
             ["dart"] = TempoServices.Both,
             ["rust"] = TempoServices.Both,
-            ["ts"] = TempoServices.Both
+            ["ts"] = TempoServices.Both,
+            ["py"] = TempoServices.Both
         };
 
         /// <summary>
