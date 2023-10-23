@@ -273,7 +273,7 @@ namespace Core.Generators.Python
         private string EmitLiteral(Literal literal) {
             return literal switch
             {
-                BoolLiteral bl => bl.Value ? "true" : "false",
+                BoolLiteral bl => bl.Value ? "True" : "False",
                 IntegerLiteral il => il.Value,
                 FloatLiteral fl when fl.Value == "inf" => $"math.inf",
                 FloatLiteral fl when fl.Value == "-inf" => $"-math.inf",
