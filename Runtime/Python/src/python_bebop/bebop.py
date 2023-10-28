@@ -1,7 +1,9 @@
-from struct import pack
+from struct import pack, unpack
 from uuid import UUID
 from datetime import datetime
 
+ticksBetweenEpochs = 621355968000000000
+dateMask = 0x3fffffffffffffff
 
 class BebopReader:
     """
@@ -32,33 +34,42 @@ class BebopReader:
     def read_uint16(self):
         v = self._buffer[self.index : self.index + 2]
         self.index += 2
-        return int(v)
+        return int.from_bytes(v, byteorder="little")
 
-    read_int16 = read_uint16
+    def read_int16(self):
+        v = self._buffer[self.index : self.index + 2]
+        self.index += 2
+        return int.from_bytes(v, byteorder="little", signed=True)
 
     def read_uint32(self):
         v = self._buffer[self.index : self.index + 4]
         self.index += 4
-        return int(v)
+        return int.from_bytes(v, byteorder="little")
 
-    read_int32 = read_uint32
+    def read_int32(self):
+        v = self._buffer[self.index : self.index + 4]
+        self.index += 4
+        return int.from_bytes(v, byteorder="little", signed=True)
 
     def read_uint64(self):
         v = self._buffer[self.index : self.index + 8]
         self.index += 8
-        return int(v)
+        return int.from_bytes(v, byteorder="little")
 
-    read_int64 = read_uint64
+    def read_int64(self):
+        v = self._buffer[self.index : self.index + 8]
+        self.index += 8
+        return int.from_bytes(v, byteorder="little", signed=True)
 
     def read_float32(self):
         v = self._buffer[self.index : self.index + 4]
         self.index += 4
-        return float(v)
+        return unpack("f", v)[0]
 
     def read_float64(self):
         v = self._buffer[self.index : self.index + 8]
         self.index += 8
-        return float(v)
+        return unpack("d", v)[0]
 
     def read_bool(self):
         return self.read_byte() != 0
@@ -85,10 +96,9 @@ class BebopReader:
         return g
 
     def read_date(self) -> datetime:
-        low = self.read_uint32()
-        high = self.read_uint32() & 0x3FFFFFFF
-        msSince1AD = 429496.7296 * high + 0.0001 * low
-        return datetime.fromtimestamp(round(msSince1AD - 62135596800000))
+        ticks = self.read_uint64() & dateMask
+        ms = (ticks - ticksBetweenEpochs)
+        return datetime.fromtimestamp(ms)
 
     def read_enum(self, values: list):
         return values[self.read_uint32()]
@@ -108,41 +118,66 @@ class BebopWriter:
         self._buffer = bytearray()
         self.length = 0
 
+    def _guarantee_buffer_length(self):
+        """
+        Replace _buffer with a bytearray twice the size required to ensure buffer is always big enough
+        """
+        if self.length > len(self._buffer):
+            new_length = min(2 * len(self._buffer), self.length)
+            data = bytearray([0] * new_length)
+            data[:len(self._buffer)] = self._buffer
+            self._buffer = data
+
+    def _grow_by(self, amount: int):
+        self.length += amount
+        self._guarantee_buffer_length()
+
     def write_byte(self, val: bytes):
+        self.length += 1
         self._buffer.append(val)
 
     def write_uint16(self, val: int):
-        self._buffer.append(pack("<I", val))
+        self.length += 2
+        self._buffer += pack("<H", val)
 
     def write_int16(self, val: int):
-        self._buffer.append(pack("<i", val))
+        self.length += 2
+        self._buffer += pack("<h", val)
 
     def write_uint32(self, val: int):
-        self._buffer.append(pack("<L", val))
+        self.length += 4
+        self._buffer += pack("<I", val)
 
     def write_int32(self, val: int):
-        self._buffer.append(pack("<l", val))
+        self.length += 4
+        self._buffer += pack("<i", val)
 
     def write_uint64(self, val: int):
-        self._buffer.append(pack("<Q", val))
+        self.length += 8
+        self._buffer += pack("<Q", val)
 
     def write_int64(self, val: int):
-        self._buffer.append(pack("<q", val))
+        self.length += 8
+        self._buffer += pack("<q", val)
 
     def write_float32(self, val: float):
-        self._buffer.append(pack("<f", val))
+        self.length += 4
+        self._buffer += pack("<f", val)
 
     def write_float64(self, val: float):
-        self._buffer.append(pack("<D", val))
+        self.length += 8
+        self._buffer += pack("<d", val)
 
     def write_bool(self, val: bool):
-        self.write_byte(pack("<?", val))
+        self.write_byte(val)
 
-    def write_bytes(self, val: bytearray):
+    def write_bytes(self, val: bytearray, write_msg_length: bool = True):
         byte_count = len(val)
-        self.write_uint32(byte_count)
+        if write_msg_length:
+            self.write_uint32(byte_count)
         if byte_count == 0:
             return
+        self.length += len(val)
         self._buffer.extend(val)
 
     def write_string(self, val: str):
@@ -152,21 +187,27 @@ class BebopWriter:
         self.write_bytes(val.encode())
 
     def write_guid(self, guid: UUID):
-        self.write_bytes(guid.bytes_le)
+        self.write_bytes(guid.bytes_le, write_msg_length=False)
 
     def write_date(self, date: datetime):
-        ms = date.microsecond / 1000
-        msSince1AD = ms + 62135596800000
-        low = round(msSince1AD % 429496.7296 * 10000)
-        high = round(msSince1AD / 429496.7296) | 0x40000000
-        self.write_uint32(low)
-        self.write_uint32(high)
+        ms = int(datetime.timestamp(date))
+        ticks = ms + ticksBetweenEpochs
+        self.write_uint64(ticks & dateMask)
 
     def write_enum(self, val: int):
         self.write_uint32(val)
 
+    def reserve_message_length(self):
+        """
+        Reserve some space to write a message's length prefix, and return its index.
+        The length is stored as a little-endian fixed-width unsigned 32-bit integer, so 4 bytes are reserved.
+        """
+        i = self.length
+        self._grow_by(4)
+        return i
+
     def fill_message_length(self, position: int, message_length: int):
-        self._buffer[position] = pack("<i", message_length)
+        self._buffer[position:position+2] = message_length.to_bytes(2, "little")
 
     def to_list(self):
         return list(self._buffer)

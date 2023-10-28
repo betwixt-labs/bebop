@@ -53,7 +53,7 @@ namespace Core.Generators.Python
         private string CompileEncodeMessage(MessageDefinition definition)
         {
             var builder = new IndentedStringBuilder(4);
-            builder.AppendLine($"pos = writer.reserveMessageLength()");
+            builder.AppendLine($"pos = writer.reserve_message_length()");
             builder.AppendLine($"start = writer.length");
             foreach (var field in definition.Fields)
             {
@@ -62,12 +62,12 @@ namespace Core.Generators.Python
                     continue;
                 }
                 builder.AppendLine($"if message.{field.Name} is not None:");
-                builder.AppendLine($"  writer.writeByte({field.ConstantValue})");
+                builder.AppendLine($"  writer.write_byte({field.ConstantValue})");
                 builder.AppendLine($"  {CompileEncodeField(field.Type, $"message.{field.Name}")}");
             }
-            builder.AppendLine("writer.writeByte(0)");
+            builder.AppendLine("writer.write_byte(0)");
             builder.AppendLine("end = writer.length");
-            builder.AppendLine("writer.fillMessageLength(pos, end - start)");
+            builder.AppendLine("writer.fill_message_length(pos, end - start)");
             return builder.ToString();
         }
 
@@ -94,35 +94,35 @@ namespace Core.Generators.Python
             {
                 ArrayType at when at.IsBytes() => $"writer.writeBytes({target})",
                 ArrayType at =>
-                    $"length{depth} = {target}.length" + nl +
-                    $"writer.writeUint32(length{depth})" + nl +
+                    $"length{depth} = len({target})" + nl +
+                    $"writer.write_uint32(length{depth})" + nl +
                     $"for {i} in range(length{depth}):" + nl +
                     $"{tab}{CompileEncodeField(at.MemberType, $"{target}[{i}]", depth + 1, indentDepth + 1)}",
                 MapType mt =>
-                    $"writer.writeUint32({target}.length)" + nl +
-                    $"for e{depth} in {target}.entries:" + nl +
-                    $"{tab}{CompileEncodeField(mt.KeyType, $"e{depth}.key", depth + 1, indentDepth + 1)}" + nl +
-                    $"{tab}{CompileEncodeField(mt.ValueType, $"e{depth}.value", depth + 1, indentDepth + 1)}" + nl,
+                    $"writer.write_uint32(len({target}))" + nl +
+                    $"for key{depth}, val{depth} in {target}.items():" + nl +
+                    $"{tab}{CompileEncodeField(mt.KeyType, $"key{depth}", depth + 1, indentDepth + 1)}" + nl +
+                    $"{tab}{CompileEncodeField(mt.ValueType, $"val{depth}", depth + 1, indentDepth + 1)}" + nl,
                 ScalarType st => st.BaseType switch
                 {
-                    BaseType.Bool => $"writer.writeBool({target})",
-                    BaseType.Byte => $"writer.writeByte({target})",
-                    BaseType.UInt16 => $"writer.writeUint16({target})",
-                    BaseType.Int16 => $"writer.writeInt16({target})",
-                    BaseType.UInt32 => $"writer.writeUint32({target})",
-                    BaseType.Int32 => $"writer.writeInt32({target})",
-                    BaseType.UInt64 => $"writer.writeUint64({target})",
-                    BaseType.Int64 => $"writer.writeInt64({target})",
-                    BaseType.Float32 => $"writer.writeFloat32({target})",
-                    BaseType.Float64 => $"writer.writeFloat64({target})",
-                    BaseType.String => $"writer.writeString({target})",
-                    BaseType.Guid => $"writer.writeGuid({target})",
-                    BaseType.Date => $"writer.writeDate({target})",
+                    BaseType.Bool => $"writer.write_bool({target})",
+                    BaseType.Byte => $"writer.write_byte({target})",
+                    BaseType.UInt16 => $"writer.write_uint16({target})",
+                    BaseType.Int16 => $"writer.write_int16({target})",
+                    BaseType.UInt32 => $"writer.write_uint32({target})",
+                    BaseType.Int32 => $"writer.write_int32({target})",
+                    BaseType.UInt64 => $"writer.write_uint64({target})",
+                    BaseType.Int64 => $"writer.write_int64({target})",
+                    BaseType.Float32 => $"writer.write_float32({target})",
+                    BaseType.Float64 => $"writer.write_float64({target})",
+                    BaseType.String => $"writer.write_string({target})",
+                    BaseType.Guid => $"writer.write_guid({target})",
+                    BaseType.Date => $"writer.write_date({target})",
                     _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                 },
                 DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition =>
-                    $"writer.writeEnum({target})",
-                DefinedType dt => $"{dt.Name}.encodeInto({target}, writer)",
+                    $"writer.write_enum({target})",
+                DefinedType dt => $"{dt.Name}.encode_into({target}, writer)",
                 _ => throw new InvalidOperationException($"CompileEncodeField: {type}")
             };
         }
@@ -151,11 +151,11 @@ namespace Core.Generators.Python
         {
             var builder = new IndentedStringBuilder(4);
             builder.AppendLine($"message = {definition.Name}()");
-            builder.AppendLine("length = reader.readMessageLength()");
+            builder.AppendLine("length = reader.read_message_length()");
             builder.AppendLine("end = reader.index + length");
             builder.AppendLine("while True:");
             builder.Indent(2);
-            builder.AppendLine("byte = reader.readByte()");
+            builder.AppendLine("byte = reader.read_byte()");
             builder.AppendLine("if byte == 0:");
             builder.AppendLine("    return message");
             foreach (var field in definition.Fields)
@@ -194,13 +194,13 @@ namespace Core.Generators.Python
             {
                 ArrayType at when at.IsBytes() => $"{target} = reader.readBytes()",
                 ArrayType at =>
-                    $"length{depth} = reader.readUint32()" + nl +
+                    $"length{depth} = reader.read_uint32()" + nl +
                     $"{target} = []" + nl +
                     $"for {i} in range(length{depth}):" + nl +
                     $"{tab}{CompileDecodeField(at.MemberType, $"x{depth}", depth + 1)}" + nl +
                     $"{tab}{target}[{i}] = x{depth}" + nl,
                 MapType mt =>
-                    $"length{depth} = reader.readUint32()" + nl +
+                    $"length{depth} = reader.read_uint32()" + nl +
                     $"{target} = {{}}" + nl +
                     $"for {i} in range(length{depth}):" + nl +
                     $"{tab}{CompileDecodeField(mt.KeyType, $"k{depth}", depth + 1)}" + nl +
@@ -208,24 +208,24 @@ namespace Core.Generators.Python
                     $"{tab}{target}[k{depth}] = v{depth}" + nl,
                 ScalarType st => st.BaseType switch
                 {
-                    BaseType.Bool => $"{target} = reader.readBool()",
-                    BaseType.Byte => $"{target} = reader.readByte()",
-                    BaseType.UInt16 => $"{target} = reader.readUint16()",
-                    BaseType.Int16 => $"{target} = reader.readInt16()",
-                    BaseType.UInt32 => $"{target} = reader.readUint32()",
-                    BaseType.Int32 => $"{target} = reader.readInt32()",
-                    BaseType.UInt64 => $"{target} = reader.readUint64()",
-                    BaseType.Int64 => $"{target} = reader.readInt64()",
-                    BaseType.Float32 => $"{target} = reader.readFloat32()",
-                    BaseType.Float64 => $"{target} = reader.readFloat64()",
-                    BaseType.String => $"{target} = reader.readString()",
-                    BaseType.Guid => $"{target} = reader.readGuid()",
-                    BaseType.Date => $"{target} = reader.readDate()",
+                    BaseType.Bool => $"{target} = reader.read_bool()",
+                    BaseType.Byte => $"{target} = reader.read_byte()",
+                    BaseType.UInt16 => $"{target} = reader.read_uint16()",
+                    BaseType.Int16 => $"{target} = reader.read_int16()",
+                    BaseType.UInt32 => $"{target} = reader.read_uint32()",
+                    BaseType.Int32 => $"{target} = reader.read_int32()",
+                    BaseType.UInt64 => $"{target} = reader.read_uint64()",
+                    BaseType.Int64 => $"{target} = reader.read_int64()",
+                    BaseType.Float32 => $"{target} = reader.read_float32()",
+                    BaseType.Float64 => $"{target} = reader.read_float64()",
+                    BaseType.String => $"{target} = reader.read_string()",
+                    BaseType.Guid => $"{target} = reader.read_guid()",
+                    BaseType.Date => $"{target} = reader.read_date()",
                     _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                 },
                 DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition =>
-                    $"{target} = {dt.Name}.fromRawValue(reader.readUint32())",
-                DefinedType dt => $"{target} = {dt.Name}.readFrom(reader)",
+                    $"{target} = {dt.Name}(reader.read_uint32())",
+                DefinedType dt => $"{target} = {dt.Name}.read_from(reader)",
                 _ => throw new InvalidOperationException($"CompileDecodeField: {type}")
             };
         }
@@ -387,7 +387,7 @@ namespace Core.Generators.Python
                         builder.AppendLine("");
 
                         builder.AppendLine("@classmethod");
-                        builder.AppendLine($"def _read_from(cls, reader: BebopReader):");
+                        builder.AppendLine($"def read_from(cls, reader: BebopReader):");
                         builder.Append(CompileDecode(fd));
                         builder.AppendLine("");
                         builder.AppendLine("");
@@ -395,7 +395,7 @@ namespace Core.Generators.Python
                         builder.AppendLine("@staticmethod");
                         builder.AppendLine($"def decode(buffer) -> \"{fd.Name}\":");
                         builder.Indent(indentStep);
-                        builder.AppendLine($"return {fd.Name}._read_from(BebopReader(buffer))");
+                        builder.AppendLine($"return {fd.Name}.read_from(BebopReader(buffer))");
                         builder.Dedent(indentStep);
                         builder.AppendLine("");
                         builder.AppendLine("");
