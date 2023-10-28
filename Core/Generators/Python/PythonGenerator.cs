@@ -198,7 +198,7 @@ namespace Core.Generators.Python
                     $"{target} = []" + nl +
                     $"for {i} in range(length{depth}):" + nl +
                     $"{tab}{CompileDecodeField(at.MemberType, $"x{depth}", depth + 1)}" + nl +
-                    $"{tab}{target}[{i}] = x{depth}" + nl,
+                    $"{tab}{target}.append(x{depth})" + nl,
                 MapType mt =>
                     $"length{depth} = reader.read_uint32()" + nl +
                     $"{target} = {{}}" + nl +

@@ -28,8 +28,9 @@ class BebopReader:
         self.index += amount
 
     def read_byte(self):
+        byte = self._buffer[self.index]
         self.index += 1
-        return self._buffer[self.index]
+        return byte
 
     def read_uint16(self):
         v = self._buffer[self.index : self.index + 2]
@@ -64,12 +65,12 @@ class BebopReader:
     def read_float32(self):
         v = self._buffer[self.index : self.index + 4]
         self.index += 4
-        return unpack("f", v)[0]
+        return unpack("<f", bytearray(v))[0]
 
     def read_float64(self):
         v = self._buffer[self.index : self.index + 8]
         self.index += 8
-        return unpack("d", v)[0]
+        return unpack("<d", bytearray(v))[0]
 
     def read_bool(self):
         return self.read_byte() != 0
@@ -88,10 +89,10 @@ class BebopReader:
             return self._emptyString
         v = self._buffer[self.index : self.index + length]
         self.index += length
-        return str(v)
+        return "".join([chr(c) for c in v])
 
     def read_guid(self) -> UUID:
-        g = UUID(bytes_le=self._buffer[self.index : self.index + 16])
+        g = UUID(bytes_le=bytes(self._buffer[self.index : self.index + 16]))
         self.index += 16
         return g
 
