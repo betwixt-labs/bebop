@@ -1,6 +1,7 @@
 from struct import pack, unpack
 from uuid import UUID
 from datetime import datetime
+from enum import Enum
 
 ticksBetweenEpochs = 621355968000000000
 dateMask = 0x3fffffffffffffff
@@ -195,8 +196,8 @@ class BebopWriter:
         ticks = ms + ticksBetweenEpochs
         self.write_uint64(ticks & dateMask)
 
-    def write_enum(self, val: int):
-        self.write_uint32(val)
+    def write_enum(self, val: Enum):
+        self.write_uint32(val.value)
 
     def reserve_message_length(self):
         """
