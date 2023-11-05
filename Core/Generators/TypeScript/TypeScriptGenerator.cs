@@ -179,7 +179,7 @@ namespace Core.Generators.TypeScript
         }
 
         /// <summary>
-        /// Generate the body of the <c>decode</c> function for the given <see cref=MessageDefinition"/>,
+        /// Generate the body of the <c>decode</c> function for the given <see cref="MessageDefinition"/>,
         /// </summary>
         /// <param name="definition">The message definition to generate code for.</param>
         /// <returns>The generated TypeScript <c>decode</c> function body.</returns>

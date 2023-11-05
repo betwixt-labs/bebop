@@ -1,4 +1,5 @@
-﻿using System;
+﻿using System.Runtime.Serialization;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Core.Generators.CPlusPlus;
@@ -6,6 +7,7 @@ using Core.Generators.CSharp;
 using Core.Generators.Dart;
 using Core.Generators.Rust;
 using Core.Generators.TypeScript;
+using Core.Generators.Python;
 using Core.Meta;
 using Core.Meta.Extensions;
 
@@ -121,6 +123,7 @@ namespace Core.Generators
             { "dart", s => new DartGenerator(s) },
             { "rust", s => new RustGenerator(s) },
             { "ts", s => new TypeScriptGenerator(s) },
+            { "py", s => new PythonGenerator(s) }
         };
 
         public static Dictionary<string, string> ImplementedGeneratorNames  = new()
@@ -130,6 +133,7 @@ namespace Core.Generators
             { "dart", "Dart" },
             { "rust", "Rust" },
             { "ts", "TypeScript" },
+            { "py", "Python" }
         };
 
         /// <summary>

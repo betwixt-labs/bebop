@@ -1,9 +1,10 @@
 const shell = require("shelljs");
 const cxx = shell.env["CXX"] || "g++";
 const aout = process.platform === "win32" ? "a.exe" : "./a.out";
+const py = process.platform === "win32" ? "py" : "python3";
 
 shell.echo("Compiling schema...");
-if (shell.exec("dotnet run --project ../../Compiler --files schema.bop --cs schema.cs --ts schema.ts --cpp schema.hpp --rust Rust/src/schema.rs").code !== 0) {
+if (shell.exec("dotnet run --project ../../Compiler --files schema.bop --cs schema.cs --ts schema.ts --cpp schema.hpp --rust Rust/src/schema.rs --py Python/src/schema.py").code !== 0) {
   shell.echo("Error: bebopc failed");
   shell.exit(1);
 }
@@ -18,6 +19,8 @@ if (shell.exec(`${cxx} --std=c++17 encode.cpp`).code !== 0) {
 shell.exec(`${aout} > cpp.enc`);
 shell.rm("-f", aout);
 shell.exec("cargo run --manifest-path Rust/Cargo.toml --example encode > rs.enc");
+shell.exec(`${py} Python/src/encode.py`)
+
 
 // Files can have some variance and still be equivalent because of ordering in maps and C# dates.
 // Perform full matrix testing because it seems like a good idea
@@ -34,6 +37,7 @@ const languages = [
   {name: "C#", cmd: "dotnet run decode", file: "cs.enc"},
   {name: "TypeScript", cmd: "npx ts-node decode.ts", file: "ts.enc"},
   {name: "C++", cmd: aout, file: "cpp.enc"},
+  {name: "Python", cmd: `${py} Python/src/decode.py`, file: "py.enc"},
 ];
 
 var failed = false;
