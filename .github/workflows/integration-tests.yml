@@ -27,6 +27,10 @@ jobs:
         with:
           toolchain: stable
           profile: minimal
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
       - name: Setup Node
         uses: actions/setup-node@v1
         with:
@@ -41,6 +45,8 @@ jobs:
           yarn test
           yarn build
         working-directory: ./Runtime/TypeScript
+      - name: Install python runtime
+        run: pip install python-bebop
       - name: yarn install
         run: yarn install
         working-directory: ${{env.TEST_ROOT}}
