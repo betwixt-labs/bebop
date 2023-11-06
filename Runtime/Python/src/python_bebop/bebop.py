@@ -18,7 +18,7 @@ class UnionDefinition:
         self.discriminator = discriminator
         self.value = value
 
-UnionType = TypeVar("UnionType", (), UnionDefinition)
+UnionType = TypeVar("UnionType", bound=UnionDefinition)
 
 class BebopReader:
     """
