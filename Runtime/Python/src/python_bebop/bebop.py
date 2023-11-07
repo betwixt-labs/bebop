@@ -4,6 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, TypeVar
 
+# constants
 ticksBetweenEpochs = 621355968000000000
 dateMask = 0x3fffffffffffffff
 
@@ -102,12 +103,14 @@ class BebopReader:
         length = self.read_uint32()
         if length == 0:
             return self._emptyString
-        v = self._buffer[self.index : self.index + length]
+        string_data = self._buffer[self.index : self.index + length]
         self.index += length
-        return "".join([chr(c) for c in v])
+        return string_data.decode('utf-8')
 
     def read_guid(self) -> UUID:
-        g = UUID(bytes_le=bytes(self._buffer[self.index : self.index + 16]))
+        b = self._buffer[self.index : self.index + 16]
+        reordered = [b[3], b[2], b[1], b[0], b[5], b[4], b[7], b[6], b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15]]
+        g = UUID(bytes=bytes(reordered))
         self.index += 16
         return g
 
@@ -115,9 +118,6 @@ class BebopReader:
         ticks = self.read_uint64() & dateMask
         ms = (ticks - ticksBetweenEpochs) / 10000000
         return datetime.fromtimestamp(ms)
-
-    def read_enum(self, values: list):
-        return values[self.read_uint32()]
 
     read_message_length = read_uint32
 
@@ -199,18 +199,17 @@ class BebopWriter:
         if len(val) == 0:
             self.write_uint32(0)
             return
-        self.write_bytes(val.encode())
+        self.write_bytes(val.encode("utf-8"))
 
     def write_guid(self, guid: UUID):
-        self.write_bytes(guid.bytes_le, write_msg_length=False)
+        b = guid.bytes
+        bebop_uid = [b[3], b[2], b[1], b[0], b[5], b[4], b[7], b[6], b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15]]
+        self.write_bytes(bebop_uid, write_msg_length=False)
 
     def write_date(self, date: datetime):
         ms = int(date.timestamp())
         ticks = ms * 10000000 + ticksBetweenEpochs 
         self.write_uint64(ticks & dateMask)
-
-    def write_enum(self, val: Enum):
-        self.write_uint32(val.value)
 
     def reserve_message_length(self):
         """

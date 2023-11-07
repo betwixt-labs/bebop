@@ -273,3 +273,4 @@ Laboratory/C#/Benchmarks/BenchmarkDotNet.Artifacts
 Core/Meta/VersionInfo.cs
 
 .DS_Store
+.vscode
