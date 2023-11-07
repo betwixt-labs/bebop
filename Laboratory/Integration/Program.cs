@@ -39,12 +39,12 @@ static Library MakeLibrary()
                         new[]
                         {
                             new Song("Giant Steps", 1959,
-                                new[] { new Musician("John Coltrane", Instrument.Piano) }),
+                                new[] { new Musician("John Coltrane", Instrument.Piano, Guid.Parse("ff990458-a276-4b71-b2e3-57d49470b949")) }),
                             new Song("A Night in Tunisia", 1942,
                                 new[]
                                 {
-                                    new Musician("Dizzy Gillespie", Instrument.Trumpet),
-                                    new Musician("Count Basie", Instrument.Piano)
+                                    new Musician("Dizzy Gillespie", Instrument.Trumpet, Guid.Parse("84f4b320-0f1e-463e-982c-78772fabd74d")),
+                                    new Musician("Count Basie", Instrument.Piano, Guid.Parse("b28d54d6-a3f7-48bf-a07a-117c15cf33ef"))
                                 }),
                             new Song("Groovin' High", null, null)
                         }
@@ -57,9 +57,9 @@ static Library MakeLibrary()
                             new Song(null, 1965,
                                 new[]
                                 {
-                                    new Musician("Carmell Jones", Instrument.Trumpet),
-                                    new Musician("Joe Henderson", Instrument.Sax),
-                                    new Musician("Teddy Smith", Instrument.Clarinet)
+                                    new Musician("Carmell Jones", Instrument.Trumpet, Guid.Parse("f7c31724-0387-4ac9-b6f0-361bb9415c1b")),
+                                    new Musician("Joe Henderson", Instrument.Sax, Guid.Parse("bb4facf3-c65a-46dd-a96f-73ca6d1cf3f6")),
+                                    new Musician("Teddy Smith", Instrument.Clarinet, Guid.Parse("91ffb47f-2a38-4876-8186-1f267cc21706"))
                                 })
                         }, "Night's Palace", null)
                 });
@@ -80,6 +80,7 @@ static void ValidateLibrary(Library lib)
                 Debug.Assert(performers?.Length == 1);
                 Debug.Assert(performers[0].Name == "John Coltrane");
                 Debug.Assert(performers[0].Plays == Instrument.Piano);
+                Debug.Assert(performers[0].ID == Guid.Parse("ff990458-a276-4b71-b2e3-57d49470b949"));
             }
         }
         {
@@ -91,8 +92,10 @@ static void ValidateLibrary(Library lib)
                 Debug.Assert(performers?.Length == 2);
                 Debug.Assert(performers[0].Name == "Dizzy Gillespie");
                 Debug.Assert(performers[0].Plays == Instrument.Trumpet);
+                Debug.Assert(performers[0].ID == Guid.Parse("84f4b320-0f1e-463e-982c-78772fabd74d"));
                 Debug.Assert(performers[1].Name == "Count Basie");
                 Debug.Assert(performers[1].Plays == Instrument.Piano);
+                Debug.Assert(performers[1].ID == Guid.Parse("b28d54d6-a3f7-48bf-a07a-117c15cf33ef"));
             }
         }
         {
@@ -125,9 +128,12 @@ static void ValidateLibrary(Library lib)
         Debug.Assert(performers?.Length == 3);
         Debug.Assert(performers[0].Name == "Carmell Jones");
         Debug.Assert(performers[0].Plays == Instrument.Trumpet);
+        Debug.Assert(performers[0].ID == Guid.Parse("f7c31724-0387-4ac9-b6f0-361bb9415c1b"));
         Debug.Assert(performers[1].Name == "Joe Henderson");
         Debug.Assert(performers[1].Plays == Instrument.Sax);
+        Debug.Assert(performers[1].ID == Guid.Parse("bb4facf3-c65a-46dd-a96f-73ca6d1cf3f6"));
         Debug.Assert(performers[2].Name == "Teddy Smith");
         Debug.Assert(performers[2].Plays == Instrument.Clarinet);
+        Debug.Assert(performers[2].ID == Guid.Parse("91ffb47f-2a38-4876-8186-1f267cc21706"));
     }
 }

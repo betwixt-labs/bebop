@@ -1,14 +1,15 @@
-enum Instrument {
-    Sax = 0;
-    Trumpet = 1;
-    Clarinet = 2;
+enum Instrument : uint16 {
+    Sax = 10;
+    Trumpet = 20;
+    Clarinet = 40;
     /* Just to make sure they all handle this correctly... */
-    Piano = 8;
+    Piano = 80;
 }
 
 readonly struct Musician {
     string name;
     Instrument plays;
+    guid id;
 }
 
 message Song {
