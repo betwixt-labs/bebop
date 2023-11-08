@@ -45,8 +45,12 @@ jobs:
           yarn test
           yarn build
         working-directory: ./Runtime/TypeScript
-      - name: Install python runtime
-        run: pip install python-bebop
+      - name: Build Python runtime
+        run: |
+          pip install build
+          python -m build
+          pip install dist/*.whl
+        working-directory: ./Runtime/Python
       - name: yarn install
         run: yarn install
         working-directory: ${{env.TEST_ROOT}}
