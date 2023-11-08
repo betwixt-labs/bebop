@@ -105,7 +105,7 @@ class BebopReader:
             return self._emptyString
         string_data = self._buffer[self.index : self.index + length]
         self.index += length
-        return string_data.decode('utf-8')
+        return bytearray(string_data).decode('utf-8')
 
     def read_guid(self) -> UUID:
         b = self._buffer[self.index : self.index + 16]
