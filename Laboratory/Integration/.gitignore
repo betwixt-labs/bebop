@@ -4,4 +4,5 @@ schema.ts
 bebop.hpp
 *.enc
 Rust/src/schema.rs
+Python/src/schema.py
 target

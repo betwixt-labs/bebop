@@ -10,8 +10,8 @@
             "request": "launch",
             "preLaunchTask": "build",
             // If you have changed target frameworks, make sure to update the program path.
-            "program": "${workspaceFolder}/Compiler/bin/Debug/net7.0/bebopc.dll",
-            "args": [],
+            "program": "${workspaceFolder}/bin/compiler/Debug/artifacts/bebopc.dll",
+            "args": ["--config", "bebop.json"],
             "cwd": "${workspaceFolder}/Compiler",
             // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
             "console": "internalConsole",

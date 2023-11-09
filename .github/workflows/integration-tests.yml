@@ -27,6 +27,10 @@ jobs:
         with:
           toolchain: stable
           profile: minimal
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
       - name: Setup Node
         uses: actions/setup-node@v1
         with:
@@ -41,6 +45,12 @@ jobs:
           yarn test
           yarn build
         working-directory: ./Runtime/TypeScript
+      - name: Build Python runtime
+        run: |
+          pip install build
+          python -m build
+          pip install dist/*.whl
+        working-directory: ./Runtime/Python
       - name: yarn install
         run: yarn install
         working-directory: ${{env.TEST_ROOT}}
