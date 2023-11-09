@@ -1,14 +1,14 @@
 name: bebop_dart
 description: The Dart runtime for Bebop, a schema-based serialization format.
-version: 0.2.0
-homepage: https://github.com/RainwayApp/bebop_dart
+version: 1.0.0
+homepage: https://github.com/betwixt-labs/bebop/tree/master/Runtime/Dart
 
 environment:
-  sdk: '>=2.12.0 <3.0.0'
+  sdk: '>=3.1.3 <4.0.0'
 
 #dependencies:
 #  path: ^1.6.0
 
 dev_dependencies:
-  pedantic: ^1.11.0
-  test: ^1.17.0
+  pedantic: ^1.11.1
+  test: ^1.24.9
