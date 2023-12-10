@@ -12,6 +12,7 @@ namespace Compiler.LangServer
     {
         public static async Task RunAsync(CancellationToken cancellationToken)
         {
+
             var server = await OmnisharpLanguageServer.From(options =>
                 options
                     .WithInput(Console.OpenStandardInput())

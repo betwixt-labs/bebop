@@ -1314,9 +1314,13 @@ namespace Core.Generators.CSharp
         }
 
 
+        public override AuxiliaryFile? GetAuxiliaryFile() => null;
+
         public override void WriteAuxiliaryFiles(string outputPath)
         {
         }
+
+        public override string Alias => "cs";
 
         #endregion
 

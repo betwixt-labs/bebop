@@ -3,9 +3,9 @@
   <PropertyGroup>
     <TypeScriptCompileBlocked>true</TypeScriptCompileBlocked>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
-    <LangVersion>11.0</LangVersion>
+    <LangVersion>preview</LangVersion>
     <AssemblyName>bebopc</AssemblyName>
     <Version Condition="'$(ReleaseVersion)' != ''">$(ReleaseVersion)</Version>
     <VersionPrefix Condition="'$(ReleaseVersion)' == ''">0.0.1</VersionPrefix>
@@ -19,7 +19,6 @@
     <Platforms>AnyCPU</Platforms>
     <Configurations>Debug;Release</Configurations>
     <CheckEolTargetFramework>false</CheckEolTargetFramework>
-    <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
 	<ItemGroup>
@@ -44,6 +43,7 @@
     <PublishTrimmed>true</PublishTrimmed>
   </PropertyGroup>
 
+
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" />
   </ItemGroup>
@@ -51,5 +51,10 @@
 	<ItemGroup>
 		<EmbeddedResource Include="..\Runtime\C++\src\bebop.hpp" />
 	</ItemGroup>
+
+   <PropertyGroup Condition="'$(RuntimeIdentifier)' == 'wasi-wasm'">
+        <DefineConstants>$(DefineConstants);WASI_WASM_BUILD</DefineConstants>
+    </PropertyGroup>
+
 
 </Project>

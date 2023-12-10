@@ -335,7 +335,8 @@ namespace Core.Generators.CPlusPlus
             return JsonSerializer.Serialize(value, options);
         }
 
-        private string EmitLiteral(Literal literal) {
+        private string EmitLiteral(Literal literal)
+        {
             return literal switch
             {
                 BoolLiteral bl => bl.Value ? "true" : "false",
@@ -522,9 +523,10 @@ namespace Core.Generators.CPlusPlus
         private static readonly Regex _patchRegex = new Regex($@"(?<=BEBOPC_VER_PATCH\s){_bytePattern}", RegexOptions.Compiled | RegexOptions.Singleline);
         private static readonly Regex _informationalRegex = new Regex($@"(?<=BEBOPC_VER_INFO\s){_bytePattern}", RegexOptions.Compiled | RegexOptions.Singleline);
 
-        public override void WriteAuxiliaryFiles(string outputPath)
+
+        public override AuxiliaryFile? GetAuxiliaryFile()
         {
-            var assembly = Assembly.GetEntryAssembly()!;
+             var assembly = Assembly.GetEntryAssembly()!;
             var runtime = assembly.GetManifestResourceNames()!.FirstOrDefault(n => n.Contains("bebop.hpp"))!;
 
             using var stream = assembly.GetManifestResourceStream(runtime)!;
@@ -542,7 +544,15 @@ namespace Core.Generators.CPlusPlus
 
                 }
             }
-            File.WriteAllText(Path.Join(outputPath, "bebop.hpp"), builder.ToString());
+            return new AuxiliaryFile("bebop.hpp", builder.ToString());
         }
+
+        public override void WriteAuxiliaryFiles(string outputPath)
+        {
+            var auxiliary = GetAuxiliaryFile();
+            File.WriteAllText(Path.Join(outputPath, auxiliary!.Name), auxiliary!.Contents);
+        }
+
+         public override string Alias => "cpp";
     }
 }

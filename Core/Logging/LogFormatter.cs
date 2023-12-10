@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Text.Json.Serialization;
 
 namespace Core.Logging
 {
+    [JsonConverter(typeof(JsonStringEnumConverter<LogFormatter>))]
     /// <summary>
     ///     Formatters that control the way <see cref="Lager"/> writes data.
     /// </summary>

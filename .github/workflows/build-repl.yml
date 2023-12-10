@@ -22,7 +22,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: "7.0.x" # SDK Version to use; x will use the latest version of the 7.0 channel
+          dotnet-version: "8.0.x" # SDK Version to use; x will use the latest version of the 7.0 channel
           include-prerelease: true
       - name: Restore Project
         run: dotnet restore

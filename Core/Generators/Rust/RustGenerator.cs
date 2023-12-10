@@ -129,10 +129,14 @@ namespace Core.Generators.Rust
             return mainBuilder.ToString();
         }
 
+       public override AuxiliaryFile? GetAuxiliaryFile() => null;
+
         public override void WriteAuxiliaryFiles(string outputPath)
         {
             // Nothing to do because the runtime is a cargo package.
         }
+
+         public override string Alias => "rust";
 
         #endregion
 

@@ -221,6 +221,12 @@ namespace Compiler
         [CommandLineFlag("check-schema", "Reads a schema from stdin and validates it.", "--check-schema < [schema text]")]
         public string? CheckSchemaFile { get; private set; }
 
+        [CommandLineFlag("in", "Reads a schema from stdin.", "--in < [schema text]")]
+        public string? StandardInput { get; private set; }
+
+        [CommandLineFlag("out", "Writes a compiled schema to standard out.", "--out > [output file]")]
+        public bool StandardOutput { get; private set; }
+
         /// <summary>
         ///     When set to true the process will output the product version and exit with a zero return code.
         /// </summary>
@@ -267,6 +273,9 @@ namespace Compiler
 
         [CommandLineFlag("no-warn", "Disable a list of warning codes", "--no-warn 200 201 202")]
         public List<string>? NoWarn { get; private set; }
+
+        [CommandLineFlag("quiet", "Suppresses all output including errors", "--quiet")]
+        public bool Quiet { get; private set; }
 
         public string HelpText { get; }
 
@@ -517,6 +526,12 @@ namespace Compiler
                 {
                     using var reader = new StreamReader(Console.OpenStandardInput());
                     flagStore.CheckSchemaFile = reader.ReadToEnd();
+                    continue;
+                }
+                 if (flag.Attribute.Name.Equals("in"))
+                {
+                    using var reader = new StreamReader(Console.OpenStandardInput());
+                    flagStore.StandardInput = reader.ReadToEnd();
                     continue;
                 }
                 if (propertyType == typeof(bool))

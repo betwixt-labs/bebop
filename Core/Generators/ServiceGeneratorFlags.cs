@@ -1,6 +1,8 @@
 using System;
+using System.Text.Json.Serialization;
 namespace Core.Generators
 {
+	 [JsonConverter(typeof(JsonStringEnumConverter<TempoServices>))]
 	/// <summary>
 	/// An enum that defines which parts of a service are generated 
 	/// </summary>
