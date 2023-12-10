@@ -169,10 +169,7 @@ namespace Compiler
     /// </summary>
     public class CommandLineFlags
     {
-        /// <summary>
-        ///     The name of the config file used by bebopc.
-        /// </summary>
-        private const string ConfigFileName = "bebop.json";
+       
 
         [CommandLineFlag("config", "Initializes the compiler from the specified configuration file.",
             "--config bebop.json")]
@@ -339,28 +336,6 @@ namespace Compiler
             HelpText = helpText;
         }
 
-        /// <summary>
-        ///     Searches recursively upward to locate the config file belonging to <see cref="ConfigFileName"/>.
-        /// </summary>
-        /// <returns>The fully qualified path to the config file, or null if not found.</returns>
-        public static string? FindBebopConfig()
-        {
-            var workingDirectory = Directory.GetCurrentDirectory();
-            var configFile = Directory.GetFiles(workingDirectory, ConfigFileName).FirstOrDefault();
-            while (string.IsNullOrWhiteSpace(configFile))
-            {
-                if (Directory.GetParent(workingDirectory) is not { Exists: true } parent)
-                {
-                    break;
-                }
-                workingDirectory = parent.FullName;
-                if (parent.GetFiles(ConfigFileName)?.FirstOrDefault() is { Exists: true } file)
-                {
-                    configFile = file.FullName;
-                }
-            }
-            return configFile;
-        }
 
         #endregion
 
@@ -470,7 +445,7 @@ namespace Compiler
             }
             else
             {
-                configPath = FindBebopConfig();
+                configPath = BebopConfig.Locate();
             }
 
             var rootDirectory = !string.IsNullOrWhiteSpace(configPath) ? Path.GetDirectoryName(configPath) : Directory.GetCurrentDirectory();

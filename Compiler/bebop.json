@@ -1,0 +1,12 @@
+{
+  "include": ["./schemas/*.bop"],
+  "namespace": "Bop",
+  "exclude": ["node_modules", "**/node_modules/*"],
+  "generators": [
+    {
+      "alias": "ts",
+      "outFile": "./src/generated.ts",
+      "services": "server"
+    }
+  ]
+}

@@ -1,35 +1,67 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.CommandLine;
+using System.CommandLine.Parsing;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Pipelines;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Compiler.Commands;
 using Compiler.LangServer;
+using Compiler.Options;
 using Core.Exceptions;
 using Core.Generators;
 using Core.Logging;
 using Core.Meta;
+using Nerdbank.Streams;
 
 namespace Compiler
 {
     internal class Program
     {
-        private static CommandLineFlags? _flags;
-
-        private static void WriteHelpText()
+        private static async Task<int> Main(string[] args)
         {
-            if (_flags is not null)
+            Console.OutputEncoding = System.Text.Encoding.UTF8;
+            
+            var rootCommand = new CliRootCommand("bebopc") {
+                new BebopConfigOption(),
+                new DiagnosticFormatOption(),
+                new IncludeOption(),
+                new ExcludeOption(),
+                new NamespaceOption(),
+                new LanguageServerCommand(),
+                new BuildCommand() {
+                   new GeneratorOption(),
+                   new NoEmitOption(),
+                   new NoWarnOption(),
+                },
+                new WatchCommand() {
+                    new GeneratorOption(),
+                    new WatchExcludeDirectoriesOption(),
+                    new WatchExcludeFilesOption(),
+                    new NoEmitOption(),
+                    new NoWarnOption(),
+                },
+            };
+           
+
+            var results = rootCommand.Parse(args);
+  
+            var formatter = results.GetValue<LogFormatter>("--diagnostic-format");
+            DiagnosticLogger.Initialize(formatter);
+
+            if (!results.Errors.Any())
             {
-                DiagnosticLogger.Instance.WriteLine(string.Empty);
-                DiagnosticLogger.Instance.WriteLine(_flags.HelpText);
+                var parsedConfig = results.GetValue<BebopConfig>("--config");
+                parsedConfig?.Merge(results);
             }
-        }
 
-        private static async Task<int> Main()
-        {
-            System.Console.OutputEncoding = System.Text.Encoding.UTF8;
+            return await results.InvokeAsync();
+
+            /*System.Console.OutputEncoding = System.Text.Encoding.UTF8;
             var formatter = CommandLineFlags.FindLogFormatter(Environment.GetCommandLineArgs());
             DiagnosticLogger.Initialize(CommandLineFlags.FindLogFormatter(Environment.GetCommandLineArgs()));
             try
@@ -179,7 +211,7 @@ namespace Compiler
             {
                 DiagnosticLogger.Instance.WriteDiagonstic(e);
                 return BebopCompiler.Err;
-            }
+            }*/
         }
 
     }

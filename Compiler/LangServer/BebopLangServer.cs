@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -9,7 +10,7 @@ namespace Compiler.LangServer
 {
     internal sealed class BebopLangServer
     {
-        public static async Task RunAsync()
+        public static async Task RunAsync(CancellationToken cancellationToken)
         {
             var server = await OmnisharpLanguageServer.From(options =>
                 options
@@ -25,9 +26,11 @@ namespace Compiler.LangServer
                     })
                     .WithHandler<CompletionHandler>()
                     .WithHandler<SemanticTokenHandler>()
-                    .WithHandler<TextDocumentSyncHandler>());
+                    .WithHandler<TextDocumentSyncHandler>(), cancellationToken);
+
 
             await server.WaitForExit;
+            
         }
     }
 }

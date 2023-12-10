@@ -1,15 +1,28 @@
 using System;
+using System.Collections.Generic;
+using System.CommandLine;
+using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Core.Generators;
+using Microsoft.Extensions.FileSystemGlobbing;
 
 namespace Compiler
 {
+
     /// <summary>
     /// A strongly typed representation of the bebop.json file.
     /// </summary>
     public class BebopConfig
     {
+        /// <summary>
+        ///     The name of the config file used by bebopc.
+        /// </summary>
+        private const string ConfigFileName = "bebop.json";
+
+        const string DefaultIncludeGlob = "**/*.bop";
+
         /// <summary>
         /// Specifies a list of code generators to target during compilation.
         /// </summary>
@@ -51,6 +64,65 @@ namespace Compiler
         [JsonPropertyName("watchOptions")]
         public WatchOptions? WatchOptions { get; set; }
 
+        /// <summary>
+        /// Specifies a list of warnings to suppress.
+        /// </summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonPropertyName("noWarn")]
+        public int[]? NoWarn { get; set; }
+
+        public string WorkingDirectory { get; private set; }
+
+        public List<string> ResolveIncludes()
+        {
+            var include = Include ?? new[] { DefaultIncludeGlob };
+            var exclude = Exclude ?? Array.Empty<string>();
+            return FindFiles(WorkingDirectory, include, exclude);
+        }
+
+        public static BebopConfig FromFile(string? configPath)
+        {
+            if (string.IsNullOrWhiteSpace(configPath)) return new() { WorkingDirectory = Directory.GetCurrentDirectory() };
+            var json = File.ReadAllText(configPath);
+            var config = JsonSerializer.Deserialize<BebopConfig>(json, Settings) ?? throw new JsonException("Failed to deserialize bebop.json");
+            config.WorkingDirectory = Path.GetDirectoryName(configPath) ?? throw new DirectoryNotFoundException("Failed to find directory containing bebop.json");
+            return config;
+        }
+
+        private static List<string> FindFiles(string rootDirectory, string[] includes, string[] excludes)
+        {
+            var matcher = new Matcher();
+            matcher.AddIncludePatterns(includes);
+            matcher.AddExcludePatterns(excludes);
+            IEnumerable<string> matchingFiles = matcher.GetResultsInFullPath(rootDirectory);
+            return matchingFiles.ToList();
+        }
+
+
+        /// <summary>
+        ///     Searches recursively upward to locate the config file belonging to <see cref="ConfigFileName"/>.
+        /// </summary>
+        /// <returns>The fully qualified path to the config file, or null if not found.</returns>
+        public static string? Locate()
+        {
+            var workingDirectory = Directory.GetCurrentDirectory();
+            var configFile = Directory.GetFiles(workingDirectory, ConfigFileName).FirstOrDefault();
+            while (string.IsNullOrWhiteSpace(configFile))
+            {
+                if (Directory.GetParent(workingDirectory) is not { Exists: true } parent)
+                {
+                    break;
+                }
+                workingDirectory = parent.FullName;
+                if (parent.GetFiles(ConfigFileName)?.FirstOrDefault() is { Exists: true } file)
+                {
+                    configFile = file.FullName;
+                }
+            }
+            return configFile;
+        }
+
+
         public static BebopConfig? FromJson(string json) => JsonSerializer.Deserialize<BebopConfig>(json, Settings);
 
         private static readonly JsonSerializerOptions Settings = new(JsonSerializerDefaults.General)
@@ -60,6 +132,71 @@ namespace Compiler
                 ServicesConverter.Singleton
             },
         };
+
+        /// <summary>
+        /// Merges the results of a bebopc command line parse into the bebop.json config instance.
+        /// </summary>
+        /// <remarks>
+        ///  When options are supplied on the command line, the corresponding bebop.json fields will be ignored.
+        ///  </remarks>
+        /// <param name="parseResults">The parsed commandline.</param>
+        public void Merge(ParseResult parseResults)
+        {
+            if (parseResults.GetValue<string[]>("--include") is { Length: > 0 } includes)
+            {
+                Include = includes;
+            }
+            if (parseResults.GetValue<string[]>("--exclude") is { Length: > 0 } excludes)
+            {
+                Exclude = excludes;
+            }
+            if (parseResults.GetValue<string>("--namespace") is { } ns && !string.IsNullOrWhiteSpace(ns))
+            {
+                Namespace = ns;
+            }
+            if (parseResults.GetValue<string[]>("--exclude-directories") is { Length: > 0 } watchExcludeDirectories)
+            {
+                WatchOptions ??= new();
+                WatchOptions.ExcludeDirectories = watchExcludeDirectories;
+            }
+            if (parseResults.GetValue<string[]>("--exclude-files") is { Length: > 0 } watchExcludeFiles)
+            {
+                WatchOptions ??= new();
+                WatchOptions.ExcludeFiles = watchExcludeFiles;
+            }
+            if (parseResults.GetValue<int[]>("--no-warn") is { Length: > 0 } noWarn)
+            {
+                NoWarn = noWarn;
+            }
+            if (parseResults.GetValue<Core.Generators.GeneratorConfig[]>("--generator") is { Length: > 0 } generators)
+            {
+                Generators = generators.Select(g =>
+                {
+                    var generator = new GeneratorConfig
+                    {
+                        OutFile = g.OutputPath,
+                        Alias = g.Alias
+                    };
+                    if (g.GetOptionRawValue("langVersion") is string langVersion)
+                    {
+                        generator.LangVersion = langVersion;
+                    }
+                    if (g.GetOptionBoolValue("noGenerationNotice", false) is bool noGenerationNotice)
+                    {
+                        generator.NoGenerationNotice = noGenerationNotice;
+                    }
+                    if (g.GetOptionBoolValue("emitBinarySchema", true) is bool emitBinarySchema)
+                    {
+                        generator.EmitBinarySchema = emitBinarySchema;
+                    }
+                    if (g.GetOptionEnumValue<TempoServices>("services", TempoServices.Both) is TempoServices services)
+                    {
+                        generator.Services = services;
+                    }
+                    return generator;
+                }).ToArray();
+            }
+        }
     }
 
     public partial class GeneratorConfig
@@ -105,7 +242,7 @@ namespace Compiler
         /// </summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         [JsonPropertyName("services")]
-        public TempoServices? Services { get; set; } 
+        public TempoServices? Services { get; set; }
     }
 
     /// <summary>
