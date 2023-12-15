@@ -61,11 +61,11 @@ namespace Compiler.LangServer
             var buffer = _bufferManager.GetBuffer(request.TextDocument.Uri);
             if (buffer?.Schema != null)
             {
-                items.Add(new CompletionItem
+                /*items.Add(new CompletionItem
                 {
                     Label = buffer.Schema.Value.Namespace,
                     Kind = CompletionItemKind.Reference,
-                });
+                });*/
 
                 // TODO: Only top level definitions here?
                 foreach (var definition in buffer.Schema.Value.Definitions)

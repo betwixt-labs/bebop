@@ -30,11 +30,11 @@ jobs:
       BUILD_ZIP_ARTIFACT_X86_64: ./bin/compiler/Release/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-x64.zip
       BUILD_ZIP_ARTIFACT_ARM64: ./bin/compiler/Release/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-arm64.zip
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
 
       - name: Get Environment Variables
         id: dotenv
-        uses: falti/dotenv-action@v0.2.5
+        uses: falti/dotenv-action@v1.0.4
 
       # ubuntu is the fastest OS to spin up and if one fails they all fail.
       - if: matrix.os == 'ubuntu-22.04'
@@ -52,10 +52,10 @@ jobs:
           sudo apt-get install clang zlib1g-dev libkrb5-dev libtinfo5
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v1
+        uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: "8.0.x" # SDK Version to use; x will use the latest version of the 7.0 channel
-          include-prerelease: true
+          dotnet-version: "8.0.x"
+          dotnet-quality: 'preview'
 
       - name: Build bebopc
         run: |
@@ -109,13 +109,13 @@ jobs:
           Compress-Archive -Path ${{env.BUILD_ARTIFACT_ARM64}} -DestinationPath ${{env.BUILD_ZIP_ARTIFACT_ARM64}}
 
       - name: Upload X86_64 Build
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: ${{matrix.IDENTIFIER}}-x64
           path: ${{env.BUILD_ZIP_ARTIFACT_X86_64}}
 
       - name: Upload ARM64 Build
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: ${{matrix.IDENTIFIER}}-arm64
           path: ${{env.BUILD_ZIP_ARTIFACT_ARM64}}
@@ -131,7 +131,7 @@ jobs:
     runs-on: ubuntu-22.04
     needs: build-compiler
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
       - uses: actions/setup-node@v1
         with:
           node-version: "18.16.0" # LTS
@@ -141,10 +141,10 @@ jobs:
         uses: falti/dotenv-action@v0.2.5
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v1
+        uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: "7.0.x" # SDK Version to use; x will use the latest version of the 7.0 channel
-          include-prerelease: true
+          dotnet-version: "8.0.x"
+          dotnet-quality: 'preview'
 
       - name: Test .NET Runtime
         run: |
@@ -159,7 +159,7 @@ jobs:
         working-directory: ${{env.NET_RUNTIME_ROOT}}
 
       - name: Upload .NET Runtime Package
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: bebop-runtime-cs-${{ steps.dotenv.outputs.version }}
           path: ${{env.NET_RUNTIME_ROOT}}/bin/Release/bebop.${{ steps.dotenv.outputs.version }}.nupkg
@@ -198,7 +198,7 @@ jobs:
           mv tmp Cargo.toml
           cargo package --allow-dirty
       - name: Upload Rust Runtime
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: bebop-runtime-rust-${{steps.dotenv.outputs.version}}
           path: ${{ env.RUST_RUNTIME_ROOT }}/target/package/bebop-${{ steps.dotenv.outputs.version }}.crate
@@ -225,7 +225,7 @@ jobs:
         working-directory: ${{env.TS_RUNTIME_ROOT}}
 
       - name: Upload TypeScript Runtime Package
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: bebop-runtime-ts-${{ steps.dotenv.outputs.version }}
           path: ${{env.TS_RUNTIME_ROOT}}/bebop-v${{ steps.dotenv.outputs.version }}.tgz
@@ -237,7 +237,7 @@ jobs:
         working-directory: ./Repl/
 
       - name: Upload REPL Artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: bebop-repl-${{ steps.dotenv.outputs.version }}
           path: ./bin/repl/Release/publish/wwwroot/
@@ -249,7 +249,7 @@ jobs:
     needs: build-compiler
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -281,7 +281,7 @@ jobs:
         working-directory: ${{env.TOOLS_ROOT}}/vs
 
       - name: Upload Nuget Artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: bebop-tools-nuget-${{ steps.dotenv.outputs.version }}
           path: ${{env.TOOLS_ROOT}}/vs/packages/bebop-tools.${{ steps.dotenv.outputs.version }}.nupkg
@@ -294,7 +294,7 @@ jobs:
           cargo package --allow-dirty
 
       - name: Upload Cargo Tools
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: bebop-tools-cargo-${{ steps.dotenv.outputs.version }}
           path: ${{ env.TOOLS_ROOT }}/cargo/target/package/bebop-tools-${{ steps.dotenv.outputs.version }}.crate
@@ -311,7 +311,7 @@ jobs:
         working-directory: ${{env.TOOLS_ROOT}}/node
 
       - name: Upload NPM Artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: bebop-tools-npm-${{ steps.dotenv.outputs.version }}
           path: ${{env.TOOLS_ROOT}}/node/bebop-tools-v${{ steps.dotenv.outputs.version }}.tgz
@@ -329,7 +329,7 @@ jobs:
         working-directory: ./vscode-bebop
 
       - name: Upload VSCode artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: vscode-bebop
           path: vscode-bebop/bebop-lang-*.vsix
@@ -341,7 +341,7 @@ jobs:
     runs-on: ubuntu-22.04
     needs: [build-compiler, build-runtimes, build-tools]
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
       - uses: actions/setup-node@v1
         with:
           node-version: "18.16.0" # LTS

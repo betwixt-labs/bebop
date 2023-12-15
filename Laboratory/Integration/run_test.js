@@ -4,7 +4,7 @@ const aout = process.platform === "win32" ? "a.exe" : "./a.out";
 const py = process.platform === "win32" ? "py" : "python3";
 
 shell.echo("Compiling schema...");
-if (shell.exec("dotnet run --project ../../Compiler --files schema.bop --cs schema.cs --ts schema.ts --cpp schema.hpp --rust Rust/src/schema.rs --py Python/src/schema.py").code !== 0) {
+if (shell.exec("dotnet run --project ../../Compiler --include schema.bop build --generator 'cs:schema.cs' --generator 'ts:schema.ts' --generator 'cpp:schema.hpp' --generator 'rust:Rust/src/schema.rs' --generator 'py:Python/src/schema.py'").code !== 0) {
   shell.echo("Error: bebopc failed");
   shell.exit(1);
 }

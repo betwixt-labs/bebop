@@ -1,23 +1,23 @@
-using System;
 using System.CommandLine;
-using System.CommandLine.Invocation;
 using System.Threading;
 using System.Threading.Tasks;
 using Compiler.LangServer;
-using Compiler.Options;
 
 namespace Compiler.Commands;
 
 public class LanguageServerCommand : CliCommand
 {
-    public LanguageServerCommand() : base("langserver", "Start the language server")
+    public LanguageServerCommand() : base(CliStrings.LangServerCommand, "Start the language server")
     {
+        Hidden = true;
         SetAction(HandleCommandAsync);
     }
 
     private async Task<int> HandleCommandAsync(ParseResult result, CancellationToken token)
     {
+        #if !WASI_WASM_BUILD
         await BebopLangServer.RunAsync(token);
+        #endif
         return BebopCompiler.Ok;
     }
 }

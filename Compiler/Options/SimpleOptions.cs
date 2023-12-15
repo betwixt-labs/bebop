@@ -8,10 +8,10 @@ namespace Compiler.Options
     public class IncludeOption : CliOption<string[]>
     {
         public IncludeOption() : base(
-            name: "--include",
-            aliases: new[] { "-i" })
+            name: CliStrings.IncludeFlag,
+            aliases: ["-i"])
         {
-            Description = "Includes certain schemas. Supports globbing.";
+            Description = "Specifies an array of filenames or patterns to include in the compiler. These filenames are resolved relative to the directory containing the bebop.json file.";
             AllowMultipleArgumentsPerToken = true;
         }
     }
@@ -22,10 +22,10 @@ namespace Compiler.Options
     public class ExcludeOption : CliOption<string[]>
     {
         public ExcludeOption() : base(
-            name: "--exclude",
-            aliases: new[] { "-e" })
+            name: CliStrings.ExcludeFlag,
+            aliases: ["-e"])
         {
-            Description = "Excludes certain schemas. Supports globbing.";
+            Description = "Specifies an array of filenames or patterns that should be skipped when resolving include.";
             AllowMultipleArgumentsPerToken = true;
         }
     }
@@ -36,10 +36,9 @@ namespace Compiler.Options
     public class WatchExcludeDirectoriesOption : CliOption<string[]>
     {
         public WatchExcludeDirectoriesOption() : base(
-            name: "--exclude-directories",
-            aliases: new[] { "-ed" })
+            name: CliStrings.ExcludeDirectoriesFlag)
         {
-            Description = "Excludes certain directories from being watched. Supports globbing.";
+            Description = "Remove a list of directories from the watch process.";
             AllowMultipleArgumentsPerToken = true;
         }
     }
@@ -48,13 +47,22 @@ namespace Compiler.Options
     /// Represents a command line option for excluding certain files from being watched.
     /// </summary>
     public class WatchExcludeFilesOption : CliOption<string[]>
-    {
+    {   
         public WatchExcludeFilesOption() : base(
-            name: "--exclude-files",
-            aliases: new[] { "-ef" })
+            name: CliStrings.ExcludeFilesFlag)
         {
-            Description = "Excludes certain files from being watched. Supports globbing.";
+            Description = "Remove a list of files from the watch mode's processing.";
             AllowMultipleArgumentsPerToken = true;
+        }
+    }
+
+    public class PreserveWatchOutputOption : CliOption<bool>
+    {
+        public PreserveWatchOutputOption() : base(
+            name: CliStrings.PreserveWatchOutputFlag)
+        {
+            Description = "Disable wiping the console in watch mode.";
+            AllowMultipleArgumentsPerToken = false;
         }
     }
 
@@ -64,10 +72,9 @@ namespace Compiler.Options
     public class NoEmitOption : CliOption<bool>
     {
         public NoEmitOption() : base(
-            name: "--no-emit",
-            aliases: new[] { "-ne" })
+            name: CliStrings.NoEmitFlag)
         {
-            Description = "Disables emitting files.";
+            Description = "Disable emitting files from a compilation.";
             AllowMultipleArgumentsPerToken = false;
         }
     }
@@ -78,24 +85,69 @@ namespace Compiler.Options
     public class NoWarnOption : CliOption<int[]>
     {
         public NoWarnOption() : base(
-            name: "--no-warn",
-            aliases: new[] { "-nw" })
+            name: CliStrings.NoWarnFlag)
         {
-            Description = "Suppresses the specified warning codes.";
+            Description = "Suppresses the specified warning codes from reports during compilation.";
             AllowMultipleArgumentsPerToken = true;
         }
     }
 
-    /// <summary>
-    /// Represents a command line option for specifying the namespace.
-    /// </summary>
-    public class NamespaceOption : CliOption<string>
+    public class InitOption : CliOption<bool>
     {
-        public NamespaceOption() : base(
-            name: "--namespace",
-            aliases: new[] { "-ns" })
+        public InitOption() : base(
+            name: CliStrings.InitFlag)
         {
-            Description = "The namespace to use for the generated code.";
+            Description = "Initializes a Bebop project and creates a bebop.json file.";
+            AllowMultipleArgumentsPerToken = false;
+        }
+    }
+    
+    public class ListSchemaOption : CliOption<bool>
+    {
+        public ListSchemaOption() : base(
+            name: CliStrings.ListSchemasFlag)
+        {
+            Description = "Print names of schemas that are part of the compilation and then stop processing.";
+            AllowMultipleArgumentsPerToken = false;
+        }
+    }
+
+    public class ShowConfigOption : CliOption<bool>
+    {
+        public ShowConfigOption() : base(
+            name: CliStrings.ShowConfigFlag)
+        {
+            Description = "Print the final configuration instead of building.";
+            AllowMultipleArgumentsPerToken = false;
+        }
+    }
+
+    public class LocaleOption : CliOption<string>
+    {
+        public LocaleOption() : base(
+            name: CliStrings.LocaleFlag)
+        {
+            Description = "Set the language of the messaging from bebopc. This does not affect emit.";
+            AllowMultipleArgumentsPerToken = false;
+        }
+    }
+
+    public class TraceOption : CliOption<bool>
+    {
+        public TraceOption() : base(
+            name: CliStrings.TraceFlag)
+        {
+            Description = "Enable tracing of the compiler.";
+            AllowMultipleArgumentsPerToken = false;
+        }
+    }
+
+    public class StandardInputOption : CliOption<bool>
+    {
+        public StandardInputOption() : base(
+            name: CliStrings.StandardInputFlag)
+        {
+            Description = "Read a schema from standard input.";
             AllowMultipleArgumentsPerToken = false;
         }
     }

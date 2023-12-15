@@ -12,12 +12,15 @@ namespace Core.Logging;
 public partial class DiagnosticLogger
 {
     private static DiagnosticLogger? _instance;
-    private readonly LogFormatter _formatter;
+    private LogFormatter _formatter;
+    private bool _traceEnabled;
     private bool _diagnosticsSupressed;
     private readonly IAnsiConsole _out;
     private readonly IAnsiConsole _err;
     public IAnsiConsole Out => _out;
     public IAnsiConsole Error => _err;
+
+    public bool TraceEnabled => _traceEnabled;
 
     #region Static Methods
     private DiagnosticLogger(LogFormatter formatter)
@@ -44,6 +47,16 @@ public partial class DiagnosticLogger
                 Out = new AnsiConsoleOutput(Console.Error),
             });
         }
+    }
+
+    public void SetFormatter(LogFormatter formatter)
+    {
+        _formatter = formatter;
+    }
+
+    public void EnableTrace()
+    {
+        _traceEnabled = true;
     }
 
     public static void Initialize(LogFormatter formatter)
@@ -99,6 +112,14 @@ public partial class DiagnosticLogger
         if (_formatter is LogFormatter.Enhanced)
         {
             RenderEnhancedSpanErrors(exceptions);
+            WriteLine(string.Empty);
+            return;
+        }
+        if (_formatter is LogFormatter.JSON)
+        {
+            var warnings = exceptions.Where(e => e.Severity == Severity.Warning).ToList();
+            var errors = exceptions.Where(e => e.Severity == Severity.Error).ToList();
+            WriteCompilerOutput(new CompilerOutput(warnings, errors, null));
             return;
         }
         var messages = exceptions.Select(FormatSpanError);
@@ -149,11 +170,23 @@ public partial class DiagnosticLogger
         _err.WriteLine(FormatDiagnostic(new(Severity.Error, ex.Message, Unknown, null)));
     }
 
+
     public void WriteCompilerOutput(CompilerOutput output)
     {
         // TODO figure out why the virtual console breaks outputs
-        
-        Console.Out.WriteLine(FormatCompilerOutput(output));
+        if (_formatter is LogFormatter.JSON)
+        {
+            Console.Out.WriteLine(FormatCompilerOutput(output));
+            return;
+        }
+        var errorsAndWarnings = output.Errors.Concat(output.Warnings).ToList();
+        if (errorsAndWarnings.Count > 0)
+        {
+            WriteSpanDiagonstics(errorsAndWarnings);
+        }
+        if (output.Result is not null) {
+            Console.Out.WriteLine(output.Result.Contents);
+        }
     }
 
     public void WriteLine(string message)

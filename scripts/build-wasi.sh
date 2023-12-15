@@ -2,6 +2,7 @@
 
 set -e
 
+dotnet --version
 export WASI_VERSION=20
 export WASI_VERSION_FULL=${WASI_VERSION}.0
 compiler_dir="$(readlink -f ../compiler)"
@@ -21,3 +22,7 @@ dotnet publish "$compiler_dir" -c Release \
     /p:StackTraceSupport=false \
     /p:UseSystemResourceKeys=true \
     /p:NativeDebugSymbols=false \
+    /p:WasmNativeStrip=true \
+    /p:WasmEnableSIMD=false \
+    /p:WasmExceptionHandling=false \
+    /p:WasmRunWasmOpt=true \

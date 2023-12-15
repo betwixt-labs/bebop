@@ -1,13 +1,14 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Threading;
+using Core.Meta;
+using Core.Exceptions;
+using Core.Parser;
 using Core.Generators;
 using Core.Logging;
-using Core.Meta;
-using Core.Parser;
-using Core.Exceptions;
+using System.IO;
 
 namespace Compiler;
 
@@ -16,96 +17,46 @@ public class BebopCompiler
     public const int Ok = 0;
     public const int Err = 1;
 
-    public CommandLineFlags Flags { get; }
-
-    public BebopCompiler(CommandLineFlags flags)
+    public static BebopSchema ParseSchema(IEnumerable<string> schemaPaths)
     {
-        Flags = flags;
-    }
-
-    private async Task<BebopSchema> ParseAndValidateSchema(List<string> schemaPaths, string nameSpace)
-    {
-        var parser = new SchemaParser(schemaPaths, nameSpace);
-        var schema = await parser.Parse();
+        var parser = new SchemaParser(schemaPaths);
+        var schema = parser.Parse();
         schema.Validate();
         return schema;
     }
 
-    public async Task<int> CompileSchema(Func<BebopSchema, BaseGenerator> makeGenerator,
-        string textualSchema, string outputFile, string nameSpace, TempoServices services, Version? langVersion)
+    public static void Build(GeneratorConfig generatorConfig, BebopSchema schema, BebopConfig config)
     {
-        var parser = new SchemaParser(textualSchema, nameSpace);
-        var schema = await parser.Parse();
-        schema.Validate();
-
-        var diagonstics = GetSchemaDiagnostics(schema);
-        if (diagonstics.Errors.Count > 0)
-        {
-            var errors = new CompilerOutput(diagonstics.Warnings, diagonstics.Errors, null);
-            DiagnosticLogger.Instance.WriteCompilerOutput(errors);
-            return Err;
-        }
-         var generator = makeGenerator(schema);
-        var compiled = generator.Compile(langVersion, services: services, writeGeneratedNotice: Flags?.SkipGeneratedNotice ?? false, emitBinarySchema: Flags?.EmitBinarySchema ?? false);
+        var (warnings, errors) = GetSchemaDiagnostics(schema, config.SupressedWarningCodes);
+        var generator = GeneratorUtils.ImplementedGenerators[generatorConfig.Alias](schema, generatorConfig);
+        var compiled = generator.Compile();
         var auxiliary = generator.GetAuxiliaryFile();
-        var generatedFile = new GeneratedFile(outputFile, compiled,  generator.Alias, auxiliary);
-        var results = new CompilerOutput(diagonstics.Warnings, diagonstics.Errors, generatedFile);
-
-        DiagnosticLogger.Instance.WriteCompilerOutput(results);
-        return Ok;
+        if (string.Equals(generatorConfig.OutFile, "stdout", StringComparison.OrdinalIgnoreCase))
+        {
+            DiagnosticLogger.Instance.WriteCompilerOutput(new CompilerOutput(warnings, errors, new GeneratedFile("stdout", compiled, generator.Alias, auxiliary)));
+            return;
+        }
+        var outFile = generatorConfig.OutFile;
+        if (!Path.IsPathRooted(outFile))
+        {
+            outFile = Path.Combine(config.WorkingDirectory, outFile);
+        }
+        var outDirectory = Path.GetDirectoryName(outFile) ?? throw new CompilerException("Could not determine output directory.");
+        if (!Directory.Exists(outDirectory))
+        {
+            Directory.CreateDirectory(outDirectory);
+        }
+        File.WriteAllText(outFile, compiled);
+        if (auxiliary is not null)
+        {
+            File.WriteAllText(Path.Combine(outDirectory, auxiliary.Name), auxiliary.Contents);
+        }
     }
 
-    public async Task<int> CompileSchema(Func<BebopSchema, BaseGenerator> makeGenerator,
-        List<string> schemaPaths,
-        FileInfo outputFile,
-        string nameSpace, TempoServices services, Version? langVersion)
+    public static (List<SpanException> Warnings, List<SpanException> Errors) GetSchemaDiagnostics(BebopSchema schema, int[] supressWarningCodes)
     {
-        if (outputFile.Directory is not null && !outputFile.Directory.Exists)
-        {
-            outputFile.Directory.Create();
-        }
-        if (outputFile.Exists)
-        {
-            File.Delete(outputFile.FullName);
-        }
-
-        var schema = await ParseAndValidateSchema(schemaPaths, nameSpace);
-        var result = await ReportSchemaDiagnostics(schema);
-        if (result == Err) return Err;
-        var generator = makeGenerator(schema);
-        generator.WriteAuxiliaryFiles(outputFile.DirectoryName ?? string.Empty);
-        var compiled = generator.Compile(langVersion, services: services, writeGeneratedNotice: Flags?.SkipGeneratedNotice ?? false, emitBinarySchema: Flags?.EmitBinarySchema ?? false);
-        await File.WriteAllTextAsync(outputFile.FullName, compiled);
-        return Ok;
-    }
-
-    private (List<SpanException> Warnings, List<SpanException> Errors) GetSchemaDiagnostics(BebopSchema schema)
-    {
-        var noWarn = Flags?.NoWarn ?? new List<string>();
-        var loudWarnings = schema.Warnings.Where(x => !noWarn.Contains(x.ErrorCode.ToString())).ToList();
+        var noWarn = supressWarningCodes;
+        var loudWarnings = schema.Warnings.Where(x => !noWarn.Contains(x.ErrorCode)).ToList();
         return (loudWarnings, schema.Errors);
-    }
-
-    private async Task<int> ReportSchemaDiagnostics(BebopSchema schema)
-    {
-        var noWarn = Flags?.NoWarn ?? new List<string>();
-        var loudWarnings = schema.Warnings.Where(x => !noWarn.Contains(x.ErrorCode.ToString()));
-        var errors = loudWarnings.Concat(schema.Errors).ToList();
-        DiagnosticLogger.Instance.WriteSpanDiagonstics(errors);
-        return schema.Errors.Count > 0 ? Err : Ok;
-    }
-
-    public async Task<int> CheckSchema(string textualSchema)
-    {
-        var parser = new SchemaParser(textualSchema, "CheckNameSpace");
-        var schema = await parser.Parse();
-        schema.Validate();
-        return await ReportSchemaDiagnostics(schema);
-    }
-
-    public async Task<int> CheckSchemas(List<string> schemaPaths)
-    {
-        var schema = await ParseAndValidateSchema(schemaPaths, "CheckNameSpace");
-        return await ReportSchemaDiagnostics(schema);
     }
 }

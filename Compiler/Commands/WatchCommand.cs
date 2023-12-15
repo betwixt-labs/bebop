@@ -1,29 +1,22 @@
-using System;
 using System.CommandLine;
-using System.CommandLine.Invocation;
 using System.Threading;
 using System.Threading.Tasks;
+using Core.Meta;
 
 namespace Compiler.Commands;
 
 public class WatchCommand : CliCommand
 {
-    public WatchCommand() : base("watch", "Watches the source code from schema files and rebuilds on changes.")
+    public WatchCommand() : base(CliStrings.WatchCommand, "Watch input files.")
     {
         SetAction(HandleCommandAsync);
     }
 
      private async Task<int> HandleCommandAsync(ParseResult result, CancellationToken token)
     {
-        Console.WriteLine("WatchCommand");
-        var config = result.GetValue<BebopConfig>("--config");
-        Console.WriteLine(config.Namespace);
-        var generators = result.GetValue<Core.Generators.GeneratorConfig[]>("--generator");
-        foreach (var generator in generators)
-        {
-            Console.WriteLine(generator);
-            Console.WriteLine(generator.GetOptionRawValue("setting1"));
-        }
-        return 1;
+        var config = result.GetValue<BebopConfig>(CliStrings.ConfigFlag)!;
+        config.Validate();
+        var watcher = new SchemaWatcher(config.WorkingDirectory, config);
+        return await watcher.StartAsync(token);
     }
 }

@@ -1,20 +1,52 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json.Serialization;
 
 namespace Core.Generators
 {
     /// <summary>
     /// Represents a configuration for a generator.
     /// </summary>
-    public record GeneratorConfig(string Alias, string OutputPath, Dictionary<string, string> Options)
+    public sealed record GeneratorConfig
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="GeneratorConfig"/> class.
-        /// </summary>
-        public GeneratorConfig(string alias, string outputPath)
-            : this(alias, outputPath, new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase))
+        public GeneratorConfig(string alias, string outFile): this(alias, outFile, TempoServices.Both, true, string.Empty, true, null)
         {
+
         }
+
+        //// <summary>
+        /// Initializes a new instance of the <see cref="GeneratorConfig"/> class with all parameters.
+        /// </summary>
+        public GeneratorConfig(string alias,
+                               string outFile,
+                               TempoServices services,
+                               bool emitNotice,
+                               string @namespace,
+                               bool emitBinarySchema,
+                               Dictionary<string, string>? options)
+        {
+            ArgumentNullException.ThrowIfNullOrWhiteSpace(alias, nameof(alias));
+            ArgumentNullException.ThrowIfNullOrWhiteSpace(outFile, nameof(outFile));
+            Alias = alias;
+            OutFile = outFile;
+            Services = services;
+            EmitNotice = emitNotice;
+            EmitBinarySchema = emitBinarySchema;
+            Namespace = string.IsNullOrWhiteSpace(@namespace) ? string.Empty : @namespace;
+            Options = options ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        [JsonIgnore]
+        public string Alias { get; init; }
+        public string OutFile { get; init; }
+        public TempoServices Services { get; init; }
+        public bool EmitNotice { get; init; }
+        public bool EmitBinarySchema { get; init; }
+        public string Namespace { get; init; }
+        private Dictionary<string, string> Options { get; init; }
+
+        public int OptionCount => Options.Count;
 
         /// <summary>
         /// Gets a boolean option value.
@@ -80,6 +112,16 @@ namespace Core.Generators
             {
                 Options.Add(key, value);
             }
+        }
+
+        public KeyValuePair<string, string>[] GetOptions()
+        {
+            var options = new KeyValuePair<string, string>[Options.Count];
+            for (var i = 0; i < options.Length; i++)
+            {
+                options[i] = Options.ElementAt(i);
+            }
+            return options;
         }
     }
 }

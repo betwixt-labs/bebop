@@ -3,6 +3,9 @@ using System.CommandLine;
 using System.CommandLine.Parsing;
 using System.IO;
 using System.Linq;
+using Core.Logging;
+using Core.Meta;
+using Errata;
 
 namespace Compiler.Options
 {
@@ -14,9 +17,9 @@ namespace Compiler.Options
         /// <summary>
         /// Initializes a new instance of the <see cref="BebopConfigOption"/> class.
         /// </summary>
-        public BebopConfigOption() : base(name: "--config", aliases: new[] { "-c" })
+        public BebopConfigOption() : base(name: CliStrings.ConfigFlag, aliases: ["-c"])
         {
-            Description = "Path to a bebop.json file. If not specified, the compiler will search for a bebop.json file in the current directory and its parent directories.";
+            Description = "Compile the project given the path to its configuration file.";
             AllowMultipleArgumentsPerToken = false;
             AcceptLegalFilePathsOnly();
 
@@ -28,7 +31,12 @@ namespace Compiler.Options
                 result.AddError($"Specified config '{token}' does not exist.");
             });
 
-            DefaultValueFactory = (_) => BebopConfig.FromFile(BebopConfig.Locate());
+            DefaultValueFactory = (_) =>
+            {
+                var path = BebopConfig.Locate();
+                if (string.IsNullOrEmpty(path)) return BebopConfig.Default;
+                return BebopConfig.FromFile(path);
+            };
 
             CustomParser = new((ArgumentResult result) =>
             {

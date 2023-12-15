@@ -164,7 +164,7 @@ function Test-BebopcInstalled {
 
 function Test-BebopcVersion {
     $compilerPath = "$env:PROGRAMDATA\bebop\bebopc.exe"
-    $installedVersion = ([string](& "$compilerPath" --version)).Split(' ')[1].Trim()
+    $installedVersion = ([string](& "$compilerPath" --version)).Trim()
     $remoteVersion = $bebopcVersion
     if ([System.Version]$installedVersion -gt [System.Version]$remoteVersion) {
         # Installed version is greater than the version to install

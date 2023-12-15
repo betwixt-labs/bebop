@@ -41,9 +41,9 @@ function startLanguageServer(context: vscode.ExtensionContext): lsp.LanguageClie
     }
 
     let serverOptions: lsp.ServerOptions = {
-        run: { command: executable, args: ['--langserv'] },
+        run: { command: executable, args: ['langserv'] },
         // debug: { command: serverExe, args: ['--langserv', '--debug'] }
-        debug: { command: executable, args: ['--langserv'] }
+        debug: { command: executable, args: ['--trace', 'langserv'] }
     };
 
     let clientOptions: lsp.LanguageClientOptions = {

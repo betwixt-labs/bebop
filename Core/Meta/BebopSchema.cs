@@ -30,9 +30,8 @@ namespace Core.Meta
 
         public List<string> Imports { get; }
 
-        public BebopSchema(string nameSpace, Dictionary<string, Definition> definitions, HashSet<(Token, Token)> typeReferences, List<SpanException>? parsingErrors = null, List<SpanException>? parsingWarnings = null, List<string>? imports = null)
+        public BebopSchema(Dictionary<string, Definition> definitions, HashSet<(Token, Token)> typeReferences, List<SpanException>? parsingErrors = null, List<SpanException>? parsingWarnings = null, List<string>? imports = null)
         {
-            Namespace = nameSpace;
             Definitions = definitions;
             Imports = imports ?? new List<string>();
 
@@ -43,10 +42,7 @@ namespace Core.Meta
             _parsingWarnings = parsingWarnings ?? new();
             _typeReferences = typeReferences;
         }
-        /// <summary>
-        /// An optional namespace that is provided to the compiler.
-        /// </summary>
-        public string Namespace { get; }
+        
         /// <summary>
         /// All Bebop definitions in this schema, keyed by their name.
         /// </summary>

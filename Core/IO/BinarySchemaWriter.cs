@@ -71,8 +71,6 @@ namespace Core.IO
                 }
                 memberType = at.MemberType;
             }
-            Console.WriteLine($"Array depth: {depth}");
-            Console.WriteLine($"Array member type: {memberType}");
             _writer.Write(depth);
             _writer.Write(TypeToId(memberType));
         }
@@ -333,7 +331,6 @@ namespace Core.IO
                 throw new CompilerException($"{definition.Name} exceeds maximum fields: has {fieldCount} fields");
             }
             _writer.Write((byte)fieldCount);
-            Console.WriteLine($"Writing {fieldCount} fields for {definition.Name}");
             foreach (var field in definition.Fields)
             {
                 WriteField(definition, field);

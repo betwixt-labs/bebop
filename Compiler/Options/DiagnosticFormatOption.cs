@@ -14,27 +14,58 @@ namespace Compiler.Options
         /// <summary>
         /// Initializes a new instance of the <see cref="DiagnosticFormatOption"/> class.
         /// </summary>
-        public DiagnosticFormatOption() : base(name: "--diagnostic-format", aliases: new[] { "-df" })
+        public DiagnosticFormatOption() : base(name: CliStrings.DiagnosticFormatFlag, aliases: ["-df"])
         {
-            Description = "The format to use for diagnostic messages.";
+            Description = "Specifies the format which diagnostic messages are printed in.";
             AllowMultipleArgumentsPerToken = false;
-
             Validators.Add(result =>
             {
                 var token = result.Tokens.SingleOrDefault()?.Value?.Trim();
                 if (string.IsNullOrWhiteSpace(token)) return;
-                if (Enum.TryParse<LogFormatter>(token, true, out _)) return;
-                result.AddError($"Invalid diagnostic format '{token}'.");
+                if (!IsLogFormatter(token))
+                {
+                    result.AddError($"Invalid diagnostic format '{token}'.");
+                    return;
+                }
             });
 
             CustomParser = new((ArgumentResult result) =>
             {
                 var token = result.Tokens.SingleOrDefault()?.Value?.Trim();
-                if (string.IsNullOrWhiteSpace(token)) return LogFormatter.Enhanced;
-                return Enum.Parse<LogFormatter>(token, true);
+                return Parse(token);
             });
 
-            DefaultValueFactory = (_) => LogFormatter.Enhanced;
+
+            DefaultValueFactory = (a) =>
+            {
+                return LogFormatter.Enhanced;
+            };
+        }
+
+        private static bool IsLogFormatter(string? token)
+        {
+            if (string.IsNullOrWhiteSpace(token)) return false;
+            return token.ToLowerInvariant() switch
+            {
+                "enhanced" => true,
+                "json" => true,
+                "structured" => true,
+                "msbuild" => true,
+                _ => false,
+            };
+        }
+
+        private static LogFormatter Parse(string? token)
+        {
+            if (string.IsNullOrWhiteSpace(token)) return LogFormatter.Enhanced;
+            return token.ToLowerInvariant() switch
+            {
+                "enhanced" => LogFormatter.Enhanced,
+                "json" => LogFormatter.JSON,
+                "structured" => LogFormatter.Structured,
+                "msbuild" => LogFormatter.MSBuild,
+                _ => throw new ArgumentException($"Invalid diagnostic format '{token}'."),
+            };
         }
     }
 }
