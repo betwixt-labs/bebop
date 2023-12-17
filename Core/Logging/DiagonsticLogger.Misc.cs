@@ -7,5 +7,5 @@ public partial class DiagnosticLogger
 {
     internal const int FileNotFound = 404;
     internal const int Unknown = 1000;
-    internal record Diagnostic(Severity Severity, string Message, int ErrorCode, Span? Span) { }
+    public record Diagnostic(Severity Severity, string Message, int ErrorCode, Span? Span) { }
 }

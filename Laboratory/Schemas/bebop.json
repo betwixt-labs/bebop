@@ -1,18 +1,15 @@
 {
     "inputDirectory": "./Valid",
     "exclude": ["./ShouldFail"],
-    "generators": [
-      {
-        "alias": "cs",
+    "generators": {
+      "cs": {
         "outFile": "csoutput/models.cs"
       },
-      {
-        "alias": "ts",
+      "ts": {
         "outFile": "tsoutput/models.ts"
       },
-      {
-        "alias": "py",
+      "py": {
         "outFile": "pyoutput/models.py"
       }
-    ]
+    }
   }

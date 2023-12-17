@@ -74,7 +74,18 @@ public partial class DiagnosticLogger
             _err.Write(filePath);
             _err.WriteLine();
         }
-        if (!string.IsNullOrWhiteSpace(ex.StackTrace))
+        if (ex is { StackTrace: null } and { InnerException: not null})
+        {
+            _err.WriteLine();
+            _err.MarkupLine("[red bold]Inner Exception:[/]");
+            if (_traceEnabled) {
+                _err.WriteException(ex.InnerException);
+            } else {
+                _err.MarkupLine($"[white]{ex.InnerException.Message}[/]");
+            
+            }
+        }
+        if (_traceEnabled && !string.IsNullOrWhiteSpace(ex.StackTrace))
         {
             // Write exception message
             _err.WriteException(ex);

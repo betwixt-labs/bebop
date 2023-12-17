@@ -15,14 +15,14 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Setup .NET
-        uses: actions/setup-dotnet@v1
+        uses: actions/setup-dotnet@v3
         with:
           dotnet-version: |
             5.0.x
             6.0.x
             7.0.x
             8.0.x
-          include-prerelease: true
+          dotnet-quality: 'preview'
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:

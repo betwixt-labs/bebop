@@ -6,6 +6,7 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using Core.Exceptions;
 using Core.IO;
@@ -34,18 +35,13 @@ namespace Core.Parser
         private readonly Tokenizer _tokenizer;
         private readonly Dictionary<string, Definition> _definitions = new();
         private readonly List<string> _imports = new();
-
-        /// <summary>
-        /// Whether the RPC boilerplate has already been generated.
-        /// </summary>
-        private bool _rpcBoilerplateGenerated = false;
+        
         /// <summary>
         /// A set of references to named types found in message/struct definitions:
         /// the left token is the type name, and the right token is the definition it's used in (used to report a helpful error).
         /// </summary>
         private readonly HashSet<(Token, Token)> _typeReferences = new();
         private int _index;
-        private readonly string _nameSpace;
         private readonly List<SpanException> _errors = new();
         private readonly List<SpanException> _warnings = new();
         private List<Token> _tokens => _tokenizer.Tokens;
@@ -98,22 +94,18 @@ namespace Core.Parser
         /// Creates a new schema parser instance from some schema files on disk.
         /// </summary>
         /// <param name="schemaPaths">The Bebop schema files that will be parsed</param>
-        /// <param name="nameSpace"></param>
-        public SchemaParser(List<string> schemaPaths, string nameSpace)
+        public SchemaParser(IEnumerable<string> schemaPaths)
         {
             _tokenizer = new Tokenizer(SchemaReader.FromSchemaPaths(schemaPaths));
-            _nameSpace = nameSpace;
         }
 
         /// <summary>
         /// Creates a new schema parser instance and loads the schema into memory.
         /// </summary>
         /// <param name="textualSchema">A string representation of a schema.</param>
-        /// <param name="nameSpace"></param>
-        public SchemaParser(string textualSchema, string nameSpace)
+        public SchemaParser(string textualSchema)
         {
             _tokenizer = new Tokenizer(SchemaReader.FromTextualSchema(textualSchema));
-            _nameSpace = nameSpace;
         }
 
         /// <summary>
@@ -273,7 +265,7 @@ namespace Core.Parser
         ///     Parse the current input files into an <see cref="BebopSchema"/> object.
         /// </summary>
         /// <returns></returns>
-        public async Task<BebopSchema> Parse()
+        public BebopSchema Parse()
         {
             _index = 0;
             _errors.Clear();
@@ -296,7 +288,7 @@ namespace Core.Parser
 
                     try
                     {
-                        await _tokenizer.AddFile(fullPath);
+                        _tokenizer.AddFile(fullPath);
 
                         // Add the resolved path to known imports
                         _imports.Add(fullPath);
@@ -325,7 +317,6 @@ namespace Core.Parser
                 }
             }
             return new BebopSchema(
-                nameSpace: _nameSpace,
                 definitions: _definitions,
                 typeReferences: _typeReferences,
                 parsingErrors: _errors,

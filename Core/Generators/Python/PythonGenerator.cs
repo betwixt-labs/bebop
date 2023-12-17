@@ -14,7 +14,7 @@ namespace Core.Generators.Python
     {
         const int indentStep = 4;
 
-        public PythonGenerator(BebopSchema schema) : base(schema) { }
+        public PythonGenerator(BebopSchema schema, GeneratorConfig config) : base(schema, config) { }
 
         private string FormatDocumentation(string documentation, BaseAttribute? deprecated)
         {
@@ -334,7 +334,7 @@ namespace Core.Generators.Python
         /// Generate code for a Bebop schema.
         /// </summary>
         /// <returns>The generated code.</returns>
-        public override string Compile(Version? languageVersion, TempoServices services = TempoServices.Both, bool writeGeneratedNotice = true, bool emitBinarySchema = false)
+        public override string Compile()
         {
             var builder = new IndentedStringBuilder();
             builder.AppendLine("from enum import Enum");

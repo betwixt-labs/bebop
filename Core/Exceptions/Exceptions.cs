@@ -23,7 +23,23 @@ namespace Core.Exceptions
         public CompilerException(string message) : base(message)
         {
         }
+        public CompilerException(string message, Exception innerException) : base(message, innerException)
+        {
+        }
     }
+
+    [Serializable]
+    public class MalformedBebopConfigException : Exception
+    {
+        /// <summary>
+        /// A unique error code identifying the type of exception
+        /// </summary>
+        public int ErrorCode => 601;
+        public MalformedBebopConfigException(string message) : base($"Error parsing bebop.json: {message}")
+        {
+        }
+    }
+
     [Serializable]
     public class SpanException : Exception
     {

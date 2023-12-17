@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -9,27 +10,28 @@ namespace Compiler.LangServer
 {
     internal sealed class BebopLangServer
     {
-        public static async Task RunAsync()
+        public static async Task RunAsync(CancellationToken cancellationToken)
         {
 
             var server = await OmnisharpLanguageServer.From(options =>
-                         options
-                             .WithInput(Console.OpenStandardInput())
-                             .WithOutput(Console.OpenStandardOutput())
-                             .WithLoggerFactory(new LoggerFactory())
-                             .AddDefaultLoggingProvider()
-                             .WithServices(services =>
-                             {
-                                 services.AddSingleton<BufferManager>();
-                                 services.AddSingleton<BebopLangServerLogger>();
-                                 services.AddSingleton<BebopDiagnosticPublisher>();
-                             })
-                             .WithHandler<CompletionHandler>()
-                             .WithHandler<SemanticTokenHandler>()
-                             .WithHandler<TextDocumentSyncHandler>());
+                options
+                    .WithInput(Console.OpenStandardInput())
+                    .WithOutput(Console.OpenStandardOutput())
+                    .WithLoggerFactory(new LoggerFactory())
+                    .AddDefaultLoggingProvider()
+                    .WithServices(services =>
+                    {
+                        services.AddSingleton<BufferManager>();
+                        services.AddSingleton<BebopLangServerLogger>();
+                        services.AddSingleton<BebopDiagnosticPublisher>();
+                    })
+                    .WithHandler<CompletionHandler>()
+                    .WithHandler<SemanticTokenHandler>()
+                    .WithHandler<TextDocumentSyncHandler>(), cancellationToken);
+
 
             await server.WaitForExit;
-
+            
         }
     }
 }

@@ -12,7 +12,7 @@ file(GLOB bop_files CONFIGURE_DEPENDS ../../Laboratory/Schemas/Valid/*.bop)
 bebop_generate(generate_bop_hpp
     VERSION "v${BEBOPC_VERSION}"
     LANGUAGE cpp
-    NAMESPACE rw::bop
     OUTPUT ${bop_hpp}
     BOPS ${bop_files}
+    OPTIONS "namespace=rw::bop"
 )

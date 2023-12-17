@@ -116,14 +116,14 @@ namespace Core.Generators
         /// <remarks>
         /// Generators are keyed via their commandline alias.
         /// </remarks>
-        public static Dictionary<string, Func<BebopSchema, BaseGenerator>> ImplementedGenerators  = new()
+        public static Dictionary<string, Func<BebopSchema, GeneratorConfig, BaseGenerator>> ImplementedGenerators  = new()
         {
-            { "cpp", s => new CPlusPlusGenerator(s) },
-            { "cs", s => new CSharpGenerator(s) },
-            { "dart", s => new DartGenerator(s) },
-            { "rust", s => new RustGenerator(s) },
-            { "ts", s => new TypeScriptGenerator(s) },
-            { "py", s => new PythonGenerator(s) }
+            { "cpp", (s, c) => new CPlusPlusGenerator(s, c) },
+            { "cs", (s, c) => new CSharpGenerator(s, c) },
+            { "dart", (s, c) => new DartGenerator(s, c) },
+            { "rust", (s, c) => new RustGenerator(s, c) },
+            { "ts", (s, c) => new TypeScriptGenerator(s, c) },
+            { "py", (s, c) => new PythonGenerator(s, c) }
         };
 
         public static Dictionary<string, string> ImplementedGeneratorNames  = new()

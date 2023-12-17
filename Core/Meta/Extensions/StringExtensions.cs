@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -7,7 +8,7 @@ using Core.Lexer.Extensions;
 
 namespace Core.Meta.Extensions
 {
-    public static class StringExtensions
+    public static partial class StringExtensions
     {
         private const char SnakeSeparator = '_';
         private const char KebabSeparator = '-';
@@ -292,5 +293,130 @@ namespace Core.Meta.Extensions
             return builder.ToString();
         }
 
+
+        public static bool IsLegalPath(this string path, out int index)
+        {
+            index = -1;
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return false;
+            }
+            // Check for invalid path characters
+            var invalidPathChars = Path.GetInvalidPathChars();
+            var invalidPathCharIndex = path.IndexOfAny(invalidPathChars);
+            if (invalidPathCharIndex >= 0)
+            {
+                index = invalidPathCharIndex;
+                return false;
+            }
+            return true;
+        }
+
+        public static bool IsLegalFilePath(this string filePath, out int index)
+        {
+            index = -1;
+            if (string.IsNullOrWhiteSpace(filePath))
+            {
+                return false;
+            }
+
+            // Check for invalid path characters in the entire filePath
+            if (!IsLegalPath(filePath, out index))
+            {
+                return false;
+            }
+
+            // Extract the file name from the path and check for invalid file name characters
+            var fileName = Path.GetFileName(filePath);
+            var invalidFileNameChars = Path.GetInvalidFileNameChars();
+            var invalidFileNameCharIndex = fileName.IndexOfAny(invalidFileNameChars);
+            if (invalidFileNameCharIndex >= 0)
+            {
+                // Adjust the index to be in the context of the full filePath, not just fileName
+                index = filePath.LastIndexOf(fileName) + invalidFileNameCharIndex;
+                return false;
+            }
+            return true;
+        }
+
+        public static bool IsLegalPathGlob(this string pathOrGlob)
+        {
+            if (string.IsNullOrWhiteSpace(pathOrGlob))
+            {
+                return false;
+            }
+            if (LegalPathGlobRegex().IsMatch(pathOrGlob))
+            {
+                return true;
+            }
+            return true;
+        }
+
+        public static bool IsLegalFileGlobal(this string fileGlob)
+        {
+            if (string.IsNullOrWhiteSpace(fileGlob))
+            {
+                return false;
+            }
+            if (LegalFileGlobRegex().IsMatch(fileGlob))
+            {
+                return true;
+            }
+            return true;
+        }
+
+        public static bool IsValidNamespace(this string @namespace)
+        {
+            if (string.IsNullOrWhiteSpace(@namespace))
+            {
+                return false;
+            }
+            return NamespaceRegex().IsMatch(@namespace);
+        }
+
+        public static bool IsLegalPathOrGlob(this string pathOrGlob, out int invalidIndex)
+        {
+            invalidIndex = -1;
+            if (string.IsNullOrWhiteSpace(pathOrGlob))
+            {
+                return false;
+            }
+            if (IsLegalPathGlob(pathOrGlob))
+            {
+                return true;
+            }
+            if (IsLegalPath(pathOrGlob, out invalidIndex))
+            {
+                return true;
+            }
+            return false;
+        }
+        public static bool IsLegalFilePathOrGlob(this string filePathOrGlob, out int invalidIndex)
+        {
+            invalidIndex = -1;
+            if (string.IsNullOrWhiteSpace(filePathOrGlob))
+            {
+                return false;
+            }
+            if (IsLegalFileGlobal(filePathOrGlob))
+            {
+                return true;
+            }
+            if (IsLegalFilePath(filePathOrGlob, out invalidIndex))
+            {
+                return true;
+            }
+            return false;
+        }
+
+
+        [GeneratedRegex(@"^(\*\*\/|.*\/)$")]
+        private static partial Regex LegalPathGlobRegex();
+
+        [GeneratedRegex(@"^.*[\*\?\[\]].*(\.[a-zA-Z0-9]+)?$")]
+        private static partial Regex LegalFileGlobRegex();
+
+        [GeneratedRegex(@"^[a-zA-Z]+(\.[a-zA-Z]+)*$")]
+        private static partial Regex NamespaceRegex();
     }
 }

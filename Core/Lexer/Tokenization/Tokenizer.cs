@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Core.Exceptions;
 using Core.IO;
@@ -41,9 +42,9 @@ namespace Core.Lexer.Tokenization
             }
         }
 
-        public async Task AddFile(string absolutePath)
+        public void AddFile(string absolutePath)
         {
-            if (await _reader.AddFile(absolutePath))
+            if (_reader.AddFile(absolutePath))
             {
                 _newFilesToTokenize = true;
             }
