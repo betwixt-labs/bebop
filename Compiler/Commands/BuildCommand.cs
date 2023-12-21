@@ -1,12 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.CommandLine;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using Core.Exceptions;
-using Core.Generators;
 using Core.Logging;
 using Core.Meta;
 
@@ -16,14 +13,14 @@ public class BuildCommand : CliCommand
 {
     public BuildCommand() : base(CliStrings.BuildCommand, "Build schemas into one or more target languages.")
     {
-        SetAction(HandleCommandAsync);
+        SetAction(HandleCommand);
     }
 
-    private Task<int> HandleCommandAsync(ParseResult result, CancellationToken token)
+    private int HandleCommand(ParseResult result)
     {
         var config = result.GetValue<BebopConfig>(CliStrings.ConfigFlag)!;
+
         config.Validate();
-        var compiler = new BebopCompiler();
         BebopSchema schema = default;
         string? tempFilePath = null;
         try
@@ -47,33 +44,45 @@ public class BuildCommand : CliCommand
                 var resolvedSchemas = config.ResolveIncludes();
                 if (!resolvedSchemas.Any())
                 {
-                    DiagnosticLogger.Instance.WriteDiagonstic(new CompilerException("No input files specified."));
-                    return Task.FromResult(BebopCompiler.Err);
+                    return DiagnosticLogger.Instance.WriteDiagonstic(new CompilerException("No input files specified."));
                 }
                 schema = BebopCompiler.ParseSchema(resolvedSchemas);
             }
-
-             var (Warnings, Errors) = BebopCompiler.GetSchemaDiagnostics(schema, config.SupressedWarningCodes);
-             DiagnosticLogger.Instance.WriteSpanDiagonstics([.. Warnings, .. Errors]);
-             if (config.NoEmit)
-             {
-                 return Task.FromResult(Errors.Count != 0 ? BebopCompiler.Err : BebopCompiler.Ok);
-             }
-             if (config is { Generators.Length: <= 0 })
-             {
-                 DiagnosticLogger.Instance.WriteDiagonstic(new CompilerException("No code generators specified."));
-                 return Task.FromResult(BebopCompiler.Err);
-             }
-             foreach (var generatorConfig in config.Generators)
-             {
-                BebopCompiler.Build(generatorConfig, schema, config);
-             }
-            return Task.FromResult(BebopCompiler.Ok);
+            var isStandardOut = result.GetValue<bool>(CliStrings.StandardOutputFlag);
+            var (Warnings, Errors) = BebopCompiler.GetSchemaDiagnostics(schema, config.SupressedWarningCodes);
+            if (config.NoEmit || Errors.Count != 0)
+            {
+                DiagnosticLogger.Instance.WriteSpanDiagonstics([.. Warnings, .. Errors]);
+                return Errors.Count != 0 ? BebopCompiler.Err : BebopCompiler.Ok;
+            }
+            // we only want to write the warnings if we are not writing results to stdout 
+            // as we concat the outputs of all generators into one stream
+            if (!isStandardOut && Warnings.Count != 0)
+            {
+                DiagnosticLogger.Instance.WriteSpanDiagonstics(Warnings);
+            }
+            if (config is { Generators.Length: <= 0 })
+            {
+                return DiagnosticLogger.Instance.WriteDiagonstic(new CompilerException("No code generators specified."));
+            }
+            var generatedFiles = new List<GeneratedFile>();
+            foreach (var generatorConfig in config.Generators)
+            {
+                generatedFiles.Add(BebopCompiler.Build(generatorConfig, schema, config));
+            }
+            if (isStandardOut)
+            {
+                DiagnosticLogger.Instance.PrintCompilerOutput(new CompilerOutput(Warnings, Errors, [.. generatedFiles]));
+            }
+            else
+            {
+                BebopCompiler.EmitGeneratedFiles(generatedFiles, config);
+            }
+            return BebopCompiler.Ok;
         }
         catch (Exception ex)
         {
-            DiagnosticLogger.Instance.WriteDiagonstic(ex);
-            return Task.FromResult(BebopCompiler.Err);
+            return DiagnosticLogger.Instance.WriteDiagonstic(ex);
         }
         finally
         {

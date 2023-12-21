@@ -550,7 +550,7 @@ namespace Core.Generators.CPlusPlus
         public override void WriteAuxiliaryFiles(string outputPath)
         {
             var auxiliary = GetAuxiliaryFile();
-            File.WriteAllText(Path.Join(outputPath, auxiliary!.Name), auxiliary!.Contents);
+            File.WriteAllText(Path.Join(outputPath, auxiliary!.Name), auxiliary!.Content);
         }
 
          public override string Alias => "cpp";

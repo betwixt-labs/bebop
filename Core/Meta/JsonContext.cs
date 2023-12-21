@@ -20,6 +20,7 @@ namespace Core.Meta;
     Converters = [typeof(SpanExceptionConverter), typeof(ExceptionConverter), typeof(BebopConfigConverter)])]
 [JsonSerializable(typeof(BebopConfig))]
 [JsonSerializable(typeof(TempoServices))]
+[JsonSerializable(typeof(Severity))]
 [JsonSerializable(typeof(GeneratorConfig))]
 [JsonSerializable(typeof(WatchOptions))]
 [JsonSerializable(typeof(LogFormatter))]

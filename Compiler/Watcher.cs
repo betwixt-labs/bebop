@@ -93,8 +93,7 @@ public class SchemaWatcher
     ///</summary>
     private void OnError(object sender, ErrorEventArgs e)
     {
-        DiagnosticLogger.Instance.WriteDiagonstic(e.GetException());
-        _tcs?.TrySetResult(1);
+        _tcs?.TrySetResult(DiagnosticLogger.Instance.WriteDiagonstic(e.GetException()));
     }
 
     ///<summary>
@@ -147,8 +146,7 @@ public class SchemaWatcher
         catch (Exception ex)
         {
             // The file or directory may have been deleted or is inaccessible
-            DiagnosticLogger.Instance.WriteDiagonstic(ex);
-            _tcs?.SetResult(1);
+            _tcs?.SetResult(DiagnosticLogger.Instance.WriteDiagonstic(ex));
             return;
         }
 
@@ -368,21 +366,23 @@ public class SchemaWatcher
             }
             var schema = BebopCompiler.ParseSchema(_trackedFiles);
             var (warnings, errors) = BebopCompiler.GetSchemaDiagnostics(schema, _config.SupressedWarningCodes);
-            DiagnosticLogger.Instance.WriteSpanDiagonstics([.. warnings, .. errors]);
-            if (_config.NoEmit)
+            if (_config.NoEmit || errors.Count != 0)
             {
+                DiagnosticLogger.Instance.WriteSpanDiagonstics([.. warnings, .. errors]);
                 return errors.Count != 0 ? BebopCompiler.Err : BebopCompiler.Ok;
             }
+            DiagnosticLogger.Instance.WriteSpanDiagonstics(warnings);
+            var generatedFiles = new List<GeneratedFile>();
             foreach (var generatorConfig in _config.Generators)
             {
-                BebopCompiler.Build(generatorConfig, schema, _config);
+                generatedFiles.Add(BebopCompiler.Build(generatorConfig, schema, _config));
             }
+            BebopCompiler.EmitGeneratedFiles(generatedFiles, _config);
             return BebopCompiler.Ok;
         }
         catch (Exception ex)
         {
-            DiagnosticLogger.Instance.WriteDiagonstic(ex);
-            return BebopCompiler.Err;
+            return  DiagnosticLogger.Instance.WriteDiagonstic(ex);
         }
 
     }

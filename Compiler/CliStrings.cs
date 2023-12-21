@@ -18,6 +18,7 @@ public static class CliStrings {
     public const string ShowConfigFlag = "--show-config";
     public const string TraceFlag = "--trace";
     public const string StandardInputFlag = "--stdin";
+    public const string StandardOutputFlag = "--stdout";
     public const string WatchCommand = "watch";
     public const string BuildCommand = "build";
     public const string LangServerCommand = "langserver";

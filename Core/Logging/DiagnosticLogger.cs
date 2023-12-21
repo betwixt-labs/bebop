@@ -88,22 +88,22 @@ public partial class DiagnosticLogger
     #endregion
 
 
-    public void WriteDiagonstic(Exception exception)
+    public int WriteDiagonstic(Exception exception)
     {
         switch (exception)
         {
             case SpanException span:
                 WriteSpanDiagonstics(new List<SpanException>() { span });
-                break;
+                return span.ErrorCode;
             case FileNotFoundException file:
                 WriteFileNotFoundDiagonstic(file);
-                break;
+                return FileNotFound;
             case CompilerException compiler:
                 WriteCompilerDiagonstic(compiler);
-                break;
+                return compiler.ErrorCode;
             default:
                 WriteBaseDiagonstic(exception);
-                break;
+                return Unknown;
         }
     }
 
@@ -112,14 +112,14 @@ public partial class DiagnosticLogger
         if (_formatter is LogFormatter.Enhanced)
         {
             RenderEnhancedSpanErrors(exceptions);
-            WriteLine(string.Empty);
+            WriteErrorLine(string.Empty);
             return;
         }
         if (_formatter is LogFormatter.JSON)
         {
             var warnings = exceptions.Where(e => e.Severity == Severity.Warning).ToList();
             var errors = exceptions.Where(e => e.Severity == Severity.Error).ToList();
-            WriteCompilerOutput(new CompilerOutput(warnings, errors, null));
+            ErrorCompilerOutput(new CompilerOutput(warnings, errors, null));
             return;
         }
         var messages = exceptions.Select(FormatSpanError);
@@ -171,21 +171,20 @@ public partial class DiagnosticLogger
     }
 
 
-    public void WriteCompilerOutput(CompilerOutput output)
+    public void ErrorCompilerOutput(CompilerOutput output)
     {
-        // TODO figure out why the virtual console breaks outputs
-        if (_formatter is LogFormatter.JSON)
+        if (output.Errors.Count > 0 || output.Warnings.Count > 0)
         {
-            Console.Out.WriteLine(FormatCompilerOutput(output));
-            return;
+            _err.WriteLine(FormatCompilerOutput(output));
+            _err.WriteLine(string.Empty);
         }
-        var errorsAndWarnings = output.Errors.Concat(output.Warnings).ToList();
-        if (errorsAndWarnings.Count > 0)
-        {
-            WriteSpanDiagonstics(errorsAndWarnings);
-        }
-        if (output.Result is not null) {
-            Console.Out.WriteLine(output.Result.Contents);
+    }
+
+    public void PrintCompilerOutput(CompilerOutput output)
+    {
+        if (output.Results is {Length: > 0}) {
+            _out.WriteLine(FormatCompilerOutput(output));
+            _out.WriteLine(string.Empty);
         }
     }
 

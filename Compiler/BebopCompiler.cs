@@ -25,32 +25,42 @@ public class BebopCompiler
         return schema;
     }
 
-    public static void Build(GeneratorConfig generatorConfig, BebopSchema schema, BebopConfig config)
+    public static void EmitGeneratedFiles(List<GeneratedFile> generatedFiles, BebopConfig config)
+    {
+        foreach (var generatedFile in generatedFiles)
+        {
+            var outFile = generatedFile.Name;
+
+            // Normalize the path
+            if (!Path.IsPathRooted(outFile))
+            {
+                outFile = Path.GetFullPath(Path.Combine(config.WorkingDirectory, outFile));
+            }
+
+            var outDirectory = Path.GetDirectoryName(outFile) ?? throw new CompilerException("Could not determine output directory.");
+            if (!Directory.Exists(outDirectory))
+            {
+                Directory.CreateDirectory(outDirectory);
+            }
+
+            File.WriteAllText(outFile, generatedFile.Content);
+
+            if (generatedFile.AuxiliaryFile is not null)
+            {
+                var auxiliaryOutFile = Path.GetFullPath(Path.Combine(outDirectory, generatedFile.AuxiliaryFile.Name));
+                File.WriteAllText(auxiliaryOutFile, generatedFile.AuxiliaryFile.Content);
+            }
+        }
+    }
+
+
+    public static GeneratedFile Build(GeneratorConfig generatorConfig, BebopSchema schema, BebopConfig config)
     {
         var (warnings, errors) = GetSchemaDiagnostics(schema, config.SupressedWarningCodes);
         var generator = GeneratorUtils.ImplementedGenerators[generatorConfig.Alias](schema, generatorConfig);
         var compiled = generator.Compile();
         var auxiliary = generator.GetAuxiliaryFile();
-        if (string.Equals(generatorConfig.OutFile, "stdout", StringComparison.OrdinalIgnoreCase))
-        {
-            DiagnosticLogger.Instance.WriteCompilerOutput(new CompilerOutput(warnings, errors, new GeneratedFile("stdout", compiled, generator.Alias, auxiliary)));
-            return;
-        }
-        var outFile = generatorConfig.OutFile;
-        if (!Path.IsPathRooted(outFile))
-        {
-            outFile = Path.Combine(config.WorkingDirectory, outFile);
-        }
-        var outDirectory = Path.GetDirectoryName(outFile) ?? throw new CompilerException("Could not determine output directory.");
-        if (!Directory.Exists(outDirectory))
-        {
-            Directory.CreateDirectory(outDirectory);
-        }
-        File.WriteAllText(outFile, compiled);
-        if (auxiliary is not null)
-        {
-            File.WriteAllText(Path.Combine(outDirectory, auxiliary.Name), auxiliary.Contents);
-        }
+        return new GeneratedFile(generatorConfig.OutFile, compiled, generator.Alias, auxiliary);
     }
 
     public static (List<SpanException> Warnings, List<SpanException> Errors) GetSchemaDiagnostics(BebopSchema schema, int[] supressWarningCodes)

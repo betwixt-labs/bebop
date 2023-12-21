@@ -59,7 +59,7 @@ public class RootCommand
     private static int InitProject()
     {
         var workingDirectory = Directory.GetCurrentDirectory();
-        var configPath = Path.Combine(workingDirectory, BebopConfig.ConfigFileName);
+        var configPath = Path.GetFullPath(Path.Combine(workingDirectory, BebopConfig.ConfigFileName));
         if (File.Exists(configPath))
         {
             return 1;

@@ -151,4 +151,14 @@ namespace Compiler.Options
             AllowMultipleArgumentsPerToken = false;
         }
     }
+
+    public class StandardOutputOption : CliOption<bool>
+    {
+        public StandardOutputOption() : base(
+            name: CliStrings.StandardOutputFlag)
+        {
+            Description = "Write the results of compilation to standard output.";
+            AllowMultipleArgumentsPerToken = false;
+        }
+    }
 }

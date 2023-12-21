@@ -39,7 +39,8 @@ try
             new GeneratorOption(),
             new NoEmitOption(),
             new NoWarnOption(),
-            new StandardInputOption()
+            new StandardInputOption(),
+            new StandardOutputOption(),
         },
         #if !WASI_WASM_BUILD
         new WatchCommand()
@@ -84,11 +85,8 @@ catch (Exception e)
     switch (e)
     {
         case JsonException:
-            DiagnosticLogger.Instance.WriteDiagonstic(new CompilerException("Invalid JSON in config file.", e));
-            break;
+            return DiagnosticLogger.Instance.WriteDiagonstic(new CompilerException("error during JSON marshaling", e));
         default:
-            DiagnosticLogger.Instance.WriteDiagonstic(e);
-            break;
+            return DiagnosticLogger.Instance.WriteDiagonstic(e);
     }
-    return BebopCompiler.Err;
 }
