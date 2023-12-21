@@ -15,23 +15,24 @@ jobs:
       RUNTIME_ROOT: ${{github.workspace}}/Runtime/C#
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
 
       - name: Get Enviorment Variables
         id: dotenv
-        uses: falti/dotenv-action@v0.2.5
+        uses: falti/dotenv-action@v1.0.4
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v1
+        uses: actions/setup-dotnet@v3
         with:
           dotnet-version: |
             5.0.x
             6.0.x
             7.0.x
-          include-prerelease: true
+            8.0.x
+          dotnet-quality: 'preview'
       - name: Generate Output.g.cs
         working-directory: "./Laboratory/C#"
-        run: dotnet run --project ../../Compiler/ --cs "./GeneratedTestCode/Output.g.cs" --namespace Bebop.Codegen --files $(ls -p ../Schemas/Valid/*.bop | tr '\n' ' ')
+        run: dotnet run --project ../../Compiler/ --include $(ls -p ../Schemas/Valid/*.bop | tr '\n' ' ') build --generator "cs:./GeneratedTestCode/Output.g.cs,namespace=Bebop.Codegen"
 
       - name: Run Test .NET 6
         run: dotnet test -c Release -f net6.0
@@ -58,7 +59,7 @@ jobs:
         working-directory: ${{env.RUNTIME_ROOT}}
 
       - name: Upload Package
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: bebop-runtime-cs-latest
           path: ${{env.RUNTIME_ROOT}}/bin/Release/*.nupkg

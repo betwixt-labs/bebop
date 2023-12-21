@@ -1,5 +1,0 @@
-﻿<linker>
-	<assembly fullname="bebopc">
-		<type fullname="Compiler.CommandLineFlags" preserve="all" />
-	</assembly>
-</linker>

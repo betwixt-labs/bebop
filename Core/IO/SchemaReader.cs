@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Core.Lexer.Extensions;
 using Core.Lexer.Tokenization.Models;
@@ -36,7 +37,12 @@ namespace Core.IO
 
         public static SchemaReader FromSchemaPaths(IEnumerable<string> schemaPaths)
         {
-            return new SchemaReader(schemaPaths.Select(path => (path, File.ReadAllText(path))).ToList());
+            return new SchemaReader(schemaPaths.Select(path =>
+            {
+                if (!File.Exists(path))
+                    throw new FileNotFoundException($"Schema file not found: {path}");
+                return (path, File.ReadAllText(path));
+            }).ToList());
         }
 
         private string CurrentFile => _schemas[_schemaIndex].Item2;
@@ -108,12 +114,12 @@ namespace Core.IO
         ///     Append a file path to be read.
         /// </summary>
         /// <returns>True if a new file was actually added and must now be tokenized; false if this path was a duplicate.</returns>
-        public async Task<bool> AddFile(string absolutePath)
+        public bool AddFile(string absolutePath)
         {
             var fullPath = Path.GetFullPath(absolutePath);
             if (!_schemas.Any(t => Path.GetFullPath(t.Item1) == fullPath))
             {
-                var text = await File.ReadAllTextAsync(fullPath);
+                var text = File.ReadAllText(fullPath);
                 _schemas.Add((fullPath, text));
                 return true;
             }

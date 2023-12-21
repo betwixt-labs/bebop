@@ -9,7 +9,7 @@ else
   # Linux or Mac
   bebopc="dotnet run --project ../../Compiler"
 fi
-$bebopc --cpp "gen/$1.hpp" --files "../Schemas/Valid/$1.bop"
+$bebopc --include "../Schemas/Valid/$1.bop" build --generator "cpp:gen/$1.hpp"
 >&2 echo "Timing C++ compiler:"
 time g++ -std=c++17 test/$1.cpp
 ./a.out

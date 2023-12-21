@@ -14,7 +14,7 @@ namespace Core.Generators.Dart
     {
         const int indentStep = 2;
 
-        public DartGenerator(BebopSchema schema) : base(schema) { }
+        public DartGenerator(BebopSchema schema, GeneratorConfig config) : base(schema, config) { }
 
         private string FormatDocumentation(string documentation, int spaces)
         {
@@ -296,7 +296,7 @@ namespace Core.Generators.Dart
         /// Generate code for a Bebop schema.
         /// </summary>
         /// <returns>The generated code.</returns>
-        public override string Compile(Version? languageVersion, TempoServices services = TempoServices.Both, bool writeGeneratedNotice = true, bool emitBinarySchema = false)
+       public override string Compile()
         {
             var builder = new StringBuilder();
             builder.AppendLine("import 'dart:typed_data';");
@@ -404,9 +404,12 @@ namespace Core.Generators.Dart
             return builder.ToString();
         }
 
+        public override AuxiliaryFile? GetAuxiliaryFile() => null;
         public override void WriteAuxiliaryFiles(string outputPath)
         {
             // There is nothing to do here.
         }
+
+         public override string Alias => "dart";
     }
 }

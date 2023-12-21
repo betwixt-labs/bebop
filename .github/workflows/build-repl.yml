@@ -13,17 +13,17 @@ jobs:
       REPL_ROOT: ${{github.workspace}}/Repl
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
 
       - name: Get Enviorment Variables
         id: dotenv
-        uses: falti/dotenv-action@v0.2.5
+        uses: falti/dotenv-action@v1.0.4
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v1
+        uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: "7.0.x" # SDK Version to use; x will use the latest version of the 7.0 channel
-          include-prerelease: true
+          dotnet-version: "8.0.x"
+          dotnet-quality: 'preview'
       - name: Restore Project
         run: dotnet restore
         working-directory: ${{env.REPL_ROOT}}
@@ -32,7 +32,7 @@ jobs:
         working-directory: ${{env.REPL_ROOT}}
 
       - name: Upload Package
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: bebop-repl-latest
           path: ${{github.workspace}}/bin/repl/Release/publish/wwwroot/

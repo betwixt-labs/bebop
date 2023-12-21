@@ -25,7 +25,7 @@ public sealed class VirtualTerminal : IAnsiConsole
         Output = output ?? throw new ArgumentNullException(nameof(output));
     }
 
-    public static VirtualTerminal Create(TextWriter consoleWriter, int width = 80, int height = 24)
+    public static VirtualTerminal Create(TextWriter consoleWriter, int width = int.MaxValue, int height = int.MaxValue)
     {
         var consoleOutput = new ConsoleRedirectWriter(consoleWriter);
         return new VirtualTerminal(AnsiConsole.Create(new AnsiConsoleSettings
@@ -33,7 +33,7 @@ public sealed class VirtualTerminal : IAnsiConsole
             Ansi = AnsiSupport.Yes,
             Out = new VirtualConsoleOutput(consoleOutput, width, height),
             Interactive = InteractionSupport.No,
-        }), consoleOutput);
+        }), consoleWriter);
     }
 
     public void Clear(bool home)

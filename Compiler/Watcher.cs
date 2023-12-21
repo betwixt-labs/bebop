@@ -7,19 +7,21 @@ using System.Threading.Tasks;
 using Compiler;
 using Core.Generators;
 using Core.Logging;
+using Core.Meta;
 using Microsoft.Extensions.FileSystemGlobbing;
 using Spectre.Console;
 
-public class Watcher
+public class SchemaWatcher
 {
     private readonly string _watchDirectory;
     private readonly FileSystemWatcher _filewatcher;
     private List<string> _excludeDirectories = new List<string>();
     private List<string> _excludeFiles = new List<string>();
     private List<string> _trackedFiles = new List<string>();
-    private readonly BebopCompiler _compiler;
+    private readonly BebopConfig _config;
     private readonly bool _preserveWatchOutput;
-    private readonly TaskCompletionSource<int> _tcs;
+    private TaskCompletionSource<int>? _tcs;
+    private CancellationToken _cancellationToken;
 
     private readonly SemaphoreSlim _compileSemaphore = new SemaphoreSlim(1, 1);
     private readonly TimeSpan _recompileTimeout = TimeSpan.FromSeconds(2);
@@ -29,12 +31,11 @@ public class Watcher
     ///</summary>
     ///<param name="watchDirectory">The directory to watch.</param>
     ///<param name="trackedFiles">The list of files to track.</param>
-    public Watcher(string watchDirectory, BebopCompiler compiler, bool preserveWatchOutput)
+    public SchemaWatcher(string watchDirectory, BebopConfig config)
     {
-        _compiler = compiler;
-        _preserveWatchOutput = preserveWatchOutput;
-        _tcs = new TaskCompletionSource<int>();
-        _trackedFiles = compiler.Flags.SchemaFiles!;
+        _config = config;
+        _preserveWatchOutput = config.WatchOptions.PreserveWatchOutput;
+        _trackedFiles = config.ResolveIncludes().ToList();
         _watchDirectory = watchDirectory;
         _filewatcher = new FileSystemWatcher();
         _filewatcher.Path = _watchDirectory;
@@ -54,8 +55,12 @@ public class Watcher
     /// Starts the watcher.
     ///</summary>
     ///<returns>Returns a Task representing the watcher operation.</returns>
-    public async Task<int> StartAsync()
+    public async Task<int> StartAsync(CancellationToken cancellationToken = default)
     {
+        if (_tcs is not null) throw new InvalidOperationException("Watcher is already running.");
+        _cancellationToken = cancellationToken;
+        _tcs = new TaskCompletionSource<int>(_cancellationToken);
+
         var table = new Table().HeavyBorder().BorderColor(Color.Grey).Title("Watching").RoundedBorder();
         table.AddColumns("[white]Status[/]", "[white]Path[/]");
         table.AddRow(new Text("Watching", new Style(Color.Green)), new TextPath(_watchDirectory));
@@ -73,7 +78,14 @@ public class Watcher
             table.AddRow(new Text(""), new TextPath(excludeFile));
         }
         DiagnosticLogger.Instance.WriteTable(table);
-        return await _tcs.Task;
+        try { return await _tcs.Task; }
+        catch (OperationCanceledException)
+        {
+            // Handle the cancellation
+            _filewatcher.EnableRaisingEvents = false;
+            _filewatcher.Dispose();
+            return 0;
+        }
     }
 
     ///<summary>
@@ -81,8 +93,7 @@ public class Watcher
     ///</summary>
     private void OnError(object sender, ErrorEventArgs e)
     {
-        DiagnosticLogger.Instance.WriteDiagonstic(e.GetException());
-        _tcs.TrySetResult(1);
+        _tcs?.TrySetResult(DiagnosticLogger.Instance.WriteDiagonstic(e.GetException()));
     }
 
     ///<summary>
@@ -122,7 +133,7 @@ public class Watcher
     ///<summary>
     /// Handles the Renamed event of the FileSystemWatcher.
     ///</summary>
-    private async void FileRenamed(object sender, RenamedEventArgs e)
+    private void FileRenamed(object sender, RenamedEventArgs e)
     {
         string oldFullPath = Path.GetFullPath(e.OldFullPath);
         string newFullPath = Path.GetFullPath(e.FullPath);
@@ -135,8 +146,7 @@ public class Watcher
         catch (Exception ex)
         {
             // The file or directory may have been deleted or is inaccessible
-            DiagnosticLogger.Instance.WriteDiagonstic(ex);
-            _tcs.SetResult(1);
+            _tcs?.SetResult(DiagnosticLogger.Instance.WriteDiagonstic(ex));
             return;
         }
 
@@ -199,7 +209,7 @@ public class Watcher
             }
         }
         LogEvent("[orangered1]Schema renamed. Start recompile[/]", e.OldFullPath, e.FullPath);
-        await CompileSchemas();
+        CompileSchemas(_cancellationToken);
     }
 
 
@@ -207,7 +217,7 @@ public class Watcher
     ///<summary>
     /// Handles the Deleted event of the FileSystemWatcher.
     ///</summary>
-    private async void FileDeleted(object sender, FileSystemEventArgs e)
+    private void FileDeleted(object sender, FileSystemEventArgs e)
     {
         if (!Path.GetExtension(e.FullPath).Equals(".bop", StringComparison.InvariantCultureIgnoreCase) || IsPathExcluded(e.FullPath))
         {
@@ -216,13 +226,13 @@ public class Watcher
         _trackedFiles.Remove(e.FullPath);
 
         LogEvent("[indianred1]Schema deleted. Starting recompile[/]", e.FullPath);
-        await CompileSchemas();
+        CompileSchemas(_cancellationToken);
     }
 
     ///<summary>
     /// Handles the Created event of the FileSystemWatcher.
     ///</summary>
-    private async void FileCreated(object sender, FileSystemEventArgs e)
+    private void FileCreated(object sender, FileSystemEventArgs e)
     {
         if (!Path.GetExtension(e.FullPath).Equals(".bop", StringComparison.InvariantCultureIgnoreCase) || IsPathExcluded(e.FullPath))
         {
@@ -240,7 +250,7 @@ public class Watcher
     ///<summary>
     /// Handles the Changed event of the FileSystemWatcher.
     ///</summary>
-    private async void FileChanged(object sender, FileSystemEventArgs e)
+    private void FileChanged(object sender, FileSystemEventArgs e)
     {
         if (!Path.GetExtension(e.FullPath).Equals(".bop", StringComparison.InvariantCultureIgnoreCase) || IsPathExcluded(e.FullPath))
         {
@@ -250,12 +260,12 @@ public class Watcher
         // Handle file changes
         if (_trackedFiles.Contains(e.FullPath))
         {
-            if (await _compileSemaphore.WaitAsync(_recompileTimeout))
+            if (_compileSemaphore.Wait(_recompileTimeout, _cancellationToken))
             {
                 try
                 {
                     LogEvent("[blue]Schema changed. Starting recompile[/]", e.FullPath);
-                    var result = await CompileSchemas();
+                    var result = CompileSchemas(_cancellationToken);
                     if (result is BebopCompiler.Ok)
                     {
                         LogEvent("[green]Schema recompilation succeeded. Resuming watch.[/]");
@@ -341,7 +351,7 @@ public class Watcher
     /// An integer representing the compilation result. Returns BebopCompiler.Ok if the compilation is successful,
     /// otherwise, returns BebopCompiler.Err.
     /// </returns>
-    public async Task<int> CompileSchemas()
+    public int CompileSchemas(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -349,30 +359,31 @@ public class Watcher
             {
                 DiagnosticLogger.Instance.Error.Clear();
             }
-            foreach (var parsedGenerator in _compiler.Flags.GetParsedGenerators())
+            if (_trackedFiles.Count == 0)
             {
-                if (!GeneratorUtils.ImplementedGenerators.ContainsKey(parsedGenerator.Alias))
-                {
-                    LogEvent($"[red]The alias '{parsedGenerator.Alias}' is not a recognized code generator[/]", isError: true);
-                    return BebopCompiler.Err;
-                }
-                if (string.IsNullOrWhiteSpace(parsedGenerator.OutputFile))
-                {
-                    LogEvent($"[red]No out file was specified for generator '{parsedGenerator.Alias}'[/]", isError: true);
-                    return BebopCompiler.Err;
-                }
-                var result = await _compiler.CompileSchema(GeneratorUtils.ImplementedGenerators[parsedGenerator.Alias], _trackedFiles, new FileInfo(parsedGenerator.OutputFile), _compiler.Flags.Namespace ?? string.Empty, parsedGenerator.Services, parsedGenerator.LangVersion);
-                if (result != BebopCompiler.Ok)
-                {
-                    return result;
-                }
+                LogEvent("[yellow]Recompile skipped. No schemas being tracked.[/]");
+                return BebopCompiler.Ok;
             }
+            var schema = BebopCompiler.ParseSchema(_trackedFiles);
+            var (warnings, errors) = BebopCompiler.GetSchemaDiagnostics(schema, _config.SupressedWarningCodes);
+            if (_config.NoEmit || errors.Count != 0)
+            {
+                DiagnosticLogger.Instance.WriteSpanDiagonstics([.. warnings, .. errors]);
+                return errors.Count != 0 ? BebopCompiler.Err : BebopCompiler.Ok;
+            }
+            DiagnosticLogger.Instance.WriteSpanDiagonstics(warnings);
+            var generatedFiles = new List<GeneratedFile>();
+            foreach (var generatorConfig in _config.Generators)
+            {
+                generatedFiles.Add(BebopCompiler.Build(generatorConfig, schema, _config));
+            }
+            BebopCompiler.EmitGeneratedFiles(generatedFiles, _config);
             return BebopCompiler.Ok;
         }
         catch (Exception ex)
         {
-            DiagnosticLogger.Instance.WriteDiagonstic(ex);
-            return BebopCompiler.Err;
+            return  DiagnosticLogger.Instance.WriteDiagonstic(ex);
         }
+
     }
 }

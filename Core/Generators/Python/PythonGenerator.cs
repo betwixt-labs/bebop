@@ -14,16 +14,18 @@ namespace Core.Generators.Python
     {
         const int indentStep = 4;
 
-        public PythonGenerator(BebopSchema schema) : base(schema) { }
+        public PythonGenerator(BebopSchema schema, GeneratorConfig config) : base(schema, config) { }
 
-        private string FormatDocumentation(string documentation, BaseAttribute? deprecated){
+        private string FormatDocumentation(string documentation, BaseAttribute? deprecated)
+        {
             var builder = new StringBuilder();
             builder.AppendLine("\"\"\"");
             foreach (var line in documentation.GetLines())
             {
                 builder.AppendLine(line);
             }
-            if (deprecated != null) {
+            if (deprecated != null)
+            {
                 builder.AppendLine($"@deprecated {deprecated.Value}");
             }
             builder.AppendLine("\"\"\"");
@@ -75,13 +77,15 @@ namespace Core.Generators.Python
                 builder.AppendLine(CompileEncodeField(field.Type, $"message.{field.Name}"));
                 builder.AppendLine("");
             }
-            if (definition.Fields.Count == 0) {
+            if (definition.Fields.Count == 0)
+            {
                 builder.AppendLine("pass");
             }
             return builder.ToString();
         }
 
-        private string CompileEncodeUnion(UnionDefinition definition) {
+        private string CompileEncodeUnion(UnionDefinition definition)
+        {
             var builder = new IndentedStringBuilder(4);
             builder.AppendLine($"pos = writer.reserve_message_length()");
             builder.AppendLine($"start = writer.length + 1");
@@ -153,7 +157,7 @@ namespace Core.Generators.Python
             {
                 MessageDefinition d => CompileDecodeMessage(d),
                 StructDefinition d => CompileDecodeStruct(d),
-                UnionDefinition d => CompileDecodeUnion(d), 
+                UnionDefinition d => CompileDecodeUnion(d),
                 _ => throw new InvalidOperationException($"invalid CompileDecode value: {definition}"),
             };
         }
@@ -201,7 +205,8 @@ namespace Core.Generators.Python
             return builder.ToString();
         }
 
-        private string CompileDecodeUnion(UnionDefinition definition) {
+        private string CompileDecodeUnion(UnionDefinition definition)
+        {
             var builder = new IndentedStringBuilder(4);
             builder.AppendLine("length = reader.read_message_length()");
             builder.AppendLine("end = reader.index + 1 + length");
@@ -309,7 +314,8 @@ namespace Core.Generators.Python
             return JsonSerializer.Serialize(value, options);
         }
 
-        private string EmitLiteral(Literal literal) {
+        private string EmitLiteral(Literal literal)
+        {
             return literal switch
             {
                 BoolLiteral bl => bl.Value ? "True" : "False",
@@ -328,7 +334,7 @@ namespace Core.Generators.Python
         /// Generate code for a Bebop schema.
         /// </summary>
         /// <returns>The generated code.</returns>
-        public override string Compile(Version? languageVersion, TempoServices services = TempoServices.Both, bool writeGeneratedNotice = true, bool emitBinarySchema = false)
+        public override string Compile()
         {
             var builder = new IndentedStringBuilder();
             builder.AppendLine("from enum import Enum");
@@ -365,7 +371,8 @@ namespace Core.Generators.Python
                         builder.Dedent(indentStep);
                         break;
                     case RecordDefinition rd:
-                        if (rd is FieldsDefinition fd) {
+                        if (rd is FieldsDefinition fd)
+                        {
                             builder.AppendLine($"class {fd.Name}:");
                             builder.Indent(indentStep);
                             if (!string.IsNullOrWhiteSpace(definition.Documentation))
@@ -375,7 +382,8 @@ namespace Core.Generators.Python
                             }
                             var isReadonlyStruct = rd is StructDefinition sd ? sd.IsReadOnly : false;
                             var fieldPrepend = isReadonlyStruct ? "_" : "";
-                            for (var i = 0; i < fd.Fields.Count; i++) {
+                            for (var i = 0; i < fd.Fields.Count; i++)
+                            {
                                 var field = fd.Fields.ElementAt(i);
                                 var type = TypeName(field.Type);
                                 builder.AppendLine($"{fieldPrepend}{field.Name}: {type}");
@@ -385,48 +393,62 @@ namespace Core.Generators.Python
                                 }
                                 builder.AppendLine();
                             }
-                            if (rd.OpcodeAttribute != null) {
+                            if (rd.OpcodeAttribute != null)
+                            {
                                 builder.AppendLine($"opcode = {rd.OpcodeAttribute.Value}");
                                 builder.AppendLine("");
                             }
                             builder.AppendLine("");
-                            if (!(fd is MessageDefinition)) {
+                            if (!(fd is MessageDefinition))
+                            {
                                 List<string> fields = new List<string>();
                                 foreach (var field in fd.Fields)
                                 {
                                     fields.Add($" {field.Name}: {TypeName(field.Type)}");
                                 }
-                                if (fields.Count != 0) {
+                                if (fields.Count != 0)
+                                {
                                     builder.Append("def __init__(self, ");
                                     builder.Append(string.Join(",", fields));
                                     builder.AppendLine("):");
                                     builder.Indent(indentStep);
                                     builder.AppendLine("self.encode = self._encode");
-                                    foreach (var field in fd.Fields) {
+                                    foreach (var field in fd.Fields)
+                                    {
                                         builder.AppendLine($"self.{fieldPrepend}{field.Name} = {field.Name}");
                                     }
                                     builder.Dedent(indentStep);
-                                } else {
+                                }
+                                else
+                                {
                                     builder.AppendLine("def __init__(self):");
                                     builder.AppendLine("   self.encode = self._encode");
                                 }
                                 builder.AppendLine();
-                            } else {
-                                builder.CodeBlock("def __init__(self):", indentStep, () => {
+                            }
+                            else
+                            {
+                                builder.CodeBlock("def __init__(self):", indentStep, () =>
+                                {
                                     builder.AppendLine("self.encode = self._encode");
                                 }, open: string.Empty, close: string.Empty);
                             }
 
-                            if (isReadonlyStruct) {
-                                for (var i = 0; i < fd.Fields.Count; i++) {
+                            if (isReadonlyStruct)
+                            {
+                                for (var i = 0; i < fd.Fields.Count; i++)
+                                {
                                     var field = fd.Fields.ElementAt(i);
                                     builder.AppendLine("@property");
-                                    builder.CodeBlock($"def {field.Name}(self):", indentStep, () => {
+                                    builder.CodeBlock($"def {field.Name}(self):", indentStep, () =>
+                                    {
                                         builder.AppendLine($"return self._{field.Name}");
                                     }, close: string.Empty, open: string.Empty);
                                 }
                             }
-                        } else if (rd is UnionDefinition ud) {
+                        }
+                        else if (rd is UnionDefinition ud)
+                        {
                             builder.CodeBlock($"class {ud.ClassName()}:", indentStep, () =>
                             {
                                 builder.AppendLine();
@@ -434,7 +456,8 @@ namespace Core.Generators.Python
                                 {
                                     builder.Append(FormatDocumentation(definition.Documentation, null));
                                 }
-                                if (rd.OpcodeAttribute != null) {
+                                if (rd.OpcodeAttribute != null)
+                                {
                                     builder.AppendLine($"opcode = {rd.OpcodeAttribute.Value}");
                                     builder.AppendLine("");
                                 }
@@ -460,12 +483,12 @@ namespace Core.Generators.Python
                                     builder.AppendLine("@staticmethod");
                                     builder.CodeBlock($"def from{b.ClassName()}(value: {b.ClassName()}):", indentStep, () =>
                                     {
-                                        builder.AppendLine($"return {definition.ClassName()}(UnionDefinition({b.Discriminator}, value))"    );
-                                    },  open: string.Empty, close: string.Empty);
+                                        builder.AppendLine($"return {definition.ClassName()}(UnionDefinition({b.Discriminator}, value))");
+                                    }, open: string.Empty, close: string.Empty);
                                     builder.CodeBlock($"def is{b.ClassName()}(self):", indentStep, () =>
                                     {
                                         builder.AppendLine($"return isinstance(self.value, {b.ClassName()})");
-                                    },  open: string.Empty, close: string.Empty);
+                                    }, open: string.Empty, close: string.Empty);
                                 }
                             }, close: string.Empty, open: string.Empty);
                             builder.Indent(indentStep);
@@ -536,5 +559,9 @@ namespace Core.Generators.Python
         {
             // There is nothing to do here.
         }
+
+        public override AuxiliaryFile? GetAuxiliaryFile() => null;
+
+         public override string Alias => "py";
     }
 }

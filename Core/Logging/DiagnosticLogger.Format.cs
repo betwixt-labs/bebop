@@ -3,6 +3,9 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Core.Exceptions;
 using Core.Meta;
+using Core.Meta.Extensions;
+using System.Text.Json.Serialization.Metadata;
+using Spectre.Console;
 
 namespace Core.Logging;
 
@@ -25,11 +28,15 @@ public partial class DiagnosticLogger
                 where = span == null ? "" : $"Issue located in '{span?.FileName}' at {span?.StartColonString()}: ";
                 return $"[{DateTime.Now}][Compiler][{diagnostic.Severity}] {where}{message}";
             case LogFormatter.JSON:
-                var options = new JsonSerializerOptions { Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) } };
-                return JsonSerializer.Serialize(diagnostic, options);
+                return JsonSerializer.Serialize(diagnostic, JsonContext.Default.Diagnostic);
             case LogFormatter.Enhanced:
             default:
                 throw new ArgumentOutOfRangeException();
         }
+    }
+
+    private string FormatCompilerOutput(CompilerOutput output)
+    {
+        return JsonSerializer.Serialize(output, JsonContext.Default.CompilerOutput);
     }
 }
