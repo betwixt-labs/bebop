@@ -7,12 +7,14 @@ on:
       - "Core/**"
     branches:
       - master
+      - vnext
   pull_request:
     paths:
       - "Compiler/**"
       - "Core/**"
     branches:
       - master
+      - vnext
 jobs:
   build-compiler:
     runs-on: ${{ matrix.os }}
@@ -31,11 +33,13 @@ jobs:
           - os: ubuntu-22.04
             IDENTIFIER: linux
             ARTIFACT: bebopc
+            BUILD_WASI: true
 
     env:
       CONFIGURATION: Release
       BUILD_ARTIFACT_X86_64: ./bin/compiler/Release/publish/${{matrix.IDENTIFIER}}-x64/${{matrix.ARTIFACT}}
       BUILD_ARTIFACT_ARM64: ./bin/compiler/Release/publish/${{matrix.IDENTIFIER}}-arm64/${{matrix.ARTIFACT}}
+      BUILD_ARTIFACT_WASI: ./bin/compiler/Release/publish/wasi-wasm/AppBundle/${{matrix.ARTIFACT}}.wasm
       BUILD_ZIP_ARTIFACT_X86_64: ./bin/compiler/Release/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-x64.zip
       BUILD_ZIP_ARTIFACT_ARM64: ./bin/compiler/Release/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-arm64.zip
 
@@ -52,6 +56,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install clang zlib1g-dev libkrb5-dev libtinfo5
 
+      - if: matrix.os == 'ubuntu-22.04' && matrix.BUILD_WASI
+        name: Install WASI Dependencies
+        run: ./install-wasi.sh
+        working-directory: ./scripts/
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
@@ -65,6 +74,11 @@ jobs:
           dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-x64 -p:ReleaseVersion=${{ steps.dotenv.outputs.version }} -p:PublishTrimmed=false -p:PublishSingleFile=true --self-contained
           dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-arm64 -p:ReleaseVersion=${{ steps.dotenv.outputs.version }} -p:PublishTrimmed=false -p:PublishSingleFile=true --self-contained
         working-directory: ./Compiler/
+
+      - if: matrix.os == 'ubuntu-22.04' && matrix.BUILD_WASI
+        name: Build bebopc for WASI
+        run: ./build-wasi.sh
+        working-directory: ./scripts/
 
       - if: matrix.os == 'macos-latest'
         name: Zip macOS Binary
@@ -96,3 +110,10 @@ jobs:
         with:
           name: ${{matrix.IDENTIFIER}}-arm64
           path: ${{env.BUILD_ZIP_ARTIFACT_ARM64}}
+
+      - if: matrix.os == 'ubuntu-22.04' && matrix.BUILD_WASI
+        name: Upload WASI Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasm-wasi
+          path: ${{env.BUILD_ARTIFACT_WASI}}

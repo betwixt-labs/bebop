@@ -5,7 +5,7 @@ set -e
 dotnet --version
 export WASI_VERSION=20
 export WASI_VERSION_FULL=${WASI_VERSION}.0
-compiler_dir="$(readlink -f ../compiler)"
+compiler_dir="$(readlink -f ../Compiler)"
 export WASI_SDK_PATH="$(readlink -f ~/.wasi-sdk/wasi-sdk-${WASI_VERSION_FULL})"
 
 echo "Building WASI.."

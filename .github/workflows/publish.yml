@@ -148,7 +148,7 @@ jobs:
 
       - name: Test .NET Runtime
         run: |
-          dotnet run --project ../../../Compiler/ --cs "../GeneratedTestCode/Output.g.cs" --namespace Bebop.Codegen --files $(ls -p ../../Schemas/Valid/*.bop | tr '\n' ' ')
+          dotnet run --project ../../../Compiler/ --include $(ls -p ../../Schemas/Valid/*.bop | tr '\n' ' ') build --generator "cs:../GeneratedTestCode/Output.g.cs,namespace=Bebop.Codegen"
           dotnet test -c Release -f net7.0
         working-directory: ${{env.NET_TEST_ROOT}}
 
