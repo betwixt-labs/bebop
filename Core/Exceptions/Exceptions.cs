@@ -425,4 +425,13 @@ namespace Core.Exceptions
             : base(reason, span, 201, severity: Severity.Warning)
         { }
     }
+
+    [Serializable]
+    public class EnvironmentVariableNotFoundException : SpanException
+    {
+        public EnvironmentVariableNotFoundException(Span span, string reason)
+            : base(reason, span, 202, severity: Severity.Warning)
+        { }
+    }
+
 }

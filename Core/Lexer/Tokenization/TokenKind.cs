@@ -216,7 +216,12 @@ namespace Core.Lexer.Tokenization
         ///      <![CDATA[ @ ]]>
         /// </summary>
         [Symbol('@')]
-        Decorator
+        Decorator,
+        /// <summary>
+        ///      <![CDATA[ $ ]]>
+        /// </summary>
+        [Symbol('$')]
+        Template
         #endregion
     }
 }

@@ -1,14 +1,17 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Security;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Core.Exceptions;
+using Core.Internal;
 using Core.IO;
 using Core.Lexer.Extensions;
 using Core.Lexer.Tokenization;
@@ -20,7 +23,7 @@ using Core.Parser.Extensions;
 
 namespace Core.Parser
 {
-    public class SchemaParser
+    public partial class SchemaParser
     {
         /// <summary>
         /// Definitions which are allowed to appear at the top level of a bebop file.
@@ -433,8 +436,8 @@ namespace Core.Parser
             var definitionStart = CurrentToken.Span;
 
             TypeBase type;
-            string name = "";
-            Literal? value = new IntegerLiteral(new ScalarType(BaseType.UInt32, new Span(), ""), new Span(), "");
+            Literal? value;
+            string name;
             try
             {
                 type = ParseType(CurrentToken);
@@ -462,8 +465,8 @@ namespace Core.Parser
             return definition;
         }
 
-        private readonly Regex _reFloat = new(@"^(-?inf|nan|-?\d+(\.\d*)?(e-?\d+)?)$");
-        private readonly Regex _reInteger = new(@"^-?(0[xX][0-9a-fA-F]+|\d+)$");
+        private readonly Regex _reFloat = FloatRegex();
+        private readonly Regex _reInteger = IntegerRegex();
 
         private (Span, string) ParseNumberLiteral()
         {
@@ -474,6 +477,34 @@ namespace Core.Parser
             if (!Eat(TokenKind.Number)) Expect(TokenKind.Identifier);
             var span = startToken.Span.Combine(numberToken.Span);
             return (span, hyphen + numberToken.Lexeme);
+        }
+
+        private bool EatEnvironmentVariable([NotNullWhen(true)] out string? envValue)
+        {
+            var startSpan = CurrentToken.Span;
+            if (Eat(TokenKind.Template))
+            {
+                Expect(TokenKind.OpenBrace);
+
+                var envVar = ExpectLexeme(TokenKind.Identifier);
+                Expect(TokenKind.CloseBrace);
+                try
+                {
+                    envValue = EnvironmentVariableHelper.Get(envVar);
+                    if (string.IsNullOrEmpty(envValue))
+                    {
+                        _errors.Add(new EnvironmentVariableNotFoundException(Span.Combine(startSpan, CurrentToken.Span), $"String substitution failed: environment variable '{envVar}' was not found."));
+                    }
+                    return true;
+                }
+                catch (SecurityException)
+                {
+                    _errors.Add(new EnvironmentVariableNotFoundException(Span.Combine(startSpan, CurrentToken.Span), $"String substitution failed: insufficient permissions to access environment variable '{envVar}'."));
+                    envValue = string.Empty;
+                    return true;
+                }
+            }
+            return (envValue = null) is not null;
         }
 
         private Literal ParseLiteral(TypeBase type)
@@ -502,8 +533,19 @@ namespace Core.Parser
                     if (Eat(TokenKind.False)) return new BoolLiteral(st, token.Span, false);
                     throw new InvalidLiteralException(token, st);
                 case ScalarType st when st.BaseType == BaseType.String:
+                    // env variable substitution
+                    if (EatEnvironmentVariable(out var envValue))
+                    {
+                        return new StringLiteral(st, token.Span, envValue);
+                    }
                     ExpectStringLiteral();
-                    return new StringLiteral(st, token.Span, token.Lexeme.Replace("\r\n", "\n"));
+                    var str = token.Lexeme.Replace("\r\n", "\n");
+                    // the string has possible template variables
+                    if (str.Contains('$'))
+                    {
+                        str = EnvironmentVariableHelper.Replace(str, _errors, token.Span);
+                    }
+                    return new StringLiteral(st, token.Span, str);
                 case ScalarType st when st.BaseType == BaseType.Guid:
                     ExpectStringLiteral();
                     if (!Guid.TryParse(token.Lexeme, out var guid)) throw new InvalidLiteralException(token, st);
@@ -1428,5 +1470,10 @@ isAssignable:
 
             return builder;
         }
+
+        [GeneratedRegex(@"^-?(0[xX][0-9a-fA-F]+|\d+)$")]
+        private static partial Regex IntegerRegex();
+        [GeneratedRegex(@"^(-?inf|nan|-?\d+(\.\d*)?(e-?\d+)?)$")]
+        private static partial Regex FloatRegex();
     }
 }
