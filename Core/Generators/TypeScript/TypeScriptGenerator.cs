@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using Core.Meta;
+using Core.Meta.Decorators;
 using Core.Meta.Extensions;
 using Core.Parser;
 
@@ -19,17 +20,24 @@ namespace Core.Generators.TypeScript
 
         public TypeScriptGenerator(BebopSchema schema, GeneratorConfig config) : base(schema, config) { }
 
-        private static string FormatDocumentation(string documentation, string deprecationReason, int spaces)
+        private static string FormatDocumentation(string documentation, SchemaDecorator? deprecatedDecorator, int spaces)
         {
+            if (string.IsNullOrWhiteSpace(documentation) && deprecatedDecorator is null)
+            {
+                return string.Empty;
+            }
             var builder = new IndentedStringBuilder();
             builder.Indent(spaces);
             builder.AppendLine("/**");
             builder.Indent(1);
-            foreach (var line in documentation.GetLines())
+            if (!string.IsNullOrWhiteSpace(documentation))
             {
-                builder.AppendLine($"* {line}");
+                foreach (var line in documentation.GetLines())
+                {
+                    builder.AppendLine($"* {line}");
+                }
             }
-            if (!string.IsNullOrWhiteSpace(deprecationReason))
+            if (deprecatedDecorator?.TryGetValue("reason", out var deprecationReason) == true)
             {
                 builder.AppendLine($"* @deprecated {deprecationReason}");
             }
@@ -71,7 +79,7 @@ namespace Core.Generators.TypeScript
             builder.AppendLine($"const start = view.length;");
             foreach (var field in definition.Fields)
             {
-                if (field.DeprecatedAttribute != null)
+                if (field.DeprecatedDecorator != null)
                 {
                     continue;
                 }
@@ -314,14 +322,14 @@ namespace Core.Generators.TypeScript
         public string CompileJsonMethods(Definition definition)
         {
             var builder = new IndentedStringBuilder(0);
-            builder.AppendLine(FormatDocumentation("Serializes the current instance into a JSON-Over-Bebop string", string.Empty, 0));
+            builder.AppendLine(FormatDocumentation("Serializes the current instance into a JSON-Over-Bebop string", null, 0));
             builder.CodeBlock($"public toJSON(): string", indentStep, () =>
             {
                 builder.AppendLine($"return {definition.ClassName()}.encodeToJSON(this);");
             });
             builder.AppendLine();
 
-            builder.AppendLine(FormatDocumentation("Serializes the specified object into a JSON-Over-Bebop string", string.Empty, 0));
+            builder.AppendLine(FormatDocumentation("Serializes the specified object into a JSON-Over-Bebop string", null, 0));
             builder.CodeBlock($"public static encodeToJSON(record: I{definition.ClassName()}): string", indentStep, () =>
             {
                 if (definition is UnionDefinition)
@@ -333,13 +341,13 @@ namespace Core.Generators.TypeScript
             });
             builder.AppendLine();
 
-            builder.AppendLine(FormatDocumentation("Validates that the runtime types of members in the current instance are correct.", string.Empty, 0));
+            builder.AppendLine(FormatDocumentation("Validates that the runtime types of members in the current instance are correct.", null, 0));
             builder.CodeBlock($"public validateTypes(): void", indentStep, () =>
             {
                 builder.AppendLine($"{definition.ClassName()}.validateCompatibility(this);");
             });
             builder.AppendLine();
-            builder.AppendLine(FormatDocumentation($"Validates that the specified dynamic object can become an instance of {{@link {definition.ClassName()}}}.", string.Empty, 0));
+            builder.AppendLine(FormatDocumentation($"Validates that the specified dynamic object can become an instance of {{@link {definition.ClassName()}}}.", null, 0));
             builder.CodeBlock($"public static validateCompatibility(record: I{definition.ClassName()}): void", indentStep, () =>
             {
                 builder.AppendLine(definition switch
@@ -352,7 +360,7 @@ namespace Core.Generators.TypeScript
             });
             builder.AppendLine();
             var returnType = definition is UnionDefinition ? definition.ClassName() : $"I{definition.ClassName()}";
-            builder.AppendLine(FormatDocumentation($"Unsafely creates an instance of {{@link {definition.ClassName()}}} from the specified dynamic object. No type checking is performed.", string.Empty, 0));
+            builder.AppendLine(FormatDocumentation($"Unsafely creates an instance of {{@link {definition.ClassName()}}} from the specified dynamic object. No type checking is performed.", null, 0));
             builder.CodeBlock($"public static unsafeCast(record: any): {returnType}", indentStep, () =>
             {
                 builder.AppendLine(definition switch
@@ -364,7 +372,7 @@ namespace Core.Generators.TypeScript
                 });
             });
             builder.AppendLine();
-            builder.AppendLine(FormatDocumentation($"Creates a new {{@link {definition.ClassName()}}} instance from a JSON-Over-Bebop string. Type checking is performed.", string.Empty, 0));
+            builder.AppendLine(FormatDocumentation($"Creates a new {{@link {definition.ClassName()}}} instance from a JSON-Over-Bebop string. Type checking is performed.", null, 0));
             builder.CodeBlock($"public static fromJSON(json: string): {returnType}", indentStep, () =>
             {
                 builder.CodeBlock("if (typeof json !== 'string' || json.trim().length === 0)", indentStep, () =>
@@ -675,16 +683,12 @@ namespace Core.Generators.TypeScript
 
             foreach (var definition in Schema.Definitions.Values)
             {
-                if (!string.IsNullOrWhiteSpace(definition.Documentation) || (definition is EnumDefinition { DeprecatedAttribute: not null }) || (definition is RecordDefinition { DeprecatedAttribute: not null }))
+                builder.AppendLine(FormatDocumentation(definition.Documentation, definition switch
                 {
-                    var deprecationReason = definition switch
-                    {
-                        EnumDefinition e => e?.DeprecatedAttribute?.Value,
-                        RecordDefinition r => r?.DeprecatedAttribute?.Value,
-                        _ => string.Empty
-                    } ?? string.Empty;
-                    builder.AppendLine(FormatDocumentation(definition.Documentation, deprecationReason, 0));
-                }
+                    EnumDefinition e => e?.DeprecatedDecorator,
+                    RecordDefinition r => r?.DeprecatedDecorator,
+                    _ => null
+                }, 0));
                 if (definition is EnumDefinition ed)
                 {
                     var is64Bit = ed.ScalarType.Is64Bit;
@@ -700,15 +704,7 @@ namespace Core.Generators.TypeScript
                     for (var i = 0; i < ed.Members.Count; i++)
                     {
                         var field = ed.Members.ElementAt(i);
-                        var deprecationReason = field.DeprecatedAttribute?.Value ?? string.Empty;
-                        if (!string.IsNullOrWhiteSpace(field.Documentation))
-                        {
-                            builder.AppendLine(FormatDocumentation(field.Documentation, deprecationReason, 2));
-                        }
-                        else if (string.IsNullOrWhiteSpace(field.Documentation) && !string.IsNullOrWhiteSpace(deprecationReason))
-                        {
-                            builder.AppendLine(FormatDeprecationDoc(deprecationReason, 2));
-                        }
+                        builder.AppendLine(FormatDocumentation(field.Documentation, field.DeprecatedDecorator, 2));
                         if (is64Bit)
                         {
                             builder.AppendLine($"  {field.Name.ToPascalCase()}: {field.ConstantValue}n,");
@@ -731,24 +727,17 @@ namespace Core.Generators.TypeScript
                         {
                             var field = fd.Fields.ElementAt(i);
                             var type = TypeName(field.Type);
-                            var deprecationReason = field.DeprecatedAttribute?.Value ?? string.Empty;
-                            if (!string.IsNullOrWhiteSpace(field.Documentation))
-                            {
-                                builder.AppendLine(FormatDocumentation(field.Documentation, deprecationReason, 2));
-                            }
-                            else if (string.IsNullOrWhiteSpace(field.Documentation) && !string.IsNullOrWhiteSpace(deprecationReason))
-                            {
-                                builder.AppendLine(FormatDeprecationDoc(deprecationReason, 2));
-                            }
+                            builder.AppendLine(FormatDocumentation(field.Documentation, field.DeprecatedDecorator, 2));
+
                             builder.AppendLine($"  {(fd is StructDefinition { IsReadOnly: true } ? "readonly " : "")}{field.NameCamelCase}{(fd is MessageDefinition ? "?" : "")}: {type};");
                         }
                         builder.AppendLine("}");
                         builder.AppendLine();
                         builder.CodeBlock($"export class {td.ClassName()} implements I{td.ClassName()}", indentStep, () =>
                         {
-                            if (td.OpcodeAttribute is not null)
+                            if (td.OpcodeDecorator is not null && td.OpcodeDecorator.TryGetValue("fourcc", out var fourcc))
                             {
-                                builder.AppendLine($"public static readonly opcode: number = {td.OpcodeAttribute.Value} as {td.OpcodeAttribute.Value};");
+                                builder.AppendLine($"public static readonly opcode: number = {fourcc} as {fourcc};");
                             }
                             if (td.DiscriminatorInParent != null)
                             {
@@ -894,7 +883,8 @@ namespace Core.Generators.TypeScript
                     {
                         if (!string.IsNullOrWhiteSpace(service.Documentation))
                         {
-                            builder.AppendLine(FormatDocumentation(service.Documentation, service.DeprecatedAttribute?.Value ?? string.Empty, 0));
+
+                            builder.AppendLine(FormatDocumentation(service.Documentation, service.DeprecatedDecorator, 0));
                         }
                         builder.CodeBlock($"export abstract class {service.BaseClassName()} extends BaseService", indentStep, () =>
                         {
@@ -904,23 +894,24 @@ namespace Core.Generators.TypeScript
                                 var methodType = method.Definition.Type;
                                 if (!string.IsNullOrWhiteSpace(method.Documentation))
                                 {
-                                    builder.AppendLine(FormatDocumentation(method.Documentation, method.DeprecatedAttribute?.Value ?? string.Empty, 0));
+
+                                    builder.AppendLine(FormatDocumentation(method.Documentation, method.DeprecatedDecorator, 0));
                                 }
                                 if (methodType is MethodType.Unary)
                                 {
-                                    builder.AppendLine($"public abstract {method.Definition.Name.ToCamelCase()}(record: I{method.Definition.RequestDefinition}, context: ServerContext): Promise<I{method.Definition.ReturnDefintion}>;");
+                                    builder.AppendLine($"public abstract {method.Definition.Name.ToCamelCase()}(record: I{method.Definition.RequestDefinition}, context: ServerContext): Promise<I{method.Definition.ResponseDefintion}>;");
                                 }
                                 else if (methodType is MethodType.ClientStream)
                                 {
-                                    builder.AppendLine($"public abstract {method.Definition.Name.ToCamelCase()}(records: () => AsyncGenerator<I{method.Definition.RequestDefinition}, void, undefined>, context: ServerContext): Promise<I{method.Definition.ReturnDefintion}>;");
+                                    builder.AppendLine($"public abstract {method.Definition.Name.ToCamelCase()}(records: () => AsyncGenerator<I{method.Definition.RequestDefinition}, void, undefined>, context: ServerContext): Promise<I{method.Definition.ResponseDefintion}>;");
                                 }
                                 else if (methodType is MethodType.ServerStream)
                                 {
-                                    builder.AppendLine($"public abstract {method.Definition.Name.ToCamelCase()}(record: I{method.Definition.RequestDefinition}, context: ServerContext): AsyncGenerator<I{method.Definition.ReturnDefintion}, void, undefined>;");
+                                    builder.AppendLine($"public abstract {method.Definition.Name.ToCamelCase()}(record: I{method.Definition.RequestDefinition}, context: ServerContext): AsyncGenerator<I{method.Definition.ResponseDefintion}, void, undefined>;");
                                 }
                                 else if (methodType is MethodType.DuplexStream)
                                 {
-                                    builder.AppendLine($"public abstract {method.Definition.Name.ToCamelCase()}(records: () => AsyncGenerator<I{method.Definition.RequestDefinition}, void, undefined>, context: ServerContext): AsyncGenerator<I{method.Definition.ReturnDefintion}, void, undefined>;");
+                                    builder.AppendLine($"public abstract {method.Definition.Name.ToCamelCase()}(records: () => AsyncGenerator<I{method.Definition.RequestDefinition}, void, undefined>, context: ServerContext): AsyncGenerator<I{method.Definition.ResponseDefintion}, void, undefined>;");
                                 }
                                 else
                                 {
@@ -991,12 +982,12 @@ namespace Core.Generators.TypeScript
                                         builder.AppendLine($"name: '{methodName}',");
                                         builder.AppendLine($"service: serviceName,");
                                         builder.AppendLine($"invoke: service.{methodName},");
-                                        builder.AppendLine($"serialize: {method.Definition.ReturnDefintion}.encode,");
+                                        builder.AppendLine($"serialize: {method.Definition.ResponseDefintion}.encode,");
                                         builder.AppendLine($"deserialize: {method.Definition.RequestDefinition}.decode,");
-                                        builder.AppendLine($"toJSON: {method.Definition.ReturnDefintion}.encodeToJSON,");
+                                        builder.AppendLine($"toJSON: {method.Definition.ResponseDefintion}.encodeToJSON,");
                                         builder.AppendLine($"fromJSON: {method.Definition.RequestDefinition}.fromJSON,");
                                         builder.AppendLine($"type: MethodType.{RpcSchema.GetMethodTypeName(methodType)},");
-                                    }, close: $"}} as BebopMethod<I{method.Definition.RequestDefinition}, I{method.Definition.ReturnDefintion}>);");
+                                    }, close: $"}} as BebopMethod<I{method.Definition.RequestDefinition}, I{method.Definition.ResponseDefintion}>);");
                                 }
                             }
 
@@ -1018,10 +1009,10 @@ namespace Core.Generators.TypeScript
                     {
                         return definition.Type switch
                         {
-                            MethodType.Unary => ($"I{definition.RequestDefinition}", $"Promise<I{definition.ReturnDefintion}>"),
-                            MethodType.ServerStream => ($"I{definition.RequestDefinition}", $"Promise<AsyncGenerator<I{definition.ReturnDefintion}, void, undefined>>"),
-                            MethodType.ClientStream => ($"() => AsyncGenerator<I{definition.RequestDefinition}, void, undefined>", $"Promise<I{definition.ReturnDefintion}>"),
-                            MethodType.DuplexStream => ($"() => AsyncGenerator<I{definition.RequestDefinition}, void, undefined>", $"Promise<AsyncGenerator<I{definition.ReturnDefintion}, void, undefined>>"),
+                            MethodType.Unary => ($"I{definition.RequestDefinition}", $"Promise<I{definition.ResponseDefintion}>"),
+                            MethodType.ServerStream => ($"I{definition.RequestDefinition}", $"Promise<AsyncGenerator<I{definition.ResponseDefintion}, void, undefined>>"),
+                            MethodType.ClientStream => ($"() => AsyncGenerator<I{definition.RequestDefinition}, void, undefined>", $"Promise<I{definition.ResponseDefintion}>"),
+                            MethodType.DuplexStream => ($"() => AsyncGenerator<I{definition.RequestDefinition}, void, undefined>", $"Promise<AsyncGenerator<I{definition.ResponseDefintion}, void, undefined>>"),
                             _ => throw new InvalidOperationException($"Unsupported function type {definition.Type}")
                         };
                     }
@@ -1029,28 +1020,19 @@ namespace Core.Generators.TypeScript
                     foreach (var service in serviceDefinitions)
                     {
                         var clientName = service.ClassName().ReplaceLastOccurrence("Service", "Client");
-                        if (!string.IsNullOrWhiteSpace(service.Documentation))
-                        {
-                            builder.AppendLine(FormatDocumentation(service.Documentation, service.DeprecatedAttribute?.Value ?? string.Empty, 0));
-                        }
+                        builder.AppendLine(FormatDocumentation(service.Documentation, service.DeprecatedDecorator, 0));
                         builder.CodeBlock($"export interface I{clientName}", indentStep, () =>
                         {
                             foreach (var method in service.Methods)
                             {
                                 var (requestType, responseType) = GetFunctionTypes(method.Definition);
-                                if (!string.IsNullOrWhiteSpace(method.Documentation))
-                                {
-                                    builder.AppendLine(FormatDocumentation(method.Documentation, method.DeprecatedAttribute?.Value ?? string.Empty, 0));
-                                }
+                                builder.AppendLine(FormatDocumentation(method.Documentation, method.DeprecatedDecorator, 0));
                                 builder.AppendLine($"{method.Definition.Name.ToCamelCase()}(request: {requestType}): {responseType};");
                                 builder.AppendLine($"{method.Definition.Name.ToCamelCase()}(request: {requestType}, metadata: Metadata): {responseType};");
                             }
                         });
                         builder.AppendLine();
-                        if (!string.IsNullOrWhiteSpace(service.Documentation))
-                        {
-                            builder.AppendLine(FormatDocumentation(service.Documentation, service.DeprecatedAttribute?.Value ?? string.Empty, 0));
-                        }
+                        builder.AppendLine(FormatDocumentation(service.Documentation, service.DeprecatedDecorator, 0));
                         builder.CodeBlock($"export class {clientName} extends BaseClient implements I{clientName}", indentStep, () =>
                         {
                             foreach (var method in service.Methods)
@@ -1059,22 +1041,19 @@ namespace Core.Generators.TypeScript
                                 var methodName = method.Definition.Name.ToCamelCase();
                                 var (requestType, responseType) = GetFunctionTypes(method.Definition);
                                 var methodType = method.Definition.Type;
-                                builder.CodeBlock($"private static readonly {methodInfoName}: MethodInfo<I{method.Definition.RequestDefinition}, I{method.Definition.ReturnDefintion}> =", indentStep, () =>
+                                builder.CodeBlock($"private static readonly {methodInfoName}: MethodInfo<I{method.Definition.RequestDefinition}, I{method.Definition.ResponseDefintion}> =", indentStep, () =>
                                 {
                                     builder.AppendLine($"name: '{methodName}',");
                                     builder.AppendLine($"service: '{service.ClassName()}',");
                                     builder.AppendLine($"id: {method.Id},");
                                     builder.AppendLine($"serialize: {method.Definition.RequestDefinition}.encode,");
-                                    builder.AppendLine($"deserialize: {method.Definition.ReturnDefintion}.decode,");
+                                    builder.AppendLine($"deserialize: {method.Definition.ResponseDefintion}.decode,");
                                     builder.AppendLine($"toJSON: {method.Definition.RequestDefinition}.encodeToJSON,");
-                                    builder.AppendLine($"fromJSON: {method.Definition.ReturnDefintion}.fromJSON,");
+                                    builder.AppendLine($"fromJSON: {method.Definition.ResponseDefintion}.fromJSON,");
                                     builder.AppendLine($"type: MethodType.{RpcSchema.GetMethodTypeName(methodType)},");
                                 });
 
-                                if (!string.IsNullOrWhiteSpace(method.Documentation))
-                                {
-                                    builder.AppendLine(FormatDocumentation(method.Documentation, method.DeprecatedAttribute?.Value ?? string.Empty, 0));
-                                }
+                                builder.AppendLine(FormatDocumentation(method.Documentation, method.DeprecatedDecorator, 0));
                                 builder.AppendLine($"async {methodName}(request: {requestType}): {responseType};");
                                 builder.AppendLine($"async {methodName}(request: {requestType}, options: CallOptions): {responseType};");
 

@@ -14,10 +14,9 @@ using Core.Lexer.Extensions;
 using Core.Lexer.Tokenization;
 using Core.Lexer.Tokenization.Models;
 using Core.Meta;
-using Core.Meta.Attributes;
+using Core.Meta.Decorators;
 using Core.Meta.Extensions;
 using Core.Parser.Extensions;
-using FlagsAttribute = Core.Meta.Attributes.FlagsAttribute;
 
 namespace Core.Parser
 {
@@ -33,9 +32,10 @@ namespace Core.Parser
         private readonly HashSet<TokenKind> _universalFollowKinds = new() { TokenKind.Enum, TokenKind.Struct, TokenKind.Message, TokenKind.Union, TokenKind.Service, TokenKind.EndOfFile };
         private readonly Stack<List<Definition>> _scopes = new();
         private readonly Tokenizer _tokenizer;
+        private readonly DecoratorRegistry _decoratorRegistry;
         private readonly Dictionary<string, Definition> _definitions = new();
         private readonly List<string> _imports = new();
-        
+
         /// <summary>
         /// A set of references to named types found in message/struct definitions:
         /// the left token is the type name, and the right token is the definition it's used in (used to report a helpful error).
@@ -94,18 +94,20 @@ namespace Core.Parser
         /// Creates a new schema parser instance from some schema files on disk.
         /// </summary>
         /// <param name="schemaPaths">The Bebop schema files that will be parsed</param>
-        public SchemaParser(IEnumerable<string> schemaPaths)
+        public SchemaParser(IEnumerable<string> schemaPaths, DecoratorRegistry decoratorRegistry)
         {
             _tokenizer = new Tokenizer(SchemaReader.FromSchemaPaths(schemaPaths));
+            _decoratorRegistry = decoratorRegistry;
         }
 
         /// <summary>
         /// Creates a new schema parser instance and loads the schema into memory.
         /// </summary>
         /// <param name="textualSchema">A string representation of a schema.</param>
-        public SchemaParser(string textualSchema)
+        public SchemaParser(string textualSchema, DecoratorRegistry decoratorRegistry)
         {
             _tokenizer = new Tokenizer(SchemaReader.FromTextualSchema(textualSchema));
+            _decoratorRegistry = decoratorRegistry;
         }
 
         /// <summary>
@@ -349,20 +351,20 @@ namespace Core.Parser
                 return ParseConstDefinition(definitionDocumentation);
             }
 
-            List<BaseAttribute>? attributes = null;
+            List<SchemaDecorator> decorators = [];
 
             try
             {
-                BaseAttribute? attribute;
-                while ((attribute = EatAttribute()) is not null)
+                SchemaDecorator? decorator;
+                // for now eat all decorators with a target of all
+                while ((decorator = EatDecorator(DecoratorTargets.All)) is not null)
                 {
-                    attributes ??= new List<BaseAttribute>();
-                    attributes.Add(attribute);
+                    decorators.Add(decorator);
                 }
             }
             catch (SpanException e)
             {
-                // If there's a syntax error in the attribute, we'll be skipping ahead to the next top level definition anyway.
+                // If there's a syntax error in the decorator, we'll be skipping ahead to the next top level definition anyway.
                 _errors.Add(e);
             }
             var readonlySpan = CurrentToken.Span;
@@ -383,19 +385,21 @@ namespace Core.Parser
                 {
                     throw new UnexpectedTokenException(TokenKind.Service, CurrentToken, "Did not expect service definition after readonly. (Services are not allowed to be readonly).");
                 }
-                if (attributes is not null && attributes.Any((a) => a is OpcodeAttribute))
+                if (decorators.Any((a) => a.Identifier == "opcode"))
                 {
                     throw new UnexpectedTokenException(TokenKind.Service, CurrentToken, "Did not expect service definition after opcode. (Services are not allowed opcodes).");
                 }
-                if (attributes is not null && attributes.Any((a) => a is FlagsAttribute))
+                if (decorators.Any((a) => a.Identifier == "flags"))
                 {
                     throw new UnexpectedTokenException(TokenKind.Service, CurrentToken, "Did not expect service definition after flags. (Services are not allowed flags).");
                 }
-                return ParseServiceDefinition(CurrentToken, definitionDocumentation, attributes);
+                decorators = decorators.Select((a) => a with { Target = DecoratorTargets.Service }).ToList();
+                return ParseServiceDefinition(CurrentToken, definitionDocumentation, decorators);
             }
             if (Eat(TokenKind.Union))
             {
-                return ParseUnionDefinition(CurrentToken, definitionDocumentation, attributes);
+                decorators = decorators.Select((a) => a with { Target = DecoratorTargets.Union }).ToList();
+                return ParseUnionDefinition(CurrentToken, definitionDocumentation, decorators);
             }
             else
             {
@@ -406,17 +410,25 @@ namespace Core.Parser
                     _ when Eat(TokenKind.Message) => AggregateKind.Message,
                     _ => throw new UnexpectedTokenException(TokenKind.Message, CurrentToken)
                 };
+                var decoratorTarget = kind switch
+                {
+                    AggregateKind.Enum => DecoratorTargets.Enum,
+                    AggregateKind.Struct => DecoratorTargets.Struct,
+                    AggregateKind.Message => DecoratorTargets.Message,
+                    _ => throw new InvalidOperationException("invalid kind when making definition")
+                };
+                decorators = decorators.Select((a) => a with { Target = decoratorTarget }).ToList();
                 ExpectAndSkip(TokenKind.Identifier, _universalFollowKinds);
                 if (CurrentToken.Kind != TokenKind.Identifier)
                 {
                     // Uh oh we skipped ahead due to a missing identifier, get outta there
                     return null;
                 }
-                return ParseNonUnionDefinition(CurrentToken, kind, isReadOnly, definitionDocumentation, attributes);
+                return ParseNonUnionDefinition(CurrentToken, kind, isReadOnly, definitionDocumentation, decorators);
             }
         }
 
-        private ConstDefinition ParseConstDefinition(string definitionDocumentation)
+        private ConstDefinition? ParseConstDefinition(string definitionDocumentation)
         {
             var definitionStart = CurrentToken.Span;
 
@@ -433,6 +445,7 @@ namespace Core.Parser
             catch (SpanException e)
             {
                 _errors.Add(e);
+                return null;
             }
             ExpectAndSkip(TokenKind.Semicolon, hint: "A constant definition must end in a semicolon: const uint32 pianoKeys = 88;");
             Eat(TokenKind.Semicolon);
@@ -451,7 +464,6 @@ namespace Core.Parser
 
         private readonly Regex _reFloat = new(@"^(-?inf|nan|-?\d+(\.\d*)?(e-?\d+)?)$");
         private readonly Regex _reInteger = new(@"^-?(0[xX][0-9a-fA-F]+|\d+)$");
-        private readonly Regex _reGuid = new(@"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
 
         private (Span, string) ParseNumberLiteral()
         {
@@ -483,65 +495,153 @@ namespace Core.Parser
                     return new FloatLiteral(st, floatSpan, floatLexeme);
                 case ScalarType st when st.IsInteger:
                     var (intSpan, intLexeme) = ParseNumberLiteral();
-                    if (!_reInteger.IsMatch(intLexeme)) throw new InvalidLiteralException(token, st);
+                    if (!st.BaseType.IsAssignableFrom(intLexeme)) throw new InvalidLiteralException(token, st);
                     return new IntegerLiteral(st, intSpan, intLexeme);
                 case ScalarType st when st.BaseType == BaseType.Bool:
-                    Expect(TokenKind.Identifier);
-                    return token.Lexeme switch
-                    {
-                        "true" => new BoolLiteral(st, token.Span, true),
-                        "false" => new BoolLiteral(st, token.Span, false),
-                        _ => throw new InvalidLiteralException(token, st),
-                    };
+                    if (Eat(TokenKind.True)) return new BoolLiteral(st, token.Span, true);
+                    if (Eat(TokenKind.False)) return new BoolLiteral(st, token.Span, false);
+                    throw new InvalidLiteralException(token, st);
                 case ScalarType st when st.BaseType == BaseType.String:
                     ExpectStringLiteral();
                     return new StringLiteral(st, token.Span, token.Lexeme.Replace("\r\n", "\n"));
                 case ScalarType st when st.BaseType == BaseType.Guid:
                     ExpectStringLiteral();
-                    if (!_reGuid.IsMatch(token.Lexeme)) throw new InvalidLiteralException(token, st);
-                    return new GuidLiteral(st, token.Span, Guid.Parse(token.Lexeme));
+                    if (!Guid.TryParse(token.Lexeme, out var guid)) throw new InvalidLiteralException(token, st);
+                    return new GuidLiteral(st, token.Span, guid);
                 default:
                     throw new UnsupportedConstTypeException($"Constant definitions for type {type.AsString} are not supported.", type.Span);
             }
         }
 
         /// <summary>
-        /// Consumes all the tokens belonging to an attribute
+        /// Consumes all the tokens belonging to a decorator
         /// </summary>
-        /// <returns>An instance of the attribute.</returns>
-        private BaseAttribute? EatAttribute()
+        /// <returns>An instance of the decorator.</returns>
+        private SchemaDecorator? EatDecorator(DecoratorTargets decoratorTargets)
         {
-            if (Eat(TokenKind.OpenBracket))
+            if (Eat(TokenKind.Decorator))
             {
+                var startSpan = CurrentToken.Span;
                 var kindToken = CurrentToken;
                 var kind = kindToken.Lexeme;
                 Expect(TokenKind.Identifier);
-                var value = string.Empty;
-                var isNumber = false;
-                if (Eat(TokenKind.OpenParenthesis))
+
+                if (!_decoratorRegistry.TryGet(kind, out var decorator))
                 {
-                    value = CurrentToken.Lexeme;
-                    if (Eat(TokenKind.String) || (kind == "opcode" && Eat(TokenKind.Number)))
+                    throw new UnknownDecoratorException(kindToken);
+                }
+
+                var arguments = new Dictionary<string, string>();
+                var parameters = decorator.Parameters ?? Enumerable.Empty<DecoratorParameter>();
+                var expectedArgCount = parameters.Count(p => p.IsRequired);
+                var providedArguments = new HashSet<string>();
+
+                if (!parameters.Any())
+                {
+                    return new SchemaDecorator(kind, decoratorTargets, Span.Combine(startSpan, CurrentToken.Span), arguments, decorator);
+                }
+
+                var hasOpenParenthesis = Eat(TokenKind.OpenParenthesis);
+                if (expectedArgCount > 0 && !hasOpenParenthesis)
+                {
+                    throw new MissingArgumentException(kind, parameters.First(p => p.IsRequired).Identifier, expectedArgCount, 0, startSpan, "Expected '(' after decorator identifier.");
+                }
+
+                while (CurrentToken.Kind != TokenKind.CloseParenthesis && CurrentToken.Kind != TokenKind.EndOfFile)
+                {
+                    string paramName;
+                    bool namedArgument = false;
+
+                    if (CurrentToken.Kind == TokenKind.Identifier)
                     {
-                        isNumber = PeekToken(_index - 1).Kind == TokenKind.Number;
+                        paramName = CurrentToken.Lexeme;
+                        Eat(TokenKind.Identifier); // Eat the identifier
+                        Eat(TokenKind.Colon); // Eat the colon
+                        namedArgument = true;
+
+                        if (CurrentToken.Kind is TokenKind.Comma or TokenKind.CloseParenthesis or TokenKind.EndOfFile)
+                        {
+                            throw new MissingValueForArgumentException(kind, paramName, startSpan);
+                        }
                     }
                     else
                     {
-                        throw new UnexpectedTokenException(TokenKind.String, CurrentToken);
+                        if (providedArguments.Count >= parameters.Count())
+                        {
+                            throw new TooManyArgumentsException(kind, expectedArgCount, providedArguments.Count, startSpan);
+                        }
+                        paramName = parameters.ElementAt(providedArguments.Count).Identifier;
                     }
+
+                    var parameter = parameters.FirstOrDefault(p => p.Identifier == paramName);
+                    if (parameter == null)
+                    {
+                        throw new UnknownParameterException(kind, paramName, startSpan);
+                    }
+
+                    // Special case: opcode decorators
+                    if (kind == "opcode" && (CurrentToken.Kind == TokenKind.String || CurrentToken.Kind == TokenKind.Number))
+                    {
+                        // Special case handling for opcode decorators
+                        goto isAssignable;
+                    }
+
+                    if (CurrentToken.Kind != parameter.Type.ToTokenKind() || (parameter.Type == BaseType.Bool && !CurrentToken.Kind.IsBoolean()))
+                    {
+                        if (!parameter.IsRequired && !namedArgument)
+                        {
+                            // Skip optional parameter if it's not a named argument
+                            continue;
+                        }
+                        throw new InvalidArgumentTypeException(kind, parameter.Identifier, parameter.Type, CurrentToken.Kind, startSpan);
+                    }
+
+isAssignable:
+                    if (!parameter.IsValueAssignable(CurrentToken.Lexeme, out var reason))
+                    {
+                        throw new InvalidArgumentValueException(kind, parameter.Identifier, reason, startSpan);
+                    }
+
+                    arguments[parameter.Identifier] = CurrentToken.Lexeme;
+                    providedArguments.Add(parameter.Identifier);
+                    Eat(CurrentToken.Kind);
+
+                    // Only expect a comma if it's not the last argument or if it's a named argument
+                    if (CurrentToken.Kind is not TokenKind.CloseParenthesis && (namedArgument || providedArguments.Count < parameters.Count()))
+                    {
+                        Expect(TokenKind.Comma, "Expected ',' between arguments");
+                    }
+                }
+
+                // Add default values for missing optional parameters
+                foreach (var param in parameters.Where(p => !providedArguments.Contains(p.Identifier)))
+                {
+                    if (!param.IsRequired)
+                    {
+                        arguments[param.Identifier] = param.DefaultValue ?? string.Empty;
+                    }
+                }
+
+                if (hasOpenParenthesis)
+                {
                     Expect(TokenKind.CloseParenthesis);
                 }
-                Expect(TokenKind.CloseBracket);
-                return kind switch
+
+                if (providedArguments.Count < expectedArgCount)
                 {
-                    "deprecated" => new DeprecatedAttribute(value),
-                    "opcode" => new OpcodeAttribute(value, isNumber),
-                    "flags" => new FlagsAttribute(),
-                    _ => throw new UnknownAttributeException(kindToken),
-                };
+                    var missingParam = parameters.First(p => p.IsRequired && !providedArguments.Contains(p.Identifier));
+                    throw new MissingArgumentException(kind, missingParam.Identifier, expectedArgCount, providedArguments.Count, startSpan);
+                }
+
+                var endSpan = CurrentToken.Span;
+                var combinedSpan = Span.Combine(startSpan, endSpan);
+                return new SchemaDecorator(kind, decoratorTargets, combinedSpan, arguments, decorator);
             }
+
             return null;
         }
+
+
 
 
         /// <summary>
@@ -551,14 +651,12 @@ namespace Core.Parser
         /// <param name="kind">The <see cref="AggregateKind"/> the type will represents.</param>
         /// <param name="isReadOnly"></param>
         /// <param name="definitionDocumentation"></param>
-        /// <param name="opcodeAttribute"></param>
-        /// <param name="flagsAttribute"></param>
         /// <returns>The parsed definition.</returns>
         private Definition? ParseNonUnionDefinition(Token definitionToken,
             AggregateKind kind,
             bool isReadOnly,
             string definitionDocumentation,
-            List<BaseAttribute>? definitionAttributes)
+            List<SchemaDecorator> definitionDecorators)
         {
 
             var fields = new List<Field>();
@@ -626,19 +724,25 @@ namespace Core.Parser
                 {
                     break;
                 }
-                List<BaseAttribute>? fieldAttributes = null;
+                List<SchemaDecorator> fieldDecorators = [];
                 try
                 {
-                    BaseAttribute? attribute;
-                    while ((attribute = EatAttribute()) is not null)
+                    SchemaDecorator? decorator;
+                    var target = kind switch
                     {
-                        fieldAttributes ??= new List<BaseAttribute>();
-                        fieldAttributes.Add(attribute);
+                        AggregateKind.Enum => DecoratorTargets.Enum | DecoratorTargets.Field,
+                        AggregateKind.Struct => DecoratorTargets.Struct | DecoratorTargets.Field,
+                        AggregateKind.Message => DecoratorTargets.Message | DecoratorTargets.Field,
+                        _ => throw new InvalidOperationException("invalid kind when making definition")
+                    };
+                    while ((decorator = EatDecorator(target)) is not null)
+                    {
+                        fieldDecorators.Add(decorator);
                     }
                 }
                 catch (SpanException e)
                 {
-                    // If there's a syntax error in the attribute, we'll be skipping ahead to the next top level definition anyway.
+                    // If there's a syntax error in the decorator, we'll be skipping ahead to the next top level definition anyway.
                     _errors.Add(e);
                 }
 
@@ -708,7 +812,7 @@ namespace Core.Parser
                     Expect(TokenKind.Semicolon, hint: CurrentToken.Kind == TokenKind.OpenBracket
                         ? "Try 'Type[] foo' instead of 'Type foo[]'."
                         : $"Elements in {aKindName} are delimited using semicolons.");
-                    fields.Add(new Field(fieldName, type, fieldStart.Combine(fieldEnd), fieldAttributes, value, fieldDocumentation));
+                    fields.Add(new Field(fieldName, type, fieldStart.Combine(fieldEnd), fieldDecorators, value, fieldDocumentation));
                     definitionEnd = CurrentToken.Span;
                 }
                 catch (SpanException e)
@@ -722,12 +826,12 @@ namespace Core.Parser
 
             var name = definitionToken.Lexeme;
             var definitionSpan = definitionToken.Span.Combine(definitionEnd);
-          
+
             Definition definition = kind switch
             {
-                AggregateKind.Enum => new EnumDefinition(name, definitionSpan, definitionDocumentation, fields, definitionAttributes, enumBaseType),
-                AggregateKind.Struct => new StructDefinition(name, definitionSpan, definitionDocumentation, definitionAttributes, fields, isReadOnly),
-                AggregateKind.Message => new MessageDefinition(name, definitionSpan, definitionDocumentation, definitionAttributes, fields),
+                AggregateKind.Enum => new EnumDefinition(name, definitionSpan, definitionDocumentation, fields, definitionDecorators, enumBaseType),
+                AggregateKind.Struct => new StructDefinition(name, definitionSpan, definitionDocumentation, definitionDecorators, fields, isReadOnly),
+                AggregateKind.Message => new MessageDefinition(name, definitionSpan, definitionDocumentation, definitionDecorators, fields),
                 _ => throw new InvalidOperationException("invalid kind when making definition"),
             };
 
@@ -736,9 +840,9 @@ namespace Core.Parser
                 _errors.Add(new InvalidReadOnlyException(definition));
             }
 
-            if (definitionAttributes is not null && definitionAttributes.Any((a) => a is OpcodeAttribute) && definition is not RecordDefinition)
+            if (definitionDecorators is not null && definitionDecorators.Any((a) => a.Identifier == "opcode") && definition is not RecordDefinition)
             {
-                _errors.Add(new InvalidOpcodeAttributeUsageException(definition));
+                _errors.Add(new InvalidOpcodeDecoratorUsageException(definition));
             }
 
             if (_definitions.ContainsKey(name))
@@ -760,7 +864,7 @@ namespace Core.Parser
         /// <param name="definitionDocumentation">The documentation above the service definition.</param>
         /// <returns>The parsed rpc service definition.</returns>
         private Definition? ParseServiceDefinition(Token definitionToken,
-            string definitionDocumentation, List<BaseAttribute>? definitionAttributes)
+            string definitionDocumentation, List<SchemaDecorator> definitionDecorators)
         {
             ExpectAndSkip(TokenKind.Identifier, new(_universalFollowKinds.Append(TokenKind.OpenBrace)), "Did you forget to specify a name for this service?");
             Eat(TokenKind.Identifier);
@@ -808,16 +912,15 @@ namespace Core.Parser
                 try
                 {
 
-                    List<BaseAttribute>? methodAttributes = null;
-                    BaseAttribute? attribute;
-                    while ((attribute = EatAttribute()) is not null)
+                    List<SchemaDecorator> methodDecorators = [];
+                    SchemaDecorator? decorator;
+                    while ((decorator = EatDecorator(DecoratorTargets.Method)) is not null)
                     {
-                        methodAttributes ??= new List<BaseAttribute>();
-                        methodAttributes.Add(attribute);
+                        methodDecorators.Add(decorator);
                     }
-                    if (methodAttributes is not null && methodAttributes.Any((a) => a is FlagsAttribute or OpcodeAttribute))
+                    if (methodDecorators.Any((a) => a.Identifier is "flags" or "opcode"))
                     {
-                        throw new UnexpectedTokenException(TokenKind.Identifier, CurrentToken, $"Service methods are not allowed to use the flags and opcode attribute.");
+                        throw new UnexpectedTokenException(TokenKind.Identifier, CurrentToken, $"Service methods cannot be marked with the flags and opcode decorator.");
                     }
                     var methodStart = CurrentToken.Span;
                     const string hint = "A method must be defined with name, request type, and return type,  such as 'myMethod(MyRequest): MyResponse;'";
@@ -876,7 +979,7 @@ namespace Core.Parser
                         return null;
                     }
                     definitionEnd = CurrentToken.Span;
-                    methods.Add(new(methodId, method, documentation, methodAttributes));
+                    methods.Add(new(methodId, method, documentation, methodDecorators));
                 }
                 catch (SpanException e)
                 {
@@ -890,7 +993,7 @@ namespace Core.Parser
             var definitionSpan = definitionToken.Span.Combine(definitionEnd);
 
             // make the service itself
-            var serviceDefinition = new ServiceDefinition(serviceName, definitionSpan, definitionDocumentation, methods, definitionAttributes);
+            var serviceDefinition = new ServiceDefinition(serviceName, definitionSpan, definitionDocumentation, methods, definitionDecorators);
             CloseScope(serviceDefinition);
             return serviceDefinition;
         }
@@ -901,11 +1004,11 @@ namespace Core.Parser
         /// </summary>
         /// <param name="definitionToken">The token that names the union to define.</param>
         /// <param name="definitionDocumentation">The documentation above the union definition.</param>
-        /// <param name="opcodeAttribute">The opcode attribute above the union definition, if any.</param>
+        /// <param name="decorators">The decorators of the parent</param>
         /// <returns>The parsed union definition.</returns>
         private Definition? ParseUnionDefinition(Token definitionToken,
             string definitionDocumentation,
-            List<BaseAttribute>? attributes)
+            List<SchemaDecorator> decorators)
         {
             ExpectAndSkip(TokenKind.Identifier, new(_universalFollowKinds.Append(TokenKind.OpenBrace)), hint: $"Did you forget to specify a name for this union?");
             Eat(TokenKind.Identifier);
@@ -1006,7 +1109,7 @@ namespace Core.Parser
                 branches.Add(new UnionBranch((byte)discriminator, td));
             }
             var definitionSpan = definitionToken.Span.Combine(definitionEnd);
-            var unionDefinition = new UnionDefinition(name, definitionSpan, definitionDocumentation, attributes, branches);
+            var unionDefinition = new UnionDefinition(name, definitionSpan, definitionDocumentation, decorators, branches);
             CloseScope(unionDefinition);
             if (unionDefinition.Branches.Count == 0)
             {

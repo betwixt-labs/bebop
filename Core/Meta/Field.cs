@@ -2,7 +2,7 @@
 using System.Numerics;
 using System.Linq;
 using Core.Lexer.Tokenization.Models;
-using Core.Meta.Attributes;
+using Core.Meta.Decorators;
 using Core.Meta.Extensions;
 
 namespace Core.Meta
@@ -12,14 +12,14 @@ namespace Core.Meta
         public Field(string name,
             in TypeBase type,
             in Span span,
-            in List<BaseAttribute>? attributes,
+            in List<SchemaDecorator> decorators,
             in BigInteger constantValue, string documentation)
         {
             Name = name;
             Type = type;
             Span = span;
-            Attributes = attributes;
-            DeprecatedAttribute = attributes?.FirstOrDefault((a) => a is DeprecatedAttribute);
+            Decorators = decorators;
+            DeprecatedDecorator = decorators?.FirstOrDefault((a) => a.Identifier == "deprecated");
             ConstantValue = constantValue;
             Documentation = documentation;
         }
@@ -40,12 +40,12 @@ namespace Core.Meta
         /// </summary>
         public Span Span { get; }
 
-        public List<BaseAttribute>? Attributes {get; }
+        public List<SchemaDecorator> Decorators { get; }
 
         /// <summary>
         ///     Indicates if the member has been marked as no longer recommended for use.
         /// </summary>
-        public BaseAttribute? DeprecatedAttribute { get; }
+        public SchemaDecorator? DeprecatedDecorator { get; }
 
         /// <summary>
         /// For enums, this is a constant value. For messages, this is a field index. For structs, this is unused.

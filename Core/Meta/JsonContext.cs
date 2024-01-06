@@ -17,7 +17,7 @@ namespace Core.Meta;
     WriteIndented = true,
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     UseStringEnumConverter = true,
-    Converters = [typeof(SpanExceptionConverter), typeof(ExceptionConverter), typeof(BebopConfigConverter)])]
+    Converters = [typeof(SpanExceptionConverter), typeof(ExceptionConverter), typeof(BebopConfigConverter), typeof(GeneratorContextConverter)])]
 [JsonSerializable(typeof(BebopConfig))]
 [JsonSerializable(typeof(TempoServices))]
 [JsonSerializable(typeof(Severity))]
@@ -31,6 +31,7 @@ namespace Core.Meta;
 [JsonSerializable(typeof(Exception))]
 [JsonSerializable(typeof(DiagnosticLogger.Diagnostic))]
 [JsonSerializable(typeof(Span))]
+[JsonSerializable(typeof(GeneratorContext))]
 public partial class JsonContext : JsonSerializerContext
 {
 }

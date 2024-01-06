@@ -43,19 +43,21 @@ namespace Core.Exceptions
     [Serializable]
     public class SpanException : Exception
     {
-       
+
         public Span Span { get; }
         /// <summary>
         /// A unique error code identifying the type of exception
         /// </summary>
         public int ErrorCode { get; }
         public Severity Severity { get; }
+        public string? Hint { get; }
 
-        public SpanException(string message, Span span, int errorCode, Severity severity = Severity.Error) : base(message)
+        public SpanException(string message, Span span, int errorCode, string? hint = null, Severity severity = Severity.Error) : base(message)
         {
             Span = span;
             ErrorCode = errorCode;
             Severity = severity;
+            Hint = hint;
         }
     }
     [Serializable]
@@ -64,7 +66,7 @@ namespace Core.Exceptions
         public UnrecognizedTokenException(char tokenStart, Span span)
             : base($"Unrecognized token start '{tokenStart}'", span, 100) { }
     }
-   
+
     [Serializable]
     class MultipleDefinitionsException : SpanException
     {
@@ -87,7 +89,7 @@ namespace Core.Exceptions
     class UnexpectedTokenException : SpanException
     {
         public UnexpectedTokenException(TokenKind expectedKind, Token token, string? hint = null)
-            : base($"Expected {expectedKind}, but found '{token.Lexeme}' of kind {token.Kind}."
+            : base($"Expected type {expectedKind}, but found '{token.Lexeme}' of kind {token.Kind}."
                 + (string.IsNullOrWhiteSpace(hint) ? "" : $" (Hint: {hint})"), token.Span, 104)
         { }
         public UnexpectedTokenException(Token token, string? hint = null)
@@ -112,32 +114,32 @@ namespace Core.Exceptions
             : base($"The 'readonly' modifer cannot be applied to '{definition.Name}' as it is not a struct", definition.Span, 106) { }
     }
     [Serializable]
-    class InvalidDeprecatedAttributeUsageException : SpanException
+    class InvalidDeprecatedDecoratorUsageException : SpanException
     {
-        public InvalidDeprecatedAttributeUsageException(Field field)
+        public InvalidDeprecatedDecoratorUsageException(Field field)
             : base($"The field '{field.Name}' cannot be marked as 'deprecated' as it is not a member of a message or enum", field.Span, 107) { }
     }
     [Serializable]
-    class InvalidOpcodeAttributeUsageException : SpanException
+    class InvalidOpcodeDecoratorUsageException : SpanException
     {
-        public InvalidOpcodeAttributeUsageException(Definition definition)
-            : base($"The definition '{definition.Name}' cannot be marked with an opcode attribute as it is not a message or struct", definition.Span, 108)
+        public InvalidOpcodeDecoratorUsageException(Definition definition)
+            : base($"The definition '{definition.Name}' cannot be marked with an opcode identifier as it is not a message or struct", definition.Span, 108)
         { }
     }
     [Serializable]
-    class InvalidOpcodeAttributeValueException : SpanException
+    class InvalidOpcodeDecoratorValueException : SpanException
     {
-        public InvalidOpcodeAttributeValueException(Definition definition, string reason)
+        public InvalidOpcodeDecoratorValueException(Definition definition, string reason)
             : base($"The definition '{definition.Name}' was marked with an" +
                 $" opcode " +
-                $"attribute containing an invalid value: {reason}", definition.Span, 109)
+                $"identifier containing an invalid value: {reason}", definition.Span, 109)
         { }
     }
     [Serializable]
     class DuplicateOpcodeException : SpanException
     {
         public DuplicateOpcodeException(RecordDefinition definition)
-            : base($"Multiple definitions for opcode '{definition.OpcodeAttribute?.Value}'", definition.Span, 110) { }
+            : base($"Multiple definitions for opcode '{definition.OpcodeDecorator?.Arguments["fourcc"]}'", definition.Span, 110) { }
     }
 
     [Serializable]
@@ -239,22 +241,22 @@ namespace Core.Exceptions
     {
         public ReferenceScopeException(Definition definition, Definition reference, string scopeLabel)
             : base($"Cannot reference {reference.Name} within {scopeLabel} from {definition.Name}.", definition.Span, 123)
-        {}
+        { }
     }
 
     [Serializable]
     public class UnknownIdentifierException : SpanException
     {
         public UnknownIdentifierException(Token identifier)
-            : base($"The identifier '{identifier.Lexeme}' is not defined at this point. (Try reordering your enum branches.)", identifier.Span, 124)
+            : base($"The decorator '{identifier.Lexeme}' is not defined at this point. (Try reordering your enum branches.)", identifier.Span, 124)
         { }
     }
 
     [Serializable]
-    public class UnknownAttributeException : SpanException
+    public class UnknownDecoratorException : SpanException
     {
-        public UnknownAttributeException(Token attribute)
-            : base($"The attribute '{attribute.Lexeme}' is recognized.", attribute.Span, 125)
+        public UnknownDecoratorException(Token identifier)
+            : base($"The decorator '{identifier.Lexeme}' is not defined.", identifier.Span, 125)
         { }
     }
 
@@ -281,7 +283,7 @@ namespace Core.Exceptions
             : base($"Enums must have an integer underlying type, not {t}.", t.Span, 128)
         { }
     }
-    
+
     [Serializable]
     class DuplicateServiceMethodNameException : SpanException
     {
@@ -329,13 +331,90 @@ namespace Core.Exceptions
         { }
     }
 
+    [Serializable]
+    class MissingArgumentException : SpanException
+    {
+        public MissingArgumentException(string identifier, string paramName, int expectedArgCount, int foundArgCount, Span span, string? hint = null)
+            : base($"Expected {expectedArgCount} arguments for '{identifier}', found {foundArgCount}. Missing '{paramName}'." + (string.IsNullOrWhiteSpace(hint) ? "" : $" (Hint: {hint})"), span, 136)
+        { }
+    }
+    class InvalidArgumentTypeException : SpanException
+    {
+        public InvalidArgumentTypeException(string identifier, string paramName, BaseType expectedType, TokenKind foundKind, Span span, string? hint = null)
+            : base($"Expected argument for '{paramName}' of '{identifier}' to be of type '{expectedType}', found '{foundKind}'." + (string.IsNullOrWhiteSpace(hint) ? "" : $" (Hint: {hint})"), span, 137)
+        { }
+    }
+
+    class InvalidArgumentValueException : SpanException
+    {
+        public InvalidArgumentValueException(string identifier, string paramName, string reason, Span span, string? hint = null)
+            : base($"Invalid value for argument '{paramName}' of '{identifier}': {reason}." + (string.IsNullOrWhiteSpace(hint) ? "" : $" (Hint: {hint})"), span, 138)
+        { }
+    }
+
+    class InvalidNamedArgumentException : SpanException
+    {
+        public InvalidNamedArgumentException(string identifier, string paramName, Span span, string? hint = null)
+            : base($"Decorator '{identifier}' does not have a parameter named '{paramName}' " + (string.IsNullOrWhiteSpace(hint) ? "" : $" (Hint: {hint})"), span, 139)
+        { }
+    }
+
+    class MultipleDecoratorsException : SpanException
+    {
+        public MultipleDecoratorsException(string identifier, Span span, string? hint = null)
+            : base($"The decorator '{identifier}' cannot be defined multiple times on a single target." + (string.IsNullOrWhiteSpace(hint) ? "" : $" (Hint: {hint})"), span, 140)
+        { }
+    }
+
+
+    class InvalidDecoratorUsageException : SpanException
+    {
+        public InvalidDecoratorUsageException(string identifier, string reason, Span span, string? hint = null)
+             : base($"Decorator '{identifier}' cannot be applied to this target: {reason}." + (string.IsNullOrWhiteSpace(hint) ? "" : $" (Hint: {hint})"), span, 141)
+        { }
+    }
+    class DecoratorValidationException : SpanException
+    {
+        public DecoratorValidationException(string identifier, string reason, Span span, string? hint = null)
+             : base($"Decorator '{identifier}' is invalid: {reason}." + (string.IsNullOrWhiteSpace(hint) ? "" : $" (Hint: {hint})"), span, 142)
+        { }
+    }
+
+    class StackSizeExceededException : SpanException
+    {
+        public StackSizeExceededException(string reason, Span span, string? hint = null)
+             : base($"Stack size exceeded: {reason}", span, 143)
+        { }
+    }
+
+    class UnknownParameterException : SpanException
+    {
+        public UnknownParameterException(string identifier, string paramName, Span span, string? hint = null)
+             : base($"Decorator '{identifier}' does not have a parameter named '{paramName}'.", span, 144, hint)
+        { }
+    }
+
+    class TooManyArgumentsException : SpanException
+    {
+        public TooManyArgumentsException(string identifier, int expectedArgCount, int foundArgCount, Span span, string? hint = null)
+             : base($"Expected {expectedArgCount} arguments for '{identifier}', found {foundArgCount}.", span, 145, hint)
+        { }
+    }
+
+    class MissingValueForArgumentException : SpanException
+    {
+        public MissingValueForArgumentException(string identifier, string paramName, Span span, string? hint = null)
+             : base($"Decorator '{identifier}' is missing a value for parameter '{paramName}'.", span, 146, hint)
+        { }
+    }
+
 
 
     [Serializable]
     public class EnumZeroWarning : SpanException
     {
         public EnumZeroWarning(Field field)
-            : base($"Bebop recommends that 0 in an enum be reserved for a value named 'Unknown', 'Default', or similar. See https://github.com/betwixt-labs/bebop/wiki/Why-should-0-be-a-%22boring%22-value-in-an-enum%3F for more info.", field.Span, 200, Severity.Warning)
+            : base($"Bebop recommends that 0 in an enum be reserved for a value named 'Unknown', 'Default', or similar.", field.Span, 200, " See https://github.com/betwixt-labs/bebop/wiki/Why-should-0-be-a-%22boring%22-value-in-an-enum%3F for more info.", Severity.Warning)
         { }
     }
 
@@ -343,7 +422,7 @@ namespace Core.Exceptions
     public class DeprecatedFeatureWarning : SpanException
     {
         public DeprecatedFeatureWarning(Span span, string reason)
-            : base(reason, span, 201, Severity.Warning)
+            : base(reason, span, 201, severity: Severity.Warning)
         { }
     }
 }

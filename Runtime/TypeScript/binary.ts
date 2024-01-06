@@ -51,17 +51,20 @@ enum WireTypeKind {
   Enum,
 }
 
-type Attributes = { [name: string]: Attribute };
+type Attributes = { [identifier: string]: Attribute };
 interface Attribute {
-  attributeName: string;
-  attributeValue: string | null;
-  isNumber: boolean;
+  arguments?: { [identifier: string]: AttributeArgument };
+}
+
+interface AttributeArgument {
+  typeId: number;
+  argumentValue: string | number | bigint | Guid | null;
 }
 
 interface EnumMember {
   name: string;
   attributes: Attributes;
-  value: number | BigInt | null;
+  value: number | bigint | null;
 }
 
 interface Field {
@@ -69,7 +72,7 @@ interface Field {
   typeId: number;
   fieldProperties: FieldTypes;
   attributes: Attributes;
-  constantValue?: number | BigInt | null;
+  constantValue?: number | null;
 }
 
 interface Definition {
@@ -81,6 +84,7 @@ interface Definition {
 
 interface Enum extends Definition {
   baseType: WireBaseType;
+  isBitFlags: boolean;
   members: { [name: string]: EnumMember };
 }
 
@@ -836,7 +840,10 @@ export class BinarySchema {
           return target[Number(prop)];
         }
         // If prop is the name of a method of Uint8Array, return the function
-        if (typeof prop === 'string' && typeof (target as any)[prop] === 'function') {
+        if (
+          typeof prop === "string" &&
+          typeof (target as any)[prop] === "function"
+        ) {
           return (target as any)[prop].bind(target);
         }
         // Optionally, you can throw an error or return undefined for all other properties
@@ -953,20 +960,27 @@ export class BinarySchema {
 
   private parseAttributes() {
     const numAttributes = this.parseUint8();
-    const attributes: { [name: string]: Attribute } = {};
+    const attributes: Attributes = {};
     for (let i = 0; i < numAttributes; i++) {
-      const attribute = this.parseAttribute();
-      attributes[attribute.attributeName] = attribute;
+      const identifier = this.parseString();
+      attributes[identifier] = this.parseAttribute();
     }
     return attributes;
   }
 
   private parseAttribute(): Attribute {
-    const attributeName = this.parseString();
-    const hasValue = this.parseBool();
-    const attributeValue = hasValue ? this.parseString() : null;
-    const isNumber = this.parseBool();
-    return { attributeName, attributeValue, isNumber };
+    const argCount = this.parseUint8();
+    const args: { [name: string]: AttributeArgument } = {};
+    for (let i = 0; i < argCount; i++) {
+      const identifier = this.parseString();
+      const typeId = this.parseTypeId();
+      const argumentValue = this.parseConstantValue(typeId);
+      args[identifier] = {
+        typeId,
+        argumentValue,
+      };
+    }
+    return { arguments: args };
   }
 
   private parseEnumDefinition(
@@ -976,6 +990,7 @@ export class BinarySchema {
     index: number
   ): Enum {
     const baseType = this.parseTypeId();
+    const isBitFlags = this.parseBool();
     const memberCount = this.parseUint8();
     const members: { [name: string]: EnumMember } = {};
     for (let i = 0; i < memberCount; i++) {
@@ -985,6 +1000,7 @@ export class BinarySchema {
     return {
       index,
       name: typeName,
+      isBitFlags,
       kind: typeKind,
       attributes: typeAttributes,
       baseType,
@@ -995,7 +1011,7 @@ export class BinarySchema {
   private parseEnumMember(baseType: number): EnumMember {
     const name = this.parseString();
     const attributes = this.parseAttributes();
-    const value = this.parseConstantValue(baseType);
+    const value = this.parseConstantValue(baseType) as number;
     return { name, attributes, value };
   }
 
@@ -1083,10 +1099,11 @@ export class BinarySchema {
     }
 
     const attributes = this.parseAttributes();
-    const constantValue =
+    const constantValue = (
       parentKind === WireTypeKind.Message
         ? this.parseConstantValue(WireBaseType.Byte)
-        : null;
+        : null
+    ) as any;
 
     return {
       name: fieldName,
@@ -1125,7 +1142,9 @@ export class BinarySchema {
     throw new BebopRuntimeError("Invalid initial type");
   }
 
-  private parseConstantValue(typeId: number): number | BigInt | null {
+  private parseConstantValue(
+    typeId: number
+  ): string | number | bigint | Guid | null {
     switch (typeId) {
       case WireBaseType.Bool:
         return this.parseBool() ? 1 : 0;
@@ -1140,13 +1159,17 @@ export class BinarySchema {
       case WireBaseType.Int32:
         return this.parseInt32();
       case WireBaseType.UInt64:
-        return BigInt(this.parseUint64());
+        return BigInt(this.parseUint64()) as bigint;
       case WireBaseType.Int64:
         return BigInt(this.parseInt64());
       case WireBaseType.Float32:
         return this.parseFloat32();
       case WireBaseType.Float64:
         return this.parseFloat64();
+      case WireBaseType.String:
+        return this.parseString();
+      case WireBaseType.Guid:
+        return Guid.fromBytes(this.parseGuid(), 0);
       default:
         throw new BebopRuntimeError(`Unsupported constant type ID: ${typeId}`);
     }
@@ -1255,5 +1278,11 @@ export class BinarySchema {
     let typeId = this.view.getInt32(this.pos, true);
     this.pos += 4;
     return typeId;
+  }
+
+  private parseGuid() {
+    let value = this.data.subarray(this.pos, this.pos + 16);
+    this.pos += 16;
+    return value;
   }
 }

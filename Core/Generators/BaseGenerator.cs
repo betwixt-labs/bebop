@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json;
 using Core.Meta;
 
 namespace Core.Generators
@@ -28,6 +29,8 @@ namespace Core.Generators
         {
             Schema = schema;
             Config = config;
+            var context = new GeneratorContext(schema, config);
+            Console.WriteLine(JsonSerializer.Serialize(context, JsonContext.Default.GeneratorContext));
         }
 
         /// <summary>

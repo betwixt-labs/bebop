@@ -2,6 +2,7 @@
 @using Core.Generators
 @using Core.Meta
 @using Core.Parser
+@using Core.Meta.Decorators;
 @inject IJSRuntime JS
 
 
@@ -149,9 +150,9 @@ map[guid, Song] songs;
     [JSInvokable]
     public static Repl.CompilerOutput CompileSchema(string textualSchema, string generatorAlias)
     {
-     
+
         textualSchema = textualSchema?.Trim() ?? string.Empty;
-       
+
         generatorAlias = generatorAlias?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(textualSchema))
         {
@@ -180,22 +181,26 @@ map[guid, Song] songs;
 
         try
         {
-            var parser = new SchemaParser(textualSchema);
+            var fact = new DecoratorFactory();
+            fact.RegisterDefault();
+            var parser = new SchemaParser(textualSchema, fact.Build());
             var schema = parser.Parse();
             _ = schema.Validate();
             var diagonstics = schema.Errors.Concat(schema.Warnings).ToList();
             var hasErrorDiagonstics = diagonstics.Any((d) => d.Severity is Core.Exceptions.Severity.Error);
             var generatorConfig = new GeneratorConfig(generatorAlias, "stdout");
-            var generator = GeneratorUtils.ImplementedGenerators[generatorAlias](schema, generatorConfig);
             return new Repl.CompilerOutput
                 {
                     IsOk = !hasErrorDiagonstics,
-                    Result = hasErrorDiagonstics ? string.Empty : generator.Compile(),
+                    Result = hasErrorDiagonstics ? string.Empty : GeneratorUtils.ImplementedGenerators[generatorAlias](schema,
+                generatorConfig).Compile(),
                     Diagonstics = diagonstics
                 };
         }
         catch (Exception e)
         {
+
+            Console.Error.WriteLine(e);
             return new Repl.CompilerOutput
                 {
                     IsOk = false,

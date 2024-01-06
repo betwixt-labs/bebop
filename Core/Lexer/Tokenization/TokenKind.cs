@@ -7,7 +7,7 @@ namespace Core.Lexer.Tokenization
     /// </summary>
     public enum TokenKind : ushort
     {
-    #region Keywords
+        #region Keywords
 
         /// <summary>
         ///     The 'enum' keyword which is used by the enum <see cref="Meta.AggregateKind"/>
@@ -50,7 +50,7 @@ namespace Core.Lexer.Tokenization
         /// </summary>
         [Keyword("union")]
         Union,
-        
+
         /// <summary>
         ///     The 'service' keyword which is reserved by the compiler
         /// </summary>
@@ -62,7 +62,18 @@ namespace Core.Lexer.Tokenization
         [Keyword("stream")]
         Stream,
 
-    #endregion
+        /// <summary>
+        ///     The 'false' keyword which is reserved by the compiler
+        /// </summary>
+        [Keyword("false")]
+        False,
+
+        /// <summary>
+        ///     The 'trie' keyword which is reserved by the compiler
+        /// </summary>
+        [Keyword("true")]
+        True,
+        #endregion
 
 
         #region Literals
@@ -72,7 +83,6 @@ namespace Core.Lexer.Tokenization
         ///     A string literal.
         /// </summary>
         String,
-
         /// <summary>
         ///     Any numerical literal token.
         /// </summary>
@@ -83,10 +93,10 @@ namespace Core.Lexer.Tokenization
         BlockComment,
         EndOfFile,
 
-    #endregion
+        #endregion
 
 
-    #region Symbols
+        #region Symbols
 
         /// <summary>
         ///     <![CDATA[ ( ]]>
@@ -200,7 +210,13 @@ namespace Core.Lexer.Tokenization
         ///      <![CDATA[ - ]]>
         /// </summary>
         [Symbol('-')]
-        Hyphen
+        Hyphen,
+
+        /// <summary>
+        ///      <![CDATA[ @ ]]>
+        /// </summary>
+        [Symbol('@')]
+        Decorator
         #endregion
     }
 }

@@ -10,7 +10,7 @@ namespace Core.Generators
     /// </summary>
     public sealed record GeneratorConfig
     {
-        public GeneratorConfig(string alias, string outFile): this(alias, outFile, TempoServices.Both, true, string.Empty, true, null)
+        public GeneratorConfig(string alias, string outFile) : this(alias, outFile, TempoServices.Both, true, string.Empty, true, null)
         {
 
         }

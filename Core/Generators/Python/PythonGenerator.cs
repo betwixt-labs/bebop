@@ -6,7 +6,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using Core.Meta;
 using Core.Meta.Extensions;
-using Core.Meta.Attributes;
+using Core.Meta.Decorators;
 
 namespace Core.Generators.Python
 {
@@ -16,7 +16,7 @@ namespace Core.Generators.Python
 
         public PythonGenerator(BebopSchema schema, GeneratorConfig config) : base(schema, config) { }
 
-        private string FormatDocumentation(string documentation, BaseAttribute? deprecated)
+        private string FormatDocumentation(string documentation, string? deprecated)
         {
             var builder = new StringBuilder();
             builder.AppendLine("\"\"\"");
@@ -24,9 +24,9 @@ namespace Core.Generators.Python
             {
                 builder.AppendLine(line);
             }
-            if (deprecated != null)
+            if (deprecated is not null)
             {
-                builder.AppendLine($"@deprecated {deprecated.Value}");
+                builder.AppendLine($"@deprecated {deprecated}");
             }
             builder.AppendLine("\"\"\"");
             return builder.ToString();
@@ -55,7 +55,7 @@ namespace Core.Generators.Python
             builder.AppendLine($"start = writer.length");
             foreach (var field in definition.Fields)
             {
-                if (field.DeprecatedAttribute != null)
+                if (field.DeprecatedDecorator != null)
                 {
                     continue;
                 }
@@ -363,7 +363,8 @@ namespace Core.Generators.Python
                             builder.AppendLine($"{field.Name.ToUpper()} = {field.ConstantValue}");
                             if (!string.IsNullOrWhiteSpace(field.Documentation))
                             {
-                                builder.Append(FormatDocumentation(field.Documentation, field.DeprecatedAttribute));
+                                var deprecatedReason = field.DeprecatedDecorator?.TryGetValue("reason", out var reason) ?? false ? reason : null;
+                                builder.Append(FormatDocumentation(field.Documentation, deprecatedReason));
                                 builder.AppendLine("");
                             }
                         }
@@ -389,15 +390,17 @@ namespace Core.Generators.Python
                                 builder.AppendLine($"{fieldPrepend}{field.Name}: {type}");
                                 if (!string.IsNullOrWhiteSpace(field.Documentation))
                                 {
-                                    builder.Append(FormatDocumentation(field.Documentation, field.DeprecatedAttribute));
+                                    var deprecatedReason = field.DeprecatedDecorator?.TryGetValue("reason", out var reason) ?? false ? reason : null;
+                                    builder.Append(FormatDocumentation(field.Documentation, deprecatedReason));
                                 }
                                 builder.AppendLine();
                             }
-                            if (rd.OpcodeAttribute != null)
+                            if (rd.OpcodeDecorator is not null && rd.OpcodeDecorator.TryGetValue("fourcc", out var fourcc))
                             {
-                                builder.AppendLine($"opcode = {rd.OpcodeAttribute.Value}");
+                                builder.AppendLine($"opcode = {fourcc}");
                                 builder.AppendLine("");
                             }
+
                             builder.AppendLine("");
                             if (!(fd is MessageDefinition))
                             {
@@ -456,11 +459,12 @@ namespace Core.Generators.Python
                                 {
                                     builder.Append(FormatDocumentation(definition.Documentation, null));
                                 }
-                                if (rd.OpcodeAttribute != null)
+                                if (rd.OpcodeDecorator is not null && rd.OpcodeDecorator.TryGetValue("fourcc", out var fourcc))
                                 {
-                                    builder.AppendLine($"opcode = {rd.OpcodeAttribute.Value}");
+                                    builder.AppendLine($"opcode = {fourcc}");
                                     builder.AppendLine("");
                                 }
+
                                 builder.AppendLine($"data: UnionType");
                                 builder.AppendLine();
                                 builder.CodeBlock($"def __init__(self, data: UnionType):", indentStep, () =>
@@ -562,6 +566,6 @@ namespace Core.Generators.Python
 
         public override AuxiliaryFile? GetAuxiliaryFile() => null;
 
-         public override string Alias => "py";
+        public override string Alias => "py";
     }
 }
