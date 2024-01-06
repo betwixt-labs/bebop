@@ -221,7 +221,17 @@ namespace Core.Lexer.Tokenization
         ///      <![CDATA[ $ ]]>
         /// </summary>
         [Symbol('$')]
-        Template
+        Template,
+        /// <summary>
+        ///      <![CDATA[ \ ]]>
+        /// </summary>
+        [Symbol('\\')]
+        BackSlash,
+        /// <summary>
+        ///      <![CDATA[ ` ]]>
+        /// </summary>
+        [Symbol('`')]
+        BackTick,
         #endregion
     }
 }
