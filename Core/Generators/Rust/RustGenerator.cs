@@ -52,10 +52,12 @@ namespace Core.Generators.Rust
 
         #region entrypoints
 
-        public RustGenerator(BebopSchema schema, GeneratorConfig config) : base(schema, config) { }
+        public RustGenerator() : base() { }
 
-        public override string Compile()
+        public override string Compile(BebopSchema schema, GeneratorConfig config)
         {
+            Schema = schema;
+            Config = config;
             // the main scope which is where we write the const definitions and the borrowed types (as these are the
             // primary way to use bebop in Rust)
             var mainBuilder = new IndentedStringBuilder();
@@ -131,12 +133,13 @@ namespace Core.Generators.Rust
 
         public override AuxiliaryFile? GetAuxiliaryFile() => null;
 
-        public override void WriteAuxiliaryFiles(string outputPath)
+        public override void WriteAuxiliaryFile(string outputPath)
         {
             // Nothing to do because the runtime is a cargo package.
         }
 
-        public override string Alias => "rust";
+        public override string Alias { get => "rust"; set => throw new NotImplementedException(); }
+        public override string Name { get => "Rust"; set => throw new NotImplementedException(); }
 
         #endregion
 

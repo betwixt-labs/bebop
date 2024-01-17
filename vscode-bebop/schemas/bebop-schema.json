@@ -48,12 +48,7 @@
                 "services": {
                   "description": "By default, bebopc generates a concrete client and a service base class. This property can be used to limit bebopc asset generation.",
                   "type": "string",
-                  "enum": [
-                    "none",
-                    "client",
-                    "server",
-                    "both"
-                  ],
+                  "enum": ["none", "client", "server", "both"],
                   "default": "both"
                 },
                 "emitNotice": {
@@ -79,9 +74,7 @@
                   }
                 }
               },
-              "required": [
-                "outFile"
-              ],
+              "required": ["outFile"],
               "additionalProperties": false
             }
           },
@@ -123,7 +116,7 @@
           "type": "array",
           "uniqueItems": true,
           "items": {
-          "type": "number"
+            "type": "number"
           }
         }
       }
@@ -133,6 +126,23 @@
         "noEmit": {
           "description": "Disable emitting files from a compilation.",
           "type": "boolean"
+        }
+      }
+    },
+    "extensionsDefinition": {
+      "properties": {
+        "extensions": {
+          "type": "object",
+          "description": "An object of extensions the compiler should load.",
+          "patternProperties": {
+            "^(?:(?:@(?:[a-z0-9-*~][a-z0-9-*._~]*)?/[a-z0-9-._~])|[a-z0-9-~])[a-z0-9-._~]*$": {
+              "type": "string",
+              "description": "The version of the extension, in semver format without comparison operators.",
+              "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-([0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*))?$",
+              "patternErrorMessage": "Must be in semver format without comparison operators."
+            }
+          },
+          "additionalProperties": false
         }
       }
     }
@@ -155,6 +165,9 @@
     },
     {
       "$ref": "#/definitions/noEmitDefinition"
+    },
+    {
+      "$ref": "#/definitions/extensionsDefinition"
     }
   ]
 }

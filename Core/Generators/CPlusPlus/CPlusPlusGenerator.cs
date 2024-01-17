@@ -15,7 +15,7 @@ namespace Core.Generators.CPlusPlus
     {
         const int indentStep = 2;
 
-        public CPlusPlusGenerator(BebopSchema schema, GeneratorConfig config) : base(schema, config) { }
+        public CPlusPlusGenerator() : base() { }
 
         private string FormatDocumentation(string documentation, int spaces)
         {
@@ -355,8 +355,10 @@ namespace Core.Generators.CPlusPlus
         /// Generate code for a Bebop schema.
         /// </summary>
         /// <returns>The generated code.</returns>
-        public override string Compile()
+        public override string Compile(BebopSchema schema, GeneratorConfig config)
         {
+            Schema = schema;
+            Config = config;
             var builder = new StringBuilder();
             if (Config.EmitNotice)
             {
@@ -544,15 +546,20 @@ namespace Core.Generators.CPlusPlus
 
                 }
             }
-            return new AuxiliaryFile("bebop.hpp", builder.ToString());
+            var encoding = new UTF8Encoding(false);
+            return new AuxiliaryFile("bebop.hpp", encoding.GetBytes(builder.ToString()));
         }
 
-        public override void WriteAuxiliaryFiles(string outputPath)
+        public override void WriteAuxiliaryFile(string outputPath)
         {
             var auxiliary = GetAuxiliaryFile();
-            File.WriteAllText(Path.Join(outputPath, auxiliary!.Name), auxiliary!.Content);
+            if (auxiliary is not null)
+            {
+                File.WriteAllBytes(Path.Join(outputPath, auxiliary.Name), auxiliary.Content);
+            }
         }
 
-        public override string Alias => "cpp";
+        public override string Alias { get => "cpp"; set => throw new NotImplementedException(); }
+        public override string Name { get => "C++"; set => throw new NotImplementedException(); }
     }
 }

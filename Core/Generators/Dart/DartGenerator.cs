@@ -14,7 +14,7 @@ namespace Core.Generators.Dart
     {
         const int indentStep = 2;
 
-        public DartGenerator(BebopSchema schema, GeneratorConfig config) : base(schema, config) { }
+        public DartGenerator() : base() { }
 
         private string FormatDocumentation(string documentation, int spaces)
         {
@@ -297,8 +297,10 @@ namespace Core.Generators.Dart
         /// Generate code for a Bebop schema.
         /// </summary>
         /// <returns>The generated code.</returns>
-        public override string Compile()
+        public override string Compile(BebopSchema schema, GeneratorConfig config)
         {
+            Schema = schema;
+            Config = config;
             var builder = new StringBuilder();
             builder.AppendLine("import 'dart:typed_data';");
             builder.AppendLine("import 'package:meta/meta.dart';");
@@ -406,11 +408,12 @@ namespace Core.Generators.Dart
         }
 
         public override AuxiliaryFile? GetAuxiliaryFile() => null;
-        public override void WriteAuxiliaryFiles(string outputPath)
+        public override void WriteAuxiliaryFile(string outputPath)
         {
             // There is nothing to do here.
         }
 
-        public override string Alias => "dart";
+        public override string Alias { get => "dart"; set => throw new NotImplementedException(); }
+        public override string Name { get => "Dart"; set => throw new NotImplementedException(); }
     }
 }

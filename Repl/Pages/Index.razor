@@ -2,6 +2,7 @@
 @using Core.Generators
 @using Core.Meta
 @using Core.Parser
+@using Core
 @using Core.Meta.Decorators;
 @inject IJSRuntime JS
 
@@ -23,10 +24,11 @@
         <label for="generators">Generate code for:</label>
 
         <select @bind="SelectedGenerator" id="generators">
-            @foreach (var (key, value) in GeneratorUtils.ImplementedGeneratorNames)
+            @foreach (var generator in host.Generators)
             {
-                <option value="@key">@value</option>
+                <option value="@generator.Alias">@generator.Name</option>
             }
+
         </select>
         <span>@(Core.Meta.ReservedWords.CompilerName) @(DotEnv.Generated.Environment.Version)</span>
     </div>
@@ -109,6 +111,8 @@
 }
 
 @functions {
+
+    private static readonly CompilerHost host = CompilerHost.CompilerHostBuilder.Create().WithDefaults().Build();
     [JSInvokable]
     public static string GetExampleSchema()
     {
@@ -151,6 +155,7 @@ map[guid, Song] songs;
     public static Repl.CompilerOutput CompileSchema(string textualSchema, string generatorAlias)
     {
 
+
         textualSchema = textualSchema?.Trim() ?? string.Empty;
 
         generatorAlias = generatorAlias?.Trim() ?? string.Empty;
@@ -170,7 +175,7 @@ map[guid, Song] songs;
                     Result = "No code generator was specified"
                 };
         }
-        if (!GeneratorUtils.ImplementedGenerators.ContainsKey(generatorAlias))
+        if (!host.TryGetGenerator(generatorAlias, out var generator))
         {
             return new Repl.CompilerOutput
                 {
@@ -181,19 +186,17 @@ map[guid, Song] songs;
 
         try
         {
-            var fact = new DecoratorFactory();
-            fact.RegisterDefault();
-            var parser = new SchemaParser(textualSchema, fact.Build());
+
+            var parser = new SchemaParser(textualSchema, host);
             var schema = parser.Parse();
-            _ = schema.Validate();
+            var hasErrorDiagonstics = schema.Validate().Any((d) => d.Severity is Core.Exceptions.Severity.Error);
             var diagonstics = schema.Errors.Concat(schema.Warnings).ToList();
-            var hasErrorDiagonstics = diagonstics.Any((d) => d.Severity is Core.Exceptions.Severity.Error);
             var generatorConfig = new GeneratorConfig(generatorAlias, "stdout");
+
             return new Repl.CompilerOutput
                 {
                     IsOk = !hasErrorDiagonstics,
-                    Result = hasErrorDiagonstics ? string.Empty : GeneratorUtils.ImplementedGenerators[generatorAlias](schema,
-                generatorConfig).Compile(),
+                    Result = hasErrorDiagonstics ? string.Empty : generator.Compile(schema, generatorConfig),
                     Diagonstics = diagonstics
                 };
         }

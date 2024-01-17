@@ -35,7 +35,7 @@ namespace Core.Parser
         private readonly HashSet<TokenKind> _universalFollowKinds = new() { TokenKind.Enum, TokenKind.Struct, TokenKind.Message, TokenKind.Union, TokenKind.Service, TokenKind.EndOfFile };
         private readonly Stack<List<Definition>> _scopes = new();
         private readonly Tokenizer _tokenizer;
-        private readonly DecoratorRegistry _decoratorRegistry;
+        private readonly CompilerHost _compilerHost;
         private readonly Dictionary<string, Definition> _definitions = new();
         private readonly List<string> _imports = new();
 
@@ -97,20 +97,20 @@ namespace Core.Parser
         /// Creates a new schema parser instance from some schema files on disk.
         /// </summary>
         /// <param name="schemaPaths">The Bebop schema files that will be parsed</param>
-        public SchemaParser(IEnumerable<string> schemaPaths, DecoratorRegistry decoratorRegistry)
+        public SchemaParser(IEnumerable<string> schemaPaths, CompilerHost compilerHost)
         {
             _tokenizer = new Tokenizer(SchemaReader.FromSchemaPaths(schemaPaths));
-            _decoratorRegistry = decoratorRegistry;
+            _compilerHost = compilerHost;
         }
 
         /// <summary>
         /// Creates a new schema parser instance and loads the schema into memory.
         /// </summary>
         /// <param name="textualSchema">A string representation of a schema.</param>
-        public SchemaParser(string textualSchema, DecoratorRegistry decoratorRegistry)
+        public SchemaParser(string textualSchema, CompilerHost compilerHost)
         {
             _tokenizer = new Tokenizer(SchemaReader.FromTextualSchema(textualSchema));
-            _decoratorRegistry = decoratorRegistry;
+            _compilerHost = compilerHost;
         }
 
         /// <summary>
@@ -568,7 +568,7 @@ namespace Core.Parser
                 var kind = kindToken.Lexeme;
                 Expect(TokenKind.Identifier);
 
-                if (!_decoratorRegistry.TryGet(kind, out var decorator))
+                if (!_compilerHost.TryGetDecorator(kind, out var decorator))
                 {
                     throw new UnknownDecoratorException(kindToken);
                 }

@@ -18,7 +18,7 @@ namespace Core.Generators.TypeScript
     {
         const int indentStep = 2;
 
-        public TypeScriptGenerator(BebopSchema schema, GeneratorConfig config) : base(schema, config) { }
+        public TypeScriptGenerator() : base() { }
 
         private static string FormatDocumentation(string documentation, SchemaDecorator? deprecatedDecorator, int spaces)
         {
@@ -646,8 +646,10 @@ namespace Core.Generators.TypeScript
         /// Generate code for a Bebop schema.
         /// </summary>
         /// <returns>The generated code.</returns>
-        public override string Compile()
+        public override string Compile(BebopSchema schema, GeneratorConfig config)
         {
+            Schema = schema;
+            Config = config;
             var builder = new IndentedStringBuilder();
             if (Config.EmitNotice)
             {
@@ -1094,11 +1096,12 @@ namespace Core.Generators.TypeScript
         }
 
         public override AuxiliaryFile? GetAuxiliaryFile() => null;
-        public override void WriteAuxiliaryFiles(string outputPath)
+        public override void WriteAuxiliaryFile(string outputPath)
         {
             // There is nothing to do here now that BebopView.ts is an npm package.
         }
 
-        public override string Alias => "ts";
+        public override string Alias { get => "ts"; set => throw new NotImplementedException(); }
+        public override string Name { get => "TypeScript"; set => throw new NotImplementedException(); }
     }
 }

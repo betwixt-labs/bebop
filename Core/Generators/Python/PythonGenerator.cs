@@ -14,7 +14,7 @@ namespace Core.Generators.Python
     {
         const int indentStep = 4;
 
-        public PythonGenerator(BebopSchema schema, GeneratorConfig config) : base(schema, config) { }
+        public PythonGenerator() : base() { }
 
         private string FormatDocumentation(string documentation, string? deprecated)
         {
@@ -334,8 +334,10 @@ namespace Core.Generators.Python
         /// Generate code for a Bebop schema.
         /// </summary>
         /// <returns>The generated code.</returns>
-        public override string Compile()
+        public override string Compile(BebopSchema schema, GeneratorConfig config)
         {
+            Schema = schema;
+            Config = config;
             var builder = new IndentedStringBuilder();
             builder.AppendLine("from enum import Enum");
             builder.AppendLine("from python_bebop import BebopWriter, BebopReader, UnionType, UnionDefinition");
@@ -559,13 +561,14 @@ namespace Core.Generators.Python
             return builder.ToString();
         }
 
-        public override void WriteAuxiliaryFiles(string outputPath)
+        public override void WriteAuxiliaryFile(string outputPath)
         {
             // There is nothing to do here.
         }
 
         public override AuxiliaryFile? GetAuxiliaryFile() => null;
 
-        public override string Alias => "py";
+        public override string Alias { get => "py"; set => throw new NotImplementedException(); }
+        public override string Name { get => "Python"; set => throw new NotImplementedException(); }
     }
 }

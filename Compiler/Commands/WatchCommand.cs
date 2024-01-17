@@ -1,6 +1,7 @@
 using System.CommandLine;
 using System.Threading;
 using System.Threading.Tasks;
+using Core;
 using Core.Meta;
 
 namespace Compiler.Commands;
@@ -12,11 +13,19 @@ public class WatchCommand : CliCommand
         SetAction(HandleCommandAsync);
     }
 
-     private async Task<int> HandleCommandAsync(ParseResult result, CancellationToken token)
+    private async Task<int> HandleCommandAsync(ParseResult result, CancellationToken token)
     {
         var config = result.GetValue<BebopConfig>(CliStrings.ConfigFlag)!;
         config.Validate();
-        var watcher = new SchemaWatcher(config.WorkingDirectory, config);
+        using var host = CompilerHost.CompilerHostBuilder.Create()
+       .WithDefaults()
+#if !WASI_WASM_BUILD
+       .WithExtensions(config.Extensions)
+#endif
+       .Build();
+
+        var compiler = new BebopCompiler(host);
+        var watcher = new SchemaWatcher(config.WorkingDirectory, config, compiler);
         return await watcher.StartAsync(token);
     }
 }

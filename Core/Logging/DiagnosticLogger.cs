@@ -79,7 +79,7 @@ public partial class DiagnosticLogger
         {
             if (_instance is null)
             {
-                throw new Exception("The diagonstic logger has not been initialized.");
+                throw new CompilerException("The diagonstic logger has not been initialized.");
             }
             return _instance;
         }
@@ -182,7 +182,8 @@ public partial class DiagnosticLogger
 
     public void PrintCompilerOutput(CompilerOutput output)
     {
-        if (output.Results is {Length: > 0}) {
+        if (output.Results is { Length: > 0 })
+        {
             _out.WriteLine(FormatCompilerOutput(output));
             _out.WriteLine(string.Empty);
         }

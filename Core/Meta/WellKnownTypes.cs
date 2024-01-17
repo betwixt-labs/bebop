@@ -281,6 +281,27 @@ namespace Core.Meta
                 _ => throw new CompilerException($"Invalid type {type.GetType()}")
             };
         }
+
+        public static BaseType FromTokenString(string token)
+        {
+            return token switch
+            {
+                "bool" => BaseType.Bool,
+                "byte" => BaseType.Byte,
+                "uint16" => BaseType.UInt16,
+                "int16" => BaseType.Int16,
+                "uint32" => BaseType.UInt32,
+                "int32" => BaseType.Int32,
+                "uint64" => BaseType.UInt64,
+                "int64" => BaseType.Int64,
+                "float32" => BaseType.Float32,
+                "float64" => BaseType.Float64,
+                "string" => BaseType.String,
+                "guid" => BaseType.Guid,
+                "date" => BaseType.Date,
+                _ => throw new ArgumentOutOfRangeException(nameof(token), token, null)
+            };
+        }
     }
 
     /// <summary>

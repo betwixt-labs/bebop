@@ -13,17 +13,20 @@ namespace Core.Generators.CSharp
         private Version LanguageVersion = CSharpNine;
 
 
-        public CSharpGenerator(BebopSchema schema, GeneratorConfig config) : base(schema, config)
+        public CSharpGenerator() : base()
         {
+
+        }
+
+
+        public override string Compile(BebopSchema schema, GeneratorConfig config)
+        {
+            Config = config;
+            Schema = schema;
             if (Version.TryParse(config.GetOptionRawValue("langVersion"), out var langVersion))
             {
                 LanguageVersion = langVersion;
             }
-        }
-
-
-        public override string Compile()
-        {
             var builder = new IndentedStringBuilder();
             if (Config.EmitNotice)
             {
@@ -1313,11 +1316,12 @@ namespace Core.Generators.CSharp
 
         public override AuxiliaryFile? GetAuxiliaryFile() => null;
 
-        public override void WriteAuxiliaryFiles(string outputPath)
+        public override void WriteAuxiliaryFile(string outputPath)
         {
         }
 
-        public override string Alias => "cs";
+        public override string Alias { get => "cs"; set => throw new NotImplementedException(); }
+        public override string Name { get => "C#"; set => throw new NotImplementedException(); }
 
         #endregion
 

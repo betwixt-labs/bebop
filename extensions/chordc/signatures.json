@@ -1,0 +1,38 @@
+{
+  "tinygo": {
+    "write_line": {
+      "parameters": ["i32", "i32"],
+      "returns": []
+    },
+    "write_error": {
+      "parameters": ["i32", "i32"],
+      "returns": []
+    },
+    "get_bebopc_version": {
+      "parameters": ["i32"],
+      "returns": []
+    },
+    "chord_compile": {
+      "parameters": ["i32", "i32", "i32"],
+      "returns": []
+    }
+  },
+  "as": {
+    "write_line": {
+      "parameters": ["i32"],
+      "returns": []
+    },
+    "write_error": {
+      "parameters": ["i32"],
+      "returns": []
+    },
+    "get_bebopc_version": {
+      "parameters": [],
+      "returns": ["i32"]
+    },
+    "chord_compile": {
+      "parameters": ["i32"],
+      "returns": ["i32"]
+    }
+  }
+}

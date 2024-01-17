@@ -66,6 +66,10 @@ public partial class BebopConfig
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public bool NoEmit { get; set; } = false;
 
+    [JsonPropertyName("extensions")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, string> Extensions { get; set; } = [];
+
     [JsonIgnore]
     public string WorkingDirectory { get; private set; } = null!;
 
@@ -250,10 +254,6 @@ public partial class BebopConfig
             {
                 throw new CompilerException("Generator alias is null or whitespace");
             }
-            if (!GeneratorUtils.ImplementedGeneratorNames.ContainsKey(generator.Alias))
-            {
-                throw new CompilerException($"Generator alias '{generator.Alias}' is not a known or valid generator name.");
-            }
             if (!generator.OutFile.IsLegalFilePath(out var invalidCharIndex))
             {
                 throw new CompilerException($"Generator outFile '{generator.OutFile}' is not a valid file path{(invalidCharIndex >= 0 ? $": invalid character '{generator.OutFile[invalidCharIndex]}' at index {invalidCharIndex}" : ".")}");
@@ -388,11 +388,60 @@ public class BebopConfigConverter : JsonConverter<BebopConfig>
                 case "noEmit":
                     bebopConfig.NoEmit = reader.GetBoolean();
                     break;
+                case "extensions":
+                    bebopConfig.Extensions = ReadExtensions(ref reader);
+                    break;
                 default:
                     throw new JsonException($"unexpected property {propertyName}");
             }
         }
         return bebopConfig;
+    }
+
+    /// <summary>
+    /// Reads the generator configurations from the JSON reader and constructs an array of <see cref="GeneratorConfig"/>.
+    /// </summary>
+    /// <param name="reader">The JSON reader to read from.</param>
+    /// <param name="options">The JSON serializer options.</param>
+    /// <returns>An array of <see cref="GeneratorConfig"/> objects.</returns>
+    /// <exception cref="JsonException">Thrown when the JSON structure of the generators is not valid.</exception>
+    private static Dictionary<string, string> ReadExtensions(ref Utf8JsonReader reader)
+    {
+        var extensions = new Dictionary<string, string>();
+        if (reader.TokenType != JsonTokenType.StartObject)
+        {
+            throw new JsonException("expected StartObject token for options");
+        }
+
+        while (reader.Read())
+        {
+            if (reader.TokenType is JsonTokenType.EndObject)
+            {
+                break;
+            }
+
+            if (reader.TokenType == JsonTokenType.PropertyName)
+            {
+                var extensionName = reader.GetString();
+                if (string.IsNullOrWhiteSpace(extensionName))
+                {
+                    throw new JsonException("extension name is null or whitespace");
+                }
+                reader.Read(); // Move to the value
+                if (reader.TokenType is not JsonTokenType.String)
+                {
+                    throw new JsonException("expected String token for extension value");
+                }
+
+                var extensionValue = reader.GetString();
+                if (string.IsNullOrWhiteSpace(extensionValue))
+                {
+                    throw new JsonException($"version for '{extensionName}' is null or whitespace");
+                }
+                extensions[extensionName] = extensionValue;
+            }
+        }
+        return extensions;
     }
 
     private static GeneratorConfig[] ReadGenerators(ref Utf8JsonReader reader, JsonSerializerOptions options)

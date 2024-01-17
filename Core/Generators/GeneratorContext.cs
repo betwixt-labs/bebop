@@ -9,7 +9,10 @@ using Core.Meta;
 using Core.Meta.Decorators;
 using Core.Parser;
 namespace Core.Generators;
-public record GeneratorContext(BebopSchema Schema, GeneratorConfig Config);
+public record GeneratorContext(BebopSchema Schema, GeneratorConfig Config)
+{
+    public override string ToString() => JsonSerializer.Serialize(this, JsonContext.Default.GeneratorContext);
+}
 
 internal class GeneratorContextConverter : JsonConverter<GeneratorContext>
 {
@@ -91,6 +94,7 @@ internal class GeneratorContextConverter : JsonConverter<GeneratorContext>
 
     private static void WriteConstantDefinition(Utf8JsonWriter writer, ConstDefinition constant, BebopSchema schema, JsonSerializerOptions options)
     {
+        writer.WriteString("kind", GetDefinitionKind(constant));
         if (!string.IsNullOrWhiteSpace(constant.Documentation))
         {
             writer.WriteString("documentation", constant.Documentation);
@@ -122,6 +126,7 @@ internal class GeneratorContextConverter : JsonConverter<GeneratorContext>
     private static void WriteServiceDefinition(Utf8JsonWriter writer, ServiceDefinition def, BebopSchema schema, JsonSerializerOptions options)
     {
 
+        writer.WriteString("kind", GetDefinitionKind(def));
         if (!string.IsNullOrWhiteSpace(def.Documentation))
         {
             writer.WriteString("documentation", def.Documentation);
@@ -153,6 +158,7 @@ internal class GeneratorContextConverter : JsonConverter<GeneratorContext>
             throw new CompilerException("Expected UnionDefinition");
         }
         writer.WriteString("kind", GetDefinitionKind(def));
+        writer.WriteNumber("minimalEncodedSize", ud.MinimalEncodedSize(schema));
         if (!string.IsNullOrWhiteSpace(def.Documentation))
         {
             writer.WriteString("documentation", def.Documentation);
@@ -169,11 +175,9 @@ internal class GeneratorContextConverter : JsonConverter<GeneratorContext>
         {
             var branch = branches.ElementAt(i);
             // discriminator
-            writer.WriteNumber(branch, i);
+            writer.WriteNumber(branch, i + 1);
         }
         writer.WriteEndObject();
-        writer.WriteNumber("minimalEncodedSize", ud.MinimalEncodedSize(schema));
-
     }
 
     private static void WriteAggregateDefinition(Utf8JsonWriter writer, Definition def, BebopSchema schema, JsonSerializerOptions options)
@@ -210,6 +214,8 @@ internal class GeneratorContextConverter : JsonConverter<GeneratorContext>
 
     private static void WriteEnum(EnumDefinition ed, BebopSchema schema, Utf8JsonWriter writer)
     {
+        writer.WriteBoolean("isBitFlags", ed.IsBitFlags);
+        writer.WriteNumber("minimalEncodedSize", ed.ScalarType.MinimalEncodedSize(schema));
         writer.WriteString("baseType", ed.ScalarType.ToTokenString());
         var memberCount = ed.Members.Count;
         if (memberCount > byte.MaxValue)
@@ -228,33 +234,40 @@ internal class GeneratorContextConverter : JsonConverter<GeneratorContext>
             WriteConstant(ed.ScalarType.BaseType, member.ConstantValue, writer);
             writer.WriteEndObject();
         }
-        writer.WriteBoolean("isBitFlags", ed.IsBitFlags);
-        writer.WriteNumber("minimalEncodedSize", ed.ScalarType.MinimalEncodedSize(schema));
+
         writer.WriteEndObject();
     }
 
     private static void WriteMessage(MessageDefinition md, BebopSchema schema, Utf8JsonWriter writer)
     {
+        writer.WriteNumber("minimalEncodedSize", md.MinimalEncodedSize(schema));
+        if (md.DiscriminatorInParent is not null)
+        {
+            writer.WriteNumber("discriminatorInParent", md.DiscriminatorInParent.Value);
+        }
         var fieldCount = md.Fields.Count;
         if (fieldCount > byte.MaxValue)
         {
             throw new CompilerException($"{md.Name} exceeds maximum fields: has {fieldCount} fields");
         }
         WriteFields(md, md.Fields, writer);
-        writer.WriteNumber("minimalEncodedSize", md.MinimalEncodedSize(schema));
     }
 
     private static void WriteStruct(StructDefinition sd, BebopSchema schema, Utf8JsonWriter writer)
     {
+        writer.WriteNumber("minimalEncodedSize", sd.MinimalEncodedSize(schema));
+        if (sd.DiscriminatorInParent is not null)
+        {
+            writer.WriteNumber("discriminatorInParent", sd.DiscriminatorInParent.Value);
+        }
         writer.WriteBoolean("readonly", sd.IsReadOnly);
+        writer.WriteBoolean("isFixedSize", sd.IsFixedSize(schema));
         var fieldCount = sd.Fields.Count;
         if (fieldCount < 0 || fieldCount > byte.MaxValue)
         {
             throw new CompilerException($"{sd.Name} exceeds maximum fields: has {fieldCount} fields");
         }
         WriteFields(sd, sd.Fields, writer);
-        writer.WriteNumber("minimalEncodedSize", sd.MinimalEncodedSize(schema));
-        writer.WriteBoolean("isFixedSize", sd.IsFixedSize(schema));
     }
 
     private static void WriteFields(Definition parent, IEnumerable<Field> fields, Utf8JsonWriter writer)
@@ -353,6 +366,7 @@ internal class GeneratorContextConverter : JsonConverter<GeneratorContext>
         }
         writer.WriteEndObject();
     }
+
     private static string GetDefinitionKind(Definition def)
     {
         return def switch
@@ -376,22 +390,22 @@ internal class GeneratorContextConverter : JsonConverter<GeneratorContext>
             switch (baseType)
             {
                 case BaseType.Byte:
-                    writer.WriteNumber("value", (byte)bigInt);
+                    writer.WriteString("value", ((byte)bigInt).ToString());
                     return;
                 case BaseType.UInt16:
-                    writer.WriteNumber("value", (ushort)bigInt);
+                    writer.WriteString("value", ((ushort)bigInt).ToString());
                     return;
                 case BaseType.Int16:
-                    writer.WriteNumber("value", (short)bigInt);
+                    writer.WriteString("value", ((short)bigInt).ToString());
                     return;
                 case BaseType.UInt32:
-                    writer.WriteNumber("value", (uint)bigInt);
+                    writer.WriteString("value", ((uint)bigInt).ToString());
                     return;
                 case BaseType.Int32:
-                    writer.WriteNumber("value", (int)bigInt);
+                    writer.WriteString("value", ((int)bigInt).ToString());
                     return;
                 case BaseType.UInt64:
-                    writer.WriteNumber("value", (ulong)bigInt);
+                    writer.WriteString("value", ((ulong)bigInt).ToString());
                     return;
             }
         }
@@ -400,31 +414,31 @@ internal class GeneratorContextConverter : JsonConverter<GeneratorContext>
             switch (baseType)
             {
                 case BaseType.Byte:
-                    writer.WriteNumber("value", byte.Parse(v));
+                    writer.WriteString("value", byte.Parse(v).ToString());
                     return;
                 case BaseType.UInt16:
-                    writer.WriteNumber("value", ushort.Parse(v));
+                    writer.WriteString("value", ushort.Parse(v).ToString());
                     return;
                 case BaseType.Int16:
-                    writer.WriteNumber("value", short.Parse(v));
+                    writer.WriteString("value", short.Parse(v).ToString());
                     return;
                 case BaseType.UInt32:
-                    writer.WriteNumber("value", uint.Parse(v));
+                    writer.WriteString("value", uint.Parse(v).ToString());
                     return;
                 case BaseType.Int32:
-                    writer.WriteNumber("value", int.Parse(v));
+                    writer.WriteString("value", int.Parse(v).ToString());
                     return;
                 case BaseType.UInt64:
-                    writer.WriteNumber("value", ulong.Parse(v));
+                    writer.WriteString("value", ulong.Parse(v).ToString());
                     return;
                 case BaseType.Int64:
-                    writer.WriteNumber("value", long.Parse(v));
+                    writer.WriteString("value", long.Parse(v).ToString());
                     return;
                 case BaseType.Float32:
-                    writer.WriteNumber("value", float.Parse(v));
+                    writer.WriteString("value", float.Parse(v).ToString());
                     return;
                 case BaseType.Float64:
-                    writer.WriteNumber("value", double.Parse(v));
+                    writer.WriteString("value", double.Parse(v).ToString());
                     return;
             }
         }
@@ -435,7 +449,7 @@ internal class GeneratorContextConverter : JsonConverter<GeneratorContext>
         }
         else if (value is string b && baseType == BaseType.Bool)
         {
-            writer.WriteBoolean("value", bool.Parse(b));
+            writer.WriteString("value", bool.Parse(b).ToString().ToLowerInvariant());
             return;
         }
         else if (value is string ss && baseType == BaseType.String)

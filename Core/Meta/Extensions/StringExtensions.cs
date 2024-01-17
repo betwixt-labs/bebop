@@ -409,6 +409,37 @@ namespace Core.Meta.Extensions
             return false;
         }
 
+        public static bool IsPathAttemptingTraversal(this string path)
+        {
+            // Split the path into segments
+            var segments = path.Split(new char[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }, StringSplitOptions.None);
+
+            // Keep track of the depth
+            int depth = 0;
+
+            foreach (var segment in segments)
+            {
+                if (segment == "..")
+                {
+                    // Going up one directory
+                    depth--;
+
+                    // If depth goes negative, it's attempting to go above the root
+                    if (depth < 0)
+                    {
+                        return true;
+                    }
+                }
+                else if (!string.IsNullOrEmpty(segment) && segment != ".")
+                {
+                    // Normal directory, go one level deeper
+                    depth++;
+                }
+            }
+
+            return false;
+        }
+
 
         [GeneratedRegex(@"^(\*\*\/|.*\/)$")]
         private static partial Regex LegalPathGlobRegex();

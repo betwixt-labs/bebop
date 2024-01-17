@@ -1,0 +1,519 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JSON schema for chord.json files",
+  "$defs": {
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://.+",
+      "patternErrorMessage": "Must be an HTTPS URL."
+    },
+    "email": {
+      "type": "string",
+      "format": "email",
+      "maxLength": 254
+    },
+    "license": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "enum": [
+            "Apache-2.0",
+            "MIT",
+            "ISC",
+            "BSD-3-Clause",
+            "BSD-2-Clause",
+            "CC0-1.0",
+            "CDDL-1.1",
+            "LGPL-2.1-only",
+            "LGPL-2.1-or-later",
+            "LGPL-3.0-only",
+            "LGPL-3.0-or-later",
+            "EPL-1.0",
+            "EPL-2.0",
+            "MS-PL",
+            "UNLICENSED"
+          ]
+        }
+      ]
+    }
+  },
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The name of the extension, part of URL, command line argument, and folder name. Must be URL-safe, no uppercase, <= 214 characters.",
+      "minLength": 1,
+      "maxLength": 214,
+      "pattern": "^(?:(?:@(?:[a-z0-9-*~][a-z0-9-*._~]*)?/[a-z0-9-._~])|[a-z0-9-~])[a-z0-9-._~]*$",
+      "patternErrorMessage": "Must be URL-safe, no uppercase, <= 214 characters."
+    },
+    "private": {
+      "type": "boolean",
+      "description": "If true, the extension will not be published to the registry."
+    },
+    "description": {
+      "type": "string",
+      "description": "The description of the extension.",
+      "minLength": 1,
+      "maxLength": 280
+    },
+    "version": {
+      "type": "string",
+      "description": "The version of the extension, in semver format without comparison operators.",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-([0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*))?$",
+      "patternErrorMessage": "Must be in semver format without comparison operators."
+    },
+    "repository": {
+      "type": "string",
+      "description": "The HTTPS URL of the extension's repository.",
+      "$ref": "#/$defs/url"
+    },
+    "author": {
+      "type": "object",
+      "description": "The author of the extension, with name, optional email and URL.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the author.",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "email": {
+          "$ref": "#/$defs/email",
+          "description": "The email of the author."
+        },
+        "url": {
+          "description": "The URL of the author.",
+          "$ref": "#/$defs/url"
+        }
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    },
+    "license": {
+      "$ref": "#/$defs/license",
+      "description": "You should specify a license for your package so that people know how they are permitted to use it, and any restrictions you're placing on it."
+    },
+    "bugs": {
+      "type": "object",
+      "description": "Where to report issues about the extension.",
+      "properties": {
+        "url": {
+          "description": "The URL to the issue tracker.",
+          "$ref": "#/$defs/url"
+        },
+        "email": {
+          "$ref": "#/$defs/email",
+          "description": "The email to the issue tracker."
+        }
+      },
+      "required": ["url"],
+      "additionalProperties": false
+    },
+    "homepage": {
+      "description": "The URL to the homepage of the extension.",
+      "$ref": "#/$defs/url"
+    },
+    "dependencies": {
+      "type": "object",
+      "description": "An object of dependencies with extension name as key and semver range as value.",
+      "patternProperties": {
+        "^(?:(?:@(?:[a-z0-9-*~][a-z0-9-*._~]*)?/[a-z0-9-._~])|[a-z0-9-~])[a-z0-9-._~]*$": {
+          "type": "string",
+          "description": "Semver range for the dependency.",
+          "pattern": "^(\\*|[0-9]+(\\.[0-9]+)?(\\.[0-9]+)?(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?([ \\t]*[-][ \\t]*(0|[1-9][0-9]*)\\.([0-9]+)\\.([0-9]+)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?)?|[0-9]+(\\.[0-9]+)?(\\.[0-9]+)?(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?([ \\t]*[<>=]+[ \\t]*(0|[1-9][0-9]*)\\.([0-9]+)\\.([0-9]+)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?)*|~[0-9]+(\\.[0-9]+)?(\\.[0-9]+)?|\\^[0-9]+(\\.[0-9]+)?(\\.[0-9]+)?)$",
+          "patternErrorMessage": "Must be a valid semver or semver range. (e.g. ^1.0.0 or >=1.0.0 <2.0.0)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "bin": {
+      "type": "string",
+      "description": "Path to the compiled extension, a valid relative file path.",
+      "pattern": "^((\\.?\\.?\\/?)|(\\.?\\.?\\\\?))([\\w\\-\\s\\/\\\\]+\\/)*[\\w\\-\\s]+\\.wasm$",
+      "patternErrorMessage": "Must be a valid relative file path to the compiled extensions .wasm file (e.g. ./bin/extension.wasm)."
+    },
+    "build": {
+      "type": "object",
+      "description": "Defines how to build the extension, including command, args, env, and shell.",
+      "properties": {
+        "script": {
+          "type": "string",
+          "description": "The script to run to build the extension.",
+          "minLength": 1
+        },
+        "args": {
+          "type": "array",
+          "description": "Array of arguments to pass to the build command.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "env": {
+          "type": "object",
+          "description": "Environment variables to set before running the build command.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "shell": {
+          "type": "string",
+          "description": "The shell to use when running the build command.",
+          "enum": ["bash", "sh", "pwsh", "cmd", "powershell", "python"]
+        },
+        "compiler": {
+          "type": "string",
+          "description": "The compiler that is used to build the WASM binary.",
+          "enum": ["as", "tinygo"]
+        }
+      },
+      "required": ["script", "compiler"],
+      "additionalProperties": false
+    },
+    "pack": {
+      "type": "object",
+      "description": "Defines how to package the extension.",
+      "minProperties": 1,
+      "patternProperties": {
+        "^[a-z]{1,7}$": {
+          "type": "object",
+          "description": "Defines how to package the extension, including auxiliaryFile.",
+          "properties": {
+            "auxiliaryFile": {
+              "type": "string",
+              "description": "Path to an auxiliary file that will be packaged with the extension.",
+              "pattern": "^((\\.?\\.?\\/?)|(\\.?\\.?\\\\?))([\\w\\-\\/\\\\]+\\/)*[\\w\\-]+(\\.\\w+)$",
+              "patternErrorMessage": "Must be a valid relative file path to an auxiliary file (e.g. ./auxiliary.txt)."
+            }
+          },
+          "required": ["auxiliaryFile"],
+          "patternErrorMessage": "Must be a valid generator alias.",
+          "minLength": 1,
+          "maxLength": 7
+        }
+      },
+      "additionalProperties": false
+    },
+    "contributes": {
+      "type": "object",
+      "description": "Defines what the extension contributes to bebopc, including generator, decorators, and extends.",
+      "oneOf": [
+        {
+          "required": ["generator"]
+        },
+        {
+          "required": ["extends"]
+        }
+      ],
+      "properties": {
+        "generator": {
+          "type": "object",
+          "description": "Defines the code generator that the extension contributes to bebopc.",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "The friendly name of the generator.",
+              "minLength": 1,
+              "maxLength": 32,
+              "pattern": "^[a-zA-Z ]+$",
+              "patternErrorMessage": "Must be a valid friendly name (e.g. CSharp)."
+            },
+            "alias": {
+              "type": "string",
+              "description": "The alias of the generator.",
+              "minLength": 1,
+              "maxLength": 7,
+              "pattern": "^(?!cs$|py$|ts$|rust$|dart$|cpp$)[a-z]+$",
+              "patternErrorMessage": "Alias cannot be the same as a built-in generator and must be lowercase (e.g. csharp)."
+            }
+          },
+          "required": ["name", "alias"],
+          "additionalProperties": false
+        },
+        "decorators": {
+          "type": "object",
+          "description": "Defines the decorators that the extension contributes to bebopc.",
+          "minProperties": 1,
+          "patternProperties": {
+            "^[a-z]+([A-Z][a-z]+)*$": {
+              "type": "object",
+              "properties": {
+                "description": {
+                  "type": "string",
+                  "description": "The description of the decorator.",
+                  "minLength": 1,
+                  "maxLength": 280
+                },
+                "targets": {
+                  "type": "string",
+                  "description": "Flag of types the decorator is usable on.",
+                  "pattern": "^(all|((enum|message|struct|union|field|service|method)(\\|(enum|message|struct|union|field|service|method))*))$",
+                  "patternErrorMessage": "Must be a valid flag of types the decorator is valid on. (e.g. enum, message, struct, union, field, service, method) or 'all'."
+                },
+                "allowMultiple": {
+                  "type": "boolean",
+                  "description": "Indicates if the decorator can be used multiple times on the same target."
+                },
+                "parameters": {
+                  "type": "object",
+                  "description": "Possible parameters for the decorator.",
+                  "minProperties": 1,
+                  "patternProperties": {
+                    "^[a-z]+([A-Z][a-z]+)*$": {
+                      "type": "object",
+                      "properties": {
+                        "description": {
+                          "type": "string",
+                          "description": "The description of the parameter.",
+                          "minLength": 1,
+                          "maxLength": 280
+                        },
+                        "required": {
+                          "type": "boolean",
+                          "description": "Indicates if the parameter is required."
+                        },
+                        "type": {
+                          "type": "string",
+                          "description": "The type of the parameter.",
+                          "enum": [
+                            "bool",
+                            "byte",
+                            "uint8",
+                            "uint16",
+                            "int16",
+                            "uint32",
+                            "int32",
+                            "uint64",
+                            "int64",
+                            "float32",
+                            "float64",
+                            "string"
+                          ]
+                        },
+                        "default": {
+                          "description": "The default value of the parameter."
+                        },
+                        "validator": {
+                          "type": "string",
+                          "description": "Regex pattern to validate value of the argument passed into the parameter.",
+                          "pattern": "^.+$",
+                          "patternErrorMessage": "Must be a valid regex pattern."
+                        },
+                        "validationErrorReason": {
+                          "type": "string",
+                          "description": "The error message to display when the validator fails."
+                        }
+                      },
+                      "required": ["description", "type"],
+                      "additionalProperties": false,
+                      "oneOf": [
+                        {
+                          "properties": {
+                            "type": {
+                              "const": "bool"
+                            },
+                            "default": {
+                              "type": "boolean"
+                            }
+                          }
+                        },
+                        {
+                          "properties": {
+                            "type": {
+                              "const": "string"
+                            },
+                            "default": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          }
+                        },
+                        {
+                          "properties": {
+                            "type": {
+                              "const": "uint8"
+                            },
+                            "default": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 255
+                            }
+                          }
+                        },
+                        {
+                          "properties": {
+                            "type": {
+                              "const": "byte"
+                            },
+                            "default": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 255
+                            }
+                          }
+                        },
+                        {
+                          "properties": {
+                            "type": {
+                              "const": "uint16"
+                            },
+                            "default": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 65535
+                            }
+                          }
+                        },
+                        {
+                          "properties": {
+                            "type": {
+                              "const": "int16"
+                            },
+                            "default": {
+                              "type": "number",
+                              "minimum": -32768,
+                              "maximum": 32767
+                            }
+                          }
+                        },
+                        {
+                          "properties": {
+                            "type": {
+                              "const": "uint32"
+                            },
+                            "default": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 4294967295
+                            }
+                          }
+                        },
+                        {
+                          "properties": {
+                            "type": {
+                              "const": "int32"
+                            },
+                            "default": {
+                              "type": "number",
+                              "minimum": -2147483648,
+                              "maximum": 2147483647
+                            }
+                          }
+                        },
+                        {
+                          "properties": {
+                            "type": {
+                              "const": "uint64"
+                            },
+                            "default": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 18446744073709551615
+                            }
+                          }
+                        },
+                        {
+                          "properties": {
+                            "type": {
+                              "const": "int64"
+                            },
+                            "default": {
+                              "type": "number",
+                              "minimum": -9223372036854775808,
+                              "maximum": 9223372036854775807
+                            }
+                          }
+                        },
+                        {
+                          "properties": {
+                            "type": {
+                              "const": "float32"
+                            },
+                            "default": {
+                              "type": "number"
+                            }
+                          }
+                        },
+                        {
+                          "properties": {
+                            "type": {
+                              "const": "float64"
+                            },
+                            "default": {
+                              "type": "number"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "required": ["description"],
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "extends": {
+          "type": "array",
+          "description": "List of generator aliases that the extension extends. Should only be present if the extension is not a generator extension.",
+          "items": {
+            "type": "string",
+            "description": "Generator alias that the extension extends.",
+            "anyOf": [
+              {
+                "enum": ["cs", "py", "ts", "rust", "dart", "cpp"]
+              },
+              {
+                "pattern": "^[a-z]{1,7}$",
+                "patternErrorMessage": "Must be a valid generator alias.",
+                "minLength": 1,
+                "maxLength": 7
+              }
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "additionalProperties": false
+      }
+    },
+    "readme": {
+      "type": "string",
+      "description": "Path to the compiled extension, a valid relative file path.",
+      "pattern": "^((\\.?\\.?\\/?)|(\\.?\\.?\\\\?))([\\w\\-\\s\\/\\\\]+\\/)*[\\w\\-\\s]+\\.md$",
+      "patternErrorMessage": "Must be a valid relative file path to the README.md for the extension.",
+      "minLength": 1
+    },
+    "engine": {
+      "type": "object",
+      "description": "An object containing at least the bebopc key matching the versions of Bebopc that the extension is compatible with. Cannot be *. For example: ^3.0.5 indicates compatibility with a minimum VS Code version of 3.0.5.",
+      "properties": {
+        "bebopc": {
+          "type": "string",
+          "description": "The semver range of bebopc that the extension is compatible with.",
+          "pattern": "^(\\*|[0-9]+(\\.[0-9]+)?(\\.[0-9]+)?(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?([ \\t]*[-][ \\t]*(0|[1-9][0-9]*)\\.([0-9]+)\\.([0-9]+)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?)?|[0-9]+(\\.[0-9]+)?(\\.[0-9]+)?(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?([ \\t]*[<>=]+[ \\t]*(0|[1-9][0-9]*)\\.([0-9]+)\\.([0-9]+)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?)*|~[0-9]+(\\.[0-9]+)?(\\.[0-9]+)?|\\^[0-9]+(\\.[0-9]+)?(\\.[0-9]+)?)$",
+          "patternErrorMessage": "Must be a valid semver or semver range. (e.g. ^1.0.0 or >=1.0.0 <2.0.0)"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["bebopc"]
+    }
+  },
+  "required": [
+    "name",
+    "description",
+    "version",
+    "license",
+    "bin",
+    "build",
+    "contributes",
+    "engine"
+  ],
+  "additionalProperties": false
+}
