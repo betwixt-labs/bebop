@@ -1,0 +1,26 @@
+{
+  "name": "@betwixt/bebopc-sdk",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "private": true,
+  "devDependencies": {
+    "@assemblyscript/wasi-shim": "^0.1.0",
+    "assemblyscript": "^0.27.9",
+    "assemblyscript-prettier": "^3.0.1",
+    "prettier": "3.0.0",
+    "serve": "^14.2.0",
+    "visitor-as": "^0.11.4"
+  },
+  "type": "module",
+  "scripts": {
+    "asbuild:debug": "asc assembly/index.ts --target debug",
+    "asbuild:release": "asc assembly/index.ts --target release",
+    "asbuild": "yarn asbuild:debug && yarn asbuild:release",
+    "test": "node tests",
+    "start": "yarn serve ."
+  },
+  "dependencies": {
+    "assemblyscript-json": "^1.1.0"
+  }
+}
