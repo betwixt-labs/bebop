@@ -291,3 +291,4 @@ Core/Meta/VersionInfo.cs
 # Go workspace file
 go.work
 *.wat
+.chord
