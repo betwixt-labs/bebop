@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.CommandLine;
 using System.IO;
 using System.Linq;
+using Core;
 using Core.Exceptions;
 using Core.Logging;
 using Core.Meta;
@@ -21,6 +22,15 @@ public class BuildCommand : CliCommand
         var config = result.GetValue<BebopConfig>(CliStrings.ConfigFlag)!;
 
         config.Validate();
+
+        using var host = CompilerHost.CompilerHostBuilder.Create()
+        .WithDefaults()
+#if !WASI_WASM_BUILD
+        .WithExtensions(config.Extensions)
+#endif
+        .Build();
+
+        var compiler = new BebopCompiler(host);
         BebopSchema schema = default;
         string? tempFilePath = null;
         try
@@ -37,7 +47,7 @@ public class BuildCommand : CliCommand
                 // dont use async as wasi currently has threading issues
                 standardInput.CopyTo(fs);
                 fs.Seek(0, SeekOrigin.Begin);
-                schema = BebopCompiler.ParseSchema([tempFilePath]);
+                schema = compiler.ParseSchema([tempFilePath]);
             }
             else
             {
@@ -46,7 +56,7 @@ public class BuildCommand : CliCommand
                 {
                     return DiagnosticLogger.Instance.WriteDiagonstic(new CompilerException("No input files specified."));
                 }
-                schema = BebopCompiler.ParseSchema(resolvedSchemas);
+                schema = compiler.ParseSchema(resolvedSchemas);
             }
             var isStandardOut = result.GetValue<bool>(CliStrings.StandardOutputFlag);
             var (Warnings, Errors) = BebopCompiler.GetSchemaDiagnostics(schema, config.SupressedWarningCodes);
@@ -68,7 +78,7 @@ public class BuildCommand : CliCommand
             var generatedFiles = new List<GeneratedFile>();
             foreach (var generatorConfig in config.Generators)
             {
-                generatedFiles.Add(BebopCompiler.Build(generatorConfig, schema, config));
+                generatedFiles.Add(compiler.Build(generatorConfig, schema, config));
             }
             if (isStandardOut)
             {

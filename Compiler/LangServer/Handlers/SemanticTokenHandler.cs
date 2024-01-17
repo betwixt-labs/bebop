@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Core;
 using Core.IO;
 using Core.Lexer.Tokenization;
+using Core.Meta;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
@@ -21,7 +23,8 @@ namespace Compiler.LangServer
 
         public SemanticTokenHandler(
             BufferManager bufferManager,
-            BebopLangServerLogger logger)
+            BebopLangServerLogger logger,
+            CompilerHost compilerHost)
         {
             _bufferManager = bufferManager ?? throw new ArgumentNullException(nameof(bufferManager));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -33,7 +36,7 @@ namespace Compiler.LangServer
 
             _tokenTypes = new Dictionary<TokenKind, SemanticTokenType>
             {
-                { TokenKind.ReadOnly, SemanticTokenType.Keyword  },
+                { TokenKind.ReadOnly, SemanticTokenType.Modifier  },
                 { TokenKind.Array, SemanticTokenType.Keyword  },
                 { TokenKind.Enum, SemanticTokenType.Keyword  },
                 { TokenKind.Map, SemanticTokenType.Keyword  },
@@ -43,6 +46,7 @@ namespace Compiler.LangServer
                 { TokenKind.Service, SemanticTokenType.Keyword },
                 { TokenKind.Stream, SemanticTokenType.Keyword },
                 { TokenKind.Number, SemanticTokenType.Number },
+                { TokenKind.Decorator, SemanticTokenType.Method }
             };
 
             _identifiers = new Dictionary<string, SemanticTokenType>
@@ -64,6 +68,11 @@ namespace Compiler.LangServer
                 { "guid", SemanticTokenType.Type },
                 { "date", SemanticTokenType.Type },
             };
+
+            foreach (var decorator in compilerHost.Decorators)
+            {
+                _identifiers[decorator.Identifier] = SemanticTokenType.Method;
+            }
         }
 
         protected override SemanticTokensRegistrationOptions CreateRegistrationOptions(SemanticTokensCapability capability, ClientCapabilities clientCapabilities)
@@ -106,16 +115,18 @@ namespace Compiler.LangServer
                         var isDefinition = false;
                         if (buffer?.Schema != null)
                         {
-                            if (buffer.Schema?.Definitions?.ContainsKey(token.Lexeme) ?? false)
+                            if (buffer.Schema?.Definitions?.TryGetValue(token.Lexeme, out var definition) ?? false)
                             {
                                 isDefinition = true;
+
+                                _logger.LogInfo($"Found definition {definition.Name} at {token.Span.StartLine}:{token.Span.StartColumn}");
                                 builder.Push(
-                                    new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range
-                                    {
-                                        Start = new Position(token.Span.StartLine, token.Span.StartColumn),
-                                        End = new Position(token.Span.EndLine, token.Span.EndColumn)
-                                    },
-                                    SemanticTokenType.Type as SemanticTokenType?);
+                               new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range
+                               {
+                                   Start = new Position(token.Span.StartLine, token.Span.StartColumn),
+                                   End = new Position(token.Span.EndLine, token.Span.EndColumn)
+                               },
+                               SemanticTokenType.Type as SemanticTokenType?);
                             }
                         }
 

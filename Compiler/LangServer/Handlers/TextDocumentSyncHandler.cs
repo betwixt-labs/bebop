@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Core;
 using Core.Exceptions;
 using Core.Meta;
 using Core.Parser;
@@ -19,6 +20,7 @@ namespace Compiler.LangServer
 {
     public sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
     {
+        private readonly CompilerHost _compilerHost;
         private readonly ILanguageServerFacade _router;
         private readonly BufferManager _bufferManager;
         private readonly BebopDiagnosticPublisher _publisher;
@@ -31,8 +33,10 @@ namespace Compiler.LangServer
             ILanguageServerFacade router,
             BufferManager bufferManager,
             BebopDiagnosticPublisher publisher,
-            BebopLangServerLogger logger)
+            BebopLangServerLogger logger,
+            CompilerHost compilerHost)
         {
+            _compilerHost = compilerHost ?? throw new ArgumentNullException(nameof(compilerHost));
             _router = router ?? throw new ArgumentNullException(nameof(router));
             _bufferManager = bufferManager ?? throw new ArgumentNullException(nameof(bufferManager));
             _publisher = publisher ?? throw new ArgumentNullException(nameof(publisher));
@@ -153,7 +157,7 @@ namespace Compiler.LangServer
 
             try
             {
-                var parser = new SchemaParser(text)
+                var parser = new SchemaParser(text, _compilerHost)
                 {
                     ImportResolver = new BebopLangServerImportResolver(uri, _logger)
                 };

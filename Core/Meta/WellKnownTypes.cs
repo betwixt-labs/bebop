@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Numerics;
 using System.Reflection;
+using Core.Exceptions;
 using Core.Lexer.Extensions;
+using Core.Lexer.Tokenization;
 
 namespace Core.Meta
 {
@@ -165,6 +167,30 @@ namespace Core.Meta
                     throw new ArgumentException("MaximumInteger: non-integer type");
             }
         }
+        /// <summary>
+        /// Given the given integral BaseType, determine if a string value can be parsed into it.
+        /// </summary>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        public static bool IsAssignableFrom(this BaseType type, string value)
+        {
+            return type switch
+            {
+                BaseType.Bool => value == "true" || value == "false",
+                BaseType.Byte => byte.TryParse(value, out _),
+                BaseType.UInt16 => ushort.TryParse(value, out _),
+                BaseType.Int16 => short.TryParse(value, out _),
+                BaseType.UInt32 => uint.TryParse(value, out _),
+                BaseType.Int32 => int.TryParse(value, out _),
+                BaseType.UInt64 => ulong.TryParse(value, out _),
+                BaseType.Int64 => long.TryParse(value, out _),
+                BaseType.Float32 => float.TryParse(value, out _),
+                BaseType.Float64 => double.TryParse(value, out _),
+                BaseType.String => true,
+                BaseType.Guid => Guid.TryParse(value, out _),
+                BaseType.Date => DateTime.TryParse(value, out _),
+                _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
+            };
+        }
 
         /// <summary>
         /// Can the given integral BaseType represent the given integer value?
@@ -175,6 +201,106 @@ namespace Core.Meta
         public static bool CanRepresent(this BaseType type, BigInteger value)
         {
             return value >= MinimumInteger(type) && value <= MaximumInteger(type);
+        }
+
+        /// <summary>
+        /// Given the given integral BaseType, determine if it is a number.
+        /// </summary>
+        /// <param name="type">An integral BaseType.</param>
+        /// <returns>Whether the BaseType is a number.</returns>
+        public static bool IsNumber(this BaseType type)
+        {
+            return type switch
+            {
+                BaseType.Byte or BaseType.UInt16 or BaseType.UInt32 or BaseType.UInt64 or BaseType.Int16 or BaseType.Int32 or BaseType.Int64 or BaseType.Float32 or BaseType.Float64 => true,
+                _ => false
+            };
+        }
+
+        public static bool IsBoolean(this TokenKind kind)
+        {
+            return kind == TokenKind.True || kind == TokenKind.False;
+        }
+
+        public static TokenKind ToTokenKind(this BaseType type)
+        {
+            return type switch
+            {
+                BaseType.Bool => TokenKind.True,
+                BaseType.Byte or BaseType.UInt16 or BaseType.UInt32 or BaseType.UInt64 or BaseType.Int16 or BaseType.Int32 or BaseType.Int64 or BaseType.Float32 or BaseType.Float64 => TokenKind.Number,
+                BaseType.String => TokenKind.String,
+                BaseType.Guid => TokenKind.String,
+                _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
+            };
+        }
+        public static string ToTokenString(this BaseType type)
+        {
+            return type switch
+            {
+                BaseType.Bool => "bool",
+                BaseType.Byte => "byte",
+                BaseType.UInt16 => "uint16",
+                BaseType.Int16 => "int16",
+                BaseType.UInt32 => "uint32",
+                BaseType.Int32 => "int32",
+                BaseType.UInt64 => "uint64",
+                BaseType.Int64 => "int64",
+                BaseType.Float32 => "float32",
+                BaseType.Float64 => "float64",
+                BaseType.String => "string",
+                BaseType.Guid => "guid",
+                BaseType.Date => "date",
+                _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
+            };
+        }
+
+        public static string ToTokenString(this TypeBase type)
+        {
+            return type switch
+            {
+                DefinedType dt => dt.Name,
+                ScalarType st => st.BaseType switch
+                {
+                    BaseType.Bool => "bool",
+                    BaseType.Byte => "byte",
+                    BaseType.UInt16 => "uint16",
+                    BaseType.Int16 => "int16",
+                    BaseType.UInt32 => "uint32",
+                    BaseType.Int32 => "int32",
+                    BaseType.UInt64 => "uint64",
+                    BaseType.Int64 => "int64",
+                    BaseType.Float32 => "float32",
+                    BaseType.Float64 => "float64",
+                    BaseType.String => "string",
+                    BaseType.Guid => "guid",
+                    BaseType.Date => "date",
+                    _ => throw new CompilerException($"Invalid scalar type {st.BaseType}")
+                },
+                ArrayType => "array",
+                MapType => "map",
+                _ => throw new CompilerException($"Invalid type {type.GetType()}")
+            };
+        }
+
+        public static BaseType FromTokenString(string token)
+        {
+            return token switch
+            {
+                "bool" => BaseType.Bool,
+                "byte" => BaseType.Byte,
+                "uint16" => BaseType.UInt16,
+                "int16" => BaseType.Int16,
+                "uint32" => BaseType.UInt32,
+                "int32" => BaseType.Int32,
+                "uint64" => BaseType.UInt64,
+                "int64" => BaseType.Int64,
+                "float32" => BaseType.Float32,
+                "float64" => BaseType.Float64,
+                "string" => BaseType.String,
+                "guid" => BaseType.Guid,
+                "date" => BaseType.Date,
+                _ => throw new ArgumentOutOfRangeException(nameof(token), token, null)
+            };
         }
     }
 

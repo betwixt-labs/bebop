@@ -19,6 +19,7 @@ public class SchemaWatcher
     private List<string> _excludeFiles = new List<string>();
     private List<string> _trackedFiles = new List<string>();
     private readonly BebopConfig _config;
+    private readonly BebopCompiler _compiler;
     private readonly bool _preserveWatchOutput;
     private TaskCompletionSource<int>? _tcs;
     private CancellationToken _cancellationToken;
@@ -31,8 +32,9 @@ public class SchemaWatcher
     ///</summary>
     ///<param name="watchDirectory">The directory to watch.</param>
     ///<param name="trackedFiles">The list of files to track.</param>
-    public SchemaWatcher(string watchDirectory, BebopConfig config)
+    public SchemaWatcher(string watchDirectory, BebopConfig config, BebopCompiler compiler)
     {
+        _compiler = compiler;
         _config = config;
         _preserveWatchOutput = config.WatchOptions.PreserveWatchOutput;
         _trackedFiles = config.ResolveIncludes().ToList();
@@ -364,7 +366,7 @@ public class SchemaWatcher
                 LogEvent("[yellow]Recompile skipped. No schemas being tracked.[/]");
                 return BebopCompiler.Ok;
             }
-            var schema = BebopCompiler.ParseSchema(_trackedFiles);
+            var schema = _compiler.ParseSchema(_trackedFiles);
             var (warnings, errors) = BebopCompiler.GetSchemaDiagnostics(schema, _config.SupressedWarningCodes);
             if (_config.NoEmit || errors.Count != 0)
             {
@@ -375,14 +377,14 @@ public class SchemaWatcher
             var generatedFiles = new List<GeneratedFile>();
             foreach (var generatorConfig in _config.Generators)
             {
-                generatedFiles.Add(BebopCompiler.Build(generatorConfig, schema, _config));
+                generatedFiles.Add(_compiler.Build(generatorConfig, schema, _config));
             }
             BebopCompiler.EmitGeneratedFiles(generatedFiles, _config);
             return BebopCompiler.Ok;
         }
         catch (Exception ex)
         {
-            return  DiagnosticLogger.Instance.WriteDiagonstic(ex);
+            return DiagnosticLogger.Instance.WriteDiagonstic(ex);
         }
 
     }

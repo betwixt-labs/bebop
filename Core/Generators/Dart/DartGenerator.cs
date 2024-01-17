@@ -14,7 +14,7 @@ namespace Core.Generators.Dart
     {
         const int indentStep = 2;
 
-        public DartGenerator(BebopSchema schema, GeneratorConfig config) : base(schema, config) { }
+        public DartGenerator() : base() { }
 
         private string FormatDocumentation(string documentation, int spaces)
         {
@@ -49,7 +49,7 @@ namespace Core.Generators.Dart
             builder.AppendLine($"final start = view.length;");
             foreach (var field in definition.Fields)
             {
-                if (field.DeprecatedAttribute != null)
+                if (field.DeprecatedDecorator != null)
                 {
                     continue;
                 }
@@ -277,7 +277,8 @@ namespace Core.Generators.Dart
             return JsonSerializer.Serialize(value, options);
         }
 
-        private string EmitLiteral(Literal literal) {
+        private string EmitLiteral(Literal literal)
+        {
             return literal switch
             {
                 BoolLiteral bl => bl.Value ? "true" : "false",
@@ -296,8 +297,10 @@ namespace Core.Generators.Dart
         /// Generate code for a Bebop schema.
         /// </summary>
         /// <returns>The generated code.</returns>
-       public override string Compile()
+        public override string Compile(BebopSchema schema, GeneratorConfig config)
         {
+            Schema = schema;
+            Config = config;
             var builder = new StringBuilder();
             builder.AppendLine("import 'dart:typed_data';");
             builder.AppendLine("import 'package:meta/meta.dart';");
@@ -324,9 +327,9 @@ namespace Core.Generators.Dart
                             {
                                 builder.Append(FormatDocumentation(field.Documentation, 2));
                             }
-                            if (field.DeprecatedAttribute != null)
+                            if (field.DeprecatedDecorator is not null && field.DeprecatedDecorator.TryGetValue("reason", out var reason))
                             {
-                                builder.AppendLine($"  /// @deprecated {field.DeprecatedAttribute.Value}");
+                                builder.AppendLine($"  /// @deprecated {reason}");
                             }
                             builder.AppendLine($"  static const {field.Name} = {ed.Name}.fromRawValue({field.ConstantValue});");
                         }
@@ -342,9 +345,9 @@ namespace Core.Generators.Dart
                             {
                                 builder.Append(FormatDocumentation(field.Documentation, 2));
                             }
-                            if (field.DeprecatedAttribute != null)
+                            if (field.DeprecatedDecorator is not null && field.DeprecatedDecorator.TryGetValue("reason", out var reason))
                             {
-                                builder.AppendLine($"  /// @deprecated {field.DeprecatedAttribute.Value}");
+                                builder.AppendLine($"  /// @deprecated {reason}");
                             }
                             var final = fd is StructDefinition { IsReadOnly: true } ? "final " : "";
                             var optional = fd is MessageDefinition ? "?" : "";
@@ -364,9 +367,9 @@ namespace Core.Generators.Dart
                             builder.AppendLine("  });");
                         }
                         builder.AppendLine("");
-                        if (fd.OpcodeAttribute != null)
+                        if (fd.OpcodeDecorator is not null && fd.OpcodeDecorator.TryGetValue("fourcc", out var fourcc))
                         {
-                            builder.AppendLine($"  static const int opcode = {fd.OpcodeAttribute.Value};");
+                            builder.AppendLine($"  static const int opcode = {fourcc};");
                             builder.AppendLine("");
                         }
                         builder.AppendLine($"  static Uint8List encode({fd.Name} message) {{");
@@ -405,11 +408,12 @@ namespace Core.Generators.Dart
         }
 
         public override AuxiliaryFile? GetAuxiliaryFile() => null;
-        public override void WriteAuxiliaryFiles(string outputPath)
+        public override void WriteAuxiliaryFile(string outputPath)
         {
             // There is nothing to do here.
         }
 
-         public override string Alias => "dart";
+        public override string Alias { get => "dart"; set => throw new NotImplementedException(); }
+        public override string Name { get => "Dart"; set => throw new NotImplementedException(); }
     }
 }

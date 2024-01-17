@@ -13,17 +13,20 @@ namespace Core.Generators.CSharp
         private Version LanguageVersion = CSharpNine;
 
 
-        public CSharpGenerator(BebopSchema schema, GeneratorConfig config) : base(schema, config) 
+        public CSharpGenerator() : base()
         {
+
+        }
+
+
+        public override string Compile(BebopSchema schema, GeneratorConfig config)
+        {
+            Config = config;
+            Schema = schema;
             if (Version.TryParse(config.GetOptionRawValue("langVersion"), out var langVersion))
             {
                 LanguageVersion = langVersion;
             }
-        }
-
-
-        public override string Compile()
-        {
             var builder = new IndentedStringBuilder();
             if (Config.EmitNotice)
             {
@@ -94,10 +97,9 @@ namespace Core.Generators.CSharp
                         {
                             builder.AppendLine(FormatDocumentation(field.Documentation, 6));
                         }
-                        if (field.DeprecatedAttribute is not null &&
-                            !string.IsNullOrWhiteSpace(field.DeprecatedAttribute.Value))
+                        if (field.DeprecatedDecorator is not null && field.DeprecatedDecorator.Arguments.TryGetValue("reason", out var reason))
                         {
-                            builder.AppendLine($"[System.Obsolete(\"{field.DeprecatedAttribute.Value}\")]");
+                            builder.AppendLine($"[System.Obsolete(\"{reason}\")]");
                         }
                         builder.AppendLine($"{field.Name.ToPascalCase()} = {field.ConstantValue}{(i + 1 < ed.Members.Count ? "," : "")}");
                     }
@@ -124,10 +126,9 @@ namespace Core.Generators.CSharp
                         {
                             builder.AppendLine("#nullable enable");
                         }
-
-                        if (fd.OpcodeAttribute is { Value: not null })
+                        if (fd.OpcodeDecorator is not null && fd.OpcodeDecorator.Arguments.TryGetValue("fourcc", out var fourcc))
                         {
-                            builder.AppendLine($"public const uint OpCode = {fd.OpcodeAttribute.Value};");
+                            builder.AppendLine($"public const uint OpCode = {fourcc};");
                         }
 
                         builder.AppendLine("/// <inheritdoc />");
@@ -144,10 +145,9 @@ namespace Core.Generators.CSharp
                             {
                                 builder.AppendLine(FormatDocumentation(field.Documentation, 0));
                             }
-                            if (field.DeprecatedAttribute is not null &&
-                                !string.IsNullOrWhiteSpace(field.DeprecatedAttribute.Value))
+                            if (field.DeprecatedDecorator is not null && field.DeprecatedDecorator.Arguments.TryGetValue("reason", out var reason))
                             {
-                                builder.AppendLine($"[System.Obsolete(\"{field.DeprecatedAttribute.Value}\")]");
+                                builder.AppendLine($"[System.Obsolete(\"{reason}\")]");
                             }
                             if (fd is StructDefinition)
                             {
@@ -314,7 +314,7 @@ namespace Core.Generators.CSharp
             builder.AppendLine("var start = writer.Length;");
             foreach (var field in definition.Fields)
             {
-                if (field.DeprecatedAttribute is not null)
+                if (field.DeprecatedDecorator is not null)
                 {
                     continue;
                 }
@@ -647,9 +647,9 @@ namespace Core.Generators.CSharp
                 builder.AppendLine(GeneratedAttribute);
                 builder.AppendLine(recordAttribute);
                 builder.AppendLine($"public partial class {ud.ClassName()} : {PrefixNamespace(ud.BaseClassName())}<{genericTypeArguments}> {{").Indent(indentStep).AppendLine();
-                if (ud.OpcodeAttribute is { Value: not null })
+                if (ud.OpcodeDecorator is not null && ud.OpcodeDecorator.Arguments.TryGetValue("fourcc", out var fourcc))
                 {
-                    builder.AppendLine($"public const uint OpCode = {ud.OpcodeAttribute.Value};");
+                    builder.AppendLine($"public const uint OpCode = {fourcc};");
                 }
 
                 builder.AppendLine("/// <inheritdoc />");
@@ -1316,11 +1316,12 @@ namespace Core.Generators.CSharp
 
         public override AuxiliaryFile? GetAuxiliaryFile() => null;
 
-        public override void WriteAuxiliaryFiles(string outputPath)
+        public override void WriteAuxiliaryFile(string outputPath)
         {
         }
 
-        public override string Alias => "cs";
+        public override string Alias { get => "cs"; set => throw new NotImplementedException(); }
+        public override string Name { get => "C#"; set => throw new NotImplementedException(); }
 
         #endregion
 

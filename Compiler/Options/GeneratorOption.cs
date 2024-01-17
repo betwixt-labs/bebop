@@ -45,11 +45,6 @@ namespace Compiler.Options
             }
 
             var generatorAlias = parts[0].Trim().ToLower();
-            if (!GeneratorUtils.ImplementedGeneratorNames.ContainsKey(generatorAlias))
-            {
-                result.AddError($"Unknown generator alias '{generatorAlias}'.");
-                return null;
-            }
             var remaining = parts[1].Split(',');
             var outputPath = remaining[0] ?? string.Empty;
 

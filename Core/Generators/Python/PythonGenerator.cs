@@ -6,7 +6,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using Core.Meta;
 using Core.Meta.Extensions;
-using Core.Meta.Attributes;
+using Core.Meta.Decorators;
 
 namespace Core.Generators.Python
 {
@@ -14,9 +14,9 @@ namespace Core.Generators.Python
     {
         const int indentStep = 4;
 
-        public PythonGenerator(BebopSchema schema, GeneratorConfig config) : base(schema, config) { }
+        public PythonGenerator() : base() { }
 
-        private string FormatDocumentation(string documentation, BaseAttribute? deprecated)
+        private string FormatDocumentation(string documentation, string? deprecated)
         {
             var builder = new StringBuilder();
             builder.AppendLine("\"\"\"");
@@ -24,9 +24,9 @@ namespace Core.Generators.Python
             {
                 builder.AppendLine(line);
             }
-            if (deprecated != null)
+            if (deprecated is not null)
             {
-                builder.AppendLine($"@deprecated {deprecated.Value}");
+                builder.AppendLine($"@deprecated {deprecated}");
             }
             builder.AppendLine("\"\"\"");
             return builder.ToString();
@@ -55,7 +55,7 @@ namespace Core.Generators.Python
             builder.AppendLine($"start = writer.length");
             foreach (var field in definition.Fields)
             {
-                if (field.DeprecatedAttribute != null)
+                if (field.DeprecatedDecorator != null)
                 {
                     continue;
                 }
@@ -334,8 +334,10 @@ namespace Core.Generators.Python
         /// Generate code for a Bebop schema.
         /// </summary>
         /// <returns>The generated code.</returns>
-        public override string Compile()
+        public override string Compile(BebopSchema schema, GeneratorConfig config)
         {
+            Schema = schema;
+            Config = config;
             var builder = new IndentedStringBuilder();
             builder.AppendLine("from enum import Enum");
             builder.AppendLine("from python_bebop import BebopWriter, BebopReader, UnionType, UnionDefinition");
@@ -363,7 +365,8 @@ namespace Core.Generators.Python
                             builder.AppendLine($"{field.Name.ToUpper()} = {field.ConstantValue}");
                             if (!string.IsNullOrWhiteSpace(field.Documentation))
                             {
-                                builder.Append(FormatDocumentation(field.Documentation, field.DeprecatedAttribute));
+                                var deprecatedReason = field.DeprecatedDecorator?.TryGetValue("reason", out var reason) ?? false ? reason : null;
+                                builder.Append(FormatDocumentation(field.Documentation, deprecatedReason));
                                 builder.AppendLine("");
                             }
                         }
@@ -389,15 +392,17 @@ namespace Core.Generators.Python
                                 builder.AppendLine($"{fieldPrepend}{field.Name}: {type}");
                                 if (!string.IsNullOrWhiteSpace(field.Documentation))
                                 {
-                                    builder.Append(FormatDocumentation(field.Documentation, field.DeprecatedAttribute));
+                                    var deprecatedReason = field.DeprecatedDecorator?.TryGetValue("reason", out var reason) ?? false ? reason : null;
+                                    builder.Append(FormatDocumentation(field.Documentation, deprecatedReason));
                                 }
                                 builder.AppendLine();
                             }
-                            if (rd.OpcodeAttribute != null)
+                            if (rd.OpcodeDecorator is not null && rd.OpcodeDecorator.TryGetValue("fourcc", out var fourcc))
                             {
-                                builder.AppendLine($"opcode = {rd.OpcodeAttribute.Value}");
+                                builder.AppendLine($"opcode = {fourcc}");
                                 builder.AppendLine("");
                             }
+
                             builder.AppendLine("");
                             if (!(fd is MessageDefinition))
                             {
@@ -456,11 +461,12 @@ namespace Core.Generators.Python
                                 {
                                     builder.Append(FormatDocumentation(definition.Documentation, null));
                                 }
-                                if (rd.OpcodeAttribute != null)
+                                if (rd.OpcodeDecorator is not null && rd.OpcodeDecorator.TryGetValue("fourcc", out var fourcc))
                                 {
-                                    builder.AppendLine($"opcode = {rd.OpcodeAttribute.Value}");
+                                    builder.AppendLine($"opcode = {fourcc}");
                                     builder.AppendLine("");
                                 }
+
                                 builder.AppendLine($"data: UnionType");
                                 builder.AppendLine();
                                 builder.CodeBlock($"def __init__(self, data: UnionType):", indentStep, () =>
@@ -555,13 +561,14 @@ namespace Core.Generators.Python
             return builder.ToString();
         }
 
-        public override void WriteAuxiliaryFiles(string outputPath)
+        public override void WriteAuxiliaryFile(string outputPath)
         {
             // There is nothing to do here.
         }
 
         public override AuxiliaryFile? GetAuxiliaryFile() => null;
 
-         public override string Alias => "py";
+        public override string Alias { get => "py"; set => throw new NotImplementedException(); }
+        public override string Name { get => "Python"; set => throw new NotImplementedException(); }
     }
 }

@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Core.Meta;
-using Core.Meta.Attributes;
+using Core.Meta.Decorators;
 using Core.Meta.Extensions;
 
 namespace Core.Generators.Rust
@@ -52,10 +52,12 @@ namespace Core.Generators.Rust
 
         #region entrypoints
 
-        public RustGenerator(BebopSchema schema, GeneratorConfig config) : base(schema, config) { }
+        public RustGenerator() : base() { }
 
-        public override string Compile()
+        public override string Compile(BebopSchema schema, GeneratorConfig config)
         {
+            Schema = schema;
+            Config = config;
             // the main scope which is where we write the const definitions and the borrowed types (as these are the
             // primary way to use bebop in Rust)
             var mainBuilder = new IndentedStringBuilder();
@@ -129,14 +131,15 @@ namespace Core.Generators.Rust
             return mainBuilder.ToString();
         }
 
-       public override AuxiliaryFile? GetAuxiliaryFile() => null;
+        public override AuxiliaryFile? GetAuxiliaryFile() => null;
 
-        public override void WriteAuxiliaryFiles(string outputPath)
+        public override void WriteAuxiliaryFile(string outputPath)
         {
             // Nothing to do because the runtime is a cargo package.
         }
 
-         public override string Alias => "rust";
+        public override string Alias { get => "rust"; set => throw new NotImplementedException(); }
+        public override string Name { get => "Rust"; set => throw new NotImplementedException(); }
 
         #endregion
 
@@ -192,7 +195,7 @@ namespace Core.Generators.Rust
                                 foreach (var m in d.Members)
                                 {
                                     WriteDocumentation(builder, m.Documentation);
-                                    WriteDeprecation(builder, m.DeprecatedAttribute);
+                                    WriteDeprecation(builder, m.DeprecatedDecorator);
                                     builder.AppendLine($"const {MakeConstIdent(m.Name)} = {m.ConstantValue};");
                                 }
                             });
@@ -208,7 +211,7 @@ namespace Core.Generators.Rust
                         foreach (var m in d.Members)
                         {
                             WriteDocumentation(builder, m.Documentation);
-                            WriteDeprecation(builder, m.DeprecatedAttribute);
+                            WriteDeprecation(builder, m.DeprecatedDecorator);
                             builder.AppendLine($"{MakeEnumVariantIdent(m.Name)} = {m.ConstantValue},");
                         }
                     }).AppendLine();
@@ -412,7 +415,7 @@ namespace Core.Generators.Rust
         }
 
         /// <summary>
-        /// Write the part within the `pub struct` definition. This will just write the attributes.
+        /// Write the part within the `pub struct` definition. This will just write the decorator.
         /// </summary>
         private void WriteStructDefinitionAttrs(IndentedStringBuilder builder, StructDefinition d, OwnershipType ot,
             bool makePub = true)
@@ -420,7 +423,7 @@ namespace Core.Generators.Rust
             foreach (var f in d.Fields)
             {
                 WriteDocumentation(builder, f.Documentation);
-                WriteDeprecation(builder, f.DeprecatedAttribute);
+                WriteDeprecation(builder, f.DeprecatedDecorator);
                 var pub = makePub ? "pub " : "";
                 builder.AppendLine($"{pub}{MakeAttrIdent(f.Name)}: {TypeName(f.Type, ot)},");
             }
@@ -534,7 +537,7 @@ namespace Core.Generators.Rust
         }
 
         /// <summary>
-        /// Write the part within the `pub struct` definition. This will just write the attributes.
+        /// Write the part within the `pub struct` definition. This will just write the decorator.
         /// </summary>
         private void WriteMessageDefinitionAttrs(IndentedStringBuilder builder, MessageDefinition d, OwnershipType ot,
             bool makePub = true)
@@ -543,7 +546,7 @@ namespace Core.Generators.Rust
             {
                 WriteDocumentation(builder, f.Documentation);
                 WriteDocumentation(builder, $"Field {f.ConstantValue}");
-                WriteDeprecation(builder, f.DeprecatedAttribute);
+                WriteDeprecation(builder, f.DeprecatedDecorator);
                 var pub = makePub ? "pub " : "";
                 builder.AppendLine($"{pub}{MakeAttrIdent(f.Name)}: ::core::option::Option<{TypeName(f.Type, ot)}>,");
             }
@@ -981,14 +984,14 @@ namespace Core.Generators.Rust
             }
         }
 
-        private static void WriteDeprecation(IndentedStringBuilder builder, BaseAttribute? attr)
+        private static void WriteDeprecation(IndentedStringBuilder builder, SchemaDecorator? attr)
         {
             if (attr is null) { return; }
 
             builder.Append("#[deprecated");
-            if (!string.IsNullOrEmpty(attr.Value))
+            if (attr is not null && attr.TryGetValue("reason", out var value) && !string.IsNullOrEmpty(value))
             {
-                builder.AppendMid($"(note = \"{attr.Value}\")");
+                builder.Append($"(note = \"{value}\")");
             }
 
             builder.AppendEnd("]");
@@ -996,12 +999,14 @@ namespace Core.Generators.Rust
 
         private static void WriteRecordImpl(IndentedStringBuilder builder, string name, RecordDefinition d)
         {
-            if (d.OpcodeAttribute is { Value: not (null or "") })
+
+            if (d.OpcodeDecorator is not null && d.OpcodeDecorator.TryGetValue("fourcc", out var fourcc) &&
+                !string.IsNullOrEmpty(fourcc))
             {
                 builder.CodeBlock($"impl<'raw> ::bebop::Record<'raw> for {name}", _tab, () =>
                 {
                     builder.AppendLine(
-                        $"const OPCODE: ::core::option::Option<u32> = Some({d.OpcodeAttribute.Value});");
+                        $"const OPCODE: ::core::option::Option<u32> = Some({fourcc});");
                 });
             }
             else

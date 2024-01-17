@@ -15,7 +15,7 @@ namespace Core.Generators.CPlusPlus
     {
         const int indentStep = 2;
 
-        public CPlusPlusGenerator(BebopSchema schema, GeneratorConfig config) : base(schema, config) { }
+        public CPlusPlusGenerator() : base() { }
 
         private string FormatDocumentation(string documentation, int spaces)
         {
@@ -51,7 +51,7 @@ namespace Core.Generators.CPlusPlus
             builder.AppendLine($"const auto start = writer.length();");
             foreach (var field in definition.Fields)
             {
-                if (field.DeprecatedAttribute != null)
+                if (field.DeprecatedDecorator != null)
                 {
                     continue;
                 }
@@ -355,8 +355,10 @@ namespace Core.Generators.CPlusPlus
         /// Generate code for a Bebop schema.
         /// </summary>
         /// <returns>The generated code.</returns>
-        public override string Compile()
+        public override string Compile(BebopSchema schema, GeneratorConfig config)
         {
+            Schema = schema;
+            Config = config;
             var builder = new StringBuilder();
             if (Config.EmitNotice)
             {
@@ -397,9 +399,9 @@ namespace Core.Generators.CPlusPlus
                             {
                                 builder.Append(FormatDocumentation(field.Documentation, 2));
                             }
-                            if (field.DeprecatedAttribute != null)
+                            if (field.DeprecatedDecorator is not null && field.DeprecatedDecorator.TryGetValue("reason", out var reason))
                             {
-                                builder.AppendLine($"  /// @deprecated {field.DeprecatedAttribute.Value}");
+                                builder.AppendLine($"  /// @deprecated {reason}");
                             }
                             builder.AppendLine($"  {field.Name} = {field.ConstantValue},");
                         }
@@ -409,9 +411,9 @@ namespace Core.Generators.CPlusPlus
                     case RecordDefinition td:
                         builder.AppendLine($"struct {td.Name} {{");
                         builder.AppendLine($"  static const size_t minimalEncodedSize = {td.MinimalEncodedSize(Schema)};");
-                        if (td.OpcodeAttribute != null)
+                        if (td.OpcodeDecorator is not null && td.OpcodeDecorator.TryGetValue("fourcc", out var fourcc))
                         {
-                            builder.AppendLine($"  static const uint32_t opcode = {td.OpcodeAttribute.Value};");
+                            builder.AppendLine($"  static const uint32_t opcode = {fourcc};");
                             builder.AppendLine("");
                         }
 
@@ -426,9 +428,9 @@ namespace Core.Generators.CPlusPlus
                                 {
                                     builder.Append(FormatDocumentation(field.Documentation, 2));
                                 }
-                                if (field.DeprecatedAttribute != null)
+                                if (field.DeprecatedDecorator is not null && field.DeprecatedDecorator.TryGetValue("reason", out var reason))
                                 {
-                                    builder.AppendLine($"  /// @deprecated {field.DeprecatedAttribute.Value}");
+                                    builder.AppendLine($"  /// @deprecated {reason}");
                                 }
                                 builder.AppendLine($"  {(isMessage ? Optional(type) : type)} {field.Name};");
                             }
@@ -526,7 +528,7 @@ namespace Core.Generators.CPlusPlus
 
         public override AuxiliaryFile? GetAuxiliaryFile()
         {
-             var assembly = Assembly.GetEntryAssembly()!;
+            var assembly = Assembly.GetEntryAssembly()!;
             var runtime = assembly.GetManifestResourceNames()!.FirstOrDefault(n => n.Contains("bebop.hpp"))!;
 
             using var stream = assembly.GetManifestResourceStream(runtime)!;
@@ -544,15 +546,20 @@ namespace Core.Generators.CPlusPlus
 
                 }
             }
-            return new AuxiliaryFile("bebop.hpp", builder.ToString());
+            var encoding = new UTF8Encoding(false);
+            return new AuxiliaryFile("bebop.hpp", encoding.GetBytes(builder.ToString()));
         }
 
-        public override void WriteAuxiliaryFiles(string outputPath)
+        public override void WriteAuxiliaryFile(string outputPath)
         {
             var auxiliary = GetAuxiliaryFile();
-            File.WriteAllText(Path.Join(outputPath, auxiliary!.Name), auxiliary!.Content);
+            if (auxiliary is not null)
+            {
+                File.WriteAllBytes(Path.Join(outputPath, auxiliary.Name), auxiliary.Content);
+            }
         }
 
-         public override string Alias => "cpp";
+        public override string Alias { get => "cpp"; set => throw new NotImplementedException(); }
+        public override string Name { get => "C++"; set => throw new NotImplementedException(); }
     }
 }

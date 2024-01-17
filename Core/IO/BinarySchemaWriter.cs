@@ -6,7 +6,7 @@ using System.Numerics;
 using System.Text;
 using Core.Exceptions;
 using Core.Meta;
-using Core.Meta.Attributes;
+using Core.Meta.Decorators;
 
 namespace Core.IO
 {
@@ -50,7 +50,7 @@ namespace Core.IO
                 WriteMap(mt);
             }
 
-            WriteAttributes(field.Attributes);
+            WriteDecorators(field.Decorators);
             // Write the constant value for message fields
             if (parent is MessageDefinition)
             {
@@ -96,69 +96,71 @@ namespace Core.IO
                 switch (baseType)
                 {
                     case BaseType.Byte:
-                        value = (byte)bigInt;
-                        break;
+                        _writer.Write((byte)bigInt);
+                        return;
                     case BaseType.UInt16:
-                        value = (ushort)bigInt;
-                        break;
+                        _writer.Write((ushort)bigInt);
+                        return;
                     case BaseType.Int16:
-                        value = (short)bigInt;
-                        break;
-                    case BaseType.Int32:
-                        value = (int)bigInt;
-                        break;
+                        _writer.Write((short)bigInt);
+                        return;
                     case BaseType.UInt32:
-                        value = (uint)bigInt;
-                        break;
-                    case BaseType.Int64:
-                        value = (long)bigInt;
-                        break;
+                        _writer.Write((uint)bigInt);
+                        return;
+                    case BaseType.Int32:
+                        _writer.Write((int)bigInt);
+                        return;
                     case BaseType.UInt64:
-                        value = (ulong)bigInt;
-                        break;
+                        _writer.Write((ulong)bigInt);
+                        return;
+                    case BaseType.Int64:
+                        _writer.Write((long)bigInt);
+                        return;
                 }
             }
-            switch (baseType)
+            else if (baseType.IsNumber() && value is string str)
             {
-                case BaseType.Bool:
-                    _writer.Write((bool)value);
-                    break;
-                case BaseType.Byte:
-                    _writer.Write((byte)value);
-                    break;
-                case BaseType.UInt16:
-                    _writer.Write((ushort)value);
-                    break;
-                case BaseType.Int16:
-                    _writer.Write((short)value);
-                    break;
-                case BaseType.UInt32:
-                    _writer.Write((uint)value);
-                    break;
-                case BaseType.Int32:
-                    _writer.Write((int)value);
-                    break;
-                case BaseType.UInt64:
-                    _writer.Write((ulong)value);
-                    break;
-                case BaseType.Int64:
-                    _writer.Write((long)value);
-                    break;
-                case BaseType.Float32:
-                    _writer.Write((float)value);
-                    break;
-                case BaseType.Float64:
-                    _writer.Write((double)value);
-                    break;
-                case BaseType.Guid:
-                    _writer.Write(((Guid)value).ToByteArray());
-                    break;
-                case BaseType.String:
-                    WriteString((string)value);
-                    break;
-                default:
-                    throw new CompilerException($"Unknown base type {baseType}");
+                switch (baseType)
+                {
+                    case BaseType.Byte:
+                        _writer.Write(byte.Parse(str));
+                        return;
+                    case BaseType.UInt16:
+                        _writer.Write(ushort.Parse(str));
+                        return;
+                    case BaseType.Int16:
+                        _writer.Write(short.Parse(str));
+                        return;
+                    case BaseType.UInt32:
+                        _writer.Write(uint.Parse(str));
+                        return;
+                    case BaseType.Int32:
+                        _writer.Write(int.Parse(str));
+                        return;
+                    case BaseType.UInt64:
+                        _writer.Write(ulong.Parse(str));
+                        return;
+                    case BaseType.Int64:
+                        _writer.Write(long.Parse(str));
+                        return;
+                }
             }
+            else if (baseType is BaseType.Guid && value is string guidStr)
+            {
+                _writer.Write(Guid.Parse(guidStr).ToByteArray());
+                return;
+            }
+            else if (baseType is BaseType.Bool && value is string boolString)
+            {
+                _writer.Write(bool.Parse(boolString));
+                return;
+            }
+            else if (baseType is BaseType.String && value is string ss)
+            {
+                WriteString(ss);
+                return;
+            }
+            throw new CompilerException($"Unsupported base type {baseType}");
         }
 
         private void WriteString(string value)
@@ -169,58 +171,55 @@ namespace Core.IO
 
         #endregion
 
-        #region Attributes
-        private void WriteAttribute(BaseAttribute attribute)
+        #region Decorators
+        private void WriteDecorator(SchemaDecorator decorator)
         {
-            // attribute name
-            WriteString(attribute.Name);
-            // has value
-            bool hasValue = !string.IsNullOrWhiteSpace(attribute.Value);
-            _writer.Write(hasValue);
-            if (hasValue)
+            // decorator name
+            WriteString(decorator.Identifier);
+            var arguments = decorator.Arguments;
+            // argument count
+            _writer.Write((byte)arguments.Count);
+            var definition = decorator.Definition;
+            foreach (var argument in arguments)
             {
-                WriteString(attribute.Value);
-            }
-            if (attribute is OpcodeAttribute oa)
-            {
-                // eventually this should be a type id instead of a bool
-                // since they would both take up the same amount of space
-                // it will be forward compatible
-                _writer.Write(oa.IsNumber);
-            }
-            else
-            {
-                _writer.Write(false);
+                var parameter = definition?.Parameters?.Where((p) => p.Identifier == argument.Key).FirstOrDefault();
+                if (parameter is null)
+                {
+                    throw new CompilerException($"Unknown parameter {argument.Key} for decorator {decorator.Identifier}");
+                }
+                WriteString(argument.Key);
+                _writer.Write(TypeToId(new ScalarType(parameter.Type)));
+                WriteConstant(parameter.Type, argument.Value);
             }
         }
 
 
-        private void WriteAttributes(List<BaseAttribute>? attributes)
+        private void WriteDecorators(List<SchemaDecorator>? decorators)
         {
-            if (attributes is null)
+            if (decorators is null)
             {
                 _writer.Write((byte)0);
                 return;
             }
-            _writer.Write((byte)attributes.Count);
-            foreach (var attribute in attributes)
+            _writer.Write((byte)decorators.Count);
+            foreach (var decorator in decorators)
             {
-                WriteAttribute(attribute);
+                WriteDecorator(decorator);
             }
         }
 
-        private void WriteAttributes(Definition definition)
+        private void WriteDecorators(Definition definition)
         {
-            List<BaseAttribute>? attributes = definition switch
+            List<SchemaDecorator>? decorators = definition switch
             {
-                StructDefinition sd => sd.Attributes,
-                MessageDefinition md => md.Attributes,
-                UnionDefinition ud => ud.Attributes,
-                EnumDefinition ed => ed.Attributes,
-                ServiceDefinition sd => sd.Attributes,
+                StructDefinition sd => sd.Decorators,
+                MessageDefinition md => md.Decorators,
+                UnionDefinition ud => ud.Decorators,
+                EnumDefinition ed => ed.Decorators,
+                ServiceDefinition sd => sd.Decorators,
                 _ => null,
             };
-            WriteAttributes(attributes);
+            WriteDecorators(decorators);
         }
 
         #endregion
@@ -245,7 +244,7 @@ namespace Core.IO
                 var definition = _definedTypes.ElementAt(i);
                 WriteString(definition.Name);
                 _writer.Write(DefinitionToKind(definition));
-                WriteAttributes(definition);
+                WriteDecorators(definition);
                 switch (definition)
                 {
                     case StructDefinition sd:
@@ -272,17 +271,17 @@ namespace Core.IO
             foreach (var service in _services)
             {
                 WriteString(service.Name);
-                WriteAttributes(service);
+                WriteDecorators(service);
                 var methodCount = service.Methods.Count;
                 _writer.Write((uint)methodCount);
                 foreach (var method in service.Methods)
                 {
                     var methodDefinition = method.Definition;
                     WriteString(methodDefinition.Name);
-                    WriteAttributes(method.Attributes);
+                    WriteDecorators(method.Decorators);
                     _writer.Write((byte)methodDefinition.Type);
                     _writer.Write(DefinitionToId(methodDefinition.RequestDefinition.AsString));
-                    _writer.Write(DefinitionToId(methodDefinition.ReturnDefintion.AsString));
+                    _writer.Write(DefinitionToId(methodDefinition.ResponseDefintion.AsString));
                     _writer.Write(method.Id);
                 }
             }
@@ -291,6 +290,7 @@ namespace Core.IO
 
         private void WriteMessage(MessageDefinition definition)
         {
+            _writer.Write(definition.MinimalEncodedSize(_schema));
             var fieldCount = definition.Fields.Count;
             if (fieldCount < 0 || fieldCount > 255)
             {
@@ -306,6 +306,8 @@ namespace Core.IO
         private void WriteEnum(EnumDefinition definition)
         {
             _writer.Write(TypeToId(definition.ScalarType));
+            _writer.Write(definition.IsBitFlags);
+            _writer.Write(definition.ScalarType.MinimalEncodedSize(_schema));
             // TODO formalize 255 as the max number of fields
             var memberCount = definition.Members.Count;
             if (memberCount < 0 || memberCount > 255)
@@ -316,15 +318,19 @@ namespace Core.IO
             foreach (var member in definition.Members)
             {
                 WriteString(member.Name);
-                WriteAttributes(member.Attributes);
+                WriteDecorators(member.Decorators);
                 WriteConstant(definition.ScalarType.BaseType, member.ConstantValue);
             }
+
         }
 
         private void WriteStruct(StructDefinition definition)
         {
             // modifier(s)
             _writer.Write(definition.IsReadOnly);
+            _writer.Write(definition.MinimalEncodedSize(_schema));
+            _writer.Write(definition.IsFixedSize(_schema));
+
             var fieldCount = definition.Fields.Count;
             if (fieldCount < 0 || fieldCount > 255)
             {
@@ -345,6 +351,7 @@ namespace Core.IO
             {
                 throw new CompilerException($"{definition.Name} exceeds maximum branches: has {branchCount} branches");
             }
+            _writer.Write(definition.MinimalEncodedSize(_schema));
             _writer.Write((byte)branchCount);
             for (var i = 0; i < branches.Count(); i++)
             {
