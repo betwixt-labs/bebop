@@ -95,3 +95,84 @@ export const writeStandardError = (error: string) => {
   const data = encoder.encode(error);
   writeFileSync(STDIO.StdErr, data);
 };
+
+export class IndentedStringBuilder {
+  private spaces: number;
+  private builder: string[];
+
+  constructor(spaces: number = 0) {
+    this.spaces = spaces;
+    this.builder = [];
+  }
+
+  append(text: string): IndentedStringBuilder {
+    const indent = " ".repeat(this.spaces);
+    const lines = text.split("\n");
+    const indentedLines = lines.map((x) => indent + x.trimEnd());
+    const indentedText = indentedLines.join("\n").trimEnd();
+    this.builder.push(indentedText);
+    return this;
+  }
+
+  appendMid(text: string): IndentedStringBuilder {
+    if (text.split("\n").length > 1) {
+      throw new Error("AppendMid must not contain multiple lines");
+    }
+
+    this.builder.push(text);
+    return this;
+  }
+
+  appendEnd(text: string): IndentedStringBuilder {
+    if (text.split("\n").length > 1) {
+      throw new Error("AppendEnd must not contain multiple lines");
+    }
+
+    this.builder.push(text.trimEnd() + "\n");
+    return this;
+  }
+
+  appendLine(text: string = "\n"): IndentedStringBuilder {
+    const indent = " ".repeat(this.spaces);
+    const lines = text.split("\n");
+    const indentedLines = lines.map((x) => indent + x.trimEnd());
+    const indentedText = indentedLines.join("\n").trimEnd();
+    this.builder.push(`${indentedText}\n`);
+    return this;
+  }
+
+  indent(addSpaces: number = 0): IndentedStringBuilder {
+    this.spaces = Math.max(0, this.spaces + addSpaces);
+    return this;
+  }
+
+  dedent(removeSpaces: number = 0): IndentedStringBuilder {
+    this.spaces = Math.max(0, this.spaces - removeSpaces);
+    return this;
+  }
+
+  codeBlock(
+    openingLine: string,
+    spaces: number,
+    fn: () => void,
+    open: string = "{",
+    close: string = "}"
+  ): IndentedStringBuilder {
+    if (openingLine) {
+      this.append(openingLine);
+      this.appendEnd(` ${open}`);
+    } else {
+      this.appendLine(open);
+    }
+
+    this.indent(spaces);
+    fn();
+    this.dedent(spaces);
+    this.appendLine(close);
+    return this;
+  }
+
+  toString(): string {
+    return this.builder.join("");
+  }
+}

@@ -1,6 +1,10 @@
-import { commitResult, readContext } from "./kernel";
+import { IndentedStringBuilder, commitResult, readContext } from "./kernel";
 
 export function chordCompile() {
   const input = readContext();
-  commitResult(input + " \n hello world");
+  const builder = new IndentedStringBuilder();
+  builder.codeBlock("pseudo", 2, () => {
+    builder.appendLine("hello world");
+  });
+  commitResult(`${input} \n ${builder.toString()}`);
 }
