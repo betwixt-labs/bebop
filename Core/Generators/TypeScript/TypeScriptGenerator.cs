@@ -7,6 +7,8 @@ using System.Reflection;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using Core.Meta;
 using Core.Meta.Decorators;
 using Core.Meta.Extensions;
@@ -646,7 +648,7 @@ namespace Core.Generators.TypeScript
         /// Generate code for a Bebop schema.
         /// </summary>
         /// <returns>The generated code.</returns>
-        public override string Compile(BebopSchema schema, GeneratorConfig config)
+        public override ValueTask<string> Compile(BebopSchema schema, GeneratorConfig config, CancellationToken cancellationToken = default)
         {
             Schema = schema;
             Config = config;
@@ -1092,7 +1094,7 @@ namespace Core.Generators.TypeScript
                 builder.Dedent(2);
                 builder.AppendLine("}");
             }
-            return builder.ToString();
+            return ValueTask.FromResult(builder.ToString());
         }
 
         public override AuxiliaryFile? GetAuxiliaryFile() => null;

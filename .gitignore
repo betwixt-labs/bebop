@@ -292,3 +292,4 @@ Core/Meta/VersionInfo.cs
 go.work
 *.wat
 .chord
+dist

@@ -7,7 +7,7 @@ namespace Chord.Runtime.Internal.Linkers;
 
 /// <summary>
 /// A specialized linker for AssemblyScript WebAssembly modules used in the Chord runtime.
-/// It defines kernel functions specific to TinyGo and links them to the corresponding WebAssembly module.
+/// It defines kernel functions specific to AssemblyScript and links them to the corresponding WebAssembly module.
 /// </summary>
 internal sealed class AssemblyScriptLinker(Engine engine, Store store, StringMarshaler stringMarshaler, ExtensionRuntime runtime, ContributionType contributionType) : WasmLinker(engine, store, stringMarshaler, runtime, contributionType)
 {

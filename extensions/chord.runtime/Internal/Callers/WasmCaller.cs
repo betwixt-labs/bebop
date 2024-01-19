@@ -33,5 +33,11 @@ internal abstract class WasmCaller
     /// </summary>
     /// <param name="context">The context to be compiled by the WebAssembly module.</param>
     /// <returns>The result of the compilation as a string.</returns>
-    public abstract string ChordCompile(string context);
+    public abstract ValueTask<string> ChordCompileAsync(string context, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sets the extension associated with this caller.
+    /// </summary>
+    /// <param name="extension">the extension</param>
+    public abstract void SetExtension(Extension extension);
 }

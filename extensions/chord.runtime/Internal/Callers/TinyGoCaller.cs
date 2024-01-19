@@ -9,7 +9,7 @@ internal sealed class TinyGoCaller : WasmCaller
     {
     }
 
-    public override string ChordCompile(string context)
+    public override ValueTask<string> ChordCompileAsync(string context, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(context, nameof(context));
         var compile = _instance.GetAction<int, int, int>("chord_compile");
@@ -21,6 +21,11 @@ internal sealed class TinyGoCaller : WasmCaller
         var contextString = _stringMarshaler.CreateString(context);
         var returnString = _stringMarshaler.CreateString();
         compile(returnString.Address, contextString.Address, contextString.Length);
-        return returnString.Value;
+        return ValueTask.FromResult(returnString.Value);
+    }
+
+    public override void SetExtension(Extension extension)
+    {
+        throw new NotImplementedException();
     }
 }

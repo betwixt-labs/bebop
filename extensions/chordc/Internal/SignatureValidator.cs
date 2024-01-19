@@ -56,6 +56,20 @@ public static class SignatureValidator
                     }
                 },
                 {
+                    "javy",
+                    new ()
+                    {
+                        new ("chord-compile",
+                            [
+
+                            ],
+                            [
+
+                            ]
+                        )
+                    }
+                },
+                {
                     "tinygo",
                     new ()
                     {

@@ -9,7 +9,7 @@ internal sealed class AssemblyScriptCaller : WasmCaller
     {
     }
 
-    public override string ChordCompile(string context)
+    public override ValueTask<string> ChordCompileAsync(string context, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(context, nameof(context));
         var compile = _instance.GetFunction<int, int>("chord_compile");
@@ -19,6 +19,11 @@ internal sealed class AssemblyScriptCaller : WasmCaller
         }
         using var contextString = _stringMarshaler.CreateString(context);
         var returnAddress = compile.Invoke(contextString.Address);
-        return _stringMarshaler.ReadString(returnAddress);
+        return ValueTask.FromResult(_stringMarshaler.ReadString(returnAddress));
+    }
+
+    public override void SetExtension(Extension extension)
+    {
+        throw new NotImplementedException();
     }
 }

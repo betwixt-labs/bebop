@@ -1,0 +1,5 @@
+package chord:kernel;
+
+world chord {
+  export chord-compile: func(); 
+}

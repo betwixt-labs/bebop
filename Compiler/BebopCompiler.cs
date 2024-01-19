@@ -56,7 +56,7 @@ public class BebopCompiler(CompilerHost Host)
     }
 
 
-    public GeneratedFile Build(GeneratorConfig generatorConfig, BebopSchema schema, BebopConfig config)
+    public async ValueTask<GeneratedFile> BuildAsync(GeneratorConfig generatorConfig, BebopSchema schema, BebopConfig config, CancellationToken cancellationToken)
     {
         var (warnings, errors) = GetSchemaDiagnostics(schema, config.SupressedWarningCodes);
         if (!Host.TryGetGenerator(generatorConfig.Alias, out var generator))
@@ -64,7 +64,7 @@ public class BebopCompiler(CompilerHost Host)
             throw new CompilerException($"Could not find generator with alias '{generatorConfig.Alias}'.");
         }
 
-        var compiled = generator.Compile(schema, generatorConfig);
+        var compiled = await generator.Compile(schema, generatorConfig, cancellationToken);
         var auxiliary = generator.GetAuxiliaryFile();
         return new GeneratedFile(generatorConfig.OutFile, compiled, generator.Alias, auxiliary);
     }

@@ -1,0 +1,12 @@
+{
+  "include": ["*.bop"],
+  "exclude": ["node_modules", "**/node_modules/*"],
+  "generators": {
+    "ts": {
+      "outFile": "test.ts"
+    },
+    "cs": {
+      "outFile": "test.cs"
+    }
+  }
+}

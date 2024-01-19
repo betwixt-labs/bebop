@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.CommandLine;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Core;
 using Core.Exceptions;
 using Core.Logging;
@@ -17,7 +19,7 @@ public class BuildCommand : CliCommand
         SetAction(HandleCommand);
     }
 
-    private int HandleCommand(ParseResult result)
+    private async Task<int> HandleCommand(ParseResult result, CancellationToken cancellationToken)
     {
         var config = result.GetValue<BebopConfig>(CliStrings.ConfigFlag)!;
 
@@ -78,7 +80,7 @@ public class BuildCommand : CliCommand
             var generatedFiles = new List<GeneratedFile>();
             foreach (var generatorConfig in config.Generators)
             {
-                generatedFiles.Add(compiler.Build(generatorConfig, schema, config));
+                generatedFiles.Add(await compiler.BuildAsync(generatorConfig, schema, config, cancellationToken));
             }
             if (isStandardOut)
             {

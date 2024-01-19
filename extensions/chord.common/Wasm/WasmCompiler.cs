@@ -5,6 +5,7 @@ public enum WasmCompiler
     None,
     AssemblyScript,
     TinyGo,
+    Javy
 }
 
 public static class WasmCompilerExtensions
@@ -16,6 +17,7 @@ public static class WasmCompilerExtensions
             WasmCompiler.None => "none",
             WasmCompiler.AssemblyScript => "as",
             WasmCompiler.TinyGo => "tinygo",
+            WasmCompiler.Javy => "javy",
             _ => throw new ArgumentOutOfRangeException(nameof(compiler), compiler, null)
         };
     }
