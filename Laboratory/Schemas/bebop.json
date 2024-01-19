@@ -1,15 +1,15 @@
 {
-    "inputDirectory": "./Valid",
-    "exclude": ["./ShouldFail"],
-    "generators": {
-      "cs": {
-        "outFile": "csoutput/models.cs"
-      },
-      "ts": {
-        "outFile": "tsoutput/models.ts"
-      },
-      "py": {
-        "outFile": "pyoutput/models.py"
-      }
+  "include": ["./Valid/*.bop"],
+  "exclude": ["./ShouldFail"],
+  "generators": {
+    "cs": {
+      "outFile": "csoutput/models.cs"
+    },
+    "ts": {
+      "outFile": "tsoutput/models.ts"
+    },
+    "py": {
+      "outFile": "pyoutput/models.py"
     }
   }
+}

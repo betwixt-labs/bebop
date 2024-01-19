@@ -52,6 +52,12 @@ try
             new NoWarnOption(),
             new PreserveWatchOutputOption(),
         },
+        new ConvertCommand()
+        {
+            new FromOption(),
+            new ToOption(),
+            new DryRunOption(),
+        },
         #endif
     };
 
@@ -60,7 +66,7 @@ try
 
     var results = rootCommand.Parse(args);
 
-    
+
 
     results.Configuration.EnableDefaultExceptionHandler = false;
     results.Configuration.ProcessTerminationTimeout = null;
