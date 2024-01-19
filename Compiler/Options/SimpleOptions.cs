@@ -47,7 +47,7 @@ namespace Compiler.Options
     /// Represents a command line option for excluding certain files from being watched.
     /// </summary>
     public class WatchExcludeFilesOption : CliOption<string[]>
-    {   
+    {
         public WatchExcludeFilesOption() : base(
             name: CliStrings.ExcludeFilesFlag)
         {
@@ -101,7 +101,7 @@ namespace Compiler.Options
             AllowMultipleArgumentsPerToken = false;
         }
     }
-    
+
     public class ListSchemaOption : CliOption<bool>
     {
         public ListSchemaOption() : base(
@@ -158,6 +158,36 @@ namespace Compiler.Options
             name: CliStrings.StandardOutputFlag)
         {
             Description = "Write the results of compilation to standard output.";
+            AllowMultipleArgumentsPerToken = false;
+        }
+    }
+
+    public class FromOption : CliOption<string>
+    {
+        public FromOption() : base(
+            name: CliStrings.FromFlag)
+        {
+            Description = "The format of the input schema.";
+            AllowMultipleArgumentsPerToken = false;
+        }
+    }
+
+    public class ToOption : CliOption<string>
+    {
+        public ToOption() : base(
+            name: CliStrings.ToFlag)
+        {
+            Description = "The format of the output schema.";
+            AllowMultipleArgumentsPerToken = false;
+        }
+    }
+
+    public class DryRunOption : CliOption<bool>
+    {
+        public DryRunOption() : base(
+            name: CliStrings.DryRunFlag)
+        {
+            Description = "Do not write any files to disk.";
             AllowMultipleArgumentsPerToken = false;
         }
     }
