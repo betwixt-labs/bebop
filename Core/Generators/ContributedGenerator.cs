@@ -1,6 +1,8 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Chord.Common;
 using Chord.Runtime;
 using Core.Exceptions;
@@ -24,10 +26,10 @@ public class ContributedGenerator : BaseGenerator
         Name = chordGenerator.Name;
     }
 
-    public override string Compile(BebopSchema schema, GeneratorConfig config)
+    public override async ValueTask<string> Compile(BebopSchema schema, GeneratorConfig config, CancellationToken cancellationToken)
     {
         var context = new GeneratorContext(schema, config);
-        return _extension.ChordCompile(context.ToString());
+        return await _extension.ChordCompileAsync(context.ToString(), cancellationToken);
     }
 
     public override AuxiliaryFile? GetAuxiliaryFile()

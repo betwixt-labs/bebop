@@ -30,8 +30,8 @@ namespace Chord.Runtime
         {
             _engine = new Engine(new Config()
                 .WithReferenceTypes(false)
-                .WithDebugInfo(false)
-                .WithCraneliftDebugVerifier(false)
+                .WithDebugInfo(true)
+                .WithCraneliftDebugVerifier(true)
                 .WithCompilerStrategy(CompilerStrategy.Auto)
                 .WithBulkMemory(true)
                 .WithMultiMemory(true)
@@ -39,6 +39,7 @@ namespace Chord.Runtime
                 .WithWasmThreads(true)
                 .WithOptimizationLevel(OptimizationLevel.None)
                 .WithEpochInterruption(false)
+
             );
             _extensions = [];
             _engineVersion = SemVersion.Parse(engineVersion, SemVersionStyles.Strict);
@@ -102,17 +103,26 @@ namespace Chord.Runtime
                 StringMarshaler marshaler = CreateMarshaler(manifest.Build.Compiler);
 
                 var store = new Store(_engine);
-                store.SetWasiConfiguration(new WasiConfiguration().WithInheritedStandardOutput().WithInheritedStandardError());
+
+                var standardOut = new FileStream(Path.Combine(Path.GetTempPath(), Path.GetRandomFileName()), FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite | FileShare.Delete, 4096, FileOptions.DeleteOnClose);
+                var standardIn = new FileStream(Path.Combine(Path.GetTempPath(), Path.GetRandomFileName()), FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite | FileShare.Delete, 4096, FileOptions.DeleteOnClose);
+                var standardErr = new FileStream(Path.Combine(Path.GetTempPath(), Path.GetRandomFileName()), FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite | FileShare.Delete, 4096, FileOptions.DeleteOnClose);
+
+
+                store.SetWasiConfiguration(new WasiConfiguration().WithStandardInput(standardIn.Name).WithStandardOutput(standardOut.Name).WithStandardError(standardErr.Name));
 
                 WasmLinker linker = CreateLinker(manifest.Build.Compiler, store, marshaler, manifest.Contributions.Type);
                 linker.DefineKernel();
                 var module = Module.FromFile(_engine, modulePath);
 
-                var wasmInstance = InitializeWasmInstance(linker, store, module, marshaler);
+                var wasmInstance = InitializeWasmInstance(linker, store, module, marshaler, manifest.Build.Compiler);
 
                 var wasmCaller = CreateCaller(manifest.Build.Compiler, wasmInstance, marshaler);
-                var extension = new Extension(module, linker, store, wasmCaller, manifest, packedFiles);
-
+                var extension = new Extension(module, linker, store, wasmCaller, manifest, packedFiles, standardIn, standardOut, standardErr);
+                if (manifest.Build.Compiler is WasmCompiler.Javy)
+                {
+                    wasmCaller.SetExtension(extension);
+                }
                 _extensions.Add(extension);
                 return extension;
             }
@@ -122,11 +132,15 @@ namespace Chord.Runtime
             }
         }
 
-        private static Instance InitializeWasmInstance(WasmLinker linker, Store store, Module module, StringMarshaler marshaler)
+        private static Instance InitializeWasmInstance(WasmLinker linker, Store store, Module module, StringMarshaler marshaler, WasmCompiler compiler)
         {
             var wasmInstance = linker.Instantiate(store, module);
             marshaler.Bind(wasmInstance);
-
+            // if the compiler is javy, calling _start breaks other methods
+            if (compiler is WasmCompiler.Javy)
+            {
+                return wasmInstance;
+            }
             bool methodInvoked = false;
             foreach (var methodName in _initMethods)
             {
@@ -168,6 +182,7 @@ namespace Chord.Runtime
             {
                 WasmCompiler.TinyGo => new TinyGoMarshaler(),
                 WasmCompiler.AssemblyScript => new AssemblyScriptMarshaler(),
+                WasmCompiler.Javy => new JavyMarshaler(),
                 _ => throw new ExtensionException("Unable to determine marshaler.")
             };
         }
@@ -178,6 +193,7 @@ namespace Chord.Runtime
             {
                 WasmCompiler.TinyGo => new TinyGoLinker(_engine, store, marshaler, this, contributionType),
                 WasmCompiler.AssemblyScript => new AssemblyScriptLinker(_engine, store, marshaler, this, contributionType),
+                WasmCompiler.Javy => new JavyLinker(_engine, store, marshaler, this, contributionType),
                 _ => throw new ExtensionException("Unable to determine linker.")
             };
         }
@@ -188,6 +204,7 @@ namespace Chord.Runtime
             {
                 WasmCompiler.TinyGo => new TinyGoCaller(wasmInstance, marshaler, this),
                 WasmCompiler.AssemblyScript => new AssemblyScriptCaller(wasmInstance, marshaler, this),
+                WasmCompiler.Javy => new JavyCaller(wasmInstance, marshaler, this),
                 _ => throw new ExtensionException("Unable to determine caller.")
             };
         }

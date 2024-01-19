@@ -157,6 +157,7 @@ internal sealed partial class ChordManifestConverter
         {
             "as" => WasmCompiler.AssemblyScript,
             "tinygo" => WasmCompiler.TinyGo,
+            "javy" => WasmCompiler.Javy,
             _ => throw new JsonException(message, new FormatException("Unknown compiler."))
         };
     }

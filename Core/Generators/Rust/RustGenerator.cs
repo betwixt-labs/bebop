@@ -4,6 +4,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Core.Meta;
 using Core.Meta.Decorators;
 using Core.Meta.Extensions;
@@ -54,7 +56,7 @@ namespace Core.Generators.Rust
 
         public RustGenerator() : base() { }
 
-        public override string Compile(BebopSchema schema, GeneratorConfig config)
+        public override ValueTask<string> Compile(BebopSchema schema, GeneratorConfig config, CancellationToken cancellationToken = default)
         {
             Schema = schema;
             Config = config;
@@ -128,7 +130,7 @@ namespace Core.Generators.Rust
                     mainBuilder.Append(ownedBuilder.ToString());
                 });
 
-            return mainBuilder.ToString();
+            return ValueTask.FromResult(mainBuilder.ToString());
         }
 
         public override AuxiliaryFile? GetAuxiliaryFile() => null;

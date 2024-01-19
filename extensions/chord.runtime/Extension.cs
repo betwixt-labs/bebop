@@ -1,5 +1,6 @@
 using System.Collections.Frozen;
 using System.Collections.ObjectModel;
+using System.Text;
 using Chord.Common;
 using Chord.Runtime.Internal.Callers;
 using Chord.Runtime.Internal.Linkers;
@@ -19,6 +20,10 @@ public sealed class Extension : IDisposable
     private readonly ChordManifest _manifest;
     private readonly List<PackedFile> _packedFiles;
 
+    private readonly FileStream _standardInput;
+    private readonly FileStream _standardOutput;
+    private readonly FileStream _standardError;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="Extension"/> class.
     /// </summary>
@@ -28,7 +33,7 @@ public sealed class Extension : IDisposable
     /// <param name="caller">The caller for the WebAssembly module.</param>
     /// <param name="manifest">The manifest of the extension.</param>
     /// <param name="packedFiles">A list of packed files associated with the extension.</param>
-    internal Extension(Module module, WasmLinker linker, Store store, WasmCaller caller, ChordManifest manifest, List<PackedFile> packedFiles)
+    internal Extension(Module module, WasmLinker linker, Store store, WasmCaller caller, ChordManifest manifest, List<PackedFile> packedFiles, FileStream standardInput, FileStream standardOutput, FileStream standardError)
     {
         _module = module;
         _linker = linker;
@@ -36,6 +41,9 @@ public sealed class Extension : IDisposable
         _caller = caller;
         _manifest = manifest;
         _packedFiles = packedFiles;
+        _standardInput = standardInput;
+        _standardOutput = standardOutput;
+        _standardError = standardError;
         // update the store caller
         _store.SetData(this);
     }
@@ -85,6 +93,70 @@ public sealed class Extension : IDisposable
         }
     }
 
+    public async ValueTask WriteStandardInput(string input, CancellationToken cancellationToken, Encoding? encoding = default)
+    {
+        encoding ??= Encoding.UTF8;
+        if (_standardInput.CanWrite)
+        {
+            using var streamWriter = new StreamWriter(_standardInput, encoding, leaveOpen: true);
+            var memory = new ReadOnlyMemory<char>(input.ToCharArray());
+            await streamWriter.WriteAsync(memory, cancellationToken: cancellationToken);
+            await streamWriter.FlushAsync();
+        }
+    }
+
+    public async ValueTask ClearStandardInput(CancellationToken cancellationToken)
+    {
+        if (_standardInput.CanWrite)
+        {
+            await _standardInput.FlushAsync(cancellationToken);
+            // truncate
+            _standardInput.SetLength(0);
+        }
+    }
+
+    public async ValueTask<string?> ReadStandardOutput(CancellationToken cancellationToken, Encoding? encoding = default)
+    {
+        encoding ??= Encoding.UTF8;
+        if (_standardOutput.CanRead)
+        {
+            using var streamReader = new StreamReader(_standardOutput, encoding, leaveOpen: true);
+            return await streamReader.ReadToEndAsync(cancellationToken);
+        }
+        return null;
+    }
+
+    public async ValueTask ClearStandardOutput(CancellationToken cancellationToken)
+    {
+        if (_standardOutput.CanWrite)
+        {
+            await _standardOutput.FlushAsync(cancellationToken);
+            // truncate
+            _standardOutput.SetLength(0);
+        }
+    }
+
+    public async ValueTask<string?> ReadStandardError(CancellationToken cancellationToken, Encoding? encoding = default)
+    {
+        encoding ??= Encoding.UTF8;
+        if (_standardError.CanRead)
+        {
+            using var streamReader = new StreamReader(_standardError, encoding, leaveOpen: true);
+            return await streamReader.ReadToEndAsync(cancellationToken);
+        }
+        return null;
+    }
+
+    public async ValueTask ClearStandardError(CancellationToken cancellationToken)
+    {
+        if (_standardError.CanWrite)
+        {
+            await _standardError.FlushAsync(cancellationToken);
+            // truncate
+            _standardError.SetLength(0);
+        }
+    }
+
     /// <summary>
     /// Gets a simplified view of the contributions made by the extension, excluding decorators.
     /// </summary>
@@ -96,13 +168,13 @@ public sealed class Extension : IDisposable
     /// <param name="context">The context to compile.</param>
     /// <returns>The result of the compilation.</returns>
     /// <exception cref="ExtensionRuntimeException">Thrown if the extension is not a generator type.</exception>
-    public string ChordCompile(string context)
+    public async ValueTask<string> ChordCompileAsync(string context, CancellationToken cancellationToken = default)
     {
         if (Type is not ContributionType.Generator)
         {
             throw new ExtensionRuntimeException("Attempted to call chord_compile on a non-generator extension.");
         }
-        return _caller.ChordCompile(context);
+        return await _caller.ChordCompileAsync(context, cancellationToken);
     }
 
     public void Dispose()
@@ -110,6 +182,9 @@ public sealed class Extension : IDisposable
         _module.Dispose();
         _linker.Dispose();
         _store.Dispose();
+        _standardInput.Dispose();
+        _standardOutput.Dispose();
+        _standardError.Dispose();
         _packedFiles.Clear();
     }
 }

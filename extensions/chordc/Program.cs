@@ -165,36 +165,37 @@ int Test(string workingDirectory)
         var chordModule = $"chord_{compiler}";
 
         var chordImports = module.ImportSection.Imports.Where(i => i.Module.Equals(chordModule));
-        if (!chordImports.Any())
+        if (chordImports.Any())
         {
-            Logger.Error.MarkupLine($":cross_mark: [maroon]Extension binary {chordBinary} does not import any Chord functions: {chordModule} [/]");
-            return 1;
+            Logger.Out.MarkupLine("[green]Chord Imports:[/]");
+            foreach (var import in chordImports)
+            {
+                Logger.Out.MarkupLine($"[green]├──[/] [yellow]{import}[/]");
+                var functionType = module.GetImportedFunctionType(import);
+                if (functionType is null)
+                {
+                    Logger.Error.MarkupLine($":cross_mark: [maroon]Extension binary {chordBinary} imports {import.Field} but the function type is not found.[/]");
+                    return 1;
+                }
+                Logger.Out.MarkupLine($"[green]│   ├──[/] [yellow]signature:[/] [blue]{module.GetImportedFunctionType(import)}[/]");
+                var expectedSignature = SignatureValidator.GetFunctionSignature(compiler, import.Field);
+                if (expectedSignature is null)
+                {
+                    Logger.Error.MarkupLine($":cross_mark: [maroon]Extension imports {import.Field} but no expected function signature was found.[/]");
+                    return 1;
+                }
+                if (!SignatureValidator.ValidateSignature(functionType, expectedSignature))
+                {
+                    Logger.Error.MarkupLine($":cross_mark: [maroon]Extension binary imports {import.Field} with an invalid signature[/]");
+                    Logger.Error.MarkupLine($"[maroon]Found: {functionType}[/]");
+                    Logger.Error.MarkupLine($"[maroon]Expected: {expectedSignature}[/]");
+                    return 1;
+                }
+            }
         }
-
-        Logger.Out.MarkupLine("[green]Chord Imports:[/]");
-        foreach (var import in chordImports)
+        else
         {
-            Logger.Out.MarkupLine($"[green]├──[/] [yellow]{import}[/]");
-            var functionType = module.GetImportedFunctionType(import);
-            if (functionType is null)
-            {
-                Logger.Error.MarkupLine($":cross_mark: [maroon]Extension binary {chordBinary} imports {import.Field} but the function type is not found.[/]");
-                return 1;
-            }
-            Logger.Out.MarkupLine($"[green]│   ├──[/] [yellow]signature:[/] [blue]{module.GetImportedFunctionType(import)}[/]");
-            var expectedSignature = SignatureValidator.GetFunctionSignature(compiler, import.Field);
-            if (expectedSignature is null)
-            {
-                Logger.Error.MarkupLine($":cross_mark: [maroon]Extension imports {import.Field} but no expected function signature was found.[/]");
-                return 1;
-            }
-            if (!SignatureValidator.ValidateSignature(functionType, expectedSignature))
-            {
-                Logger.Error.MarkupLine($":cross_mark: [maroon]Extension binary {chordBinary} imports {import.Field} with an invalid signature[/]");
-                Logger.Error.MarkupLine($"[maroon]Found: {functionType}[/]");
-                Logger.Error.MarkupLine($"[maroon]Expected: {expectedSignature}[/]");
-                return 1;
-            }
+            Logger.Error.MarkupLine($"[green]├──[/] :flashlight: [yellow]Extension binary does not import any Chord functions: {chordModule} [/]");
         }
         ctx.Status("Checking extension exports...");
         if (module.ExportSection is null || module.ExportSection is { Size: 0 })
@@ -208,7 +209,14 @@ int Test(string workingDirectory)
             Logger.Error.MarkupLine($":cross_mark: [maroon]Extension binary {chordBinary} does not export a _start or _initialize function[/]");
             return 1;
         }
-        var chordExports = module.ExportSection.Exports.Where(e => e.Name.StartsWith("chord_"));
+        var chordExports = module.ExportSection.Exports.Where(e =>
+        {
+            if (e.Name.StartsWith("chord-") || e.Name.StartsWith("chord_"))
+            {
+                return true;
+            }
+            return false;
+        });
         if (!chordExports.Any())
         {
             Logger.Error.MarkupLine($":cross_mark: [maroon]Extension binary {chordBinary} does not export any Chord functions[/]");
@@ -245,7 +253,7 @@ int Test(string workingDirectory)
         if (manifest.Contributions.Type is ContributionType.Generator)
         {
             // the only export a generator should have is chord_compile
-            var chordCompile = chordExports.FirstOrDefault(e => e.Name.Equals("chord_compile"));
+            var chordCompile = chordExports.FirstOrDefault(e => e.Name.Equals("chord_compile") || e.Name.Equals("chord-compile"));
             if (chordCompile is null)
             {
                 Logger.Error.MarkupLine($":cross_mark: [maroon]Extension binary {chordBinary} does not export a chord_compile function[/]");
@@ -336,6 +344,7 @@ int Pack(string workingDirectory)
     var binaryName = $"{manifest.Name}-{manifest.Version}.wasm";
     var archiveName = $"{manifest.Name}-{manifest.Version}.chord";
     var zipFilePath = Path.Combine(workingDirectory, archiveName);
+    var tempZipPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
 
     Logger.Out.MarkupLine(":package: [white]{0}[/]", archiveName);
 
@@ -402,7 +411,7 @@ int Pack(string workingDirectory)
         return 0;
     }
 
-    using (var zipArchive = ZipFile.Open(zipFilePath, ZipArchiveMode.Create))
+    using (var zipArchive = ZipFile.Open(tempZipPath, ZipArchiveMode.Create))
     {
         var zipEntry = zipArchive.CreateEntry(binaryName);
         using (var entryStream = zipEntry.Open())
@@ -424,6 +433,8 @@ int Pack(string workingDirectory)
             LogFileDetails(readmePath, new FileInfo(readmePath).Length, 0);
         }
     }
+
+    File.Move(tempZipPath, zipFilePath);
 
     // Report the final size of the .wasm and the ZIP archive
     Logger.Out.MarkupLine($"[green]Final Extension Size:[/] [yellow]{memoryStream.Length / 1024f:F2} KB[/]");

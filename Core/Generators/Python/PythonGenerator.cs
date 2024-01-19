@@ -7,6 +7,8 @@ using System.Text.Json;
 using Core.Meta;
 using Core.Meta.Extensions;
 using Core.Meta.Decorators;
+using System.Threading.Tasks;
+using System.Threading;
 
 namespace Core.Generators.Python
 {
@@ -334,7 +336,7 @@ namespace Core.Generators.Python
         /// Generate code for a Bebop schema.
         /// </summary>
         /// <returns>The generated code.</returns>
-        public override string Compile(BebopSchema schema, GeneratorConfig config)
+        public override ValueTask<string> Compile(BebopSchema schema, GeneratorConfig config, CancellationToken cancellationToken = default)
         {
             Schema = schema;
             Config = config;
@@ -558,7 +560,7 @@ namespace Core.Generators.Python
                 }
             }
 
-            return builder.ToString();
+            return ValueTask.FromResult(builder.ToString());
         }
 
         public override void WriteAuxiliaryFile(string outputPath)

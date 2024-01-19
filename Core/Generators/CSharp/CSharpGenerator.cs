@@ -3,6 +3,8 @@ using System.Linq;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using Core.Meta;
 using Core.Meta.Extensions;
 
@@ -19,7 +21,7 @@ namespace Core.Generators.CSharp
         }
 
 
-        public override string Compile(BebopSchema schema, GeneratorConfig config)
+        public override ValueTask<string> Compile(BebopSchema schema, GeneratorConfig config, CancellationToken cancellationToken = default)
         {
             Config = config;
             Schema = schema;
@@ -270,7 +272,7 @@ namespace Core.Generators.CSharp
                 builder.Dedent(indentStep);
                 builder.AppendLine("}");
             }
-            return builder.ToString();
+            return ValueTask.FromResult(builder.ToString());
         }
 
         #region Const

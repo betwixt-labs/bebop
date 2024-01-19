@@ -135,7 +135,7 @@ public class SchemaWatcher
     ///<summary>
     /// Handles the Renamed event of the FileSystemWatcher.
     ///</summary>
-    private void FileRenamed(object sender, RenamedEventArgs e)
+    private async void FileRenamed(object sender, RenamedEventArgs e)
     {
         string oldFullPath = Path.GetFullPath(e.OldFullPath);
         string newFullPath = Path.GetFullPath(e.FullPath);
@@ -211,7 +211,7 @@ public class SchemaWatcher
             }
         }
         LogEvent("[orangered1]Schema renamed. Start recompile[/]", e.OldFullPath, e.FullPath);
-        CompileSchemas(_cancellationToken);
+        await CompileSchemasAsync(_cancellationToken);
     }
 
 
@@ -219,7 +219,7 @@ public class SchemaWatcher
     ///<summary>
     /// Handles the Deleted event of the FileSystemWatcher.
     ///</summary>
-    private void FileDeleted(object sender, FileSystemEventArgs e)
+    private async void FileDeleted(object sender, FileSystemEventArgs e)
     {
         if (!Path.GetExtension(e.FullPath).Equals(".bop", StringComparison.InvariantCultureIgnoreCase) || IsPathExcluded(e.FullPath))
         {
@@ -228,7 +228,7 @@ public class SchemaWatcher
         _trackedFiles.Remove(e.FullPath);
 
         LogEvent("[indianred1]Schema deleted. Starting recompile[/]", e.FullPath);
-        CompileSchemas(_cancellationToken);
+        await CompileSchemasAsync(_cancellationToken);
     }
 
     ///<summary>
@@ -252,7 +252,7 @@ public class SchemaWatcher
     ///<summary>
     /// Handles the Changed event of the FileSystemWatcher.
     ///</summary>
-    private void FileChanged(object sender, FileSystemEventArgs e)
+    private async void FileChanged(object sender, FileSystemEventArgs e)
     {
         if (!Path.GetExtension(e.FullPath).Equals(".bop", StringComparison.InvariantCultureIgnoreCase) || IsPathExcluded(e.FullPath))
         {
@@ -267,7 +267,7 @@ public class SchemaWatcher
                 try
                 {
                     LogEvent("[blue]Schema changed. Starting recompile[/]", e.FullPath);
-                    var result = CompileSchemas(_cancellationToken);
+                    var result = await CompileSchemasAsync(_cancellationToken);
                     if (result is BebopCompiler.Ok)
                     {
                         LogEvent("[green]Schema recompilation succeeded. Resuming watch.[/]");
@@ -353,7 +353,7 @@ public class SchemaWatcher
     /// An integer representing the compilation result. Returns BebopCompiler.Ok if the compilation is successful,
     /// otherwise, returns BebopCompiler.Err.
     /// </returns>
-    public int CompileSchemas(CancellationToken cancellationToken = default)
+    public async ValueTask<int> CompileSchemasAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -377,7 +377,7 @@ public class SchemaWatcher
             var generatedFiles = new List<GeneratedFile>();
             foreach (var generatorConfig in _config.Generators)
             {
-                generatedFiles.Add(_compiler.Build(generatorConfig, schema, _config));
+                generatedFiles.Add(await _compiler.BuildAsync(generatorConfig, schema, _config, cancellationToken));
             }
             BebopCompiler.EmitGeneratedFiles(generatedFiles, _config);
             return BebopCompiler.Ok;

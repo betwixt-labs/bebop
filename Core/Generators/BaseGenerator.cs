@@ -1,5 +1,7 @@
 using System;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using Core.Meta;
 
 namespace Core.Generators
@@ -31,7 +33,7 @@ namespace Core.Generators
         /// Generates code based on the provided Bebop schema.
         /// </summary>
         /// <returns>A string containing the generated code.</returns>
-        public abstract string Compile(BebopSchema schema, GeneratorConfig config);
+        public abstract ValueTask<string> Compile(BebopSchema schema, GeneratorConfig config, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Writes auxiliary files, if any, associated with the generated code to the specified output directory.

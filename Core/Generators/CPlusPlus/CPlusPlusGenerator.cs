@@ -6,6 +6,8 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 using Core.Meta;
 using Core.Meta.Extensions;
 
@@ -355,7 +357,7 @@ namespace Core.Generators.CPlusPlus
         /// Generate code for a Bebop schema.
         /// </summary>
         /// <returns>The generated code.</returns>
-        public override string Compile(BebopSchema schema, GeneratorConfig config)
+        public override ValueTask<string> Compile(BebopSchema schema, GeneratorConfig config, CancellationToken cancellationToken = default)
         {
             Schema = schema;
             Config = config;
@@ -516,7 +518,7 @@ namespace Core.Generators.CPlusPlus
                 builder.AppendLine("");
             }
 
-            return builder.ToString();
+            return ValueTask.FromResult(builder.ToString());
         }
 
         private const string _bytePattern = @"(?:"")?(\b(1?[0-9]{1,2}|2[0-4][0-9]|25[0-5])\b)(?:"")?";
