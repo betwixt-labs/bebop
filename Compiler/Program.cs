@@ -60,6 +60,8 @@ try
 
     var results = rootCommand.Parse(args);
 
+    
+
     results.Configuration.EnableDefaultExceptionHandler = false;
     results.Configuration.ProcessTerminationTimeout = null;
     if (results.GetValue<bool>(CliStrings.TraceFlag))

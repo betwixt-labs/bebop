@@ -14,18 +14,22 @@
     "compiler"
   ],
   "scripts": {
-    "prepack": "tsc -p ./",
-    "prepare": "tsc -p ./",
-    "build": "tsc -p ./",
-    "install": "node ./scripts/install.js",
-    "watch": "tsc -watch -p ./"
+    "build": "esbuild lib/index.ts --bundle --platform=node --outdir=dist --external:*.node",
+    "watch": "esbuild lib/index.ts --bundle --platform=node --outdir=dist --external:*.node --watch",
+    "prepack": "yarn build",
+    "prepare": "yarn build",
+    "start": "node ./dist/index.js",
+    "install": "node ./dist/index.js install"
   },
   "bin": {
-    "bebopc": "./bebopc.js"
+    "bebopc": "dist/index.js"
   },
-  "dependencies": {},
+  "dependencies": {
+    "wasi-js": "^1.7.3"
+  },
   "devDependencies": {
     "@types/node": "^20.3.1",
+    "esbuild": "^0.19.11",
     "ts-node": "^9.1.1",
     "typescript": "^5.1.3"
   }

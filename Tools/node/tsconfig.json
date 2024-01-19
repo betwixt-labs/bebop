@@ -1,24 +1,21 @@
 {
-	"compilerOptions": {
-		"module": "commonjs",
-		"target": "es6",
-		"outDir": "dist",
-		"lib": [
-			"es6",
-			"dom"
-        ],
-        "declaration": true,
-		"sourceMap": true,
-		"rootDir": "lib",
-		"strict": true   /* enable all strict type-checking options */
-		/* Additional Checks */
-		// "noImplicitReturns": true, /* Report error when not all code paths in function return a value. */
-		// "noFallthroughCasesInSwitch": true, /* Report errors for fallthrough cases in switch statement. */
-		// "noUnusedParameters": true,  /* Report errors on unused parameters. */
-	},
-	"exclude": [
-        "node_modules",
-        "dist",
-        "test"
-	]
+  "compilerOptions": {
+    "module": "esnext", // Use ESNext as the module system
+    "target": "esnext", // Compile to latest ECMAScript version
+    "outDir": "dist",
+    "lib": [
+      "esnext", // Include latest ECMAScript features
+      "dom"
+    ],
+    "declaration": true,
+    "sourceMap": true,
+    "rootDir": "lib",
+    "strict": true, // Enable all strict type-checking options
+    // "noImplicitReturns": true,  // Uncomment for additional checks
+    // "noFallthroughCasesInSwitch": true,
+    // "noUnusedParameters": true,
+    "moduleResolution": "node", // Add moduleResolution for node-style module resolution
+    "esModuleInterop": true // Enables compatibility with default-imported modules
+  },
+  "exclude": ["node_modules", "dist", "test"]
 }

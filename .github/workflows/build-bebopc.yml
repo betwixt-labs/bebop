@@ -65,7 +65,7 @@ jobs:
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: "8.0.x"
-          dotnet-quality: 'preview'
+          dotnet-quality: "preview"
       - name: Restore Solution
         run: dotnet restore
 
@@ -112,8 +112,8 @@ jobs:
           path: ${{env.BUILD_ZIP_ARTIFACT_ARM64}}
 
       - if: matrix.os == 'ubuntu-22.04' && matrix.BUILD_WASI
-        name: Upload WASI Build
+        name: Upload WASI_WASM Build
         uses: actions/upload-artifact@v4
         with:
-          name: wasm-wasi
+          name: wasi-wasm
           path: ${{env.BUILD_ARTIFACT_WASI}}

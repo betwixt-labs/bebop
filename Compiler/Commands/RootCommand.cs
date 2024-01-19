@@ -1,7 +1,10 @@
+using System;
 using System.CommandLine;
 using System.IO;
 using Core.Logging;
 using Core.Meta;
+using Spectre.Console;
+using Spectre.Console.Json;
 
 namespace Compiler.Commands;
 
@@ -33,7 +36,12 @@ public class RootCommand
     /// <returns>An integer representing the status of the operation.</returns>
     private static int ShowConfig(BebopConfig config)
     {
-        DiagnosticLogger.Instance.WriteLine(config.ToJson());
+        var json = new JsonText(config.ToJson());
+
+        DiagnosticLogger.Instance.Out.Write(new Panel(json)
+        .Collapse()
+        .RoundedBorder()
+        .BorderColor(Color.Yellow));
         return 0;
     }
 
@@ -58,13 +66,23 @@ public class RootCommand
     /// <returns>An integer representing the status of the operation.</returns>
     private static int InitProject()
     {
-        var workingDirectory = Directory.GetCurrentDirectory();
-        var configPath = Path.GetFullPath(Path.Combine(workingDirectory, BebopConfig.ConfigFileName));
-        if (File.Exists(configPath))
+        try
         {
+            var workingDirectory = Directory.GetCurrentDirectory();
+            var configPath = Path.GetFullPath(Path.Combine(workingDirectory, BebopConfig.ConfigFileName));
+            if (File.Exists(configPath))
+            {
+                DiagnosticLogger.Instance.Error.MarkupLine($"[maroon]{BebopConfig.ConfigFileName} already exists in the current directory.[/]");
+                return 1;
+            }
+            File.WriteAllText(configPath, BebopConfig.Default.ToJson());
+        }
+        catch (Exception ex)
+        {
+            DiagnosticLogger.Instance.Error.WriteException(ex);
             return 1;
         }
-        File.WriteAllText(configPath, BebopConfig.Default.ToJson());
+
         return 0;
     }
 }
