@@ -23,12 +23,14 @@ jobs:
           - os: ubuntu-22.04
             IDENTIFIER: linux
             ARTIFACT: bebopc
+            BUILD_WASI: true
     env:
       CONFIGURATION: Release
       BUILD_ARTIFACT_X86_64: ./bin/compiler/Release/publish/${{matrix.IDENTIFIER}}-x64/${{matrix.ARTIFACT}}
       BUILD_ARTIFACT_ARM64: ./bin/compiler/Release/publish/${{matrix.IDENTIFIER}}-arm64/${{matrix.ARTIFACT}}
       BUILD_ZIP_ARTIFACT_X86_64: ./bin/compiler/Release/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-x64.zip
       BUILD_ZIP_ARTIFACT_ARM64: ./bin/compiler/Release/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-arm64.zip
+      BUILD_ARTIFACT_WASI: ./bin/compiler/Release/publish/wasi-wasm/AppBundle/${{matrix.ARTIFACT}}.wasm
     steps:
       - uses: actions/checkout@v4
 
@@ -51,11 +53,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install clang zlib1g-dev libkrb5-dev libtinfo5
 
+      - if: matrix.os == 'ubuntu-22.04' && matrix.BUILD_WASI
+        name: Install WASI Dependencies
+        run: ./install-wasi.sh
+        working-directory: ./scripts/
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: "8.0.x"
-          dotnet-quality: 'preview'
+          dotnet-quality: "preview"
 
       - name: Build bebopc
         run: |
@@ -63,6 +70,11 @@ jobs:
           dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-x64 -p:ReleaseVersion=${{ steps.dotenv.outputs.version }} -p:PublishTrimmed=false -p:PublishSingleFile=true --self-contained
           dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-arm64 -p:ReleaseVersion=${{ steps.dotenv.outputs.version }} -p:PublishTrimmed=false -p:PublishSingleFile=true --self-contained
         working-directory: ./Compiler/
+
+      - if: matrix.os == 'ubuntu-22.04' && matrix.BUILD_WASI
+        name: Build bebopc for WASI
+        run: ./build-wasi.sh
+        working-directory: ./scripts/
 
       - if: matrix.os == 'macos-latest'
         name: Import Code-Signing Certificates
@@ -120,6 +132,13 @@ jobs:
           name: ${{matrix.IDENTIFIER}}-arm64
           path: ${{env.BUILD_ZIP_ARTIFACT_ARM64}}
 
+      - if: matrix.os == 'ubuntu-22.04' && matrix.BUILD_WASI
+        name: Upload WASI_WASM Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasi-wasm
+          path: ${{env.BUILD_ARTIFACT_WASI}}
+
   build-runtimes:
     env:
       NET_TEST_ROOT: ${{github.workspace}}/Laboratory/C#/Test
@@ -144,7 +163,7 @@ jobs:
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: "8.0.x"
-          dotnet-quality: 'preview'
+          dotnet-quality: "preview"
 
       - name: Test .NET Runtime
         run: |
@@ -275,6 +294,7 @@ jobs:
           unzip -j -o ./osx-arm64/bebopc-osx-arm64.zip -d ${{env.BEBOPC_PATH}}/macos/arm64
           unzip -j -o ./linux-x64/bebopc-linux-x64.zip -d ${{env.BEBOPC_PATH}}/linux/x64
           unzip -j -o ./linux-arm64/bebopc-linux-arm64.zip -d ${{env.BEBOPC_PATH}}/linux/arm64
+          cp ./wasi-wasm/bebopc.wasm ${{env.BEBOPC_PATH}}/wasi/wasm
 
       - name: Build NuGet Package
         run: bash build.sh ${{ steps.dotenv.outputs.version }}
@@ -402,7 +422,7 @@ jobs:
         run: |
           npm install --global @vscode/vsce
           vsce publish --packagePath ./vscode-bebop/bebop-lang-${{ steps.dotenv.outputs.version }}.vsix -p ${{ secrets.VSCE_TOKEN }}
-          
+
       - name: Publish Open VSX Extension
         run: |
           npm i -g ovsx
@@ -478,3 +498,13 @@ jobs:
           asset_path: ./linux-arm64/bebopc-linux-arm64.zip
           asset_name: bebopc-linux-arm64.zip
           asset_content_type: application/zip
+
+      - name: Upload Compiler for WASM
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./wasi-wasm/bebopc.wasm
+          asset_name: bebopc.wasm
+          asset_content_type: application/wasm

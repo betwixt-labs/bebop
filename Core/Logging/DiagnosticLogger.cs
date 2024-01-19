@@ -94,16 +94,16 @@ public partial class DiagnosticLogger
         {
             case SpanException span:
                 WriteSpanDiagonstics(new List<SpanException>() { span });
-                return span.ErrorCode;
+                return 74;
             case FileNotFoundException file:
                 WriteFileNotFoundDiagonstic(file);
-                return FileNotFound;
+                return 66;
             case CompilerException compiler:
                 WriteCompilerDiagonstic(compiler);
-                return compiler.ErrorCode;
+                return 1;
             default:
                 WriteBaseDiagonstic(exception);
-                return Unknown;
+                return 1;
         }
     }
 
