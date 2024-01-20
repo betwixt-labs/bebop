@@ -1,7 +1,6 @@
 {
-  "$schema": "../../src/jsonschema.json",
   "name": "javascript-template",
-  "private": false,
+  "private": true,
   "description": "A template for chords built with javascript",
   "version": "1.0.1",
   "repository": "https://github.com/betwixt-labs/bebopc",
