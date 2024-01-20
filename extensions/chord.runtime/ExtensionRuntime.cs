@@ -30,8 +30,8 @@ namespace Chord.Runtime
         {
             _engine = new Engine(new Config()
                 .WithReferenceTypes(false)
-                .WithDebugInfo(true)
-                .WithCraneliftDebugVerifier(true)
+                .WithDebugInfo(false)
+                .WithCraneliftDebugVerifier(false)
                 .WithCompilerStrategy(CompilerStrategy.Auto)
                 .WithBulkMemory(true)
                 .WithMultiMemory(true)
