@@ -1,11 +1,7 @@
 using System;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using Core.Exceptions;
 using Core.Meta;
-using Core.Meta.Extensions;
-using System.Text.Json.Serialization.Metadata;
-using Spectre.Console;
 
 namespace Core.Logging;
 
@@ -24,9 +20,6 @@ public partial class DiagnosticLogger
             case LogFormatter.MSBuild:
                 var where = span == null ? ReservedWords.CompilerName : $"{span?.FileName}({span?.StartColonString(',')})";
                 return $"{where} : {diagnostic.Severity.ToString().ToLowerInvariant()} BOP{diagnostic.ErrorCode}: {message}";
-            case LogFormatter.Structured:
-                where = span == null ? "" : $"Issue located in '{span?.FileName}' at {span?.StartColonString()}: ";
-                return $"[{DateTime.Now}][Compiler][{diagnostic.Severity}] {where}{message}";
             case LogFormatter.JSON:
                 return JsonSerializer.Serialize(diagnostic, JsonContext.Default.Diagnostic);
             case LogFormatter.Enhanced:

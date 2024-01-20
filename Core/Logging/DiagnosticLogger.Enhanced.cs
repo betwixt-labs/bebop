@@ -34,11 +34,11 @@ public partial class DiagnosticLogger
             foreach (var ex in group)
             {
                 var diagnostic = new Diagnostic(ex.Severity, ex.Message, ex.ErrorCode, ex.Span);
-                if (diagnostic.Severity == Severity.Warning)
+                if (diagnostic is { Severity: Severity.Warning, Span: not null })
                 {
                     errataDiagnostic.WithLabel(new Label(fileName, GetRangeFromSpan(schemaSource, diagnostic.Span.Value), diagnostic.Message).WithColor(Color.Yellow));
                 }
-                else if (diagnostic.Severity == Severity.Error)
+                else if (diagnostic is { Severity: Severity.Error, Span: not null })
                 {
                     errataDiagnostic.WithLabel(new Label(fileName, GetRangeFromSpan(schemaSource, diagnostic.Span.Value), diagnostic.Message).WithColor(Color.Red));
                 }
@@ -74,15 +74,18 @@ public partial class DiagnosticLogger
             _err.Write(filePath);
             _err.WriteLine();
         }
-        if (ex is { StackTrace: null } and { InnerException: not null})
+        if (ex is { StackTrace: null } and { InnerException: not null })
         {
             _err.WriteLine();
             _err.MarkupLine("[red bold]Inner Exception:[/]");
-            if (_traceEnabled) {
+            if (_traceEnabled)
+            {
                 _err.WriteException(ex.InnerException);
-            } else {
+            }
+            else
+            {
                 _err.MarkupLine($"[white]{ex.InnerException.Message}[/]");
-            
+
             }
         }
         if (_traceEnabled && !string.IsNullOrWhiteSpace(ex.StackTrace))

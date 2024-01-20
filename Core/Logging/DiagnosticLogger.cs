@@ -14,7 +14,6 @@ public partial class DiagnosticLogger
     private static DiagnosticLogger? _instance;
     private LogFormatter _formatter;
     private bool _traceEnabled;
-    private bool _diagnosticsSupressed;
     private readonly IAnsiConsole _out;
     private readonly IAnsiConsole _err;
     public IAnsiConsole Out => _out;
@@ -205,10 +204,5 @@ public partial class DiagnosticLogger
     public void WriteErrorLine(string message)
     {
         _err.WriteLine(message);
-    }
-
-    public void SuppressDiagnostics()
-    {
-        _diagnosticsSupressed = true;
     }
 }
