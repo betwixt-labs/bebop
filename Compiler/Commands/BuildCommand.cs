@@ -16,10 +16,10 @@ public class BuildCommand : CliCommand
 {
     public BuildCommand() : base(CliStrings.BuildCommand, "Build schemas into one or more target languages.")
     {
-        SetAction(HandleCommand);
+        SetAction(HandleCommandAsync);
     }
 
-    private async Task<int> HandleCommand(ParseResult result, CancellationToken cancellationToken)
+    private async Task<int> HandleCommandAsync(ParseResult result, CancellationToken cancellationToken)
     {
         var config = result.GetValue<BebopConfig>(CliStrings.ConfigFlag)!;
 
@@ -47,7 +47,12 @@ public class BuildCommand : CliCommand
                 using var fs = File.Open(tempFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite);
                 using var standardInput = Console.OpenStandardInput();
                 // dont use async as wasi currently has threading issues
-                standardInput.CopyTo(fs);
+#if !WASI_WASM_BUILD
+                await standardInput.CopyToAsync(fs, cancellationToken);
+#else
+                 standardInput.CopyTo(fs);
+#endif
+
                 fs.Seek(0, SeekOrigin.Begin);
                 schema = compiler.ParseSchema([tempFilePath]);
             }

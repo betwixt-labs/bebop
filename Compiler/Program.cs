@@ -9,7 +9,6 @@ using Core.Meta;
 using System.Text.Json;
 using Core.Exceptions;
 using Compiler;
-using System.IO;
 
 if (RuntimeInformation.OSArchitecture is Architecture.Wasm)
 {
@@ -52,13 +51,13 @@ try
             new NoWarnOption(),
             new PreserveWatchOutputOption(),
         },
+        #endif
         new ConvertCommand()
         {
             new FromOption(),
             new ToOption(),
             new DryRunOption(),
         },
-        #endif
     };
 
 

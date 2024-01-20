@@ -62,7 +62,6 @@ namespace Compiler.Options
             {
                 "enhanced" => LogFormatter.Enhanced,
                 "json" => LogFormatter.JSON,
-                "structured" => LogFormatter.Structured,
                 "msbuild" => LogFormatter.MSBuild,
                 _ => throw new ArgumentException($"Invalid diagnostic format '{token}'."),
             };
