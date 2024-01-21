@@ -23,11 +23,13 @@ public class CompilerHost : IDisposable
     private readonly FrozenDictionary<string, DecoratorDefinition> _decorators;
     private readonly FrozenDictionary<string, BaseGenerator> _generators;
     private readonly ExtensionRuntime? _extensionRuntime;
-    private CompilerHost(FrozenDictionary<string, DecoratorDefinition> decorators, FrozenDictionary<string, BaseGenerator> generators, ExtensionRuntime? extensionRuntime)
+    private readonly EnvironmentVariableStore _environmentVariableStore;
+    private CompilerHost(FrozenDictionary<string, DecoratorDefinition> decorators, FrozenDictionary<string, BaseGenerator> generators, EnvironmentVariableStore environmentVariableStore, ExtensionRuntime? extensionRuntime)
     {
         _decorators = decorators;
         _generators = generators;
         _extensionRuntime = extensionRuntime;
+        _environmentVariableStore = environmentVariableStore;
     }
 
     public bool TryGetDecorator(string identifier, [NotNullWhen(true)] out DecoratorDefinition? decorator)
@@ -39,6 +41,8 @@ public class CompilerHost : IDisposable
     {
         return _generators.TryGetValue(alias, out generator);
     }
+
+    public EnvironmentVariableStore EnvironmentVariableStore => _environmentVariableStore;
 
     public IEnumerable<(string Alias, string Name)> Generators
     {
@@ -87,16 +91,19 @@ public class CompilerHost : IDisposable
         private ExtensionRuntime? _extensionRuntime;
         private readonly Dictionary<string, DecoratorDefinition> _decorators;
         private readonly Dictionary<string, BaseGenerator> _generators;
+        private readonly EnvironmentVariableStore _environmentVariableStore;
 
-        private CompilerHostBuilder()
+        private CompilerHostBuilder(string workingDirectory)
         {
+
             _decorators = [];
             _generators = [];
+            _environmentVariableStore = new EnvironmentVariableStore(workingDirectory);
         }
 
-        public static CompilerHostBuilder Create()
+        public static CompilerHostBuilder Create(string workingDirectory)
         {
-            return new CompilerHostBuilder();
+            return new CompilerHostBuilder(workingDirectory);
         }
 
         public CompilerHost Build()
@@ -106,7 +113,7 @@ public class CompilerHost : IDisposable
                 throw new CompilerException("A compiler host has already been built.");
             }
             _isBuilt = true;
-            return new CompilerHost(_decorators.ToFrozenDictionary(), _generators.ToFrozenDictionary(), _extensionRuntime);
+            return new CompilerHost(_decorators.ToFrozenDictionary(), _generators.ToFrozenDictionary(), _environmentVariableStore, _extensionRuntime);
         }
 
         public CompilerHostBuilder WithDefaults()

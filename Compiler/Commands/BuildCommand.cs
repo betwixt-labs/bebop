@@ -25,7 +25,7 @@ public class BuildCommand : CliCommand
 
         config.Validate();
 
-        using var host = CompilerHost.CompilerHostBuilder.Create()
+        using var host = CompilerHost.CompilerHostBuilder.Create(config.WorkingDirectory)
         .WithDefaults()
 #if !WASI_WASM_BUILD
         .WithExtensions(config.Extensions)
@@ -33,6 +33,7 @@ public class BuildCommand : CliCommand
         .Build();
 
         var compiler = new BebopCompiler(host);
+        Helpers.WriteHostInfo(host);
         BebopSchema schema = default;
         string? tempFilePath = null;
         try
