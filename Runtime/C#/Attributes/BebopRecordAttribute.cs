@@ -13,17 +13,17 @@ namespace Bebop.Attributes
         /// Creates a new <see cref="BebopRecord"/> attribute.
         /// </summary>
         /// <param name="kind">The kind of the decorated type.</param>
-        /// <param name="isReadOnly">Whether or not the type record is read-only.</param>
-        public BebopRecordAttribute(BebopKind kind, bool isReadOnly = false)
+        /// <param name="isMutable">Whether or not the type record is mutable.</param>
+        public BebopRecordAttribute(BebopKind kind, bool isMutable = false)
         {
             Kind = kind;
-            IsReadOnly = isReadOnly;
+            IsMutable = isMutable;
         }
 
         /// <summary>
         /// Indicates if the decorated type is read-only.
         /// </summary>
-        public bool IsReadOnly { get; set; }
+        public bool IsMutable { get; set; }
 
         /// <summary>
         /// Indicates the kind of the decorated type.
