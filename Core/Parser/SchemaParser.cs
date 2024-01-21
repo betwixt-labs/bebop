@@ -371,11 +371,7 @@ namespace Core.Parser
                 _errors.Add(e);
             }
             var readonlySpan = CurrentToken.Span;
-            var isReadOnly = Eat(TokenKind.ReadOnly);
-            if (isReadOnly)
-            {
-                _warnings.Add(new DeprecatedFeatureWarning(readonlySpan, "the 'readonly' modifier will be removed in the next major version of Bebop; structs will be immutable by default, and the 'mut' modifier will be added to make them mutable."));
-            }
+            var isMutable = Eat(TokenKind.Mut);
             ExpectAndSkip(_topLevelDefinitionKinds, _universalFollowKinds, hint: "Expecting a top-level definition.");
             if (CurrentToken.Kind == TokenKind.EndOfFile)
             {
@@ -384,9 +380,9 @@ namespace Core.Parser
             }
             if (Eat(TokenKind.Service))
             {
-                if (isReadOnly)
+                if (isMutable)
                 {
-                    throw new UnexpectedTokenException(TokenKind.Service, CurrentToken, "Did not expect service definition after readonly. (Services are not allowed to be readonly).");
+                    throw new UnexpectedTokenException(TokenKind.Service, CurrentToken, "Did not expect service definition after 'mut' modifier. (Services are not allowed to be mutable).");
                 }
                 if (decorators.Any((a) => a.Identifier == "opcode"))
                 {
@@ -427,7 +423,7 @@ namespace Core.Parser
                     // Uh oh we skipped ahead due to a missing identifier, get outta there
                     return null;
                 }
-                return ParseNonUnionDefinition(CurrentToken, kind, isReadOnly, definitionDocumentation, decorators);
+                return ParseNonUnionDefinition(CurrentToken, kind, isMutable, definitionDocumentation, decorators);
             }
         }
 
@@ -691,12 +687,12 @@ isAssignable:
         /// </summary>
         /// <param name="definitionToken">The token that names the type to define.</param>
         /// <param name="kind">The <see cref="AggregateKind"/> the type will represents.</param>
-        /// <param name="isReadOnly"></param>
+        /// <param name="isMutable"></param>
         /// <param name="definitionDocumentation"></param>
         /// <returns>The parsed definition.</returns>
         private Definition? ParseNonUnionDefinition(Token definitionToken,
             AggregateKind kind,
-            bool isReadOnly,
+            bool isMutable,
             string definitionDocumentation,
             List<SchemaDecorator> definitionDecorators)
         {
@@ -872,12 +868,12 @@ isAssignable:
             Definition definition = kind switch
             {
                 AggregateKind.Enum => new EnumDefinition(name, definitionSpan, definitionDocumentation, fields, definitionDecorators, enumBaseType),
-                AggregateKind.Struct => new StructDefinition(name, definitionSpan, definitionDocumentation, definitionDecorators, fields, isReadOnly),
+                AggregateKind.Struct => new StructDefinition(name, definitionSpan, definitionDocumentation, definitionDecorators, fields, isMutable),
                 AggregateKind.Message => new MessageDefinition(name, definitionSpan, definitionDocumentation, definitionDecorators, fields),
                 _ => throw new InvalidOperationException("invalid kind when making definition"),
             };
 
-            if (isReadOnly && definition is not StructDefinition)
+            if (isMutable && definition is not StructDefinition)
             {
                 _errors.Add(new InvalidReadOnlyException(definition));
             }

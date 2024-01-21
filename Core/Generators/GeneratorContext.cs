@@ -260,7 +260,7 @@ internal class GeneratorContextConverter : JsonConverter<GeneratorContext>
         {
             writer.WriteNumber("discriminatorInParent", sd.DiscriminatorInParent.Value);
         }
-        writer.WriteBoolean("readonly", sd.IsReadOnly);
+        writer.WriteBoolean("mutable", sd.IsMutable);
         writer.WriteBoolean("isFixedSize", sd.IsFixedSize(schema));
         var fieldCount = sd.Fields.Count;
         if (fieldCount < 0 || fieldCount > byte.MaxValue)

@@ -121,16 +121,16 @@ namespace Core.Meta
     /// </summary>
     public class StructDefinition : FieldsDefinition
     {
-        public StructDefinition(string name, Span span, string documentation, List<SchemaDecorator> decorators, ICollection<Field> fields, bool isReadOnly, Definition? parent = null) :
+        public StructDefinition(string name, Span span, string documentation, List<SchemaDecorator> decorators, ICollection<Field> fields, bool isMutable, Definition? parent = null) :
             base(name, span, documentation, decorators, fields, parent)
         {
-            IsReadOnly = isReadOnly;
+            IsMutable = isMutable;
         }
 
         /// <summary>
         /// Is this struct "read-only"? (This will mean something like: not generating setters in the codegen.)
         /// </summary>
-        public bool IsReadOnly { get; }
+        public bool IsMutable { get; }
 
         override public int MinimalEncodedSize(BebopSchema schema)
         {

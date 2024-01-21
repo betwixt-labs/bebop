@@ -733,7 +733,7 @@ namespace Core.Generators.TypeScript
                             var type = TypeName(field.Type);
                             builder.AppendLine(FormatDocumentation(field.Documentation, field.DeprecatedDecorator, 2));
 
-                            builder.AppendLine($"  {(fd is StructDefinition { IsReadOnly: true } ? "readonly " : "")}{field.NameCamelCase}{(fd is MessageDefinition ? "?" : "")}: {type};");
+                            builder.AppendLine($"  {(fd is StructDefinition { IsMutable: false } ? "readonly " : string.Empty)}{field.NameCamelCase}{(fd is MessageDefinition ? "?" : "")}: {type};");
                         }
                         builder.AppendLine("}");
                         builder.AppendLine();
@@ -752,7 +752,7 @@ namespace Core.Generators.TypeScript
                             {
                                 var field = fd.Fields.ElementAt(i);
                                 var type = TypeName(field.Type);
-                                builder.AppendLine($"public {(fd is StructDefinition { IsReadOnly: true } ? "readonly " : "")}{field.NameCamelCase}{(fd is MessageDefinition ? "?" : "")}: {type};");
+                                builder.AppendLine($"public {(fd is StructDefinition { IsMutable: false } ? "readonly " : string.Empty)}{field.NameCamelCase}{(fd is MessageDefinition ? "?" : string.Empty)}: {type};");
 
                             }
                             builder.AppendLine();

@@ -30,8 +30,8 @@ namespace Core.Lexer.Tokenization
         /// <summary>
         ///     The 'readonly' keyword which is reserved by the compiler
         /// </summary>
-        [Keyword("readonly")]
-        ReadOnly,
+        [Keyword("mut")]
+        Mut,
 
         /// <summary>
         ///     The 'map' keyword which is reserved by the compiler
