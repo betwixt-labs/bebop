@@ -327,7 +327,7 @@ namespace Core.IO
         private void WriteStruct(StructDefinition definition)
         {
             // modifier(s)
-            _writer.Write(definition.IsReadOnly);
+            _writer.Write(definition.IsMutable);
             _writer.Write(definition.MinimalEncodedSize(_schema));
             _writer.Write(definition.IsFixedSize(_schema));
 

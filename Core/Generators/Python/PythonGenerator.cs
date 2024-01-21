@@ -385,8 +385,8 @@ namespace Core.Generators.Python
                                 builder.Append(FormatDocumentation(definition.Documentation, null));
                                 builder.AppendLine();
                             }
-                            var isReadonlyStruct = rd is StructDefinition sd ? sd.IsReadOnly : false;
-                            var fieldPrepend = isReadonlyStruct ? "_" : "";
+                            var isMutableStruct = rd is StructDefinition sd && sd.IsMutable;
+                            var fieldPrepend = !isMutableStruct ? "_" : "";
                             for (var i = 0; i < fd.Fields.Count; i++)
                             {
                                 var field = fd.Fields.ElementAt(i);
@@ -441,7 +441,7 @@ namespace Core.Generators.Python
                                 }, open: string.Empty, close: string.Empty);
                             }
 
-                            if (isReadonlyStruct)
+                            if (!isMutableStruct)
                             {
                                 for (var i = 0; i < fd.Fields.Count; i++)
                                 {

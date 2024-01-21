@@ -116,7 +116,7 @@ namespace Core.Generators.CSharp
                         var recordAttribute = fd switch
                         {
                             MessageDefinition => "[global::Bebop.Attributes.BebopRecord(global::Bebop.Runtime.BebopKind.Message)]",
-                            StructDefinition { IsReadOnly: true } => "[global::Bebop.Attributes.BebopRecord(global::Bebop.Runtime.BebopKind.Struct, true)]",
+                            StructDefinition { IsMutable: true } => "[global::Bebop.Attributes.BebopRecord(global::Bebop.Runtime.BebopKind.Struct, true)]",
                             StructDefinition => "[global::Bebop.Attributes.BebopRecord(global::Bebop.Runtime.BebopKind.Struct)]",
                             _ => string.Empty
                         };
@@ -161,7 +161,7 @@ namespace Core.Generators.CSharp
                             }
                             var type = TypeName(field.Type, string.Empty);
                             var opt = fd is MessageDefinition && IsNullableType(field.Type) ? "?" : "";
-                            var setOrInit = fd is StructDefinition { IsReadOnly: true } ? LanguageVersion == CSharpNine ? "init" : "private set" : "set";
+                            var setOrInit = fd is StructDefinition { IsMutable: false } ? LanguageVersion == CSharpNine ? "init" : "private set" : "set";
                             builder.AppendLine($"public {type}{opt} {field.Name.ToPascalCase()} {{ get; {setOrInit}; }}");
                         }
 
