@@ -22,12 +22,9 @@ public class LanguageServerCommand : CliCommand
     {
 #if !WASI_WASM_BUILD
         Dictionary<string, string> extensions = [];
-        var config = result.GetValue<BebopConfig>(CliStrings.ConfigFlag);
-        if (config is not null)
-        {
-            extensions = config.Extensions;
-        }
-        using var host = CompilerHost.CompilerHostBuilder.Create().WithDefaultDecorators().WithExtensions(extensions).Build();
+        var config = result.GetValue<BebopConfig>(CliStrings.ConfigFlag)!;
+        extensions = config.Extensions;
+        using var host = CompilerHost.CompilerHostBuilder.Create(config.WorkingDirectory).WithDefaultDecorators().WithExtensions(extensions).Build();
         await BebopLangServer.RunAsync(host, token);
 #endif
         return BebopCompiler.Ok;

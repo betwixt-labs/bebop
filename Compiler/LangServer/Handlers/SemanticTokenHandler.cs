@@ -36,7 +36,7 @@ namespace Compiler.LangServer
 
             _tokenTypes = new Dictionary<TokenKind, SemanticTokenType>
             {
-                { TokenKind.ReadOnly, SemanticTokenType.Modifier  },
+                { TokenKind.Mut, SemanticTokenType.Keyword  },
                 { TokenKind.Array, SemanticTokenType.Keyword  },
                 { TokenKind.Enum, SemanticTokenType.Keyword  },
                 { TokenKind.Map, SemanticTokenType.Keyword  },

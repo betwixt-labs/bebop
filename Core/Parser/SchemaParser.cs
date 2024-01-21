@@ -486,10 +486,11 @@ namespace Core.Parser
                 Expect(TokenKind.CloseBrace);
                 try
                 {
-                    envValue = EnvironmentVariableHelper.Get(envVar);
+                    envValue = _compilerHost.EnvironmentVariableStore.Get(envVar);
                     if (string.IsNullOrEmpty(envValue))
                     {
                         _errors.Add(new EnvironmentVariableNotFoundException(Span.Combine(startSpan, CurrentToken.Span), $"String substitution failed: environment variable '{envVar}' was not found."));
+                        envValue = string.Empty;
                     }
                     return true;
                 }
@@ -539,7 +540,7 @@ namespace Core.Parser
                     // the string has possible template variables
                     if (str.Contains('$'))
                     {
-                        str = EnvironmentVariableHelper.Replace(str, _errors, token.Span);
+                        str = _compilerHost.EnvironmentVariableStore.Replace(str, _errors, token.Span);
                     }
                     return new StringLiteral(st, token.Span, str);
                 case ScalarType st when st.BaseType == BaseType.Guid:

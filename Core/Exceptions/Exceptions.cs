@@ -407,6 +407,13 @@ namespace Core.Exceptions
              : base($"Decorator '{identifier}' is missing a value for parameter '{paramName}'.", span, 146, hint)
         { }
     }
+    [Serializable]
+    public class EnvironmentVariableNotFoundException : SpanException
+    {
+        public EnvironmentVariableNotFoundException(Span span, string reason)
+            : base(reason, span, 147, severity: Severity.Error)
+        { }
+    }
 
 
 
@@ -423,14 +430,6 @@ namespace Core.Exceptions
     {
         public DeprecatedFeatureWarning(Span span, string reason)
             : base(reason, span, 201, severity: Severity.Warning)
-        { }
-    }
-
-    [Serializable]
-    public class EnvironmentVariableNotFoundException : SpanException
-    {
-        public EnvironmentVariableNotFoundException(Span span, string reason)
-            : base(reason, span, 202, severity: Severity.Warning)
         { }
     }
 

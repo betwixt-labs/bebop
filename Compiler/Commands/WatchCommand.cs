@@ -17,13 +17,14 @@ public class WatchCommand : CliCommand
     {
         var config = result.GetValue<BebopConfig>(CliStrings.ConfigFlag)!;
         config.Validate();
-        using var host = CompilerHost.CompilerHostBuilder.Create()
+        using var host = CompilerHost.CompilerHostBuilder.Create(config.WorkingDirectory)
        .WithDefaults()
 #if !WASI_WASM_BUILD
        .WithExtensions(config.Extensions)
 #endif
        .Build();
 
+        Helpers.WriteHostInfo(host);
         var compiler = new BebopCompiler(host);
         var watcher = new SchemaWatcher(config.WorkingDirectory, config, compiler);
         return await watcher.StartAsync(token);
