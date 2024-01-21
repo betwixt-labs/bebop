@@ -7,7 +7,6 @@ using Core.Meta;
 using Core.Exceptions;
 using Core.Parser;
 using Core.Generators;
-using Core.Logging;
 using System.IO;
 using Core;
 
@@ -58,7 +57,6 @@ public class BebopCompiler(CompilerHost Host)
 
     public async ValueTask<GeneratedFile> BuildAsync(GeneratorConfig generatorConfig, BebopSchema schema, BebopConfig config, CancellationToken cancellationToken)
     {
-        var (warnings, errors) = GetSchemaDiagnostics(schema, config.SupressedWarningCodes);
         if (!Host.TryGetGenerator(generatorConfig.Alias, out var generator))
         {
             throw new CompilerException($"Could not find generator with alias '{generatorConfig.Alias}'.");

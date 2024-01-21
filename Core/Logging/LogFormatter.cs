@@ -10,12 +10,6 @@ namespace Core.Logging
     public enum LogFormatter : uint
     {
         /// <summary>
-        ///     Data is formatted using structured logging. This is the default formatter.
-        /// </summary>
-        [Obsolete("Use Enhanced instead of Structure")]
-        Structured,
-
-        /// <summary>
         ///     Data is formatted for MSBuild comparability. View the
         ///     <see
         ///         href="https://docs.microsoft.com/en-us/cpp/build/formatting-the-output-of-a-custom-build-step-or-build-event?view=msvc-160">

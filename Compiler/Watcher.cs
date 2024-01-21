@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Compiler;
-using Core.Generators;
 using Core.Logging;
 using Core.Meta;
 using Microsoft.Extensions.FileSystemGlobbing;
@@ -135,7 +134,9 @@ public class SchemaWatcher
     ///<summary>
     /// Handles the Renamed event of the FileSystemWatcher.
     ///</summary>
+#pragma warning disable VSTHRD100 // Avoid async void methods
     private async void FileRenamed(object sender, RenamedEventArgs e)
+#pragma warning restore VSTHRD100 // Avoid async void methods
     {
         string oldFullPath = Path.GetFullPath(e.OldFullPath);
         string newFullPath = Path.GetFullPath(e.FullPath);
@@ -219,7 +220,9 @@ public class SchemaWatcher
     ///<summary>
     /// Handles the Deleted event of the FileSystemWatcher.
     ///</summary>
+#pragma warning disable VSTHRD100 // Avoid async void methods
     private async void FileDeleted(object sender, FileSystemEventArgs e)
+#pragma warning restore VSTHRD100 // Avoid async void methods
     {
         if (!Path.GetExtension(e.FullPath).Equals(".bop", StringComparison.InvariantCultureIgnoreCase) || IsPathExcluded(e.FullPath))
         {
@@ -252,7 +255,9 @@ public class SchemaWatcher
     ///<summary>
     /// Handles the Changed event of the FileSystemWatcher.
     ///</summary>
+#pragma warning disable VSTHRD100 // Avoid async void methods
     private async void FileChanged(object sender, FileSystemEventArgs e)
+#pragma warning restore VSTHRD100 // Avoid async void methods
     {
         if (!Path.GetExtension(e.FullPath).Equals(".bop", StringComparison.InvariantCultureIgnoreCase) || IsPathExcluded(e.FullPath))
         {
