@@ -1,0 +1,101 @@
+---
+title: Enum
+---
+
+An `enum` defines a type that acts as a wrapper around an integer type (defaults to `uint32`), with certain named constants, each having a corresponding underlying integer value. It is used much like an enum in C.
+
+```csharp
+enum Flavor
+{ 
+    Vanilla = 1; 
+    Chocolate = 2; 
+    Mint = 3; 
+}
+```
+
+## Flags
+
+By default, a Bebop enum type is not supposed to represent any underlying values outside of the ones listed.
+
+If you want a more C-like, bitflags-like behavior, add a `flags` decorator to the enum:
+
+```csharp ins="@flags"
+@flags
+enum Permissions {
+    Read = 0x01;
+    Write = 0x02;
+    Comment = 0x04;
+}
+```
+Defined this way, `Permissions` values like `0` (no permissions) and `3` (`Read` + `Write`) are valid too.
+
+## Underlying Type
+
+By default, an enum is backed by a `uint32`. You can change this by specifying a different underlying type:
+
+```csharp ins="uint8"
+enum Flavor : uint8
+{ 
+    Vanilla = 1; 
+    Chocolate = 2; 
+    Mint = 3; 
+}
+```
+
+With the above definition, `Flavor` values can only be in the range `0` to `255` and takes up only 1 byte in the serialized form.
+
+## Best Practices
+- Unlike in C, all constants must be explicitly given an integer literal value.
+- You should never change or remove a constant from an enum definition. Instead, put `deprecated` decorator in front of the member.
+```csharp ins="@deprecated("eat Mint instead")"
+enum Flavor
+{ 
+    Vanilla = 1;
+    @deprecated("eat Mint instead")
+    Chocolate = 2; 
+    Mint = 3; 
+}
+```
+- You're free to add new constants to an enum at any point in the future.
+
+ ### Why should 0 be a "boring" value in an enum
+  Bebop makes the unusual choice of being opinionated about what the `0` member of an `enum` is called. For all but a select set of identifiers, the compiler issues a warning like so:
+  > Bebop recommends that 0 in an enum be reserved for a value named Unknown, Default, or similar.
+
+  The full list of acceptable names is: `Default`, `Unknown`, `Invalid`, `Null`, `None`, `Zero`, `False`.
+
+  This warning was inspired by news of the [OMIGOD vulnerability](https://www.wiz.io/blog/omigod-critical-vulnerabilities-in-omi-azure), where an attacker could achieve root privileges because of a bug involving an uninitialized `authInfo` struct in a C program.
+
+  Before [this fix](https://github.com/microsoft/omi/commit/4ce2cf1cb0aa656b8eb934c5acc3f4d6a6796bfa#diff-82eb9e2af56b992b6489a56d3c847b7646c7864baa4bea27d3e05122b6d9cc88R1466), the uninitialized `uid` and `gid` values were filled with… zero. (The memory here was allocated by `calloc`.) And `uid=0` `gid=0`  happens to mean "root"!
+
+  This sort of bug is easy to write, and OMIGOD is far from an isolated incident. As long as there are popular languages where it's easy for memory to accidentally be zeroed out, we believe there's a security benefit in ensuring that 0 always means something _boring_.
+
+  That's why Bebop encourages you to leave `0` explicitly reserved to mean "invalid" or "default", and starting the "interesting" values from `1`.
+
+  <table>
+<tr><th>Discouraged</th><th>Encouraged</th></tr>
+<tr><td>
+
+```c
+enum UserType {
+    Admin = 0;  // uh-oh
+    Musician = 1;
+    Listener = 2;
+}
+```
+</td>
+<td>
+
+```c
+enum UserType {
+    Invalid = 0;  // whew!
+    Admin = 1;
+    Musician = 2;
+    Listener = 3;
+}
+```
+</td></tr></table>
+
+  :::note
+  You can disable this warning with the --no-warn 200 compiler flag.
+  :::

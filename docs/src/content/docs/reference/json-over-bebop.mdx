@@ -1,0 +1,93 @@
+---
+title: JSON-Over-Bebop
+---
+
+The JSON-Over-Bebop format is designed as a compatibility layer that enables Bebop's type validation on JSON data and (de)serializes JSON into generated Bebop [records](../records).
+
+This compatibility is achieved by annotating JSON with type information within the JSON, specifically for types that are not natively supported by JSON and for types that require explicit clarification.
+
+:::note
+JSON-Over-Bebop is currently only supported by the TypeScript runtime.
+:::
+
+
+## Annotated JSON
+
+The following illustrates a typical JSON-Over-Bebop data format:
+
+```json
+{
+  "a_int64": {
+    "#btype": 4,
+    "value": "6"
+  },
+  "a_date": {
+    "#btype": 2,
+    "value": "629592660000000000"
+  },
+  "a_map": {
+    "#btype": 1,
+    "#ktype": 7,
+    "value": {
+      "false": true,
+      "true": false
+    }
+  }
+}
+```
+
+- `#btype` (Bebop Type): This marker is used to associate the data with a specific Bebop type that helps in the marshaling process.
+- `#ktype` (Key Type): This marker is utilized in maps to revive the actual type of the map keys.
+
+## Native JSON
+
+It's important to note that `#btype` and `#ktype` are not mandatory if the data object is natively supported by JSON. In this case, a regular JSON is valid JSON-Over-Bebop:
+```json
+{
+    "title":"The Song",
+    "year":1996,
+    "performers":[{"name":"The Performer","plays":0}]
+}
+```
+
+Runtime checks will still be performed to validate data types, ensuring alignment with the schema. If any members that are required or known do not have the correct runtime type, a `BebopRuntimeError` is raised, indicating that the JSON was invalid.
+
+## Type Tags
+
+The JSON-Over-Bebop format supports the following type tags:
+
+- `bigIntTag` (4): For BigInt (long/ulong) values.
+- `boolTag` (7): For Boolean values.
+- `stringTag` (8): For String values.
+- `numberTag` (9): For Number values.
+- `dateTag` (2): For Date values.
+- `uint8ArrayTag` (3): For Uint8Array/byte[] values.
+- `guidTag` (5): For Guid values.
+- `mapTag` (1): For Map values.
+- `mapGuidTag` (6): For GuidMap values.
+
+```json
+{
+  "a_bigInt": {
+    "#btype": 4,
+    "value": "123456789123456789"
+  },
+  "a_map": {
+    "#btype": 1,
+    "#ktype": 8,
+    "value": {
+      "key1": "value1",
+      "key2": "value2"
+    }
+  }
+}
+```
+
+## Implementation
+
+The functionality of this format is implemented through a custom replacer and reviver function for `encodeToJson` and `fromJson` respectively. These functions will handle the marshaling of Bebop records.
+
+Additionally, a `BebopRuntimeError` is raised if the provided JSON does not comply with the defined schema for a given record, ensuring a robust and reliable JSON (de)serialization process.
+
+The reviver function also supports the conversion of values back into their respective runtime types, with the help of type markers (`#btype` and `#ktype`).
+

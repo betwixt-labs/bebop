@@ -1,0 +1,59 @@
+---
+title: What is a bebop.json
+---
+
+The presence of a `bebop.json` file in a directory indicates that the directory is the root of a Bebop project. The bebop.json file specifies the root files and the compiler options required to compile schemas in the project.
+
+Schemas in a project are compiled in one of the following ways:
+- By invoking `bebopc` with no input files, in which case the compiler searches for the `bebop.json` file starting in the current directory and continuing up the parent directory chain.
+- By invoking `bebopc` with no input files and a `--config` (or just `-c`) command line option that specifies the path of a `bebopc.json` file containing the configuration.
+
+When input files are specified on the command line, includes in the `bebop.json` file are ignored. This is true for any configuration that can be specified in the `bebop.json` file and on the command line.
+
+## Examples
+
+- Using the `include` property
+```json
+{                
+  "include": [  
+      "**/*.bop" 
+  ]
+}
+```
+
+- Using the `exclude` property
+```json
+{                
+  "include": [  
+      "**/*.bop" 
+  ],   
+  "exclude": [  
+      "node_modules/**/*.bop", 
+  ]             
+}
+```
+
+- Generating TypeScript code
+```json
+{                
+  "include": [  
+      "**/*.bop" 
+  ],   
+  "exclude": [  
+      "node_modules/**/*.bop", 
+  ],             
+  "generators": {
+    "ts": {
+      "outFile": "dist/bops.gen.ts"
+    }
+  }
+}
+```
+
+
+## Bebop Config Reference
+To learn more about the configuration options in the [bebop.json Reference](/reference/bebop-json/).
+
+## Schema
+
+The bebop.json Schema can be found at the JSON Schema Store.

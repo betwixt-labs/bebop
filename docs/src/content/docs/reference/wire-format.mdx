@@ -1,0 +1,73 @@
+---
+title: Wire format
+---
+This document describes the binary format that Bebop encodes into and out of (the bytes that go “over the wire”).
+
+## Values
+First, let's look at how the typed values inside messages are encoded.
+
+### Numbers, bools, and enums
+Integer types are encoded little-endian, using a fixed number of bytes. For example, the `uint16` value 10 is represented on the wire as `0a 00`. In fact, everything is little-endian in Bebop.
+
+Floating point numbers are also little-endian, encoded in the usual [IEEE 754](https://en.wikipedia.org/wiki/IEEE_754) format, as either 4 or 8 bytes.
+
+A `bool` is encoded as a single byte: either `00` (representing false) or `01` (representing true).
+
+Enum values are encoded by their underlying integer value. (If you define `enum Flavor { Chocolate = 2; }` then the value _Chocolate_ is encoded as `02 00 00 00`, because the default underlying type is `uint32`. If you define `enum Color: uint16 { Blue = 3; }` then the value _Blue_ is encoded as `03 00`.)
+
+### Arrays
+Arrays (`T[]`) are encoded as a `uint32` number of members, followed by that many encodings of `T` concatenated together.
+
+### Maps
+Maps (`map[K, V]`) are encoded as a `uint32` number of key-value pairs, followed by that many pairs of a `K` followed by a `V`.
+
+### Strings
+Strings are encoded as a `uint32` number of bytes, followed by that many bytes of [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
+
+### GUIDs
+GUIDs or UUIDs (`guid`) are encoded as sixteen bytes, in the .NET [Guid.ToByteArray](https://docs.microsoft.com/en-us/dotnet/api/system.guid.tobytearray) order.
+
+### Dates
+Dates are encoded as a `uint64` number of 100 nanosecond units since 00:00:00 UTC on January 1 of year 1 A.D. in the Gregorian calendar. These are called [ticks](https://docs.microsoft.com/en-us/dotnet/api/system.datetime.ticks?view=net-5.0) in .NET.
+
+The top two bits of this value are ignored by Bebop. In .NET, they are used to specify whether a date is in UTC or local to the current time zone. But in Bebop, all date-times on the wire are in UTC.
+
+## Records
+Recall that a “record” is either a **struct**, **message** or **union**. Encode and decode methods are generated for all records. The wire format is a little different between them:
+
+### Structs
+The encoding of a **struct** consists of a straightforward concatenation of the encodings of its fields. The fields don't have indices, because structs are never supposed to have new fields added or get old fields deprecated.
+
+### Messages
+The encoding of a **message** consists of a `uint32` length, followed by a “body” of that many bytes.
+
+The body consists of a series of “indexed fields”, followed by a final `00` byte. Fields in a message may be absent, so the indices indicate which fields are or aren't filled in. An indexed field consists of a single byte field-index, followed by an encoding of that field's type.
+
+For example, given `message M { 1 -> byte x; 2 -> int16 y; 3 -> int32 z; }` the encoding of `{x=15, z=5}` would be:
+
+```
+    body length          body
+     _________   _____________________
+    /         \ /                     \
+    08 00 00 00 01 0f 03 05 00 00 00 00
+                \___/ \____________/ \_/
+                x=15       z=5       end
+```
+
+The body length prefix is necessary for forwards compatibility: if a client parses a message that has a field index it doesn't recognize (because the client is on an old version of a schema that doesn't have this field), it can skip to the end of the message.
+
+The smallest possible message is when all fields are not present, this is encoded as:
+```
+    body length  body
+     _________   _
+    /         \ / \
+    01 00 00 00 00
+                \_/
+                end
+```
+### Unions
+The encoding of a **union** consists of a `uint32` length, followed by a `uint8` discriminator, followed by a “body” of _length_ bytes.
+
+The struct or message definition corresponding to the discriminator value is used to decode the body.
+
+Again, the body length prefix is for forwards compatibility: if a client parses a union that has a discriminator it doesn't recognize (because the client is on an old version of a schema that doesn't have this field), it can skip to the end of the message.
