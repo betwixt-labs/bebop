@@ -1,0 +1,21 @@
+---
+title: Binary Schema
+---
+
+Simply, a binary schema is the parsed textual schema in a condensed binary format that enables dynamic encoding and decoding of binary records at runtime.
+
+Bebop already offers backwards and forwards compatibility for data. However, sometimes an application needs to be able to encode and decode data in a context where it doesn't have access to the source schema. For example, observation and dev tooling that needs to be able to inspect ingested request and responses; the tooling itself does not have access to the source textual schema and thus cannot generate any code for [records](../records) it receives.
+
+Without the compiler emitted code we can't the application cannot make any guarantees on type safety until it hits an integration (which will throw an error) and is something Bebop should avoid altogether.
+
+## Implementation
+
+The compiler emits a static byte array into generated code that represent the textual schemas that created it; from there each runtime implements a method to parse that binary schema which can then be used to encode and decode records.
+
+The compiler omits `const` declarations to prevent leaking of sensitive information. 
+
+## Wire Format
+
+## Tradeoffs
+
+Type inference is lost. The objects you work with will be dynamic; mistakes can be caught on the client-side still via proxies or other means, but it is up to the user to know the type. This is fine as this method is only used in extreme edge cases.

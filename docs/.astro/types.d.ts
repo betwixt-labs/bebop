@@ -227,9 +227,9 @@ declare module 'astro:content' {
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".mdx"] };
-"guide/sync.mdx": {
-	id: "guide/sync.mdx";
-  slug: "guide/sync";
+"guide/writing-your-first-bop.mdx": {
+	id: "guide/writing-your-first-bop.mdx";
+  slug: "guide/writing-your-first-bop";
   body: string;
   collection: "docs";
   data: InferEntrySchema<"docs">

@@ -44,12 +44,14 @@ export default defineConfig({
           label: "Guide",
           items: [
             { label: "Installation", link: "/guide/installation" },
-            { label: "Setting up sync", link: "/guide/sync" },
-            { label: "Import existing history", link: "/guide/import" },
+            {
+              label: "Writing your first bop",
+              link: "/guide/writing-your-first-bop",
+            },
           ],
         },
         {
-          label: "Configuration",
+          label: "Project Configuration",
           autogenerate: { directory: "configuration" },
         },
         {

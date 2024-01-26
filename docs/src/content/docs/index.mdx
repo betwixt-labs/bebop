@@ -4,18 +4,25 @@ title: Getting started
 
 import {Tabs, TabItem, LinkCard} from "@astrojs/starlight/components";
 
-Bebop is modern serialization format for modern applications. It's to be faster, safer, and 
+Bebop is modern data serialization format. It provides a simple schema language that can be used to generate fast, efficent, type-safe code for a variety of languages.
+
+Unlike competing formats, Bebop is designed to be used in a variety of contexts, from embedded systems to web applications without compromising speed, safety, interoperability, and most importantly - developer experience.
+
+It is 10-100x faster than JSON, Protocol Buffers, and alternative technologies.
 
 ![Bebop](https://user-images.githubusercontent.com/1297077/235745675-fc8a18e2-361f-4b7b-b9c9-47155e511b0a.png)
 
-Alternatively, get in touch on our [Discord](https://discord.gg/Fq8bJSKPHh) or open an [issue](https://github.com/atuinsh/atuin/issues)
+#### Supported Languages
 
-#### Supported Shells
+- C#
+- TypeScript/JavaScript
+- Rust
+- Dart
+- Python
+- C++
+- Go
 
-- zsh
-- bash
-- fish
-- nushell
+Is your favorite programming language missing? You can add it via our extension framework. See the [extensions](/guide/extensions/) guide for more information.
 
 ## Quickstart
 
@@ -37,10 +44,6 @@ started quickly:
 
 </Tabs>
 
-
-You might like to configure an [inline
-window](https://docs.atuin.sh/configuration/config/#inline_height), or [disable up arrow
-bindings](https://docs.atuin.sh/configuration/key-binding/#disable-up-arrow)
 
 <LinkCard
   title="Installation"

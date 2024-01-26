@@ -1,56 +1,51 @@
 ---
-title: "Getting Started"
+title: Getting started
 ---
 
-Atuin replaces your existing shell history with a SQLite database, and records
-additional context for your commands. With this context, Atuin gives you faster
-and better search of your shell history.
+import {Tabs, TabItem, LinkCard} from "@astrojs/starlight/components";
 
-Additionally, Atuin (optionally) syncs your shell history between all of your
-machines. Fully end-to-end encrypted, of course.
+Bebop is modern data serialization format. It provides a simple schema language that can be used to generate fast, efficent, type-safe code for a variety of languages.
 
-You may use either the server I host, or host your own! Or just don't use sync
-at all. As all history sync is encrypted, I couldn't access your data even if I
-wanted to. And I **really** don't want to.
+Unlike competing formats, Bebop is designed to be used in a variety of contexts, from embedded systems to web applications without compromising speed, safety, interoperability, and most importantly - developer experience.
 
-If you have any problems, please open an [issue](https://github.com/ellie/atuin/issues) or get in touch on our [Discord](https://discord.gg/Fq8bJSKPHh)!
+It is 10-100x faster than JSON, Protocol Buffers, and alternative technologies.
 
-## Supported Shells
+![Bebop](https://user-images.githubusercontent.com/1297077/235745675-fc8a18e2-361f-4b7b-b9c9-47155e511b0a.png)
 
-- zsh
-- bash
-- fish
-- nushell
- 
-# Quickstart
+#### Supported Languages
+
+- C#
+- TypeScript/JavaScript
+- Rust
+- Dart
+- Python
+- C++
+- Go
+
+Is your favorite programming language missing? You can add it via our extension framework. See the [extensions](/guide/extensions/) guide for more information.
+
+## Quickstart
 
 Please do try and read this guide, but if you're in a hurry and want to get
 started quickly:
 
-```
-bash <(curl --proto '=https' --tlsv1.2 -sSf https://setup.atuin.sh)
+<Tabs>
+  <TabItem label="bash/zsh">
+  ```bash
+  bash -c "$(curl https://bebop.sh)"
+  ```
+  </TabItem>
 
-atuin register -u <USERNAME> -e <EMAIL>
-atuin import auto
-atuin sync
-```
+  <TabItem label="powershell">
+  ```powershell
+  irm https://bebop.sh | iex
+  ```
+  </TabItem>
 
-Now restart your shell! 
+</Tabs>
 
-Anytime you press ctrl-r or up, you will see the Atuin search UI. Type your
-query, enter to execute. If you'd like to select a command without executing
-it, press tab.
-
-You might like to configure an [inline
-window](https://atuin.sh/docs/config/#inline_height), or [disable up arrow
-bindings](https://atuin.sh/docs/key-binding#disable-up-arrow)
-
-Note: The above sync and registration is fully optional. If you'd like to use Atuin offline, you can run
-
-```
-bash <(curl --proto '=https' --tlsv1.2 -sSf https://setup.atuin.sh)
-
-atuin import auto
-```
-
-Your shell history will be local only, not backed up, and not synchronized across devices.
+<LinkCard
+  title="Installation"
+  description="Install and setup Bebop"
+  href="/guide/installation/"
+/>
