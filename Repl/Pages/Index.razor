@@ -112,7 +112,7 @@
 
 @functions {
 
-    private static readonly CompilerHost host = CompilerHost.CompilerHostBuilder.Create().WithDefaults().Build();
+    private static readonly CompilerHost host = CompilerHost.CompilerHostBuilder.Create("").WithDefaults().Build();
     [JSInvokable]
     public static string GetExampleSchema()
     {
@@ -196,7 +196,7 @@ map[guid, Song] songs;
             return new Repl.CompilerOutput
                 {
                     IsOk = !hasErrorDiagonstics,
-                    Result = hasErrorDiagonstics ? string.Empty : generator.Compile(schema, generatorConfig),
+                    Result = hasErrorDiagonstics ? string.Empty : generator.Compile(schema, generatorConfig).GetAwaiter().GetResult(),
                     Diagonstics = diagonstics
                 };
         }
