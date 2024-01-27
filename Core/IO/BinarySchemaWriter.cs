@@ -178,7 +178,17 @@ namespace Core.IO
             WriteString(decorator.Identifier);
             var arguments = decorator.Arguments;
             // argument count
-            _writer.Write((byte)arguments.Count);
+            var count = (byte)arguments.Count;
+            if (count == 0)
+            {
+                _writer.Write((byte)0);
+                return;
+            }
+            if (count > byte.MaxValue)
+            {
+                throw new CompilerException($"Decorator {decorator.Identifier} has too many arguments: {count}");
+            }
+            _writer.Write(count);
             var definition = decorator.Definition;
             foreach (var argument in arguments)
             {
