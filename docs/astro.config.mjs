@@ -3,12 +3,12 @@ import starlight from "@astrojs/starlight";
 
 // https://astro.build/config
 export default defineConfig({
-  site: "https://docs.atuin.sh",
+  site: "https://bebop.sh",
   integrations: [
     starlight({
-      title: "Atuin Docs",
-      favicon: "./src/assets/atuin.png",
-
+      title: "Bebop Docs",
+      favicon: "./src/assets/favicon-32.png",
+      expressiveCode: true,
       /* head: [
         {
           tag: "script",
@@ -21,17 +21,15 @@ export default defineConfig({
       ],*/
 
       logo: {
-        light: "./src/assets/logo-light.svg",
-        dark: "./src/assets/logo-dark.png",
+        light: "./src/assets/logo.svg",
+        dark: "./src/assets/logo.svg",
         replacesTitle: true,
       },
 
       social: {
-        github: "https://github.com/atuinsh/atuin",
+        github: "https://github.com/betwixt-labs/bebop",
         discord: "https://discord.gg/jR3tfchVvW",
-        mastodon: "https://hachyderm.io/@atuin",
-        twitter: "https://twitter.com/atuinsh",
-        linkedin: "https://www.linkedin.com/company/atuin/",
+        twitter: "https://twitter.com/BetwixtLabs",
       },
 
       defaultLocale: "root",
@@ -45,8 +43,20 @@ export default defineConfig({
           items: [
             { label: "Installation", link: "/guide/installation" },
             {
-              label: "Writing your first bop",
-              link: "/guide/writing-your-first-bop",
+              label: "Playgrounds / REPL",
+              link: "/guide/playground",
+            },
+            {
+              label: "Getting Started (C#)",
+              link: "/guide/getting-started-csharp",
+            },
+            {
+              label: "Getting Started (Rust)",
+              link: "/guide/getting-started-rust",
+            },
+            {
+              label: "Getting Started (TypeScript)",
+              link: "/guide/getting-started-typescript",
             },
           ],
         },
@@ -59,16 +69,14 @@ export default defineConfig({
           autogenerate: { directory: "reference" },
         },
         {
-          label: "Self hosting",
-          items: [
-            { label: "Server setup", link: "/self-hosting/server-setup" },
-            { label: "Usage", link: "/self-hosting/usage" },
-            { label: "Docker", link: "/self-hosting/docker" },
-            { label: "Kubernetes", link: "/self-hosting/kubernetes" },
-          ],
+          label: "Chords (Extensions)",
+          autogenerate: { directory: "chords" },
+        },
+        {
+          label: "Tempo (RPC)",
+          autogenerate: { directory: "tempo" },
         },
         { label: "Known issues", link: "/known-issues" },
-        { label: "Integrations", link: "/integrations" },
         { label: "FAQ", link: "/faq" },
       ],
     }),

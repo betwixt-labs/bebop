@@ -86,6 +86,7 @@ internal static class CommandParser
         helpText.AppendLine("  build     Build the chord extension");
         helpText.AppendLine("  pack      Package the chord extension");
         helpText.AppendLine("  test      Test the chord extension");
+        helpText.AppendLine("  install  Install the chord extension");
         helpText.AppendLine("  help      Display help");
         helpText.AppendLine();
         //helpText.AppendLine("Options:");

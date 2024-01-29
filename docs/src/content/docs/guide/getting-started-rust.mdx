@@ -1,0 +1,69 @@
+---
+title: Getting started (Rust)
+---
+
+import {Tabs, TabItem, LinkCard} from "@astrojs/starlight/components";
+
+| Package                                        | Cargo Latest                                                                              | Downloads                                                                                    |
+| :--------------------------------------------- | :------------------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------- |
+| [bebop](https://crates.io/crates/bebop) | [![bebop](https://img.shields.io/crates/dv/bebop)](https://crates.io/crates/bebop) | ![bebop](https://img.shields.io/crates/d/bebop)
+| [bebop-tools](https://crates.io/crates/bebop-tools) | [![bebop](https://img.shields.io/crates/dv/bebop-tools)](https://crates.io/crates/bebop-tools) | ![bebop](https://img.shields.io/crates/d/bebop-tools)
+
+
+There are two packages to be aware of, the Rust runtime [`bebop`](https://crates.io/crates/bebop) and the compiler-helper [`bebop-tools`](https://crates.io/crates/bebop-tools).
+
+So to get started, add the `bebop` package to your `dependencies` and add `bebop-tools` to your `build-dependencies` if you plan to use a cargo build script for generating the Rust code. Next, add the necessary steps to your build script to build the schema, this is an example buildscript:
+
+```rust
+// build.rs
+use bebop_tools as bebop;
+
+fn main() {
+    // download the bebop binary automatically and cache it into your target directory
+    // it will automatically download the same version as the package you installed
+    bebop::download_bebopc(
+        PathBuf::from("target").join("bebopc"),
+    );
+    // build all `.bop` schemas in `schemas` dir and make a new module `generated` in `src` with all of them.
+    bebop::build_schema_dir("schemas", "src/generated");
+}
+```
+
+Right now `bebop-tools` is pretty bare-bones as far as what it supports, but at least with auto-downloading it should help with automation&mdash;if not do it for you.
+
+Now assuming you have the schema
+```c
+// schemas/mystruct.bop
+struct MyStruct {
+  int32 a;
+  int32 b;
+}
+```
+
+To actually build the generated file run `cargo build` and you should see `src/generated/mystruct.rs` is created automatically. You may want to add the generated directory to your git ignore. Also be aware that any changes to files in generated will be wiped out on _every single_ build. Or if you have an IDE that is constantly running in the background like I do, after any change you save...
+
+Also `src/generated/mod.rs` is generated automatically for you and will publicly declare all the schemas as modules.
+
+In your code, you can now write something like this:
+```rust
+// main.rs
+pub mod generated;
+
+use bebop::prelude::*;
+use generated::mystruct::MyStruct;
+
+fn main() {
+    let mut buf = Vec::with_capacity(MyStruct::SERIALIZED_SIZE);
+    let s1 = MyStruct {
+        a: 123,
+        b: -6232
+    };
+    s1.serialize(&mut buf).unwrap();
+    let s2 = MyStruct::deserialize(&buf).unwrap();
+    assert_eq!(s1, s2);
+}
+```
+
+Pro-tip: Check out the `owned` module which is generated behind a feature flag. If you enable `bebop-owned-all` or the appropriate namespace flag (only if you generated with a namespace) you can then access versions of all Records which do not borrow the data but simply take ownership/clone the data. These can be useful if you want to use bebop types throughout your codebase and not just for serialization.
+
+That should be enough to get you kick-started. Checkout the crate docs for the runtime [here](https://docs.rs/bebop/latest/bebop/) and pay extra close attention to the [`Record`](https://docs.rs/bebop/latest/bebop/trait.Record.html) trait which is the main bebop sterilization definition.

@@ -185,16 +185,44 @@ declare module 'astro:content' {
 
 	type ContentEntryMap = {
 		"docs": {
-"configuration/config.mdx": {
-	id: "configuration/config.mdx";
-  slug: "configuration/config";
+"chords/chord-json.md": {
+	id: "chords/chord-json.md";
+  slug: "chords/chord-json";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"chords/chordc.mdx": {
+	id: "chords/chordc.mdx";
+  slug: "chords/chordc";
   body: string;
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".mdx"] };
-"configuration/key-binding.mdx": {
-	id: "configuration/key-binding.mdx";
-  slug: "configuration/key-binding";
+"chords/installing.mdx": {
+	id: "chords/installing.mdx";
+  slug: "chords/installing";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".mdx"] };
+"chords/publishing.mdx": {
+	id: "chords/publishing.mdx";
+  slug: "chords/publishing";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".mdx"] };
+"chords/what-are-chords.mdx": {
+	id: "chords/what-are-chords.mdx";
+  slug: "chords/what-are-chords";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".mdx"] };
+"configuration/bebop-config.mdx": {
+	id: "configuration/bebop-config.mdx";
+  slug: "configuration/bebop-config";
   body: string;
   collection: "docs";
   data: InferEntrySchema<"docs">
@@ -206,16 +234,23 @@ declare module 'astro:content' {
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".mdx"] };
-"guide/getting-started.mdx": {
-	id: "guide/getting-started.mdx";
-  slug: "guide/getting-started";
+"guide/getting-started-csharp.mdx": {
+	id: "guide/getting-started-csharp.mdx";
+  slug: "guide/getting-started-csharp";
   body: string;
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".mdx"] };
-"guide/import.mdx": {
-	id: "guide/import.mdx";
-  slug: "guide/import";
+"guide/getting-started-rust.mdx": {
+	id: "guide/getting-started-rust.mdx";
+  slug: "guide/getting-started-rust";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".mdx"] };
+"guide/getting-started.mdx": {
+	id: "guide/getting-started.mdx";
+  slug: "guide/getting-started";
   body: string;
   collection: "docs";
   data: InferEntrySchema<"docs">
@@ -227,9 +262,9 @@ declare module 'astro:content' {
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".mdx"] };
-"guide/writing-your-first-bop.mdx": {
-	id: "guide/writing-your-first-bop.mdx";
-  slug: "guide/writing-your-first-bop";
+"guide/playground.mdx": {
+	id: "guide/playground.mdx";
+  slug: "guide/playground";
   body: string;
   collection: "docs";
   data: InferEntrySchema<"docs">
@@ -255,9 +290,51 @@ declare module 'astro:content' {
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".mdx"] };
-"reference/gen-completions.mdx": {
-	id: "reference/gen-completions.mdx";
-  slug: "reference/gen-completions";
+"reference/bebop-json.md": {
+	id: "reference/bebop-json.md";
+  slug: "reference/bebop-json";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/bebopc.md": {
+	id: "reference/bebopc.md";
+  slug: "reference/bebopc";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/binary-schema.mdx": {
+	id: "reference/binary-schema.mdx";
+  slug: "reference/binary-schema";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".mdx"] };
+"reference/comments.md": {
+	id: "reference/comments.md";
+  slug: "reference/comments";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/const.mdx": {
+	id: "reference/const.mdx";
+  slug: "reference/const";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".mdx"] };
+"reference/decorators.mdx": {
+	id: "reference/decorators.mdx";
+  slug: "reference/decorators";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".mdx"] };
+"reference/enum.mdx": {
+	id: "reference/enum.mdx";
+  slug: "reference/enum";
   body: string;
   collection: "docs";
   data: InferEntrySchema<"docs">
@@ -269,58 +346,72 @@ declare module 'astro:content' {
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".mdx"] };
-"reference/list.mdx": {
-	id: "reference/list.mdx";
-  slug: "reference/list";
+"reference/json-over-bebop.mdx": {
+	id: "reference/json-over-bebop.mdx";
+  slug: "reference/json-over-bebop";
   body: string;
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".mdx"] };
-"reference/search.md": {
-	id: "reference/search.md";
-  slug: "reference/search";
+"reference/message.mdx": {
+	id: "reference/message.mdx";
+  slug: "reference/message";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".mdx"] };
+"reference/records.mdx": {
+	id: "reference/records.mdx";
+  slug: "reference/records";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".mdx"] };
+"reference/service.mdx": {
+	id: "reference/service.mdx";
+  slug: "reference/service";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".mdx"] };
+"reference/struct.mdx": {
+	id: "reference/struct.mdx";
+  slug: "reference/struct";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".mdx"] };
+"reference/types.mdx": {
+	id: "reference/types.mdx";
+  slug: "reference/types";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".mdx"] };
+"reference/union.md": {
+	id: "reference/union.md";
+  slug: "reference/union";
   body: string;
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
-"reference/stats.mdx": {
-	id: "reference/stats.mdx";
-  slug: "reference/stats";
+"reference/wire-format.mdx": {
+	id: "reference/wire-format.mdx";
+  slug: "reference/wire-format";
   body: string;
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".mdx"] };
-"reference/sync.mdx": {
-	id: "reference/sync.mdx";
-  slug: "reference/sync";
+"tempo/TypeScript/getting-started.mdx": {
+	id: "tempo/TypeScript/getting-started.mdx";
+  slug: "tempo/typescript/getting-started";
   body: string;
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".mdx"] };
-"self-hosting/docker.mdx": {
-	id: "self-hosting/docker.mdx";
-  slug: "self-hosting/docker";
-  body: string;
-  collection: "docs";
-  data: InferEntrySchema<"docs">
-} & { render(): Render[".mdx"] };
-"self-hosting/kubernetes.mdx": {
-	id: "self-hosting/kubernetes.mdx";
-  slug: "self-hosting/kubernetes";
-  body: string;
-  collection: "docs";
-  data: InferEntrySchema<"docs">
-} & { render(): Render[".mdx"] };
-"self-hosting/server-setup.mdx": {
-	id: "self-hosting/server-setup.mdx";
-  slug: "self-hosting/server-setup";
-  body: string;
-  collection: "docs";
-  data: InferEntrySchema<"docs">
-} & { render(): Render[".mdx"] };
-"self-hosting/usage.mdx": {
-	id: "self-hosting/usage.mdx";
-  slug: "self-hosting/usage";
+"tempo/index.mdx": {
+	id: "tempo/index.mdx";
+  slug: "tempo";
   body: string;
   collection: "docs";
   data: InferEntrySchema<"docs">

@@ -1,0 +1,40 @@
+---
+title: Const
+---
+
+A `const` definition defines a single typed value. You can't refer to these values in the rest of a Bebop schema, but they come in handy when the parties using your schemas also need to agree on certain application-wide parameters.
+
+Currently, valid const types are: `boolean`, `integers`, `floats` (including `inf`, `-inf`, `nan`), strings, and `GUIDs`.
+
+For example:
+
+```typescript
+const int32 PianoKeys = 88;
+const guid ImportantProductID = "a3628ec7-28d4-4546-ad4a-f6ebf5375c96";
+```
+
+## Environment Variables & String Substitutions
+
+A `const` definition can also be used to define a string that is substituted at compile time. This is useful for defining environment variables that are used in your application, but that you don't want to hard-code into your schema.
+
+For example:
+
+```typescript
+const string ApiUrl = ${API_URL};
+```
+
+When you compile this schema, the compiler will look for the `API_URL` environment variable and substitute it into the schema. If the environment variable is not set, the compiler will throw an error.
+
+You can also use string substitution to build strings which contain environment variables. For example:
+
+```typescript
+const string ApiUrl = "${BASE_API_URL}/v1";
+```
+
+## .dev.vars
+When developing locally, add environment variables by creating a .dev.vars file in the root directory of your project alongside `bebop.json`. Then you can populate like so:
+```env
+API_URL=https://api.example.com
+```
+
+TODO embed playground

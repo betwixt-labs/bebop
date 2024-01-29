@@ -6,15 +6,406 @@ Simply, a binary schema is the parsed textual schema in a condensed binary forma
 
 Bebop already offers backwards and forwards compatibility for data. However, sometimes an application needs to be able to encode and decode data in a context where it doesn't have access to the source schema. For example, observation and dev tooling that needs to be able to inspect ingested request and responses; the tooling itself does not have access to the source textual schema and thus cannot generate any code for [records](../records) it receives.
 
-Without the compiler emitted code we can't the application cannot make any guarantees on type safety until it hits an integration (which will throw an error) and is something Bebop should avoid altogether.
+Without the compiler emitted code an application cannot make any guarantees on type safety until it hits an integration (which will throw an error) and is something Bebop should avoid altogether.
 
 ## Implementation
 
-The compiler emits a static byte array into generated code that represent the textual schemas that created it; from there each runtime implements a method to parse that binary schema which can then be used to encode and decode records.
+The compiler emits a static byte array into generated code that represent the textual schemas that created it; this data can be appended to request/responses and each runtime implements a method to parse that binary schema which can then be used to encode and decode records.
 
-The compiler omits `const` declarations to prevent leaking of sensitive information. 
+The encoded schema looks like:
+
+```hex
+0000-0010:  03 05 00 00-00 52 69 67-68 74 73 00-04 01 66 6c  .....Rig hts...fl
+0000-0020:  61 67 73 00-00 fe ff ff-ff 01 01 00-00 00 04 44  ags..... .......D
+0000-0030:  65 66 61 75-6c 74 00 00-00 55 73 65-72 00 00 01  efault.. .User...
+0000-0040:  4d 6f 64 00-00 02 41 64-6d 69 6e 00-00 03 41 70  Mod...Ad min...Ap
+0000-0050:  69 52 65 71-75 65 73 74-00 01 00 00-0c 00 00 00  iRequest ........
+0000-0060:  00 02 75 72-69 00 f5 ff-ff ff 00 74-72 61 63 65  ..uri... ...trace
+0000-0070:  00 f9 ff ff-ff 00 44 65-66 61 75 6c-74 52 65 73  ......De faultRes
+0000-0080:  70 6f 6e 73-65 00 01 00-00 05 00 00-00 00 02 72  ponse... .......r
+0000-0090:  69 67 68 74-73 00 00 00-00 00 00 75-73 65 72 6e  ights... ...usern
+0000-00a0:  61 6d 65 00-f5 ff ff ff-00 45 72 72-6f 72 52 65  ame..... .ErrorRe
+0000-00b0:  73 70 6f 6e-73 65 00 02-00 05 00 00-00 03 72 65  sponse.. ......re
+0000-00c0:  61 73 6f 6e-00 f5 ff ff-ff 00 01 63-6f 64 65 00  ason.... ...code.
+0000-00d0:  fb ff ff ff-00 02 69 64-00 f4 ff ff-ff 01 64 65  ......id ......de
+0000-00e0:  70 72 65 63-61 74 65 64-00 01 72 65-61 73 6f 6e  precated ..reason
+0000-00f0:  00 f5 ff ff-ff 6a 75 73-74 20 62 65-63 61 75 73  .....jus t.becaus
+0000-0100:  65 00 03 41-70 69 52 65-73 70 6f 6e-73 65 00 03  e..ApiRe sponse..
+0000-0110:  00 0a 00 00-00 02 01 02-00 00 00 02-03 00 00 00  ........ ........
+0000-0120:  01 00 00 00-47 72 65 65-74 65 72 00-00 01 00 00  ....Gree ter.....
+0000-0130:  00 73 61 79-48 65 6c 6c-6f 00 00 00-01 00 00 00  .sayHell o.......
+0000-0138:  04 00 00 00-55 f6 fe 4d                          ....U..M
+```
+
+When read, you end up with a new intemediary representation of the schema that can be used to encode and decode records:
+```json
+{
+  "bebopVersion": 3,
+  "definitions": {
+    "Rights": {
+      "index": 0,
+      "name": "Rights",
+      "isBitFlags": true,
+      "kind": 4,
+      "decorators": {
+        "flags": {
+          "arguments": {}
+        }
+      },
+      "minimalEncodeSize": 1,
+      "baseType": -2,
+      "members": {
+        "Default": {
+          "name": "Default",
+          "decorators": {},
+          "value": 0
+        },
+        "User": {
+          "name": "User",
+          "decorators": {},
+          "value": 1
+        },
+        "Mod": {
+          "name": "Mod",
+          "decorators": {},
+          "value": 2
+        },
+        "Admin": {
+          "name": "Admin",
+          "decorators": {},
+          "value": 3
+        }
+      }
+    },
+    "ApiRequest": {
+      "index": 1,
+      "name": "ApiRequest",
+      "kind": 1,
+      "decorators": {},
+      "isMutable": false,
+      "minimalEncodeSize": 12,
+      "isFixedSize": false,
+      "fields": {
+        "uri": {
+          "name": "uri",
+          "typeId": -11,
+          "fieldProperties": {
+            "type": "scalar"
+          },
+          "decorators": {},
+          "constantValue": null
+        },
+        "trace": {
+          "name": "trace",
+          "typeId": -7,
+          "fieldProperties": {
+            "type": "scalar"
+          },
+          "decorators": {},
+          "constantValue": null
+        }
+      }
+    },
+    "DefaultResponse": {
+      "index": 2,
+      "name": "DefaultResponse",
+      "kind": 1,
+      "decorators": {},
+      "isMutable": false,
+      "minimalEncodeSize": 5,
+      "isFixedSize": false,
+      "fields": {
+        "rights": {
+          "name": "rights",
+          "typeId": 0,
+          "fieldProperties": {
+            "type": "scalar"
+          },
+          "decorators": {},
+          "constantValue": null
+        },
+        "username": {
+          "name": "username",
+          "typeId": -11,
+          "fieldProperties": {
+            "type": "scalar"
+          },
+          "decorators": {},
+          "constantValue": null
+        }
+      }
+    },
+    "ErrorResponse": {
+      "index": 3,
+      "minimalEncodeSize": 5,
+      "name": "ErrorResponse",
+      "kind": 2,
+      "decorators": {},
+      "fields": {
+        "reason": {
+          "name": "reason",
+          "typeId": -11,
+          "fieldProperties": {
+            "type": "scalar"
+          },
+          "decorators": {},
+          "constantValue": 1
+        },
+        "code": {
+          "name": "code",
+          "typeId": -5,
+          "fieldProperties": {
+            "type": "scalar"
+          },
+          "decorators": {},
+          "constantValue": 2
+        },
+        "id": {
+          "name": "id",
+          "typeId": -12,
+          "fieldProperties": {
+            "type": "scalar"
+          },
+          "decorators": {
+            "deprecated": {
+              "arguments": {
+                "reason": {
+                  "typeId": -11,
+                  "value": "just because"
+                }
+              }
+            }
+          },
+          "constantValue": 3
+        }
+      }
+    },
+    "ApiResponse": {
+      "index": 4,
+      "name": "ApiResponse",
+      "kind": 3,
+      "decorators": {},
+      "minimalEncodeSize": 10,
+      "branchCount": 2,
+      "branches": [
+        {
+          "discriminator": 1,
+          "typeId": 2
+        },
+        {
+          "discriminator": 2,
+          "typeId": 3
+        }
+      ]
+    }
+  },
+  "services": {
+    "Greeter": {
+      "name": "Greeter",
+      "decorators": {},
+      "methods": {
+        "sayHello": {
+          "name": "sayHello",
+          "decorators": {},
+          "methodType": 0,
+          "requestTypeId": 1,
+          "responseTypeId": 4,
+          "id": 1308554837
+        }
+      }
+    }
+  }
+}
+```
+
+:::note
+The compiler omits any `const` definitions to avoid leaking sensitive information.
+:::
 
 ## Wire Format
+
+- **Schema Version**: 1-byte integer (`byte`).
+
+- **Definition Count**: 4-byte integer (`uint32`).
+
+  For each defined type:
+
+  - **Definition Name**: UTF-8 encoded string. It's null terminated.
+
+  - **Kind**: 1-byte integer (`byte`). Where 1=Struct, 2=Message, 3=Union, 4=Enum.
+
+  - ** Decorators**: see [Decorators](#decorators).
+
+  - **Definition**: Depends on the kind.
+- **Service Count**: 1-byte integer (`byte`).
+
+  For each service:
+
+  - **Service Name**: UTF-8 encoded string. It's null terminated.
+
+  - **Decorators**: see [Decorators](#decorators).
+
+  - **Methods Count**: 1-byte integer (`byte`).
+
+    For each method:
+
+    - **Method Name**: UTF-8 encoded string. It's null terminated.
+
+    - **Decorators**: see [Decorators](#decorators).
+
+    - **Method Type**: 1-byte integer (`byte`). Where 0=Unary, 1=Server Streaming, 2=Client Streaming, 3=Duplex Streaming.
+
+    - **Request Type ID**: 4-byte integer (`int32`).
+
+    - **Response Type ID**: 4-byte integer (`int32`).
+
+    - **Method ID**: 4-byte integer (`uint32`).
+
+### Decorators
+
+- **Decorators**: It begins with the count as a 1-byte integer (`byte`). Each decorator is a sequence of:
+
+    - **Name**: a null terminated UTF-8 encoded string.
+
+    - **Argument Count**: 1-byte integer (`byte`).
+
+    - **Arguments**: For each argument:
+
+      - **Name**: a null terminated UTF-8 encoded string.
+
+      - **Type**: 4-byte signed integer (`int32`).
+
+      - **Value**: Depends on the type.
+
+### Struct
+A struct definition is encoded as follows:
+- **Is Mutable**: 1-byte boolean.
+- **Minimal Encode Size**: 4-byte integer (`int32`).
+- **Is Fixed Size**: 1-byte boolean.
+
+- **Fields Count**: 1-byte integer (`byte`). 
+
+  For each field:
+
+  - **Name**: a null terminated UTF-8 encoded string.
+  
+  - **Type ID**: 4-byte integer (`int32`). 
+
+  - **Decorators**: see [Decorators](#decorators).
+
+### Message
+- **Minimal Encode Size**: 4-byte integer (`int32`).
+
+- **Fields Count**: 1-byte integer (`byte`). 
+  For each field:
+
+  - **Name**: a null terminated UTF-8 encoded string.
+  
+  - **Type ID**: 4-byte integer (`int32`). 
+
+  - **Decorators**: see [Decorators](#decorators).
+
+  - **Constant Value**: 1-byte integer (`byte`). This is the index of the field.
+
+### Union
+- **Minimal Encode Size**: 4-byte integer (`int32`).
+- **Branch Count**: 1-byte integer (`byte`). 
+
+  For each branch:
+
+  - **Discriminator**: 1-byte integer (`byte`).
+
+  - **Type ID**: 4-byte integer (`int32`).
+
+### Enum
+
+- **Base Type**: 4-byte integer (`int32`).
+- **Is Bit Flags**: 1-byte boolean.
+- **Minimal Encode Size**: 4-byte integer (`int32`).
+
+- **Member Count**: 1-byte integer (`byte`).
+
+    For each member:
+    
+    - **Name**: a null terminated UTF-8 encoded string.
+    
+    - **Decorators**: see [Decorators](#decorators).
+    
+    - **Value**: depends on the base type.
+
+
+### Type ID Encoding
+
+Type IDs are encoded as follows:
+
+- **Defined Type**: The index of the type definition in the defined types list.
+- **Scalar Type**: The bitwise negation of the index of the BaseType in the list of base types. This effectively results in:
+  - `Bool = -1`
+  - `Byte = -2`
+  - `UInt16 = -3`
+  - `Int16 = -4`
+  - `UInt32 = -5`
+  - `Int32 = -6`
+  - `UInt64 = -7`
+  - `Int64 = -8`
+  - `Float32 = -9`
+  - `Float64 = -10`
+  - `String = -11`
+  - `Guid = -12`
+  - `Date = -13`
+- **Array Type**: `-14`
+- **Map Type**: `-15`
+
+
+ Type IDs correspond to the type of a field, a member of an enum, the type of a branch in a union, or the return.
+
+## Usage 
+
+```typescript
+import { BebopRuntimeError, BinarySchema, BebopJson } from "bebop";
+
+const schemaData = new Uint8Array([
+  3, 5, 0, 0, 0, 82, 105, 103, 104, 116, 115, 0, 4, 1, 102, 108, 97, 103, 115,
+  0, 0, 254, 255, 255, 255, 1, 1, 0, 0, 0, 4, 68, 101, 102, 97, 117, 108, 116,
+  0, 0, 0, 85, 115, 101, 114, 0, 0, 1, 77, 111, 100, 0, 0, 2, 65, 100, 109, 105,
+  110, 0, 0, 3, 65, 112, 105, 82, 101, 113, 117, 101, 115, 116, 0, 1, 0, 0, 12,
+  0, 0, 0, 0, 2, 117, 114, 105, 0, 245, 255, 255, 255, 0, 116, 114, 97, 99, 101,
+  0, 249, 255, 255, 255, 0, 68, 101, 102, 97, 117, 108, 116, 82, 101, 115, 112,
+  111, 110, 115, 101, 0, 1, 0, 0, 5, 0, 0, 0, 0, 2, 114, 105, 103, 104, 116,
+  115, 0, 0, 0, 0, 0, 0, 117, 115, 101, 114, 110, 97, 109, 101, 0, 245, 255,
+  255, 255, 0, 69, 114, 114, 111, 114, 82, 101, 115, 112, 111, 110, 115, 101, 0,
+  2, 0, 5, 0, 0, 0, 3, 114, 101, 97, 115, 111, 110, 0, 245, 255, 255, 255, 0, 1,
+  99, 111, 100, 101, 0, 251, 255, 255, 255, 0, 2, 105, 100, 0, 244, 255, 255,
+  255, 1, 100, 101, 112, 114, 101, 99, 97, 116, 101, 100, 0, 1, 114, 101, 97,
+  115, 111, 110, 0, 245, 255, 255, 255, 106, 117, 115, 116, 32, 98, 101, 99, 97,
+  117, 115, 101, 0, 3, 65, 112, 105, 82, 101, 115, 112, 111, 110, 115, 101, 0,
+  3, 0, 10, 0, 0, 0, 2, 1, 2, 0, 0, 0, 2, 3, 0, 0, 0, 1, 0, 0, 0, 71, 114, 101,
+  101, 116, 101, 114, 0, 0, 1, 0, 0, 0, 115, 97, 121, 72, 101, 108, 108, 111, 0,
+  0, 0, 1, 0, 0, 0, 4, 0, 0, 0, 85, 246, 254, 77,
+]);
+
+const recordData = new Uint8Array([
+  9, 0, 0, 0, 1, 3, 4, 0, 0, 0, 116, 101, 115, 116,
+]);
+
+const schema = new BinarySchema(schemaData);
+schema.get();
+// dump the AST
+console.log(JSON.stringify(ast, BebopJson.replacer, 2));
+
+// reading a record dynamically
+const record = schema.reader.read("ApiResponse", recordData);
+console.log(record.discriminator);
+if (record.discriminator === 1) {
+    console.log(record.value.rights);
+    console.log(record.value.username);
+}
+
+// writing a record dynamically
+const data = schema.writer.write("ApiResponse", record);
+console.log(data === recordData); // true
+```
+
 
 ## Tradeoffs
 

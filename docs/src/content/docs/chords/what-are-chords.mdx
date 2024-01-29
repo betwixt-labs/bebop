@@ -1,0 +1,28 @@
+---
+title: What are chords?
+---
+
+Extensions for the Bebop compiler are known as chords. They are written in any programming language that compiles to WebAssembly. 
+
+A chord can define a new generator, decorators, and extend the behavior of other generators.
+
+When installing `bebopc` it also installs [chordc](../chordc), the official compiler for `chord` binaries which takes source code / WebAssembly modules and prepares them for use with `bebopc`.
+
+In addition, `chordc` enables [publishing](../publishing) and [installing](../installing) of chords to and from the [Chord Registry]() respectively. 
+
+If you're interested in writing an extension for the Bebop compiler, we provide extension development kits (EDKs) for:
+
+- [TypeScript/JavaScript]()
+- [TinyGo]()
+- [AssemblyScript]()
+
+:::note
+If you're interested in writing a chord in a language that isn't listed above, please [open an issue]() and we'll work with you to get it added.
+:::
+
+:::caution
+Compiler extensions are still experimental and the ABI is subject to change.
+:::
+
+
+

@@ -1,0 +1,62 @@
+---
+title: Decorators
+---
+
+
+Bebop provides a metadata mechanism in the form of decorators. Decorators are placed on definitions, fields, and methods to modify the behavior of generated code.
+
+The compiler provides some built-in decorators, and through the extension framework, you can add your own.
+
+## Built-in decorators
+
+### `@deprecated`
+
+You use the `deprecated` decorator to mark a definition, field, or method as deprecated. The compiler will emit generated code with deprecation warnings / documentation so it is picked up by your IDE.
+
+Further, when placed on a `message` field, during encoding that field will be skipped.
+
+```go ins="@deprecated("We no longer use this")"
+message Song { 
+    @deprecated("We no longer use this")
+    1 -> string title; 
+    2 -> uint16 year; 
+}
+```
+
+:::note
+The `deprecated` decorator cannot be used on the fields of a struct, but only on the struct itself.
+:::
+
+### `@opcode`
+
+Use the `opcode` decorator before a record definition to associate an identifying "opcode" with it. You can either specify a 32-bit unsigned integer:
+
+```go ins="@opcode(0x12345678)"
+@opcode(0x12345678)
+message Song { 
+    1 -> string title; 
+    2 -> uint16 year; 
+}
+```
+
+Or a [FourCC](https://en.wikipedia.org/wiki/FourCC) string:
+    
+```go ins="@opcode("SONG")" 
+@opcode("SONG")
+message Song { 
+    1 -> string title; 
+    2 -> uint16 year; 
+}
+```
+
+Strictly speaking, Bebop is not opinionated about what you do with these opcodes. You _can_ roll your own bespoke RPC or dispatcher (see [Bebop Mirrors](https://github.com/betwixt-labs/bebop/wiki/Getting-Started-with-.NET#using-bebop-mirroring)), however, we recommend using Tempo (our offical RPC framework).
+
+To compiler verifies that within the context of all the schemas in your project that no opcode is used twice. This is to prevent collisions.
+
+### `@flags`
+
+See [Flags](../enum/#flags) in the `enum` reference.
+
+## Contributed Decorators
+
+Extensions can contribute their own decorators. See the [Extensions](../extensions/chord-json) section for more information.
