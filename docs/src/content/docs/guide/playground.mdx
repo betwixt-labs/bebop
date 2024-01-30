@@ -1,6 +1,7 @@
 ---
 title: Playgrounds / REPL
 ---
+import { Card, CardGrid } from '@astrojs/starlight/components';
 
 Writing your first _bop_ isn't a daunting task. In fact, it's quite easy.
 
@@ -16,6 +17,22 @@ They are mostly useful for:
 - Reporting bugs
 
 Choose one of the available options below.
+
+
+<CardGrid>
+  <Card title="📦 CodeSandbox" icon="external">
+    ![Stars](https://docusaurus.io/assets/ideal-img/codesandbox.36984ff.1030.png)
+    CodeSandbox is an online code editor and development environment that allows developers to create, share and collaborate on web development projects in a browser-based environment
+    <center><b>Try it now!</b></center>
+    <center><button>TypeScript</button></center>
+  </Card>
+  <Card title="⚡ StackBlitz" icon="external">
+    ![Stars](https://docusaurus.io/assets/ideal-img/stackblitz.8ebfdbb.1030.png)
+    StackBlitz uses a novel [WebContainers](https://blog.stackblitz.com/posts/introducing-webcontainers/) technology to run `bebopc` directly in your browser.
+    <center><b>Try it now!</b></center>
+    <center><a href="https://google.com"><button>TypeScript</button></a></center>
+  </Card>
+</CardGrid>
 
 
 ## REPL

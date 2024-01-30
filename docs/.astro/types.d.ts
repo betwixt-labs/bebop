@@ -248,6 +248,13 @@ declare module 'astro:content' {
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".mdx"] };
+"guide/getting-started-typescript.mdx": {
+	id: "guide/getting-started-typescript.mdx";
+  slug: "guide/getting-started-typescript";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".mdx"] };
 "guide/getting-started.mdx": {
 	id: "guide/getting-started.mdx";
   slug: "guide/getting-started";
