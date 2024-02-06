@@ -37,11 +37,8 @@ public class RootCommand
     private static int ShowConfig(BebopConfig config)
     {
         var json = new JsonText(config.ToJson());
-
-        DiagnosticLogger.Instance.Out.Write(new Panel(json)
-        .Collapse()
-        .RoundedBorder()
-        .BorderColor(Color.Yellow));
+        DiagnosticLogger.Instance.Out.Write(json);
+        DiagnosticLogger.Instance.Out.WriteLine();
         return 0;
     }
 

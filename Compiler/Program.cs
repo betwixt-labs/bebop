@@ -15,7 +15,16 @@ if (RuntimeInformation.OSArchitecture is Architecture.Wasm)
     Environment.SetEnvironmentVariable("DOTNET_SYSTEM_GLOBALIZATION_INVARIANT", "1");
 }
 Console.OutputEncoding = System.Text.Encoding.UTF8;
-DiagnosticLogger.Initialize(LogFormatter.Enhanced);
+var forcedFormatter = Environment.GetEnvironmentVariable("BEBOPC_LOG_FORMAT");
+if (DiagnosticFormatOption.IsLogFormatter(forcedFormatter) is true)
+{
+
+    DiagnosticLogger.Initialize(DiagnosticFormatOption.Parse(forcedFormatter));
+}
+else
+{
+    DiagnosticLogger.Initialize(LogFormatter.Enhanced);
+}
 
 try
 {

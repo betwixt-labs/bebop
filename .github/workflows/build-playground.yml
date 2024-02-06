@@ -1,16 +1,14 @@
-name: Bebop WebAssembly REPL
+name: Bebop Playground
 on:
   workflow_dispatch:
   push:
     paths:
-      - "Repl/**"
+      - "playground/**"
   pull_request:
     paths:
-      - "Repl/**"
+      - "playground/**"
 jobs:
   build-repl:
-    env:
-      REPL_ROOT: ${{github.workspace}}/Repl
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -24,15 +22,15 @@ jobs:
         with:
           dotnet-version: "8.0.x"
           dotnet-quality: 'preview'
-      - name: Restore Project
-        run: dotnet restore
-        working-directory: ${{env.REPL_ROOT}}
-      - name: Build REPL
-        run: dotnet publish -c Release -p:ReleaseVersion=${{ steps.dotenv.outputs.version }}
-        working-directory: ${{env.REPL_ROOT}}
+      - name: Build Playground
+        run: |
+          ../scripts/install-wasi.sh
+          yarn install
+          yarn build:site
+        working-directory: ./playground/
 
       - name: Upload Package
         uses: actions/upload-artifact@v4
         with:
-          name: bebop-repl-latest
-          path: ${{github.workspace}}/bin/repl/Release/publish/wwwroot/
+          name: bebop-playground-latest
+          path: ${{github.workspace}}/playground/dist/

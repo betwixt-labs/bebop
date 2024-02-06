@@ -42,20 +42,19 @@ namespace Compiler.Options
             };
         }
 
-        private static bool IsLogFormatter(string? token)
+        public static bool IsLogFormatter(string? token)
         {
             if (string.IsNullOrWhiteSpace(token)) return false;
             return token.ToLowerInvariant() switch
             {
                 "enhanced" => true,
                 "json" => true,
-                "structured" => true,
                 "msbuild" => true,
                 _ => false,
             };
         }
 
-        private static LogFormatter Parse(string? token)
+        public static LogFormatter Parse(string? token)
         {
             if (string.IsNullOrWhiteSpace(token)) return LogFormatter.Enhanced;
             return token.ToLowerInvariant() switch

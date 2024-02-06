@@ -249,18 +249,6 @@ jobs:
           name: bebop-runtime-ts-${{ steps.dotenv.outputs.version }}
           path: ${{env.TS_RUNTIME_ROOT}}/bebop-v${{ steps.dotenv.outputs.version }}.tgz
 
-      - name: Build REPL
-        run: |
-          dotnet restore
-          dotnet publish -c Release -p:ReleaseVersion=${{ steps.dotenv.outputs.version }}
-        working-directory: ./Repl/
-
-      - name: Upload REPL Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: bebop-repl-${{ steps.dotenv.outputs.version }}
-          path: ./bin/repl/Release/publish/wwwroot/
-
   build-tools:
     env:
       TOOLS_ROOT: ${{github.workspace}}/Tools

@@ -1,0 +1,65 @@
+{
+  "name": "bebopc-playground",
+  "description": "a playground for the Bebop compiler",
+  "author": "<YOUR_NAME>",
+  "license": "MIT",
+  "homepage": "<YOUR_SITE_URL>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/<YOUR_USER_NAME>/my-ts-lib.git"
+  },
+  "bugs": {
+    "url": "https://github.com/<YOUR_USER_NAME>/my-ts-lib/issues"
+  },
+  "keywords": [
+    "some",
+    "keywords",
+    "to",
+    "describe",
+    "the",
+    "package"
+  ],
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build:compiler": "../scripts/build-wasi.sh && cp -f ../bin/compiler/Release/artifacts/wasi-wasm/AppBundle/bebopc.wasm ./src/bebopc/bebopc.wasm",
+    "dev": "vite",
+    "build:site": "NODE_ENV=production yarn build:compiler && vite build",
+    "preview:site": "vite preview",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "coi-serviceworker": "^0.1.7",
+    "comlink": "^4.4.1",
+    "lz-string": "^1.5.0",
+    "monaco-editor": "^0.45.0",
+    "wasi-js": "^1.7.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.3",
+    "@typescript-eslint/eslint-plugin": "^6.13.2",
+    "@typescript-eslint/parser": "^6.13.2",
+    "autoprefixer": "^10.4.17",
+    "cssnano": "^6.0.3",
+    "eslint": "^8.56.0",
+    "eslint-plugin-simple-import-sort": "^10.0.0",
+    "eslint-plugin-unicorn": "^49.0.0",
+    "postcss": "^8.4.33",
+    "rollup-plugin-terser": "^7.0.2",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.8",
+    "vite-plugin-comlink": "^3.0.5",
+    "vite-plugin-dts": "^1.7.3",
+    "vite-plugin-html": "^3.2.2",
+    "vite-plugin-inspect": "^0.8.1",
+    "vite-plugin-monaco-editor": "^1.1.0",
+    "vite-plugin-node-polyfills": "^0.17.0",
+    "vite-plugin-static-copy": "^1.0.0",
+    "vitest": "^1.0.4"
+  }
+}

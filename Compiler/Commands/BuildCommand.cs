@@ -66,6 +66,11 @@ public class BuildCommand : CliCommand
                 }
                 schema = compiler.ParseSchema(resolvedSchemas);
             }
+
+            if (config is { Generators.Length: <= 0 } && !config.NoEmit)
+            {
+                return DiagnosticLogger.Instance.WriteDiagonstic(new CompilerException("No code generators specified."));
+            }
             var isStandardOut = result.GetValue<bool>(CliStrings.StandardOutputFlag);
             var (Warnings, Errors) = BebopCompiler.GetSchemaDiagnostics(schema, config.SupressedWarningCodes);
             if (config.NoEmit || Errors.Count != 0)
@@ -78,10 +83,6 @@ public class BuildCommand : CliCommand
             if (!isStandardOut && Warnings.Count != 0)
             {
                 DiagnosticLogger.Instance.WriteSpanDiagonstics(Warnings);
-            }
-            if (config is { Generators.Length: <= 0 })
-            {
-                return DiagnosticLogger.Instance.WriteDiagonstic(new CompilerException("No code generators specified."));
             }
             var generatedFiles = new List<GeneratedFile>();
             foreach (var generatorConfig in config.Generators)

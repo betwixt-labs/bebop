@@ -6,10 +6,13 @@ dotnet --version
 export WASI_VERSION=20
 export WASI_VERSION_FULL=${WASI_VERSION}.0
 compiler_dir="$(readlink -f ../Compiler)"
+env_file="$(readlink -f ../.env)"
+BEBOPC_VERSION=$(grep '^VERSION=' "$env_file" | cut -d '"' -f 2)
 export WASI_SDK_PATH="$(readlink -f ~/.wasi-sdk/wasi-sdk-${WASI_VERSION_FULL})"
 
 echo "Building WASI.."
 echo "WASI SDK path: $WASI_SDK_PATH"
+dotnet restore "$compiler_dir"
 dotnet publish "$compiler_dir" -c Release \
     /p:RuntimeIdentifier=wasi-wasm \
     /p:PublishSingleFile=false \
@@ -26,3 +29,4 @@ dotnet publish "$compiler_dir" -c Release \
     /p:WasmEnableSIMD=false \
     /p:WasmExceptionHandling=false \
     /p:WasmRunWasmOpt=true \
+    /p:ReleaseVersion="$BEBOPC_VERSION"

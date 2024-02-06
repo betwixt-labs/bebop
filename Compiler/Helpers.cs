@@ -93,20 +93,20 @@ public static class Helpers
     {
         if (host.Extensions.Any())
         {
-            DiagnosticLogger.Instance.Error.MarkupLine("[yellow]Using extensions defined in bebop.json[/]");
-            DiagnosticLogger.Instance.Error.MarkupLine("[blue]- Extensions:[/]");
+            DiagnosticLogger.Instance.Out.MarkupLine("[yellow]Using extensions defined in bebop.json[/]");
+            DiagnosticLogger.Instance.Out.MarkupLine("[blue]- Extensions:[/]");
             foreach (var extension in host.Extensions)
             {
-                DiagnosticLogger.Instance.Error.MarkupLine($"  - [white]{extension.Name}[/]: [green]{extension.Version}[/]");
+                DiagnosticLogger.Instance.Out.MarkupLine($"  - [white]{extension.Name}[/]: [green]{extension.Version}[/]");
             }
         }
         if (host.EnvironmentVariableStore.DevVarsCount > 0)
         {
-            DiagnosticLogger.Instance.Error.MarkupLine("[yellow]Using vars defined in .dev.vars[/]");
-            DiagnosticLogger.Instance.Error.MarkupLine("[blue]- Vars:[/]");
+            DiagnosticLogger.Instance.Out.MarkupLine("[yellow]Using vars defined in .dev.vars[/]");
+            DiagnosticLogger.Instance.Out.MarkupLine("[blue]- Vars:[/]");
             foreach (var name in host.EnvironmentVariableStore.DevVarNames)
             {
-                DiagnosticLogger.Instance.Error.MarkupLine($"  - [white]{name}[/]: [green](hidden)[/]");
+                DiagnosticLogger.Instance.Out.MarkupLine($"  - [white]{name}[/]: [green](hidden)[/]");
             }
         }
     }

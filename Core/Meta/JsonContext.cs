@@ -13,6 +13,7 @@ namespace Core.Meta;
 [JsonSourceGenerationOptions(
     JsonSerializerDefaults.Web,
     AllowTrailingCommas = true,
+    ReadCommentHandling = JsonCommentHandling.Skip,
     DefaultBufferSize = 10,
     WriteIndented = true,
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
