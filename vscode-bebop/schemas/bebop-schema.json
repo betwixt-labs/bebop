@@ -3,6 +3,30 @@
   "id": "https://json.schemastore.org/bebop",
   "title": "JSON schema for the Bebop compiler's configuration file",
   "type": "object",
+  "properties": {
+    "generators": {
+      "$ref": "#/definitions/generatorsDefinition/properties/generators"
+    },
+    "include": {
+      "$ref": "#/definitions/includeDefinition/properties/include"
+    },
+    "exclude": {
+      "$ref": "#/definitions/excludeDefinition/properties/exclude"
+    },
+    "watchOptions": {
+      "$ref": "#/definitions/watchOptionsDefinition/properties/watchOptions"
+    },
+    "noWarn": {
+      "$ref": "#/definitions/noWarnDefinition/properties/noWarn"
+    },
+    "noEmit": {
+      "$ref": "#/definitions/noEmitDefinition/properties/noEmit"
+    },
+    "extensions": {
+      "$ref": "#/definitions/extensionsDefinition/properties/extensions"
+    }
+  },
+  "additionalProperties": false,
   "definitions": {
     "//": {
       "explainer": "https://github.com/betwixt-labs/bebop/wiki",
@@ -38,7 +62,7 @@
           "description": "Specifies code generators to use for compilation.",
           "type": "object",
           "patternProperties": {
-            "^(cs|ts|cpp|dart|rust)$": {
+            "^(cs|ts|cpp|dart|rust|py|[a-z]{1,7})$": {
               "type": "object",
               "properties": {
                 "outFile": {
@@ -146,28 +170,5 @@
         }
       }
     }
-  },
-  "allOf": [
-    {
-      "$ref": "#/definitions/generatorsDefinition"
-    },
-    {
-      "$ref": "#/definitions/includeDefinition"
-    },
-    {
-      "$ref": "#/definitions/excludeDefinition"
-    },
-    {
-      "$ref": "#/definitions/watchOptionsDefinition"
-    },
-    {
-      "$ref": "#/definitions/noWarnDefinition"
-    },
-    {
-      "$ref": "#/definitions/noEmitDefinition"
-    },
-    {
-      "$ref": "#/definitions/extensionsDefinition"
-    }
-  ]
+  }
 }

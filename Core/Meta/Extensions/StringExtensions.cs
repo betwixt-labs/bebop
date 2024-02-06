@@ -441,6 +441,43 @@ namespace Core.Meta.Extensions
         }
 
 
+        /// <summary>
+        /// Escapes a string with \u0000 style escape sequences
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public static string EscapeString(this string? value)
+        {
+            ArgumentNullException.ThrowIfNull(value);
+
+            StringBuilder escaped = new StringBuilder();
+            foreach (char c in value)
+            {
+                switch (c)
+                {
+                    case '\\': escaped.Append(@"\\"); break;
+                    case '\"': escaped.Append("\\\""); break;
+                    case '\b': escaped.Append("\\b"); break;
+                    case '\f': escaped.Append("\\f"); break;
+                    case '\n': escaped.Append("\\n"); break;
+                    case '\r': escaped.Append("\\r"); break;
+                    case '\t': escaped.Append("\\t"); break;
+                    default:
+                        if (c < 32 || c > 127)
+                        {
+                            escaped.AppendFormat("\\u{0:x4}", (int)c);
+                        }
+                        else
+                        {
+                            escaped.Append(c);
+                        }
+                        break;
+                }
+            }
+            return escaped.ToString();
+        }
+
+
         [GeneratedRegex(@"^(\*\*\/|.*\/)$")]
         private static partial Regex LegalPathGlobRegex();
 

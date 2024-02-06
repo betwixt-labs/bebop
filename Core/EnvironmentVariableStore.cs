@@ -10,6 +10,7 @@ using Core.Lexer.Tokenization.Models;
 namespace Core;
 public sealed partial class EnvironmentVariableStore
 {
+
     private readonly FrozenDictionary<string, string> _devVariables;
 
     public EnvironmentVariableStore(string workingDirectory)
@@ -17,17 +18,45 @@ public sealed partial class EnvironmentVariableStore
         var devEnvFilePath = Path.Combine(workingDirectory, ".dev.vars");
         if (File.Exists(devEnvFilePath))
         {
-            _devVariables = File.ReadAllLines(devEnvFilePath)
-                .Select(line => line.Split('=', 2))
-                .Where(parts => parts.Length == 2)
-                .ToDictionary(parts => parts[0], parts => parts[1])
-                .ToFrozenDictionary();
+            _devVariables = ParseDevVars(File.ReadAllText(devEnvFilePath));
         }
         else
         {
             _devVariables = FrozenDictionary<string, string>.Empty;
         }
     }
+    private static FrozenDictionary<string, string> ParseDevVars(string fileContent)
+    {
+        fileContent = fileContent.Replace("\r\n", "\n");
+        var result = new Dictionary<string, string>();
+
+        foreach (Match match in LineRegex().Matches(fileContent))
+        {
+            if (match.Success)
+            {
+                var key = match.Groups[1].Value;
+                var value = match.Groups[2].Value.Trim();
+
+                if (value.StartsWith("'") || value.StartsWith("\"") || value.StartsWith("`"))
+                {
+                    value = UnquoteRegex().Replace(value, "$2");
+                }
+
+                if (value.StartsWith("\""))
+                {
+                    value = value.Replace("\\n", "\n").Replace("\\r", "\r");
+                }
+
+                if (!string.IsNullOrEmpty(key) && !result.ContainsKey(key))
+                {
+                    result[key] = value;
+                }
+            }
+        }
+        return result.ToFrozenDictionary();
+    }
+
+
     public int DevVarsCount => _devVariables.Count;
     public IEnumerable<string> DevVarNames => _devVariables.Keys;
 
@@ -66,4 +95,8 @@ public sealed partial class EnvironmentVariableStore
 
     [GeneratedRegex(@"\$\{([^\}]+)\}")]
     private static partial Regex TemplateRegex();
+    [GeneratedRegex(@"\s*([\w.-]+)(?:\s*=\s*?|:\s+?)(\s*'(?:\\'|[^'])*'|\s*""(?:\\""|[^""])*""|\s*`(?:\\`|[^`])*`|[^#\r\n]+)?\s*(?:#.*)?", RegexOptions.Multiline | RegexOptions.Compiled)]
+    private static partial Regex LineRegex();
+    [GeneratedRegex(@"^(['""`])([\s\S]*)\1$")]
+    private static partial Regex UnquoteRegex();
 }

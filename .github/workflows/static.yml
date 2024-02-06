@@ -1,5 +1,5 @@
 # Simple workflow for deploying static content to GitHub Pages
-name: Deploy Website
+name: Deploy Websites
 
 on:
   # Runs on pushes targeting the default branch
@@ -45,15 +45,25 @@ jobs:
           dotnet-version: "8.0.x" # SDK Version to use; x will use the latest version of the 7.0 channel
           dotnet-quality: 'preview'
 
-      - name: Build REPL
+      - name: Build Playground
         run: |
-          dotnet restore
-          dotnet publish -c Release -p:ReleaseVersion=${{ steps.dotenv.outputs.version }}
-        working-directory: ./Repl/
+          ../scripts/install-wasi.sh
+          yarn install
+          yarn build:site
+        working-directory: ./playground/
 
-      - name: Stage Repl
+      - name: Deploy Playground
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: bebopc-playground
+          directory: ${{github.workspace}}/playground/dist
+          # Optional: Enable this if you want to have GitHub Deployments triggered
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Stage Homepage
         run: |
-          mkdir -p homepage/repl && cp -a ./bin/repl/Release/publish/wwwroot/. homepage/repl
           sed 's/0.0.0/${{ steps.dotenv.outputs.version }}/' ${{env.TOOLS_ROOT}}/bash/install.sh > homepage/install.sh
           sed 's/0.0.0/${{ steps.dotenv.outputs.version }}/' ${{env.TOOLS_ROOT}}/ps/install.ps1 > homepage/install.ps1
           

@@ -311,9 +311,7 @@ namespace Core.Generators.Python
 
         private static string EscapeStringLiteral(string value)
         {
-            // Dart accepts \u0000 style escape sequences, so we can escape the string JSON-style.
-            var options = new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
-            return JsonSerializer.Serialize(value, options);
+            return $@"""{value.EscapeString()}""";
         }
 
         private string EmitLiteral(Literal literal)

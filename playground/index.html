@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./images/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="./images/favicon-16.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bebop Playground - An online editor for exploring the Bebop schema language</title>
+    <link rel="stylesheet" href="./assets/index.css" />
+    <meta name="description" content="The Playground lets you write Bebop schemas online in a safe and sharable way." />
+    <meta property="og:title" content="Bebop Playground - An online editor for exploring the Bebop schema language." />
+    <meta property="og:description"
+        content="The Playground lets you write Bebop schemas online in a safe and sharable way." />
+    <meta property="twitter:site" content="beboplang" />
+
+</head>
+
+<body class="bg-gray-800 text-gray-400 font-sans m-2 flex flex-col h-screen overflow-y-auto pb-4">
+
+    <div id="modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
+        aria-labelledby="modal-title" aria-modal="true" role="dialog">
+        <div class="relative top-1/4 mx-auto p-5 border shadow-lg rounded-md bg-white min-w-1/4 max-w-3xl w-auto">
+            <div class="text-center">
+                <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title"></h3>
+                <div class="mt-2 px-7 py-3">
+                    <p id="modal-text" class="text-sm text-gray-500 overflow-auto max-h-60">
+                    </p>
+                </div>
+                <div class="flex justify-center space-x-4">
+                    <button id="cancel-button"
+                        class="px-4 py-2 bg-gray-200 text-black rounded border focus:outline-none">
+                    </button>
+                    <button id="continue-button"
+                        class="px-4 py-2 bg-blue-500 text-white rounded border focus:outline-none">
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <header class="flex flex-wrap items-center justify-between bg-gray-700 px-4 py-2 rounded-t-md">
+        <div class="flex items-center">
+            <a href="/"><img src="./assets/logo.svg" alt="Logo" class="h-8 w-8 md:h-10 md:w-10" /></a>
+        </div>
+        <nav class="flex-1 text-center">
+            <ul class="inline-flex items-center justify-center space-x-4">
+                <li class="relative group">
+                    <button class="text-gray-200 hover:text-gray-100">Examples</button>
+                    <div
+                        class="dropdown-content absolute hidden group-hover:block bg-gray-700 py-2 rounded shadow-lg z-10 w-64">
+                        <!-- More example links -->
+                    </div>
+                </li>
+                <li><a href="#" class="text-gray-200 hover:text-gray-100">Docs</a></li>
+                <li><a id="share-link" href="#" class="text-gray-200 hover:text-gray-100">Share</a></li>
+
+            </ul>
+        </nav>
+    </header>
+
+
+    <main class="flex-grow flex flex-col md:flex-row m-2.5 gap-4">
+        <!-- Loading overlay for the main content -->
+        <div id="main-overlay" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+            <div class="w-1/4 bg-gray-200 rounded-full dark:bg-gray-700">
+                <div id="progress-bar"
+                    class="bg-blue-600 text-xs font-medium text-blue-100 text-center p-0.5 leading-none rounded-full"
+                    style="width: 0%"> 0%</div>
+            </div>
+        </div>
+
+        <section class="flex flex-col space-y-4 flex-grow">
+            <!-- Editor 1 with Label -->
+            <div class="flex flex-col h-full bg-gray-700 rounded shadow-lg" id="schema-container">
+                <div class="bg-gray-600 text-gray-200 px-3 py-1 text-sm font-medium rounded-t-md editor-label">
+                    schema.bop
+                </div>
+                <div class="flex-grow editor"></div>
+            </div>
+            <!-- Editor 2 with Label -->
+            <div class="flex flex-col h-full bg-gray-700 rounded shadow-lg" id="config-container">
+                <div class="bg-gray-600 text-gray-200 px-3 py-1 text-sm font-medium rounded-t-md editor-label">
+                    bebop.json
+                </div>
+                <div class="flex-grow editor"></div>
+            </div>
+            <!-- Editor 3 with Label -->
+            <div class="flex flex-col h-1/3 bg-gray-700 rounded shadow-lg" id="vars-container">
+                <div class="bg-gray-600 text-gray-200 px-3 py-1 text-sm font-medium rounded-t-md editor-label">
+                    .dev.vars
+                </div>
+                <div class="flex-grow editor"></div>
+            </div>
+
+
+        </section>
+        <!-- Editor 4 with Label -->
+        <aside class="flex flex-col h-full bg-gray-700 md:w-1/2 rounded shadow-lg" id="preview-container">
+            <div class="bg-gray-600 text-gray-200 px-3 py-1 text-sm font-medium rounded-t-md editor-label">
+                preview
+            </div>
+            <div class="flex-grow editor"></div>
+        </aside>
+    </main>
+
+
+    <footer class="bg-gray-700 text-gray-200 py-2 px-4 rounded-b-md mt-auto">
+        Version info
+    </footer>
+
+    <script type="module">
+        import { init } from './src/index.ts';
+        document.addEventListener("DOMContentLoaded", async function () {
+
+            try {
+                const playground = await init();
+                const modal = document.getElementById('modal');
+                // Add an event listener to all links with the class "confirm-link"
+                document.querySelectorAll('.confirm-link').forEach(function (link) {
+                    link.addEventListener('click', function (event) {
+                        event.preventDefault();
+
+                        // Get the modal text from the data attribute of the link
+                        var modalText = this.getAttribute('data-modal-text');
+
+                        // Update the modal text
+                        document.getElementById('modal-title').textContent = "Load Example";
+                        document.getElementById('modal-text').textContent = modalText;
+
+                        var linkUrl = this.getAttribute('href');
+
+                        // Show the modal
+                        modal.classList.remove('hidden');
+                        // If the user clicks "Continue", proceed with the link's action
+                        const continueButton = document.getElementById('continue-button');
+                        continueButton.textContent = "Continue";
+                        continueButton.onclick = function () {
+                            window.location.hash = link.hash;
+                            playground.loadState();
+                            modal.classList.add('hidden');
+
+                        };
+                        const cancelButton = document.getElementById('cancel-button');
+                        cancelButton.textContent = "Cancel";
+                        cancelButton.addEventListener('click', function () {
+                            modal.classList.add('hidden');
+                        });
+                    });
+                });
+
+                document.getElementById('share-link').addEventListener('click', function (event) {
+                    event.preventDefault();
+                    var modalText = "Copy the URL below to share this playground with others: \n\n" + window.location.href;
+                    document.getElementById('modal-title').textContent = "Share";
+                    document.getElementById('modal-text').textContent = modalText;
+                    modal.classList.remove('hidden');
+                    document.getElementById('continue-button').textContent = "Copy";
+                    document.getElementById('continue-button').addEventListener('click', function () {
+                        navigator.clipboard.writeText(window.location.href);
+                        modal.classList.add('hidden');
+                    });
+                    document.getElementById('cancel-button').textContent = "Close";
+                    document.getElementById('cancel-button').addEventListener('click', function () {
+                        modal.classList.add('hidden');
+                    });
+                });
+
+                if (window.self !== window.top) {
+                    document.querySelector('body > header').style.display = 'none';
+                    document.querySelector('body > footer').style.display = 'none';
+                    playground.layout();
+                }
+
+                function simulateScreenRotation() {
+                    const mainContainer = document.querySelector('main');
+
+                    // Toggle to simulate horizontal orientation
+                    mainContainer.classList.remove('flex-col', 'lg:flex-row');
+                    mainContainer.classList.add('flex-row');
+                    playground.layout();
+
+                    // Set a timeout to switch back to vertical orientation
+                    setTimeout(() => {
+                        mainContainer.classList.remove('flex-row');
+                        mainContainer.classList.add('flex-col', 'lg:flex-row');
+                    }, 100);
+                }
+                function isMobileDevice() {
+                    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+                    return /android|webos|iphone|ipad|ipod|blackberry|windows phone|iemobile|opera mini/i.test(userAgent);
+                }
+                // introduce some layout jank but fix the layout on mobile
+                // i am not good at web design
+                if (isMobileDevice()) {
+                    simulateScreenRotation();
+                }
+
+            } catch (e) {
+                console.error(e);
+            }
+        });
+    </script>
+
+</body>
+
+</html>
