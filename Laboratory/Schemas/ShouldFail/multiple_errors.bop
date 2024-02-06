@@ -1,6 +1,6 @@
 union Whattheheck {
-  f - struct Sxxxx { bool xxxx; }
-  2 --> struct Syyyx { bool yy; }
+  f - mut struct Sxxxx { bool xxxx; }
+  2 --> mut struct Syyyx { bool yy; }
 }
 
 message BadFields {
@@ -9,7 +9,7 @@ message BadFields {
   3 -> wtf z;
 }
 
-struct NastyStruct {
+mut struct NastyStruct {
   1 -> int24 x;
 }
 
@@ -17,7 +17,7 @@ mesage Nah {
     
 }
 
-struct Wrong {
+mut struct Wrong {
     map[bool[], bool] m1;
 }
 
@@ -34,20 +34,20 @@ union Z {
     /**
      * This branch is, too!
      */
-    2 -> struct B { bool c; }
-    1 -> struct C { }
+    2 -> mut struct B { bool c; }
+    1 -> mut struct C { }
     /* You can't do this, nested unions are not allowed.
     4 -> union W {
-        1 -> struct D { string e; }
-        2 -> struct X { bool z; }
+        1 -> mut struct D { string e; }
+        2 -> mut struct X { bool z; }
     }
     */
 }
 
 union U {
-  1 -> struct S { int32 x; }
+  1 -> mut struct S { int32 x; }
 }
 
-struct Ox {
+mut struct Ox {
   S y;
 }

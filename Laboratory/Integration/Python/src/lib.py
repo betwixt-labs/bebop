@@ -5,6 +5,7 @@ from uuid import UUID
 def make_lib():
     giant_steps_song = Song()
     giant_steps_song.title = "Giant Steps"
+    giant_steps_song.title = "Giant Steps"
     giant_steps_song.year = 1959
     giant_steps_song.performers = [
         Musician(name="John Coltrane", plays=Instrument.PIANO, id=UUID("ff990458-a276-4b71-b2e3-57d49470b949"))

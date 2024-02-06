@@ -230,7 +230,7 @@ namespace Core.Meta
                 if (definition is FieldsDefinition fd)
                 {
                     var fieldDefinitionDecorators = fd.Decorators;
-                    if (fieldDefinitionDecorators.Count is not 0)
+                    if (fieldDefinitionDecorators.Count is > 0)
                     {
                         errors.AddRange(ValidateDefinitionDecorators(fieldDefinitionDecorators, fd));
                     }
@@ -241,7 +241,7 @@ namespace Core.Meta
                     foreach (var field in fd.Fields)
                     {
                         var fieldDecorators = field.Decorators;
-                        if (fieldDecorators.Count is not 0)
+                        if (fieldDecorators.Count is > 0)
                         {
                             errors.AddRange(ValidateFieldDecorators(fieldDecorators, field, fd));
                         }
@@ -292,7 +292,7 @@ namespace Core.Meta
                 if (definition is ServiceDefinition sd)
                 {
                     var serviceDecorators = sd.Decorators;
-                    if (serviceDecorators.Count is not 0)
+                    if (serviceDecorators.Count is > 0)
                     {
                         errors.AddRange(ValidateDefinitionDecorators(serviceDecorators, sd));
                     }
@@ -307,7 +307,7 @@ namespace Core.Meta
 
                         var fnd = b.Definition;
                         var methodDecorators = b.Decorators;
-                        if (methodDecorators.Count is not 0)
+                        if (methodDecorators.Count is > 0)
                         {
                             errors.AddRange(ValidateDefinitionDecorators(methodDecorators, fnd));
                         }
@@ -337,7 +337,7 @@ namespace Core.Meta
                 if (definition is EnumDefinition ed)
                 {
                     var enumDecorators = ed.Decorators;
-                    if (enumDecorators.Count is not 0)
+                    if (enumDecorators.Count is > 0)
                     {
                         errors.AddRange(ValidateDefinitionDecorators(enumDecorators, ed));
                     }
@@ -351,7 +351,7 @@ namespace Core.Meta
                     {
 
                         var fieldDecorators = field.Decorators;
-                        if (fieldDecorators.Count is not 0)
+                        if (fieldDecorators.Count is > 0)
                         {
                             errors.AddRange(ValidateFieldDecorators(fieldDecorators, field, ed));
                         }
@@ -378,6 +378,18 @@ namespace Core.Meta
                         }
                         values.Add(field.ConstantValue);
                         names.Add(field.Name);
+                    }
+                }
+                if (definition is UnionDefinition ud)
+                {
+                    var unionDecorators = ud.Decorators;
+                    if (unionDecorators.Count is > 0)
+                    {
+                        errors.AddRange(ValidateDefinitionDecorators(unionDecorators, ud));
+                    }
+                    if (ud.Branches.Count > byte.MaxValue)
+                    {
+                        errors.Add(new StackSizeExceededException("A union cannot have more than 255 members", ud.Span));
                     }
                 }
             }

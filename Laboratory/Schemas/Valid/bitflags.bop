@@ -1,4 +1,4 @@
-[flags]
+@flags
 enum TestFlags : int32 {
     None = 0;
     Read = 0x0001;

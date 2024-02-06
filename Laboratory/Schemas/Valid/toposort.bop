@@ -1,10 +1,10 @@
-struct Toposort7 { Toposort6 x; }
-struct Toposort2 { Toposort1 x; }
-struct Toposort9 { Toposort8 x; }
-struct Toposort0 { int32 x; }
-struct Toposort5 { Toposort4 x; }
-struct Toposort1 { Toposort0 x; }
-struct Toposort6 { Toposort5 x; }
-struct Toposort4 { Toposort3 x; }
-struct Toposort3 { Toposort2 x; }
-struct Toposort8 { Toposort7 x; }
+mut struct Toposort7 { Toposort6 x; }
+mut struct Toposort2 { Toposort1 x; }
+mut struct Toposort9 { Toposort8 x; }
+mut struct Toposort0 { int32 x; }
+mut struct Toposort5 { Toposort4 x; }
+mut struct Toposort1 { Toposort0 x; }
+mut struct Toposort6 { Toposort5 x; }
+mut struct Toposort4 { Toposort3 x; }
+mut struct Toposort3 { Toposort2 x; }
+mut struct Toposort8 { Toposort7 x; }

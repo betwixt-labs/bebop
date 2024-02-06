@@ -383,8 +383,8 @@ namespace Core.Generators.Python
                                 builder.Append(FormatDocumentation(definition.Documentation, null));
                                 builder.AppendLine();
                             }
-                            var isMutableStruct = rd is StructDefinition sd && sd.IsMutable;
-                            var fieldPrepend = !isMutableStruct ? "_" : "";
+                            var isImmutableStruct = rd is StructDefinition sd && !sd.IsMutable;
+                            var fieldPrepend = isImmutableStruct ? "_" : "";
                             for (var i = 0; i < fd.Fields.Count; i++)
                             {
                                 var field = fd.Fields.ElementAt(i);
@@ -392,17 +392,15 @@ namespace Core.Generators.Python
                                 builder.AppendLine($"{fieldPrepend}{field.Name}: {type}");
                                 if (!string.IsNullOrWhiteSpace(field.Documentation))
                                 {
-                                    var deprecatedReason = field.DeprecatedDecorator?.TryGetValue("reason", out var reason) ?? false ? reason : null;
-                                    builder.Append(FormatDocumentation(field.Documentation, deprecatedReason));
+                                    builder.Append(FormatDocumentation(field.Documentation, field.DeprecatedDecorator?.Arguments?["reason"]));
                                 }
                                 builder.AppendLine();
                             }
-                            if (rd.OpcodeDecorator is not null && rd.OpcodeDecorator.TryGetValue("fourcc", out var fourcc))
+                            if (rd.OpcodeDecorator != null)
                             {
-                                builder.AppendLine($"opcode = {fourcc}");
+                                builder.AppendLine($"opcode = {rd.OpcodeDecorator.Arguments["fourcc"]}");
                                 builder.AppendLine("");
                             }
-
                             builder.AppendLine("");
                             if (!(fd is MessageDefinition))
                             {
@@ -439,7 +437,7 @@ namespace Core.Generators.Python
                                 }, open: string.Empty, close: string.Empty);
                             }
 
-                            if (!isMutableStruct)
+                            if (isImmutableStruct)
                             {
                                 for (var i = 0; i < fd.Fields.Count; i++)
                                 {
@@ -455,48 +453,48 @@ namespace Core.Generators.Python
                         else if (rd is UnionDefinition ud)
                         {
                             builder.CodeBlock($"class {ud.ClassName()}:", indentStep, () =>
-                            {
-                                builder.AppendLine();
-                                if (!string.IsNullOrWhiteSpace(definition.Documentation))
                                 {
-                                    builder.Append(FormatDocumentation(definition.Documentation, null));
-                                }
-                                if (rd.OpcodeDecorator is not null && rd.OpcodeDecorator.TryGetValue("fourcc", out var fourcc))
-                                {
-                                    builder.AppendLine($"opcode = {fourcc}");
-                                    builder.AppendLine("");
-                                }
+                                    builder.AppendLine();
+                                    if (!string.IsNullOrWhiteSpace(definition.Documentation))
+                                    {
+                                        builder.Append(FormatDocumentation(definition.Documentation, null));
+                                    }
+                                    if (rd.OpcodeDecorator is not null && rd.OpcodeDecorator.TryGetValue("fourcc", out var fourcc))
+                                    {
+                                        builder.AppendLine($"opcode = {fourcc}");
+                                        builder.AppendLine("");
+                                    }
 
-                                builder.AppendLine($"data: UnionType");
-                                builder.AppendLine();
-                                builder.CodeBlock($"def __init__(self, data: UnionType):", indentStep, () =>
-                                {
-                                    builder.AppendLine("self.encode = self._encode");
-                                    builder.AppendLine($"self.data = data");
-                                }, open: string.Empty, close: string.Empty);
-                                builder.AppendLine("@property");
-                                builder.CodeBlock($"def discriminator(self):", indentStep, () =>
-                                {
-                                    builder.AppendLine($"return self.data.discriminator");
-                                }, open: string.Empty, close: string.Empty);
-                                builder.AppendLine("@property");
-                                builder.CodeBlock($"def value(self):", indentStep, () =>
-                                {
-                                    builder.AppendLine($"return self.data.value");
-                                }, open: string.Empty, close: string.Empty);
-                                foreach (var b in ud.Branches)
-                                {
-                                    builder.AppendLine("@staticmethod");
-                                    builder.CodeBlock($"def from{b.ClassName()}(value: {b.ClassName()}):", indentStep, () =>
+                                    builder.AppendLine($"data: UnionType");
+                                    builder.AppendLine();
+                                    builder.CodeBlock($"def __init__(self, data: UnionType):", indentStep, () =>
                                     {
-                                        builder.AppendLine($"return {definition.ClassName()}(UnionDefinition({b.Discriminator}, value))");
+                                        builder.AppendLine("self.encode = self._encode");
+                                        builder.AppendLine($"self.data = data");
                                     }, open: string.Empty, close: string.Empty);
-                                    builder.CodeBlock($"def is{b.ClassName()}(self):", indentStep, () =>
+                                    builder.AppendLine("@property");
+                                    builder.CodeBlock($"def discriminator(self):", indentStep, () =>
                                     {
-                                        builder.AppendLine($"return isinstance(self.value, {b.ClassName()})");
+                                        builder.AppendLine($"return self.data.discriminator");
                                     }, open: string.Empty, close: string.Empty);
-                                }
-                            }, close: string.Empty, open: string.Empty);
+                                    builder.AppendLine("@property");
+                                    builder.CodeBlock($"def value(self):", indentStep, () =>
+                                    {
+                                        builder.AppendLine($"return self.data.value");
+                                    }, open: string.Empty, close: string.Empty);
+                                    foreach (var b in ud.Branches)
+                                    {
+                                        builder.AppendLine("@staticmethod");
+                                        builder.CodeBlock($"def from{b.ClassName()}(value: {b.ClassName()}):", indentStep, () =>
+                                        {
+                                            builder.AppendLine($"return {definition.ClassName()}(UnionDefinition({b.Discriminator}, value))");
+                                        }, open: string.Empty, close: string.Empty);
+                                        builder.CodeBlock($"def is{b.ClassName()}(self):", indentStep, () =>
+                                        {
+                                            builder.AppendLine($"return isinstance(self.value, {b.ClassName()})");
+                                        }, open: string.Empty, close: string.Empty);
+                                    }
+                                }, close: string.Empty, open: string.Empty);
                             builder.Indent(indentStep);
                         }
                         builder.AppendLine($"def _encode(self):");

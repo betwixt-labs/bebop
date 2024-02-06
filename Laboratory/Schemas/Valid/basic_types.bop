@@ -1,4 +1,4 @@
-struct BasicTypes {
+mut struct BasicTypes {
     bool a_bool;
     byte a_byte;
     int16 a_int16;

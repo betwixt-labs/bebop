@@ -1,9 +1,9 @@
-struct FixedSizeStruct {
+mut struct FixedSizeStruct {
     byte a;
     int32 b;
     int64 c;
 }
 
-struct StructWithArrayOfFixedSizeType {
+mut struct StructWithArrayOfFixedSizeType {
     FixedSizeStruct[] ary;
 }

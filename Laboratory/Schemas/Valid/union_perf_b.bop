@@ -1,59 +1,59 @@
 /**
  * Option B: an "encodedData" field, that "decode" is called a second time on.
  */
-struct UnionPerfB {
+mut struct UnionPerfB {
     uint32 protocolVersion;
     uint32 incomingOpcode;
     byte[] encodedData;
 }
 
-[opcode(1)] struct B1 { int32 i1; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(2)] struct B2 { int32 i2; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(3)] struct B3 { int32 i3; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(4)] struct B4 { int32 i4; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(5)] struct B5 { int32 i5; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(6)] struct B6 { int32 i6; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(7)] struct B7 { int32 i7; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(8)] struct B8 { int32 i8; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(9)] struct B9 { int32 i9; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(10)] struct B10 { int32 i10; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(11)] struct B11 { int32 i11; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(12)] struct B12 { int32 i12; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(13)] struct B13 { int32 i13; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(14)] struct B14 { int32 i14; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(15)] struct B15 { int32 i15; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(16)] struct B16 { int32 i16; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(17)] struct B17 { int32 i17; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(18)] struct B18 { int32 i18; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(19)] struct B19 { int32 i19; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(20)] struct B20 { int32 i20; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(21)] struct B21 { int32 i21; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(22)] struct B22 { int32 i22; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(23)] struct B23 { int32 i23; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(24)] struct B24 { int32 i24; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(25)] struct B25 { int32 i25; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(26)] struct B26 { int32 i26; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(27)] struct B27 { int32 i27; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(28)] struct B28 { int32 i28; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(29)] struct B29 { int32 i29; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(30)] struct B30 { int32 i30; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(31)] struct B31 { int32 i31; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(32)] struct B32 { int32 i32; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(33)] struct B33 { int32 i33; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(34)] struct B34 { int32 i34; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(35)] struct B35 { int32 i35; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(36)] struct B36 { int32 i36; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(37)] struct B37 { int32 i37; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(38)] struct B38 { int32 i38; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(39)] struct B39 { int32 i39; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(40)] struct B40 { int32 i40; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(41)] struct B41 { int32 i41; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(42)] struct B42 { int32 i42; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(43)] struct B43 { int32 i43; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(44)] struct B44 { int32 i44; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(45)] struct B45 { int32 i45; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(46)] struct B46 { int32 i46; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(47)] struct B47 { int32 i47; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(48)] struct B48 { int32 i48; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(49)] struct B49 { int32 i49; uint64 u; float64 f; string s; guid g; bool b; }
-[opcode(50)] struct B50 { int32 i50; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(1) mut struct B1 { int32 i1; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(2) mut struct B2 { int32 i2; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(3) mut struct B3 { int32 i3; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(4) mut struct B4 { int32 i4; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(5) mut struct B5 { int32 i5; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(6) mut struct B6 { int32 i6; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(7) mut struct B7 { int32 i7; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(8) mut struct B8 { int32 i8; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(9) mut struct B9 { int32 i9; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(10) mut struct B10 { int32 i10; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(11) mut struct B11 { int32 i11; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(12) mut struct B12 { int32 i12; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(13) mut struct B13 { int32 i13; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(14) mut struct B14 { int32 i14; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(15) mut struct B15 { int32 i15; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(16) mut struct B16 { int32 i16; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(17) mut struct B17 { int32 i17; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(18) mut struct B18 { int32 i18; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(19) mut struct B19 { int32 i19; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(20) mut struct B20 { int32 i20; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(21) mut struct B21 { int32 i21; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(22) mut struct B22 { int32 i22; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(23) mut struct B23 { int32 i23; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(24) mut struct B24 { int32 i24; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(25) mut struct B25 { int32 i25; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(26) mut struct B26 { int32 i26; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(27) mut struct B27 { int32 i27; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(28) mut struct B28 { int32 i28; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(29) mut struct B29 { int32 i29; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(30) mut struct B30 { int32 i30; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(31) mut struct B31 { int32 i31; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(32) mut struct B32 { int32 i32; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(33) mut struct B33 { int32 i33; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(34) mut struct B34 { int32 i34; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(35) mut struct B35 { int32 i35; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(36) mut struct B36 { int32 i36; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(37) mut struct B37 { int32 i37; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(38) mut struct B38 { int32 i38; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(39) mut struct B39 { int32 i39; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(40) mut struct B40 { int32 i40; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(41) mut struct B41 { int32 i41; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(42) mut struct B42 { int32 i42; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(43) mut struct B43 { int32 i43; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(44) mut struct B44 { int32 i44; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(45) mut struct B45 { int32 i45; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(46) mut struct B46 { int32 i46; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(47) mut struct B47 { int32 i47; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(48) mut struct B48 { int32 i48; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(49) mut struct B49 { int32 i49; uint64 u; float64 f; string s; guid g; bool b; }
+@opcode(50) mut struct B50 { int32 i50; uint64 u; float64 f; string s; guid g; bool b; }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Numerics;
 using System.Reflection;
 using Core.Exceptions;
@@ -173,16 +174,41 @@ namespace Core.Meta
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static bool IsAssignableFrom(this BaseType type, string value)
         {
+            // Helper method to check if a value is a hexadecimal number and parse it
+            static bool TryParseHex<T>(string s) where T : struct
+            {
+                if (s.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ||
+            s.StartsWith("&H", StringComparison.OrdinalIgnoreCase))
+                {
+                    s = s[2..];
+                    if (typeof(T) == typeof(byte))
+                        return byte.TryParse(s, NumberStyles.HexNumber, null, out _);
+                    if (typeof(T) == typeof(ushort))
+                        return ushort.TryParse(s, NumberStyles.HexNumber, null, out _);
+                    if (typeof(T) == typeof(short))
+                        return short.TryParse(s, NumberStyles.HexNumber, null, out _);
+                    if (typeof(T) == typeof(uint))
+                        return uint.TryParse(s, NumberStyles.HexNumber, null, out _);
+                    if (typeof(T) == typeof(int))
+                        return int.TryParse(s, NumberStyles.HexNumber, null, out _);
+                    if (typeof(T) == typeof(ulong))
+                        return ulong.TryParse(s, NumberStyles.HexNumber, null, out _);
+                    if (typeof(T) == typeof(long))
+                        return long.TryParse(s, NumberStyles.HexNumber, null, out _);
+                }
+                return false;
+            }
+
             return type switch
             {
                 BaseType.Bool => value == "true" || value == "false",
-                BaseType.Byte => byte.TryParse(value, out _),
-                BaseType.UInt16 => ushort.TryParse(value, out _),
-                BaseType.Int16 => short.TryParse(value, out _),
-                BaseType.UInt32 => uint.TryParse(value, out _),
-                BaseType.Int32 => int.TryParse(value, out _),
-                BaseType.UInt64 => ulong.TryParse(value, out _),
-                BaseType.Int64 => long.TryParse(value, out _),
+                BaseType.Byte => byte.TryParse(value, out _) || TryParseHex<byte>(value),
+                BaseType.UInt16 => ushort.TryParse(value, out _) || TryParseHex<ushort>(value),
+                BaseType.Int16 => short.TryParse(value, out _) || TryParseHex<short>(value),
+                BaseType.UInt32 => uint.TryParse(value, out _) || TryParseHex<uint>(value),
+                BaseType.Int32 => int.TryParse(value, out _) || TryParseHex<int>(value),
+                BaseType.UInt64 => ulong.TryParse(value, out _) || TryParseHex<ulong>(value),
+                BaseType.Int64 => long.TryParse(value, out _) || TryParseHex<long>(value),
                 BaseType.Float32 => float.TryParse(value, out _),
                 BaseType.Float64 => double.TryParse(value, out _),
                 BaseType.String => true,

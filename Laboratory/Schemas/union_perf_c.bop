@@ -54,7 +54,7 @@ union UnionPerfV {
     50 -> message C50 { 1 -> int32 i50; 2 -> uint64 u; 3 -> float64 f; 4 -> string s; 5 -> guid g; 6 -> bool b; }
 }
 
-struct UnionPerfC {
+mut struct UnionPerfC {
     uint32 containerOpcode;
     uint32 protocolVersion;
     UnionPerfV v;
