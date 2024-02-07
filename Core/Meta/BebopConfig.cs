@@ -244,10 +244,6 @@ public partial class BebopConfig
                 }
             }
         }
-        if (Generators is { Length: 0 })
-        {
-            throw new CompilerException("No generators were specified in the configuration.");
-        }
         foreach (var generator in Generators)
         {
             if (string.IsNullOrWhiteSpace(generator.Alias))

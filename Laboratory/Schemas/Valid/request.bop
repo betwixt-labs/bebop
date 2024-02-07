@@ -4,20 +4,20 @@ enum FurnitureFamily {
     Shoe = 2;
 }
 
-readonly struct Furniture {
+struct Furniture {
     string name;
     uint32 price;
 	FurnitureFamily family;
 }
 
-[opcode("IKEA")]
+@opcode("IKEA")
 message RequestCatalog {
     1 -> FurnitureFamily family;
-	[deprecated("Nobody react to what I'm about to say...")]
+	@deprecated("Nobody react to what I'm about to say...")
 	2 -> string secretTunnel;
 }
 
-[opcode(0x31323334)]
-readonly struct RequestResponse {
+@opcode(0x31323334)
+struct RequestResponse {
     Furniture[] availableFurniture;
 }

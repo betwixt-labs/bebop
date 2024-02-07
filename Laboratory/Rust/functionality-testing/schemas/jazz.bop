@@ -8,7 +8,7 @@ enum Instrument {
     Piano = 5;
 }
 
-struct Performer {
+mut struct Performer {
     string name;
     Instrument plays;
 }
@@ -20,7 +20,7 @@ message Song {
 }
 
 union Album {
-    1 -> struct StudioAlbum {
+    1 -> mut struct StudioAlbum {
         Song[] tracks;
     }
     2 -> message LiveAlbum {
@@ -30,6 +30,6 @@ union Album {
     }
 }
 
-struct Library {
+mut struct Library {
     map[string, Album] albums;
 }

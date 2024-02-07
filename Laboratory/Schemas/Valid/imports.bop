@@ -3,5 +3,5 @@ import "documentation.bop"
 import "./toposort.bop"
 import "../Valid/basic_arrays.bop"
 
-struct Band { Musician[] members; }
-struct Something { DocE imported; }
+mut struct Band { Musician[] members; }
+mut struct Something { DocE imported; }

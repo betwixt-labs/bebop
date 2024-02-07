@@ -39,7 +39,7 @@ jobs:
       CONFIGURATION: Release
       BUILD_ARTIFACT_X86_64: ./bin/compiler/Release/publish/${{matrix.IDENTIFIER}}-x64/${{matrix.ARTIFACT}}
       BUILD_ARTIFACT_ARM64: ./bin/compiler/Release/publish/${{matrix.IDENTIFIER}}-arm64/${{matrix.ARTIFACT}}
-      BUILD_ARTIFACT_WASI: ./bin/compiler/Release/publish/wasi-wasm/AppBundle/${{matrix.ARTIFACT}}.wasm
+      BUILD_ARTIFACT_WASI: ./bin/compiler/Release/artifacts/wasi-wasm/AppBundle/${{matrix.ARTIFACT}}.wasm
       BUILD_ZIP_ARTIFACT_X86_64: ./bin/compiler/Release/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-x64.zip
       BUILD_ZIP_ARTIFACT_ARM64: ./bin/compiler/Release/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-arm64.zip
 

@@ -7,8 +7,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Core", "Core\Core.csproj", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Compiler", "Compiler\Compiler.csproj", "{A509F5AB-5702-49EC-9B7F-09E8F24FC542}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repl", "Repl\Repl.csproj", "{55D1BCCA-9580-4360-8691-959860F1DDDF}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|AnyCPU = Debug|AnyCPU
@@ -23,10 +21,6 @@ Global
 		{A509F5AB-5702-49EC-9B7F-09E8F24FC542}.Debug|AnyCPU.Build.0 = Debug|AnyCPU
 		{A509F5AB-5702-49EC-9B7F-09E8F24FC542}.Release|AnyCPU.ActiveCfg = Release|AnyCPU
 		{A509F5AB-5702-49EC-9B7F-09E8F24FC542}.Release|AnyCPU.Build.0 = Release|AnyCPU
-		{55D1BCCA-9580-4360-8691-959860F1DDDF}.Debug|AnyCPU.ActiveCfg = Debug|Any CPU
-		{55D1BCCA-9580-4360-8691-959860F1DDDF}.Debug|AnyCPU.Build.0 = Debug|Any CPU
-		{55D1BCCA-9580-4360-8691-959860F1DDDF}.Release|AnyCPU.ActiveCfg = Release|Any CPU
-		{55D1BCCA-9580-4360-8691-959860F1DDDF}.Release|AnyCPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

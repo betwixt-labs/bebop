@@ -1,7 +1,7 @@
 message M { 1 -> float32 a; 2 -> float64 b; }
-readonly struct S { int32 x; int32 y; }
+struct S { int32 x; int32 y; }
 
-struct SomeMaps {
+mut struct SomeMaps {
     map[bool, bool] m1;
     map[string, map[string, string]] m2;
     map[int32, map[bool, S][]][] m3;

@@ -1,4 +1,4 @@
-struct BebopRecord {
+mut struct BebopRecord {
     string prototype;
     string constructor;
     string __proto__;

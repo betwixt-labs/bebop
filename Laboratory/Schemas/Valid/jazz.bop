@@ -5,8 +5,8 @@ enum Instrument {
 }
 
 /* test */
-[opcode("JAZZ")]
-readonly struct Musician {
+@opcode("JAZZ")
+struct Musician {
     /* a name */
     string name;
 	/* an instrument */
@@ -19,6 +19,6 @@ message Song {
     3 -> Musician[] performers;
 }
 
-struct Library {
+mut struct Library {
     map[guid, Song] songs;
 }

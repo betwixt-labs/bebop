@@ -124,7 +124,7 @@ public partial class ConvertCommand : CliCommand
 
         [GeneratedRegex(@"\[([\w]+)(?:\(([^,\]]*?)\))?\](?![\],])")]
         private static partial Regex AttributePattern();
-        [GeneratedRegex(@"(readonly\s+)?struct\s+(\w+)")]
+        [GeneratedRegex(@"(?<!mut\s+)(readonly\s+)?struct\s+(\w+)")]
         private static partial Regex ReadOnlyPattern();
     }
 

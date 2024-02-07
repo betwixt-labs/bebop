@@ -1,4 +1,4 @@
-struct BasicArrays {
+mut struct BasicArrays {
     bool[] a_bool;
     byte[] a_byte;
     int16[] a_int16;
@@ -13,4 +13,4 @@ struct BasicArrays {
     guid[] a_guid;
 }
 
-struct TestInt32Array { int32[] a; }
+mut struct TestInt32Array { int32[] a; }
