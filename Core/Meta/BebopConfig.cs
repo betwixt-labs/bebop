@@ -362,7 +362,7 @@ public class BebopConfigConverter : JsonConverter<BebopConfig>
             switch (propertyName)
             {
                 case "include":
-                    var includes = JsonSerializer.Deserialize<string[]>(ref reader, options);
+                    var includes = GetStringArray(ref reader);
                     if (includes is not { Length: > 0 })
                     {
                         includes = [BebopConfig.DefaultIncludeGlob];
@@ -370,7 +370,7 @@ public class BebopConfigConverter : JsonConverter<BebopConfig>
                     bebopConfig.Includes = includes;
                     break;
                 case "exclude":
-                    bebopConfig.Excludes = JsonSerializer.Deserialize<string[]>(ref reader, options) ?? [];
+                    bebopConfig.Excludes = GetStringArray(ref reader);
                     break;
                 case "generators":
                     bebopConfig.Generators = ReadGenerators(ref reader, options);
@@ -379,7 +379,7 @@ public class BebopConfigConverter : JsonConverter<BebopConfig>
                     bebopConfig.WatchOptions = ReadWatchOptions(ref reader, options);
                     break;
                 case "noWarn":
-                    bebopConfig.SupressedWarningCodes = JsonSerializer.Deserialize<int[]>(ref reader, options) ?? [];
+                    bebopConfig.SupressedWarningCodes = GetIntArray(ref reader);
                     break;
                 case "noEmit":
                     bebopConfig.NoEmit = reader.GetBoolean();
@@ -490,7 +490,7 @@ public class BebopConfigConverter : JsonConverter<BebopConfig>
                                 outFile = reader.GetString();
                                 break;
                             case "services":
-                                services = JsonSerializer.Deserialize<TempoServices>(ref reader, options);
+                                services = JsonSerializer.Deserialize(ref reader, JsonContext.Default.TempoServices);
                                 simpleConstructor = false;
                                 break;
                             case "emitNotice":
@@ -616,10 +616,10 @@ public class BebopConfigConverter : JsonConverter<BebopConfig>
                 switch (propName)
                 {
                     case "excludeDirectories":
-                        watchOptions.ExcludeDirectories = JsonSerializer.Deserialize<string[]>(ref reader, options) ?? [];
+                        watchOptions.ExcludeDirectories = GetStringArray(ref reader);
                         break;
                     case "excludeFiles":
-                        watchOptions.ExcludeFiles = JsonSerializer.Deserialize<string[]>(ref reader, options) ?? [];
+                        watchOptions.ExcludeFiles = GetStringArray(ref reader);
                         break;
                     case "preserveWatchOutput":
                         watchOptions.PreserveWatchOutput = reader.GetBoolean();
@@ -706,7 +706,7 @@ public class BebopConfigConverter : JsonConverter<BebopConfig>
             writer.WriteString("outFile", generator.OutFile);
 
             if (generator.Services is not TempoServices.Both)
-                JsonSerializer.Serialize(writer, generator.Services, options);
+                JsonSerializer.Serialize(writer, generator.Services, JsonContext.Default.TempoServices);
 
             if (generator.EmitNotice is false)
                 writer.WriteBoolean("emitNotice", generator.EmitNotice);
@@ -783,6 +783,55 @@ public class BebopConfigConverter : JsonConverter<BebopConfig>
         {
             throw new JsonException($"The file name '{Path.GetFileName(path)}' contains invalid characters: '{path[invalidFileNameCharIndex]}'");
         }
+    }
+
+    private static string[] GetStringArray(ref Utf8JsonReader reader)
+    {
+        if (reader.TokenType is not JsonTokenType.StartArray)
+        {
+            throw new JsonException("expected StartArray token");
+        }
+        var list = new List<string>();
+        while (reader.Read())
+        {
+            if (reader.TokenType is JsonTokenType.EndArray)
+            {
+                return [.. list];
+            }
+            if (reader.TokenType is not JsonTokenType.String)
+            {
+                throw new JsonException("expected String token");
+            }
+            var value = reader.GetString();
+            if (string.IsNullOrEmpty(value))
+            {
+                throw new JsonException("expected non-null string value");
+            }
+            list.Add(value);
+        }
+        throw new JsonException("expected EndArray token");
+    }
+
+    private static int[] GetIntArray(ref Utf8JsonReader reader)
+    {
+        if (reader.TokenType is not JsonTokenType.StartArray)
+        {
+            throw new JsonException("expected StartArray token");
+        }
+        var list = new List<int>();
+        while (reader.Read())
+        {
+            if (reader.TokenType is JsonTokenType.EndArray)
+            {
+                return list.ToArray();
+            }
+            if (reader.TokenType is not JsonTokenType.Number)
+            {
+                throw new JsonException("expected Number token");
+            }
+            list.Add(reader.GetInt32());
+        }
+        throw new JsonException("expected EndArray token");
     }
 
 }

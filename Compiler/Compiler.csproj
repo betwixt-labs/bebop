@@ -56,7 +56,7 @@
     <HttpActivityPropagationSupport>false</HttpActivityPropagationSupport>
     <InvariantGlobalization>true</InvariantGlobalization>
     <MetadataUpdaterSupport>false</MetadataUpdaterSupport>
-    <StackTraceSupport>false</StackTraceSupport>
+    <StackTraceSupport>true</StackTraceSupport>
     <UseNativeHttpHandler>true</UseNativeHttpHandler>
     <UseSystemResourceKeys>true</UseSystemResourceKeys>
   </PropertyGroup>

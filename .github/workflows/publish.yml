@@ -67,8 +67,8 @@ jobs:
       - name: Build bebopc
         run: |
           dotnet restore
-          dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-x64 -p:ReleaseVersion=${{ steps.dotenv.outputs.version }} -p:PublishTrimmed=true -p:PublishSingleFile=true --self-contained
-          dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-arm64 -p:ReleaseVersion=${{ steps.dotenv.outputs.version }} -p:PublishTrimmed=true -p:PublishSingleFile=true --self-contained
+          dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-x64 -p:ReleaseVersion=${{ steps.dotenv.outputs.version }} -p:PublishTrimmed=true -p:TrimMode=partial -p:PublishSingleFile=true --self-contained
+          dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-arm64 -p:ReleaseVersion=${{ steps.dotenv.outputs.version }} -p:PublishTrimmed=true -p:TrimMode=partial -p:PublishSingleFile=true --self-contained
         working-directory: ./Compiler/
 
       - if: matrix.os == 'ubuntu-22.04' && matrix.BUILD_WASI
@@ -367,6 +367,15 @@ jobs:
         id: dotenv
         uses: falti/dotenv-action@v0.2.5
 
+      - id: release-info
+        name: Set Release Info
+        run: |
+          if [[ $GITHUB_REF == refs/heads/vnext ]] || [[ $GITHUB_REF == refs/tags/*rc* ]] || [[ $GITHUB_REF == refs/tags/*alpha* ]] || [[ $GITHUB_REF == refs/tags/*beta* ]]; then
+            echo "PRERELEASE=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "PRERELEASE=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
         with:
@@ -405,12 +414,12 @@ jobs:
         working-directory: ${{env.RUST_RUNTIME_ROOT}}
 
       - name: Publish NodeJS Tools
-        run: npm publish "./bebop-tools-npm-${{ steps.dotenv.outputs.version }}/bebop-tools-v${{ steps.dotenv.outputs.version }}.tgz" --access public ${{ github.ref == 'refs/heads/vnext' && '--tag next' || '' }}
+        run: npm publish "./bebop-tools-npm-${{ steps.dotenv.outputs.version }}/bebop-tools-v${{ steps.dotenv.outputs.version }}.tgz" --access public ${{ steps.release-info.outputs.PRERELEASE == 'true' && '--tag next' || '' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
 
       - name: Publish TypeScript Runtime
-        run: npm publish "./bebop-runtime-ts-${{ steps.dotenv.outputs.version }}/bebop-v${{ steps.dotenv.outputs.version }}.tgz" --access public ${{ github.ref == 'refs/heads/vnext' && '--tag next' || '' }}
+        run: npm publish "./bebop-runtime-ts-${{ steps.dotenv.outputs.version }}/bebop-v${{ steps.dotenv.outputs.version }}.tgz" --access public ${{ steps.release-info.outputs.PRERELEASE == 'true' && '--tag next' || '' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
 
@@ -449,7 +458,7 @@ jobs:
           tag_name: ${{ github.ref }}
           release_name: Bebop ${{ github.ref }}
           draft: false
-          prerelease: ${{ github.ref == 'refs/heads/vnext' }}
+          prerelease: ${{ steps.release-info.outputs.PRERELEASE == 'true' }}
 
       - name: Upload Compiler for Windows x64
         uses: actions/upload-release-asset@v1

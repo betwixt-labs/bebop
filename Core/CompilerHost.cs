@@ -139,7 +139,7 @@ public class CompilerHost : IDisposable
                 }
                 catch (Exception e) when (e is ExtensionException)
                 {
-                    DiagnosticLogger.Instance.Error.MarkupInterpolated($"[maroon]Error loading extension {kv.Key}@{kv.Value}: {e.Message}[/]");
+                    DiagnosticLogger.Instance.Error.MarkupLineInterpolated($"[maroon]Skipping extension: {e.Message}[/]");
                     continue;
                 }
                 if (extension.Decorators is { Count: > 0 })
