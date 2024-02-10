@@ -60,8 +60,8 @@ public partial class DiagnosticLogger
             string code = Markup.Escape($"[BOP{errorCode}]");
 
             // Write error code and exception name
-            _err.Markup($"[maroon]Error {code}:[/] ");
-            _err.MarkupLine($"[white]{ex.Message}[/]");
+            _err.MarkupLine($"[maroon]Error {code}:[/] ");
+            _err.MarkupLineInterpolated($"[white]{ex.Message}[/]");
 
             // Write file path if FileNotFoundException
             if (ex is FileNotFoundException fileNotFoundException)
@@ -86,7 +86,7 @@ public partial class DiagnosticLogger
                 }
                 else
                 {
-                    _err.MarkupLine($"[white]{ex.InnerException.Message}[/]");
+                    _err.MarkupLineInterpolated($"[white]{ex.InnerException.Message}[/]");
 
                 }
             }

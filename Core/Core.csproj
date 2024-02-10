@@ -14,6 +14,7 @@
     <VersionSuffix Condition="'$(ReleaseVersion)' == ''">$([System.DateTime]::UtcNow.ToString(`yyyyMMdd-HHmm`))</VersionSuffix>
     <Configurations>Debug;Release</Configurations>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+     <IsTrimmable>true</IsTrimmable>
   </PropertyGroup>
 
 

@@ -9,6 +9,7 @@
     <StripSymbols>true</StripSymbols>
     <LangVersion>preview</LangVersion>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+     <IsTrimmable>true</IsTrimmable>
   </PropertyGroup>
 
   <ItemGroup>

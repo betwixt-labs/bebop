@@ -48,6 +48,17 @@
     <PublishReadyToRun>false</PublishReadyToRun>
     <SelfContained>true</SelfContained>
     <PublishTrimmed>true</PublishTrimmed>
+    <AutoreleasePoolSupport>false</AutoreleasePoolSupport>
+    <DebuggerSupport>false</DebuggerSupport>
+    <EnableUnsafeBinaryFormatterSerialization>false</EnableUnsafeBinaryFormatterSerialization>
+    <EnableUnsafeUTF7Encoding>false</EnableUnsafeUTF7Encoding>
+    <EventSourceSupport>false</EventSourceSupport>
+    <HttpActivityPropagationSupport>false</HttpActivityPropagationSupport>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <MetadataUpdaterSupport>false</MetadataUpdaterSupport>
+    <StackTraceSupport>false</StackTraceSupport>
+    <UseNativeHttpHandler>true</UseNativeHttpHandler>
+    <UseSystemResourceKeys>true</UseSystemResourceKeys>
   </PropertyGroup>
 
 
@@ -60,6 +71,5 @@
    <PropertyGroup Condition="'$(RuntimeIdentifier)' == 'wasi-wasm'">
         <DefineConstants>$(DefineConstants);WASI_WASM_BUILD</DefineConstants>
     </PropertyGroup>
-
 
 </Project>
