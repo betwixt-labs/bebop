@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Core;
 using Core.Parser.Extensions;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
@@ -14,10 +15,10 @@ namespace Compiler.LangServer
         private readonly BufferManager _bufferManager;
         private readonly DocumentSelector _documentSelector;
         private readonly HashSet<string> _keywords;
-        private readonly HashSet<string> _attributes;
+        private readonly HashSet<string> _decorators;
         private readonly HashSet<string> _constants;
 
-        public CompletionHandler(BufferManager bufferManager)
+        public CompletionHandler(BufferManager bufferManager, CompilerHost compilerHost)
         {
             _bufferManager = bufferManager;
             _documentSelector = new DocumentSelector(
@@ -27,22 +28,19 @@ namespace Compiler.LangServer
                 }
             );
 
-            _keywords = new HashSet<string>()
-            {
+            _keywords =
+            [
                 "enum", "struct", "message",
-                "readonly", "map", "array",
-                "union", "service",
-            };
+                "mut", "map", "array",
+                "union", "service", "stream",
+            ];
 
-            _constants = new HashSet<string>()
-            {
+            _constants =
+            [
                 "true", "false", "inf", "nan",
-            };
+            ];
 
-            _attributes = new HashSet<string>()
-            {
-                "opcode", "deprecated", "flags",
-            };
+            _decorators = new HashSet<string>(compilerHost.Decorators.Select(decorator => decorator.Identifier));
         }
 
         public CompletionRegistrationOptions GetRegistrationOptions(CompletionCapability capability, ClientCapabilities clientCapabilities)
@@ -79,12 +77,12 @@ namespace Compiler.LangServer
             }
 
             // Add attributes
-            foreach (var item in _attributes)
+            foreach (var item in _decorators)
             {
                 items.Add(new CompletionItem
                 {
                     Label = item,
-                    Kind = CompletionItemKind.EnumMember,
+                    Kind = CompletionItemKind.Function,
                 });
             }
 

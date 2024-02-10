@@ -1,4 +1,4 @@
-import { BebopRuntimeError, BinarySchema, Guid } from "./index";
+import { BebopRuntimeError, BinarySchema, Guid, BebopJson } from "./index";
 
 import { describe, expect, it } from "vitest";
 
@@ -38,7 +38,7 @@ describe("binary schema", () => {
   it("can read", () => {
     schema.get();
     const ast = schema.ast;
-    console.log(JSON.stringify(ast, null, 2));
+    console.log(JSON.stringify(ast, BebopJson.replacer, 2));
 
     expect(ast).toBeDefined();
     expect(ast.bebopVersion).toBe(3);

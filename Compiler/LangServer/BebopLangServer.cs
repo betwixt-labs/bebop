@@ -29,6 +29,7 @@ namespace Compiler.LangServer
                     })
                     .WithHandler<CompletionHandler>()
                     .WithHandler<SemanticTokenHandler>()
+                    .WithHandler<HoverHandler>()
                     .WithHandler<TextDocumentSyncHandler>(), cancellationToken);
 
 
