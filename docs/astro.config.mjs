@@ -28,7 +28,7 @@ export default defineConfig({
 
       social: {
         github: "https://github.com/betwixt-labs/bebop",
-        discord: "https://discord.gg/jR3tfchVvW",
+        discord: "https://discord.gg/jVfz9sMPWv",
         twitter: "https://twitter.com/BetwixtLabs",
       },
 
