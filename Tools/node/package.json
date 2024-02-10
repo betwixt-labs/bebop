@@ -19,7 +19,7 @@
     "prepack": "yarn build",
     "prepare": "yarn build",
     "start": "node ./dist/index.js",
-    "install": "node ./dist/index.js install"
+    "install": "test -f ./dist/index.js && node ./dist/index.js install || echo 'index.js not found, skipping install script'"
   },
   "bin": {
     "bebopc": "dist/index.js"
