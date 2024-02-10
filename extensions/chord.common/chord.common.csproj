@@ -8,6 +8,7 @@
     <RootNamespace>Chord.Common</RootNamespace>
     <StripSymbols>true</StripSymbols>
     <LangVersion>preview</LangVersion>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
 
   <ItemGroup>

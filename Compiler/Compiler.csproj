@@ -20,6 +20,7 @@
     <Configurations>Debug;Release</Configurations>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <CheckEolTargetFramework>false</CheckEolTargetFramework>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
 
    <ItemGroup>

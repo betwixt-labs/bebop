@@ -10,6 +10,7 @@
     <OptimizationPreference>Size</OptimizationPreference>
     <TrimMode>full</TrimMode>
     <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
 
    <ItemGroup>
