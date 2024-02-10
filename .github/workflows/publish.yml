@@ -121,20 +121,20 @@ jobs:
           Compress-Archive -Path ${{env.BUILD_ARTIFACT_ARM64}} -DestinationPath ${{env.BUILD_ZIP_ARTIFACT_ARM64}}
 
       - name: Upload X86_64 Build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: ${{matrix.IDENTIFIER}}-x64
           path: ${{env.BUILD_ZIP_ARTIFACT_X86_64}}
 
       - name: Upload ARM64 Build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: ${{matrix.IDENTIFIER}}-arm64
           path: ${{env.BUILD_ZIP_ARTIFACT_ARM64}}
 
       - if: matrix.os == 'ubuntu-22.04' && matrix.BUILD_WASI
         name: Upload WASI_WASM Build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: wasi-wasm
           path: ${{env.BUILD_ARTIFACT_WASI}}
@@ -178,7 +178,7 @@ jobs:
         working-directory: ${{env.NET_RUNTIME_ROOT}}
 
       - name: Upload .NET Runtime Package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: bebop-runtime-cs-${{ steps.dotenv.outputs.version }}
           path: ${{env.NET_RUNTIME_ROOT}}/bin/Release/bebop.${{ steps.dotenv.outputs.version }}.nupkg
@@ -217,7 +217,7 @@ jobs:
           mv tmp Cargo.toml
           cargo package --allow-dirty
       - name: Upload Rust Runtime
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: bebop-runtime-rust-${{steps.dotenv.outputs.version}}
           path: ${{ env.RUST_RUNTIME_ROOT }}/target/package/bebop-${{ steps.dotenv.outputs.version }}.crate
@@ -244,7 +244,7 @@ jobs:
         working-directory: ${{env.TS_RUNTIME_ROOT}}
 
       - name: Upload TypeScript Runtime Package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: bebop-runtime-ts-${{ steps.dotenv.outputs.version }}
           path: ${{env.TS_RUNTIME_ROOT}}/bebop-v${{ steps.dotenv.outputs.version }}.tgz
@@ -289,7 +289,7 @@ jobs:
         working-directory: ${{env.TOOLS_ROOT}}/vs
 
       - name: Upload Nuget Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: bebop-tools-nuget-${{ steps.dotenv.outputs.version }}
           path: ${{env.TOOLS_ROOT}}/vs/packages/bebop-tools.${{ steps.dotenv.outputs.version }}.nupkg
@@ -302,7 +302,7 @@ jobs:
           cargo package --allow-dirty
 
       - name: Upload Cargo Tools
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: bebop-tools-cargo-${{ steps.dotenv.outputs.version }}
           path: ${{ env.TOOLS_ROOT }}/cargo/target/package/bebop-tools-${{ steps.dotenv.outputs.version }}.crate
@@ -319,7 +319,7 @@ jobs:
         working-directory: ${{env.TOOLS_ROOT}}/node
 
       - name: Upload NPM Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: bebop-tools-npm-${{ steps.dotenv.outputs.version }}
           path: ${{env.TOOLS_ROOT}}/node/bebop-tools-v${{ steps.dotenv.outputs.version }}.tgz
@@ -344,7 +344,7 @@ jobs:
         working-directory: ./vscode-bebop
 
       - name: Upload VSCode artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: vscode-bebop
           path: vscode-bebop/bebop-lang-*.vsix
