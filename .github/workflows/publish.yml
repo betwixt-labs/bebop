@@ -330,7 +330,8 @@ jobs:
 
       - name: Build VSCode extension
         run: |
-          jq '.version = "${{ steps.dotenv.outputs.version }}"' package.json > tmp && mv tmp package.json
+          VERSION=$(echo ${{ steps.dotenv.outputs.version }} | sed 's/-.*//')
+          jq '.version = "$VERSION"' package.json > tmp && mv tmp package.json
           npm install --global @vscode/vsce
           yarn install
           vsce package
@@ -414,25 +415,29 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
 
       - name: Publish VSCode Extension
+        continue-on-error: true
         run: |
           npm install --global @vscode/vsce
+          VERSION=$(echo ${{ steps.dotenv.outputs.version }} | sed 's/-.*//')
           if [[ $GITHUB_REF == refs/heads/vnext ]] || [[ $GITHUB_REF == refs/tags/*rc* ]] || [[ $GITHUB_REF == refs/tags/*alpha* ]] || [[ $GITHUB_REF == refs/tags/*beta* ]]; then
             echo "Publishing vscode pre-release package"
-            vsce publish --pre-release --packagePath ./vscode-bebop/bebop-lang-${{ steps.dotenv.outputs.version }}.vsix -p ${{ secrets.VSCE_TOKEN }}
+            vsce publish --pre-release --packagePath ./vscode-bebop/bebop-lang-$VERSION.vsix -p ${{ secrets.VSCE_TOKEN }}
           else
             echo "Publishing vscode standard package"
-            vsce publish --packagePath ./vscode-bebop/bebop-lang-${{ steps.dotenv.outputs.version }}.vsix -p ${{ secrets.VSCE_TOKEN }}
+            vsce publish --packagePath ./vscode-bebop/bebop-lang-$VERSION.vsix -p ${{ secrets.VSCE_TOKEN }}
           fi
 
       - name: Publish Open VSX Extension
+        continue-on-error: true
         run: |
           npm i -g ovsx
+          VERSION=$(echo ${{ steps.dotenv.outputs.version }} | sed 's/-.*//')
           if [[ $GITHUB_REF == refs/heads/vnext ]] || [[ $GITHUB_REF == refs/tags/*rc* ]] || [[ $GITHUB_REF == refs/tags/*alpha* ]] || [[ $GITHUB_REF == refs/tags/*beta* ]]; then
             echo "Publishing ovsx pre-release package"
-            npx ovsx publish --pre-release ./vscode-bebop/bebop-lang-${{ steps.dotenv.outputs.version }}.vsix -p ${{ secrets.OPENVSX }}
+            npx ovsx publish --pre-release ./vscode-bebop/bebop-lang-$VERSION.vsix -p ${{ secrets.OPENVSX }}
           else
             echo "Publishing ovsx standard package"
-            npx ovsx publish ./vscode-bebop/bebop-lang-${{ steps.dotenv.outputs.version }}.vsix -p ${{ secrets.OPENVSX }}
+            npx ovsx publish ./vscode-bebop/bebop-lang-$VERSION.vsix -p ${{ secrets.OPENVSX }}
           fi
 
       - name: Create Release
