@@ -331,7 +331,7 @@ jobs:
       - name: Build VSCode extension
         run: |
           VERSION=$(echo ${{ steps.dotenv.outputs.version }} | sed 's/-.*//')
-          jq '.version = "$VERSION"' package.json > tmp && mv tmp package.json
+          jq '.version = "'"$VERSION"'"' package.json > tmp && mv tmp package.json
           npm install --global @vscode/vsce
           yarn install
           vsce package
