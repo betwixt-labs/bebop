@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { launchBebopc, resolveBebopcPath, setExecutableBit } from "./common";
 
 const args = process.argv.slice(2);
