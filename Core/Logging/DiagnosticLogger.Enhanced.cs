@@ -55,43 +55,55 @@ public partial class DiagnosticLogger
 
     private void RenderEnhancedException(Exception ex, int errorCode)
     {
-        string code = Markup.Escape($"[BOP{errorCode}]");
-
-        // Write error code and exception name
-        _err.Markup($"[red bold]Error {code}:[/] ");
-        _err.MarkupLine($"[white]{ex.Message}[/]");
-
-        // Write file path if FileNotFoundException
-        if (ex is FileNotFoundException fileNotFoundException)
+        try
         {
-            var filePath = new TextPath(fileNotFoundException?.FileName ?? "[unknown]")
+            string code = Markup.Escape($"[BOP{errorCode}]");
+
+            // Write error code and exception name
+            _err.Markup($"[maroon]Error {code}:[/] ");
+            _err.MarkupLine($"[white]{ex.Message}[/]");
+
+            // Write file path if FileNotFoundException
+            if (ex is FileNotFoundException fileNotFoundException)
             {
-                StemStyle = Style.Parse("white"),
-                LeafStyle = Style.Parse("white")
-            };
-            _err.WriteLine();
-            _err.Write("File: ");
-            _err.Write(filePath);
-            _err.WriteLine();
-        }
-        if (ex is { StackTrace: null } and { InnerException: not null })
-        {
-            _err.WriteLine();
-            _err.MarkupLine("[red bold]Inner Exception:[/]");
-            if (_traceEnabled)
-            {
-                _err.WriteException(ex.InnerException);
+                var filePath = new TextPath(fileNotFoundException?.FileName ?? "[unknown]")
+                {
+                    StemStyle = Style.Parse("white"),
+                    LeafStyle = Style.Parse("white")
+                };
+                _err.WriteLine();
+                _err.Write("File: ");
+                _err.Write(filePath);
+                _err.WriteLine();
             }
-            else
+            if (ex is { StackTrace: null } and { InnerException: not null })
             {
-                _err.MarkupLine($"[white]{ex.InnerException.Message}[/]");
+                _err.WriteLine();
+                _err.MarkupLine("[maroon]Inner Exception:[/]");
+                if (_traceEnabled)
+                {
+                    _err.WriteException(ex.InnerException);
+                }
+                else
+                {
+                    _err.MarkupLine($"[white]{ex.InnerException.Message}[/]");
 
+                }
+            }
+            if (_traceEnabled && !string.IsNullOrWhiteSpace(ex.StackTrace))
+            {
+                // Write exception message
+                _err.WriteException(ex);
             }
         }
-        if (_traceEnabled && !string.IsNullOrWhiteSpace(ex.StackTrace))
+        catch (Exception e)
         {
-            // Write exception message
+            _err.WriteLine($"{errorCode}:");
             _err.WriteException(ex);
+            _err.WriteLine();
+            _err.WriteLine("An error occurred while rendering the exception:");
+            _err.WriteException(e);
+            return;
         }
     }
 

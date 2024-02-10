@@ -104,7 +104,7 @@ internal sealed partial class ChordManifestConverter
             throw new JsonException(message, new FormatException("Version range cannot be empty."));
         if (version.Equals("*", StringComparison.OrdinalIgnoreCase))
             throw new JsonException(message, new FormatException("Version range cannot be *."));
-        if (!Semver.SemVersionRange.TryParseNpm(version, out var v))
+        if (!Semver.SemVersionRange.TryParseNpm(version, true, out var v))
             throw new JsonException(message, new FormatException("Version range is not in the correct SemVer/npm format."));
         return v;
     }

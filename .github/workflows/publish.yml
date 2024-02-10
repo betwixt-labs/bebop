@@ -405,12 +405,12 @@ jobs:
         working-directory: ${{env.RUST_RUNTIME_ROOT}}
 
       - name: Publish NodeJS Tools
-        run: npm publish "./bebop-tools-npm-${{ steps.dotenv.outputs.version }}/bebop-tools-v${{ steps.dotenv.outputs.version }}.tgz" --access public
+        run: npm publish "./bebop-tools-npm-${{ steps.dotenv.outputs.version }}/bebop-tools-v${{ steps.dotenv.outputs.version }}.tgz" --access public ${{ github.ref == 'refs/heads/vnext' && '--tag next' || '' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
 
       - name: Publish TypeScript Runtime
-        run: npm publish "./bebop-runtime-ts-${{ steps.dotenv.outputs.version }}/bebop-v${{ steps.dotenv.outputs.version }}.tgz" --access public
+        run: npm publish "./bebop-runtime-ts-${{ steps.dotenv.outputs.version }}/bebop-v${{ steps.dotenv.outputs.version }}.tgz" --access public ${{ github.ref == 'refs/heads/vnext' && '--tag next' || '' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
 
@@ -449,7 +449,7 @@ jobs:
           tag_name: ${{ github.ref }}
           release_name: Bebop ${{ github.ref }}
           draft: false
-          prerelease: false
+          prerelease: ${{ github.ref == 'refs/heads/vnext' }}
 
       - name: Upload Compiler for Windows x64
         uses: actions/upload-release-asset@v1

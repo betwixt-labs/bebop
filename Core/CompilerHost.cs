@@ -15,6 +15,7 @@ using Core.Generators.TypeScript;
 using Core.Logging;
 using Core.Meta;
 using Core.Meta.Decorators;
+using Spectre.Console;
 
 namespace Core;
 
@@ -127,8 +128,20 @@ public class CompilerHost : IDisposable
             _extensionRuntime = new ExtensionRuntime(DotEnv.Generated.Environment.Version, DiagnosticLogger.Instance.Out, DiagnosticLogger.Instance.Error);
             foreach (var kv in extensions)
             {
-                var extension = _extensionRuntime.LoadExtension(kv.Key, kv.Value);
-
+                Extension? extension;
+                try
+                {
+                    extension = _extensionRuntime.LoadExtension(kv.Key, kv.Value);
+                }
+                catch (Exception e) when (e is ExtensionRuntimeException)
+                {
+                    throw new CompilerException("Extension runtime encountered a fatal exception", e);
+                }
+                catch (Exception e) when (e is ExtensionException)
+                {
+                    DiagnosticLogger.Instance.Error.MarkupInterpolated($"[maroon]Error loading extension {kv.Key}@{kv.Value}: {e.Message}[/]");
+                    continue;
+                }
                 if (extension.Decorators is { Count: > 0 })
                 {
                     foreach (var decorator in extension.Decorators)
