@@ -325,7 +325,7 @@ namespace Core.Generators.TypeScript
         {
             var builder = new IndentedStringBuilder(0);
             builder.AppendLine(FormatDocumentation("Serializes the current instance into a JSON-Over-Bebop string", null, 0));
-            builder.CodeBlock($"public toJSON(): string", indentStep, () =>
+            builder.CodeBlock($"public stringify(): string", indentStep, () =>
             {
                 builder.AppendLine($"return {definition.ClassName()}.encodeToJSON(this);");
             });
@@ -986,7 +986,7 @@ namespace Core.Generators.TypeScript
                                         builder.AppendLine($"invoke: service.{methodName},");
                                         builder.AppendLine($"serialize: {method.Definition.ResponseDefintion}.encode,");
                                         builder.AppendLine($"deserialize: {method.Definition.RequestDefinition}.decode,");
-                                        builder.AppendLine($"toJSON: {method.Definition.ResponseDefintion}.encodeToJSON,");
+                                        builder.AppendLine($"stringify: {method.Definition.ResponseDefintion}.encodeToJSON,");
                                         builder.AppendLine($"fromJSON: {method.Definition.RequestDefinition}.fromJSON,");
                                         builder.AppendLine($"type: MethodType.{RpcSchema.GetMethodTypeName(methodType)},");
                                     }, close: $"}} as BebopMethod<I{method.Definition.RequestDefinition}, I{method.Definition.ResponseDefintion}>);");
@@ -1050,7 +1050,7 @@ namespace Core.Generators.TypeScript
                                     builder.AppendLine($"id: {method.Id},");
                                     builder.AppendLine($"serialize: {method.Definition.RequestDefinition}.encode,");
                                     builder.AppendLine($"deserialize: {method.Definition.ResponseDefintion}.decode,");
-                                    builder.AppendLine($"toJSON: {method.Definition.RequestDefinition}.encodeToJSON,");
+                                    builder.AppendLine($"stringify: {method.Definition.RequestDefinition}.encodeToJSON,");
                                     builder.AppendLine($"fromJSON: {method.Definition.ResponseDefintion}.fromJSON,");
                                     builder.AppendLine($"type: MethodType.{RpcSchema.GetMethodTypeName(methodType)},");
                                 });
