@@ -409,9 +409,30 @@ declare module 'astro:content' {
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".mdx"] };
+"tempo/TypeScript/cloudflare-workers.mdx": {
+	id: "tempo/TypeScript/cloudflare-workers.mdx";
+  slug: "tempo/typescript/cloudflare-workers";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".mdx"] };
 "tempo/TypeScript/getting-started.mdx": {
 	id: "tempo/TypeScript/getting-started.mdx";
   slug: "tempo/typescript/getting-started";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".mdx"] };
+"tempo/TypeScript/node-http.mdx": {
+	id: "tempo/TypeScript/node-http.mdx";
+  slug: "tempo/typescript/node-http";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".mdx"] };
+"tempo/faq.mdx": {
+	id: "tempo/faq.mdx";
+  slug: "tempo/faq";
   body: string;
   collection: "docs";
   data: InferEntrySchema<"docs">
