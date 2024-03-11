@@ -320,6 +320,10 @@ internal class GeneratorContextConverter : JsonConverter<GeneratorContext>
         writer.WriteStartObject("array");
         writer.WriteNumber("depth", depth);
         writer.WriteString("memberType", memberType.ToTokenString());
+        if (memberType is MapType mt)
+        {
+            WriteMap(mt, writer);
+        }
         writer.WriteEndObject();
     }
 
