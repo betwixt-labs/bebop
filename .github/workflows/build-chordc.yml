@@ -1,0 +1,99 @@
+name: build-chordc
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "extensions/**"
+    branches:
+      - master
+      - vnext
+  pull_request:
+    paths:
+      - "extensions/**"
+    branches:
+      - master
+      - vnext
+jobs:
+  build-chordc:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-22.04]
+        include:
+          - os: macos-latest
+            IDENTIFIER: osx
+            ARTIFACT: chordc
+
+          - os: windows-latest
+            IDENTIFIER: win
+            ARTIFACT: chordc.exe
+
+          - os: ubuntu-22.04
+            IDENTIFIER: linux
+            ARTIFACT: chordc
+            BUILD_WASI: true
+
+    env:
+      CONFIGURATION: Release
+      CHORD_ARTIFACT_X86_64: ./bin/Release/net8.0/${{matrix.IDENTIFIER}}-x64/publish/${{matrix.ARTIFACT}}
+      CHORD_ARTIFACT_ARM64: ./bin/Release/net8.0/${{matrix.IDENTIFIER}}-arm64/publish/${{matrix.ARTIFACT}}
+      CHORD_ZIP_ARTIFACT_X86_64: ./bin/Release/net8.0/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-x64.zip
+      CHORD_ZIP_ARTIFACT_ARM64:  ./bin/Release/net8.0/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-arm64.zip
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get Enviorment Variables
+        id: dotenv
+        uses: falti/dotenv-action@v1.0.4
+
+      - if: matrix.os == 'ubuntu-22.04'
+        name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install clang zlib1g-dev libkrb5-dev libtinfo5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: "8.0.x"
+          dotnet-quality: "preview"
+      - name: Restore Solution
+        run: dotnet restore
+
+      - name: Build chordc
+        run: |
+          dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-x64
+          dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-arm64
+        working-directory: ./Compiler/
+
+      - if: matrix.os == 'macos-latest'
+        name: Zip chordc macOS Binary
+        run: |
+          zip -j ${{env.CHORD_ZIP_ARTIFACT_X86_64}} ${{env.CHORD_ARTIFACT_X86_64}}
+          zip -j ${{env.CHORD_ZIP_ARTIFACT_ARM64}} ${{env.CHORD_ARTIFACT_ARM64}}
+
+      - if: matrix.os == 'ubuntu-22.04'
+        name: ZIP chordc Linux Build
+        run: |
+          zip -j ${{env.CHORD_ZIP_ARTIFACT_X86_64}} ${{env.CHORD_ARTIFACT_X86_64}}
+          zip -j ${{env.CHORD_ZIP_ARTIFACT_ARM64}} ${{env.CHORD_ARTIFACT_ARM64}}
+
+      - if: matrix.os == 'windows-latest'
+        name: ZIP chordc Windows Build
+        shell: powershell
+        run: |
+          Compress-Archive -Path ${{env.CHORD_ARTIFACT_X86_64}} -DestinationPath ${{env.CHORD_ZIP_ARTIFACT_X86_64}}
+          Compress-Archive -Path ${{env.CHORD_ARTIFACT_ARM64}} -DestinationPath ${{env.CHORD_ZIP_ARTIFACT_ARM64}}
+
+      - name: Upload chordc X86_64 Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{matrix.IDENTIFIER}}-x64
+          path: ${{env.CHORD_ZIP_ARTIFACT_X86_64}}
+
+      - name: Upload chordc ARM64 Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{matrix.IDENTIFIER}}-arm64
+          path: ${{env.CHORD_ZIP_ARTIFACT_ARM64}}
