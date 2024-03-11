@@ -37,8 +37,8 @@ jobs:
       CONFIGURATION: Release
       CHORD_ARTIFACT_X86_64: ./bin/Release/net8.0/${{matrix.IDENTIFIER}}-x64/publish/${{matrix.ARTIFACT}}
       CHORD_ARTIFACT_ARM64: ./bin/Release/net8.0/${{matrix.IDENTIFIER}}-arm64/publish/${{matrix.ARTIFACT}}
-      CHORD_ZIP_ARTIFACT_X86_64: ./bin/Release/net8.0/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-x64.zip
-      CHORD_ZIP_ARTIFACT_ARM64:  ./bin/Release/net8.0/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-arm64.zip
+      CHORD_ZIP_ARTIFACT_X86_64: ./bin/Release/net8.0/${{matrix.IDENTIFIER}}-x64/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-x64.zip
+      CHORD_ZIP_ARTIFACT_ARM64:  ./bin/Release/net8.0/${{matrix.IDENTIFIER}}-arm64/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-arm64.zip
 
     steps:
       - uses: actions/checkout@v4
