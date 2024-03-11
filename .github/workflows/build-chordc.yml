@@ -35,10 +35,10 @@ jobs:
 
     env:
       CONFIGURATION: Release
-      CHORD_ARTIFACT_X86_64: ./bin/Release/net8.0/${{matrix.IDENTIFIER}}-x64/publish/${{matrix.ARTIFACT}}
-      CHORD_ARTIFACT_ARM64: ./bin/Release/net8.0/${{matrix.IDENTIFIER}}-arm64/publish/${{matrix.ARTIFACT}}
-      CHORD_ZIP_ARTIFACT_X86_64: ./bin/Release/net8.0/${{matrix.IDENTIFIER}}-x64/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-x64.zip
-      CHORD_ZIP_ARTIFACT_ARM64:  ./bin/Release/net8.0/${{matrix.IDENTIFIER}}-arm64/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-arm64.zip
+      CHORD_ARTIFACT_X86_64: ./extensions/chordc/bin/Release/net8.0/${{matrix.IDENTIFIER}}-x64/publish/${{matrix.ARTIFACT}}
+      CHORD_ARTIFACT_ARM64: ./extensions/chordc/bin/Release/net8.0/${{matrix.IDENTIFIER}}-arm64/publish/${{matrix.ARTIFACT}}
+      CHORD_ZIP_ARTIFACT_X86_64: ./extensions/chordc/bin/Release/net8.0/${{matrix.IDENTIFIER}}-x64/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-x64.zip
+      CHORD_ZIP_ARTIFACT_ARM64:  ./extensions/chordc/bin/Release/net8.0/${{matrix.IDENTIFIER}}-arm64/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-arm64.zip
 
     steps:
       - uses: actions/checkout@v4
@@ -50,8 +50,16 @@ jobs:
       - if: matrix.os == 'ubuntu-22.04'
         name: Install Dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install clang zlib1g-dev libkrb5-dev libtinfo5
+          sudo dpkg --add-architecture arm64
+          sudo bash -c 'cat > /etc/apt/sources.list.d/arm64.list <<EOF
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ jammy main restricted
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ jammy-updates main restricted
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ jammy-backports main restricted universe multiverse
+          EOF'
+          sudo sed -i -e 's/deb http/deb [arch=amd64] http/g' /etc/apt/sources.list
+          sudo sed -i -e 's/deb mirror/deb [arch=amd64] mirror/g' /etc/apt/sources.list
+          sudo apt update
+          sudo apt install -y clang llvm binutils-aarch64-linux-gnu gcc-aarch64-linux-gnu zlib1g-dev zlib1g-dev:arm64
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
@@ -65,7 +73,7 @@ jobs:
         run: |
           dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-x64
           dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-arm64
-        working-directory: ./Compiler/
+        working-directory: ./extensions/chordc
 
       - if: matrix.os == 'macos-latest'
         name: Zip chordc macOS Binary
