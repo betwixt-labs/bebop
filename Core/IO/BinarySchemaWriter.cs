@@ -73,6 +73,10 @@ namespace Core.IO
             }
             _writer.Write(depth);
             _writer.Write(TypeToId(memberType));
+            if (memberType is MapType mt)
+            {
+                WriteMap(mt);
+            }
         }
 
         private void WriteMap(MapType mapType)

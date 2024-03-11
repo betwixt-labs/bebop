@@ -83,7 +83,7 @@ function writeFileSync(fd: number, buffer: Uint8Array) {
 
 export const readContext = () => {
   const input = decoder.decode(readFileSync(STDIO.StdIn));
-  return JSON.parse(input);
+  return JSON.parse(input) as CompilerContext;
 };
 
 export const commitResult = (result: string) => {
@@ -176,3 +176,130 @@ export class IndentedStringBuilder {
     return this.builder.join("");
   }
 }
+
+
+export type BaseType = "uint8" | "uint16" | "uint32" | "uint64" | "int8" | "int16" | "int32" | "int64" | "float32" | "float64" | "bool" | "string" | "guid" | "date";
+
+export type Kind = "enum" | "struct" | "message" | "union" | "service" | "const";
+
+
+export type Decorator = {
+  [key: string]: {
+    arguments?: {
+      [key: string]: {
+        type: BaseType;
+        value: string;
+      };
+    };
+  };
+};
+
+export type ArrayType = {
+  depth: number;
+  memberType: BaseType | "map";
+  map?: MapType;
+};
+
+export type MapType = {
+  keyType: BaseType;
+  valueType: BaseType | "map" | "array";
+  array?: ArrayType;
+  map?: MapType;
+};
+
+export type Field<T extends BaseType | "array" | "map"> = {
+  documentation?: string;
+  decorators?: Decorator;
+  type: T;
+  index?: number;
+  array?: T extends "array" ? ArrayType : never;
+  map?: T extends "map" ? MapType : never;
+};
+
+export type EnumMember = {
+  documentation?: string;
+  decorators?: Decorator;
+  value: string;
+};
+
+export type BaseDefinition<K extends Kind> = {
+  kind: K;
+  documentation?: string;
+  decorators?: Decorator;
+  minimalEncodedSize: number;
+  discriminatorInParent?: number;
+  parent?: string;
+};
+
+export type EnumDefinition = BaseDefinition<"enum"> & {
+  isBitFlags?: boolean;
+  baseType?: BaseType;
+  members: {
+    [key: string]: EnumMember;
+  };
+};
+
+export type StructDefinition = BaseDefinition<"struct"> & {
+  mutable: boolean;
+  isFixedSize: boolean;
+  fields: {
+    [key: string]: Field<BaseType | "array" | "map">;
+  };
+};
+
+export type MessageDefinition = BaseDefinition<"message"> & {
+  fields: {
+    [key: string]: Field<BaseType | "array" | "map">;
+  };
+};
+
+export type UnionDefinition = BaseDefinition<"union"> & {
+  branches: {
+    [key: string]: number;
+  };
+};
+
+export type Method = {
+  decorators?: Decorator;
+  documentation?: string;
+  type: "Unary" | "DuplexStream" | "ClientStream" | "ServerStream";
+  requestType: string;
+  responseType: string;
+  id: number;
+};
+
+export type ServiceDefinition = BaseDefinition<"service"> & {
+  methods: {
+    [key: string]: Method;
+  };
+};
+
+export type ConstDefinition = BaseDefinition<"const"> & {
+  type: BaseType;
+  value: string;
+};
+
+export type Config = {
+  alias: string;
+  outFile: string;
+  namespace: string;
+  emitNotice: boolean;
+  emitBinarySchema: boolean;
+  services: "both" | "server" | "client";
+  options: {
+    [key: string]: string;
+  };
+};
+
+export type CompilerContext = {
+  definitions: {
+    [key: string]: EnumDefinition | StructDefinition | MessageDefinition | UnionDefinition;
+  };
+  services: {
+    [key: string]: ServiceDefinition;
+  };
+  constants: {
+    [key: string]: ConstDefinition;
+  };
+  config: Config;
+};
