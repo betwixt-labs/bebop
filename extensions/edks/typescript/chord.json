@@ -2,7 +2,7 @@
   "name": "javascript-template",
   "private": true,
   "description": "A template for chords built with javascript",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "repository": "https://github.com/betwixt-labs/bebopc",
   "license": "Apache-2.0",
   "author": {
