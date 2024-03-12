@@ -1,6 +1,6 @@
-# Atuin docs
+# Bebop docs
 
-This powers docs.atuin.sh
+This powers docs.bebop.sh
 
 You will find markdown files within src/content/docs
 
