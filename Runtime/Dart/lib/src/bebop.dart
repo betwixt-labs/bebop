@@ -136,6 +136,7 @@ class BebopReader {
         (msSince1AD - 62135596800000).round());
   }
 
+  /// @deprecated because enums can have arbitrary length
   T readEnum<T>(List<T> values) => values[readUint32()];
 
   int readMessageLength() => readUint32();
@@ -318,6 +319,7 @@ class BebopWriter {
     writeUint32(high);
   }
 
+  /// @deprecated because enums can have arbitrary length
   void writeEnum(dynamic value) {
     writeUint32(value.value);
   }

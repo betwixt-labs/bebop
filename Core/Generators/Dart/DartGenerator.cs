@@ -75,11 +75,12 @@ namespace Core.Generators.Dart
             return builder.ToString();
         }
 
-        private string CompileEncodeField(TypeBase type, string target, int depth = 0, int indentDepth = 0)
+        private string CompileEncodeField(TypeBase type, string target, int depth = 0, int indentDepth = 0, bool isEnum = false)
         {
             var tab = new string(' ', indentStep);
             var nl = "\n" + new string(' ', indentDepth * indentStep);
             var i = GeneratorUtils.LoopVariable(depth);
+            var enumSuffix = isEnum ? ".value" : "";
             return type switch
             {
                 ArrayType at when at.IsBytes() => $"view.writeBytes({target});",
@@ -99,23 +100,23 @@ namespace Core.Generators.Dart
                     $"}}",
                 ScalarType st => st.BaseType switch
                 {
-                    BaseType.Bool => $"view.writeBool({target});",
-                    BaseType.Byte => $"view.writeByte({target});",
-                    BaseType.UInt16 => $"view.writeUint16({target});",
-                    BaseType.Int16 => $"view.writeInt16({target});",
-                    BaseType.UInt32 => $"view.writeUint32({target});",
-                    BaseType.Int32 => $"view.writeInt32({target});",
-                    BaseType.UInt64 => $"view.writeUint64({target});",
-                    BaseType.Int64 => $"view.writeInt64({target});",
-                    BaseType.Float32 => $"view.writeFloat32({target});",
-                    BaseType.Float64 => $"view.writeFloat64({target});",
-                    BaseType.String => $"view.writeString({target});",
-                    BaseType.Guid => $"view.writeGuid({target});",
-                    BaseType.Date => $"view.writeDate({target});",
+                    BaseType.Bool => $"view.writeBool({target}{enumSuffix});",
+                    BaseType.Byte => $"view.writeByte({target}{enumSuffix});",
+                    BaseType.UInt16 => $"view.writeUint16({target}{enumSuffix});",
+                    BaseType.Int16 => $"view.writeInt16({target}{enumSuffix});",
+                    BaseType.UInt32 => $"view.writeUint32({target}{enumSuffix});",
+                    BaseType.Int32 => $"view.writeInt32({target}{enumSuffix});",
+                    BaseType.UInt64 => $"view.writeUint64({target}{enumSuffix});",
+                    BaseType.Int64 => $"view.writeInt64({target}{enumSuffix});",
+                    BaseType.Float32 => $"view.writeFloat32({target}{enumSuffix});",
+                    BaseType.Float64 => $"view.writeFloat64({target}{enumSuffix});",
+                    BaseType.String => $"view.writeString({target}{enumSuffix});",
+                    BaseType.Guid => $"view.writeGuid({target}{enumSuffix});",
+                    BaseType.Date => $"view.writeDate({target}{enumSuffix});",
                     _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
                 },
-                DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition =>
-                    $"view.writeEnum({target});",
+                DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition ed =>
+                    CompileEncodeField(ed.ScalarType, target, depth, indentDepth, true),
                 DefinedType dt => $"{dt.Name}.encodeInto({target}, view);",
                 _ => throw new InvalidOperationException($"CompileEncodeField: {type}")
             };
@@ -182,6 +183,26 @@ namespace Core.Generators.Dart
             return builder.ToString();
         }
 
+        private string ReadBaseType(BaseType baseType) {
+            return baseType switch
+            {
+                BaseType.Bool => "view.readBool()",
+                BaseType.Byte => "view.readByte()",
+                BaseType.UInt16 => "view.readUint16()",
+                BaseType.Int16 => "view.readInt16()",
+                BaseType.UInt32 => "view.readUint32()",
+                BaseType.Int32 => "view.readInt32()",
+                BaseType.UInt64 => "view.readUint64()",
+                BaseType.Int64 => "view.readInt64()",
+                BaseType.Float32 => "view.readFloat32()",
+                BaseType.Float64 => "view.readFloat64()",
+                BaseType.String => "view.readString()",
+                BaseType.Guid => "view.readGuid()",
+                BaseType.Date => "view.readDate()",
+                _ => throw new ArgumentOutOfRangeException(baseType.ToString())
+            };
+        }
+
         private string CompileDecodeField(TypeBase type, string target, int depth = 0)
         {
             var tab = new string(' ', indentStep);
@@ -214,25 +235,9 @@ namespace Core.Generators.Dart
                     $"{tab}}}" + nl +
                     $"{tab}{target} = map{depth};" + nl +
                     $"}}",
-                ScalarType st => st.BaseType switch
-                {
-                    BaseType.Bool => $"{target} = view.readBool();",
-                    BaseType.Byte => $"{target} = view.readByte();",
-                    BaseType.UInt16 => $"{target} = view.readUint16();",
-                    BaseType.Int16 => $"{target} = view.readInt16();",
-                    BaseType.UInt32 => $"{target} = view.readUint32();",
-                    BaseType.Int32 => $"{target} = view.readInt32();",
-                    BaseType.UInt64 => $"{target} = view.readUint64();",
-                    BaseType.Int64 => $"{target} = view.readInt64();",
-                    BaseType.Float32 => $"{target} = view.readFloat32();",
-                    BaseType.Float64 => $"{target} = view.readFloat64();",
-                    BaseType.String => $"{target} = view.readString();",
-                    BaseType.Guid => $"{target} = view.readGuid();",
-                    BaseType.Date => $"{target} = view.readDate();",
-                    _ => throw new ArgumentOutOfRangeException(st.BaseType.ToString())
-                },
-                DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition =>
-                    $"{target} = {dt.Name}.fromRawValue(view.readUint32());",
+                ScalarType st => $"{target} = {ReadBaseType(st.BaseType)};",
+                DefinedType dt when Schema.Definitions[dt.Name] is EnumDefinition ed =>
+                    $"{target} = {dt.Name}.fromRawValue({ReadBaseType(ed.BaseType)});",
                 DefinedType dt => $"{target} = {dt.Name}.readFrom(view);",
                 _ => throw new InvalidOperationException($"CompileDecodeField: {type}")
             };
