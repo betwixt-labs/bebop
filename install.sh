@@ -20,7 +20,7 @@ if [ -z "${BASH_VERSION:-}" ]; then
 fi
 
 ### Constants
-readonly BEBOPC_VERSION="${1:-2.8.7}"
+readonly BEBOPC_VERSION="${1:-3.0.4}"
 readonly BEBOP_RELEASE_URL="https://api.github.com/repos/betwixt-labs/bebop/releases/tags/v${BEBOPC_VERSION}"
 
 ### string formatters
@@ -383,13 +383,11 @@ fi
 
 # check if bebopc is already installed
 if [[ -x "$(which bebopc)" ]]; then
-    bebopc_version_output="$(bebopc --version 2>/dev/null)"
-    readonly bebopc_version_output
-    readonly bebopc_name_and_version="${bebopc_version_output%% (*}"
-    readonly installed_bebopc_version="${bebopc_name_and_version##* }"
+    installed_bebopc_version="$(bebopc --version 2>/dev/null)"
+    readonly installed_bebopc_version
     # exit when the remote version of bebopc is the same as the currently installed version
     if [[ "${installed_bebopc_version}" == "${BEBOPC_VERSION}" ]]; then
-        point "${ROCKET_UTF8} ${tty_underline}${tty_white}$bebopc_name_and_version${tty_reset} is already installed and up-to-date"
+        point "${ROCKET_UTF8} ${tty_underline}${tty_white}bebopc $installed_bebopc_version${tty_reset} is already installed and up-to-date"
         exit 0
     fi
     # abort when the remote version is less than the installed version.
@@ -397,7 +395,7 @@ if [[ -x "$(which bebopc)" ]]; then
     if version_lt "$(major_minor "${BEBOPC_VERSION}")" "$(major_minor "${installed_bebopc_version}")"; then
         abort "$(
             cat <<EOABORT
-$COLLISION_UTF8} ${tty_underline}${tty_white}$bebopc_name_and_version${tty_reset} is already installed,
+$COLLISION_UTF8} ${tty_underline}${tty_white}bebopc $installed_bebopc_version${tty_reset} is already installed,
 and a higher version than targeted ${tty_underline}${tty_white}${BEBOPC_VERSION}${tty_reset}.
 
 Please uninstall bebopc and try again.
@@ -410,7 +408,7 @@ EOABORT
     # this is a warning because version changes may introduce code generator changes
     # patches do not produce a warning
     if version_lt "$(major_minor "${installed_bebopc_version}")" "$(major_minor "${BEBOPC_VERSION}")"; then
-        warn "${tty_underline}${tty_white}$bebopc_name_and_version${tty_reset} will be upgraded to ${tty_underline}${tty_white}${BEBOPC_VERSION}${tty_reset}"
+        warn "${tty_underline}${tty_white}bebopc $installed_bebopc_version${tty_reset} will be upgraded to ${tty_underline}${tty_white}${BEBOPC_VERSION}${tty_reset}"
     fi
 
 else

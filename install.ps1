@@ -1,6 +1,6 @@
 param (
     [Parameter(HelpMessage = 'The version of bebopc to install')]
-    [string]$bebopcVersion = '2.8.7',
+    [string]$bebopcVersion = '3.0.4',
     [Parameter(HelpMessage = 'The URL where bebpc artifacts will be fetched from')]
     [string]$manifestUrl = "https://api.github.com/repos/betwixt-labs/bebop/releases/tags/v${bebopcVersion}"
 )
@@ -164,7 +164,7 @@ function Test-BebopcInstalled {
 
 function Test-BebopcVersion {
     $compilerPath = "$env:PROGRAMDATA\bebop\bebopc.exe"
-    $installedVersion = ([string](& "$compilerPath" --version)).Split(' ')[1].Trim()
+    $installedVersion = ([string](& "$compilerPath" --version)).Trim()
     $remoteVersion = $bebopcVersion
     if ([System.Version]$installedVersion -gt [System.Version]$remoteVersion) {
         # Installed version is greater than the version to install
