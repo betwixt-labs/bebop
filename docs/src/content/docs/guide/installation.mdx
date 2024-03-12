@@ -1,0 +1,79 @@
+---
+title: Installation
+---
+
+import {Tabs, TabItem, LinkCard} from "@astrojs/starlight/components";
+
+
+To install bebopc globally, run the following command:
+
+<Tabs>
+  <TabItem label="bash/zsh">
+  ```bash
+  bash -c "$(curl https://bebop.sh)"
+  ```
+  </TabItem>
+
+  <TabItem label="powershell">
+  ```powershell
+  irm https://bebop.sh | iex
+  ```
+  </TabItem>
+
+</Tabs>
+
+
+Alternatively, you can install it locally to your project:
+<Tabs>
+  <TabItem label="npm">
+  ```bash
+  npm add bebop-tools
+  ```
+  </TabItem>
+
+  <TabItem label="yarn">
+  ```bash
+  yarn add bebop-tools
+  ```
+  </TabItem>
+
+  <TabItem label="nuget">
+  ```bash
+  dotnet add package bebop-tools
+  ```
+  </TabItem>
+
+  <TabItem label="cargo">
+  ```bash
+  cargo add bebop-tools
+  ```
+  </TabItem>
+
+</Tabs>
+
+:::note
+Installing `bebopc` will also install `chordc` which is used for extension development.
+:::
+
+
+## VSCode Extension
+
+You can install the VSCode extension by clicking one of the buttons below:
+<br></br>
+<a href="vscode:extension/betwixt.bebop-lang"><button>Install VSCode Extension</button></a>
+<br></br>
+<br></br>
+<a href="vscode-insiders:extension/betwixt.bebop-lang"><button>Install VSCode Insiders Extension</button></a>
+<br></br>
+We also cross-publish to [Open VSX](https://open-vsx.org/extension/betwixt/bebop-lang) if you prefer to install from there.
+
+:::note
+The VSCode extension ships with `bebopc` and its version is tied to the version of the extension.
+:::
+
+
+For information on getting started in a specific language, see:
+
+
+
+---

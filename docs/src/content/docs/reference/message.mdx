@@ -1,0 +1,16 @@
+---
+title: Message
+---
+
+A `message` defines an indexed aggregation of fields containing typed values, each of which may be absent. It might correspond to something like a class in Java, or a JSON object.
+
+```go
+message Song { 
+    1 -> string title; 
+    2 -> uint16 year; 
+}
+```
+
+In the binary representation of a message, the message is prefixed with its length, and each field is prefixed with its index.
+
+It is okay to add fields to a `message` with new indices later — in fact, this is the whole point of `message`. When an unrecognized field index is encountered in the process of decoding a message, it is skipped over. This allows for compatibility with versions of your app that use an older version of the schema.
