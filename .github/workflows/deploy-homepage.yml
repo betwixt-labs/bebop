@@ -39,47 +39,6 @@ jobs:
         id: dotenv
         uses: falti/dotenv-action@v0.2.5
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v3
-        with:
-          dotnet-version: "8.0.x" # SDK Version to use; x will use the latest version of the 7.0 channel
-          dotnet-quality: 'preview'
-
-      - name: Build Playground
-        run: |
-          ../scripts/install-wasi.sh
-          yarn install
-          yarn build:site
-        working-directory: ./playground/
-
-      - name: Deploy Playground
-        uses: cloudflare/pages-action@v1
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: bebopc-playground
-          directory: ${{github.workspace}}/playground/dist
-          # Optional: Enable this if you want to have GitHub Deployments triggered
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-
-
-      - name: Build Docs
-        run: |
-          ../scripts/install-wasi.sh
-          yarn install
-          yarn build
-        working-directory: ./docs/
-
-      - name: Deploy Docs
-        uses: cloudflare/pages-action@v1
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: bebop-docs
-          directory: ${{github.workspace}}/docs/dist
-          # Optional: Enable this if you want to have GitHub Deployments triggered
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Stage Homepage
         run: |
           sed 's/0.0.0/${{ steps.dotenv.outputs.version }}/' ${{env.TOOLS_ROOT}}/bash/install.sh > homepage/install.sh
