@@ -34,11 +34,11 @@ public partial class DiagnosticLogger
             foreach (var ex in group)
             {
                 var diagnostic = new Diagnostic(ex.Severity, ex.Message, ex.ErrorCode, ex.Span);
-                if (diagnostic.Severity == Severity.Warning)
+                if (diagnostic is { Severity: Severity.Warning, Span: not null })
                 {
                     errataDiagnostic.WithLabel(new Label(fileName, GetRangeFromSpan(schemaSource, diagnostic.Span.Value), diagnostic.Message).WithColor(Color.Yellow));
                 }
-                else if (diagnostic.Severity == Severity.Error)
+                else if (diagnostic is { Severity: Severity.Error, Span: not null })
                 {
                     errataDiagnostic.WithLabel(new Label(fileName, GetRangeFromSpan(schemaSource, diagnostic.Span.Value), diagnostic.Message).WithColor(Color.Red));
                 }
@@ -55,29 +55,55 @@ public partial class DiagnosticLogger
 
     private void RenderEnhancedException(Exception ex, int errorCode)
     {
-        string code = Markup.Escape($"[BOP{errorCode}]");
-
-        // Write error code and exception name
-        _err.Markup($"[red bold]Error {code}:[/] ");
-        _err.MarkupLine($"[white]{ex.Message}[/]");
-
-        // Write file path if FileNotFoundException
-        if (ex is FileNotFoundException fileNotFoundException)
+        try
         {
-            var filePath = new TextPath(fileNotFoundException?.FileName ?? "[unknown]")
+            string code = Markup.Escape($"[BOP{errorCode}]");
+
+            // Write error code and exception name
+            _err.MarkupLine($"[maroon]Error {code}:[/] ");
+            _err.MarkupLineInterpolated($"[white]{ex.Message}[/]");
+
+            // Write file path if FileNotFoundException
+            if (ex is FileNotFoundException fileNotFoundException)
             {
-                StemStyle = Style.Parse("white"),
-                LeafStyle = Style.Parse("white")
-            };
-            _err.WriteLine();
-            _err.Write("File: ");
-            _err.Write(filePath);
-            _err.WriteLine();
+                var filePath = new TextPath(fileNotFoundException?.FileName ?? "[unknown]")
+                {
+                    StemStyle = Style.Parse("white"),
+                    LeafStyle = Style.Parse("white")
+                };
+                _err.WriteLine();
+                _err.Write("File: ");
+                _err.Write(filePath);
+                _err.WriteLine();
+            }
+            if (ex is { StackTrace: null } and { InnerException: not null })
+            {
+                _err.WriteLine();
+                _err.MarkupLine("[maroon]Inner Exception:[/]");
+                if (_traceEnabled)
+                {
+                    _err.WriteException(ex.InnerException);
+                }
+                else
+                {
+                    _err.MarkupLineInterpolated($"[white]{ex.InnerException.Message}[/]");
+
+                }
+            }
+            if (_traceEnabled && !string.IsNullOrWhiteSpace(ex.StackTrace))
+            {
+                // Write exception message
+                _err.WriteException(ex);
+            }
         }
-        if (!string.IsNullOrWhiteSpace(ex.StackTrace))
+        catch (Exception e)
         {
-            // Write exception message
+            _err.WriteLine($"{errorCode}:");
             _err.WriteException(ex);
+            _err.WriteLine();
+            _err.WriteLine("An error occurred while rendering the exception:");
+            _err.WriteException(e);
+            return;
         }
     }
 

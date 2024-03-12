@@ -169,7 +169,7 @@ namespace Core.Meta
             {
                 ArrayType or MapType => 4,
                 ScalarType st => st.BaseType.Size(),
-                DefinedType dt when schema.Definitions[dt.Name] is EnumDefinition => 4,
+                DefinedType dt when schema.Definitions[dt.Name] is EnumDefinition ed => ed.BaseType.Size(),
                 DefinedType dt when schema.Definitions[dt.Name] is RecordDefinition td => td.MinimalEncodedSize(schema),
                 _ => throw new ArgumentOutOfRangeException(type.ToString())
             };

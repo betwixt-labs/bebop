@@ -9,7 +9,7 @@ enum HugeEnum : int64 {
     MaxInt = 0x7FFFFFFFFFFFFFFF;
 }
 
-struct SmallAndHuge {
+mut struct SmallAndHuge {
     SmallEnum small;
     HugeEnum huge;
 }

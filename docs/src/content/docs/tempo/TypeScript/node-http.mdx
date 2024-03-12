@@ -1,0 +1,67 @@
+---
+title: Using Tempo with Node HTTP
+---
+import { Tabs, TabItem, LinkCard } from "@astrojs/starlight/components";
+
+## Quick
+
+Tempo supports any server that can use Node HTTP, so you don't have to use a serverless platform to use it. This example shows how to use Tempo with Node's HTTP server.
+
+For a see the online example, see the [Node HTTP example](https://stackblitz.com/edit/node-tempo) on StackBlitz.
+
+
+First, install the Tempo router for Node into your project:
+
+<Tabs>
+  <TabItem label="npm">
+  ```bash
+  npm install @tempojs/node-http-router
+  ```
+  </TabItem>
+
+  <TabItem label="yarn">
+  ```bash
+  yarn add @tempojs/node-http-router
+  ```
+  </TabItem>
+</Tabs>
+
+Next, inside your `index.ts` (or wherever your server handler resides) do the following steps:
+
+
+1. Import your services 
+```typescript
+import * as Services from './services';
+```
+2. Add this line after your import call
+```typescript
+typeof Services;
+```
+
+:::note
+This is a temporary workaround to decorators not being triggered unless there is a reference made to them
+:::
+
+Now you're ready to create the router:
+```typescript
+// creates a logger that will be used by Tempo
+// can be anything that implements `TempoLogger`, `ConsoleLogger` is just built in.
+const logger = new ConsoleLogger('worker', TempoLogLevel.Debug);
+// initialize the service registry. this class is generated for you.
+const registry = new TempoServiceRegistry(logger);
+// create a new router
+// `any` refers to our environment objects type; it is recommended to set it an explicit type (MyEnvObj, etc.)
+const router = new TempoRouter<any>(
+	logger,
+	registry
+);
+
+const server = createServer(
+  // feed incoming messages into the router
+  async (req: IncomingMessage, res: ServerResponse) => {
+    await router.process(req, res, {}));
+  }
+);
+server.listen(3000);
+```
+

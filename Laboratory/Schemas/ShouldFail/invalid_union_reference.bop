@@ -1,9 +1,9 @@
 
 union Whattheheck {
-  1 -> struct Sxxx { bool xxxx; }
-  2 -> struct Syyy { bool yy; }
+  1 -> mut struct Sxxx { bool xxxx; }
+  2 -> mut struct Syyy { bool yy; }
 }
 
-struct O {
+mut struct O {
   Sxxx y;
 }

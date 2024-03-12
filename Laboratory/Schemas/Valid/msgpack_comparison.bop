@@ -2,7 +2,7 @@
 
 // These field names are weird, because I wanted the
 // key names in JSON to be the same length while not coinciding with Bebop keywords.
-struct MsgpackComparison {
+mut struct MsgpackComparison {
   uint8 ant0; // "int0": 0,
   uint8 ant1; // "int1": 1,
   int16 ant1x; // "int1-": -1,

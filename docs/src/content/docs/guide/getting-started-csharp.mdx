@@ -1,0 +1,87 @@
+---
+title: Getting started (C#)
+---
+
+import {Tabs, TabItem, LinkCard} from "@astrojs/starlight/components";
+
+##  Supported Runtimes 
+- .NET Framework 4.7.2
+- .NET Framework 4.8
+- .NET Core 3.1
+- .NET 5+
+
+##  Install the Runtime
+To install the Bebop .NET runtime you can use the following commands:
+
+```
+dotnet add package bebop
+```
+
+| Package                                        | NuGet Stable                                                                                | Downloads                                                                                    |
+| :--------------------------------------------- | :------------------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------- |
+| [bebop](https://www.nuget.org/packages/bebop/) | [![bebop](https://img.shields.io/nuget/v/bebop.svg)](https://www.nuget.org/packages/bebop/) | [![bebop](https://img.shields.io/nuget/dt/bebop.svg)](https://www.nuget.org/packages/bebop/) |
+
+##  Install the Compiler Tools
+To install the Bebop Compiler tools you can use the following command:
+
+```
+dotnet add package bebop-tools
+```
+| Package                                                    | NuGet Stable                                                                                                  | Downloads                                                                                                      |
+| :--------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------- |
+| [bebop-tools](https://www.nuget.org/packages/bebop-tools/) | [![bebop-tools](https://img.shields.io/nuget/v/bebop-tools.svg)](https://www.nuget.org/packages/bebop-tools/) | [![bebop-tools](https://img.shields.io/nuget/dt/bebop-tools.svg)](https://www.nuget.org/packages/bebop-tools/) |
+
+## Configuring the Compiler Tools
+
+Inside of your project file add a new `ItemGroup`
+
+```xml
+<ItemGroup>
+  <Bebop Include="**/*.bop" OutputDir="./Models/" OutputFile="IpcModels.g.cs" Namespace="RainwayIPC.Models" />
+</ItemGroup>
+```
+
+When the `<Bebop>` item group is present in your project all schemas that match the provided `Include` path are compiled in accordance with the output parameters defined whenever you build your project (meaning that schema changes reflect immediately in your project.)
+
+Any issues encountered while compiling your schemas can now also be inspected from the error list.
+![](https://i.imgur.com/H5jTYtJ.png)
+
+## Using Bebop Mirroring
+
+Mirroring is a Bebop feature supported by the .NET runtime implementation that allows for records to be access and handled dynamically. For instance, you can define a class as a `RecordHandler` and bind it's methods to be invoked whenever a record of a certain type is decoded.
+
+It takes advantage of the [opcode](../reference/decorators#opcode) decorator to determine which method to invoke.
+
+```csharp
+    [RecordHandler]
+    public class ExampleHandler
+    {
+
+        [BindRecord(typeof(BebopRecord<ChatMessage>))]
+        public async Task HandleChat(object state, ChatMessage chat)
+        {
+            ...
+        }
+    }
+```
+Arbitrary data can then be decoded dynamically by leveraging the records opcode, and the method bound to it is fired.
+
+```csharp
+// fired when a message is received from the network.
+public void OnMessage(byte[] data) {
+  // decodes our network messages
+  var networkMessage = NetworkMessage.Decode(data);
+  // decodes and invokes the handler (if any) for the decoded record
+  // if the record is ChatMessage then HandleChat is invoked..
+  BebopMirror.HandleRecord(networkMessage.IncomingRecordData, networkMessage.IncomingOpcode, stateObject);
+}
+```
+:::note
+- **If your `RecordHandler` is non-static the Bebop runtime will create a new instance of that class and hold onto the reference.**
+- **Bound methods currently cannot return any values and use an event driven pattern. Invoked methods do not block.**
+- **Mirroring uses reflection and may not be AOT friendly**
+:::
+:::caution
+Mirroring is a feature that will likely be removed in the future in favor of a C# implementation of [Tempo](../tempo).
+:::
+

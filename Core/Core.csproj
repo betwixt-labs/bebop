@@ -2,9 +2,9 @@
 
   <PropertyGroup>
     <TypeScriptCompileBlocked>true</TypeScriptCompileBlocked>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
-    <LangVersion>11.0</LangVersion>
+    <LangVersion>preview</LangVersion>
     <AssemblyName>BebopCore</AssemblyName>
     <RootNamespace>Core</RootNamespace>
     <Platforms>AnyCPU</Platforms>
@@ -13,7 +13,8 @@
     <VersionPrefix Condition="'$(ReleaseVersion)' == ''">0.0.1</VersionPrefix>
     <VersionSuffix Condition="'$(ReleaseVersion)' == ''">$([System.DateTime]::UtcNow.ToString(`yyyyMMdd-HHmm`))</VersionSuffix>
     <Configurations>Debug;Release</Configurations>
-      <InvariantGlobalization>true</InvariantGlobalization>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+     <IsTrimmable>true</IsTrimmable>
   </PropertyGroup>
 
 
@@ -35,6 +36,11 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Errata" Version="0.11.0" />
+    <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../extensions/chord.runtime/chord.runtime.csproj" />
   </ItemGroup>
   
 </Project>

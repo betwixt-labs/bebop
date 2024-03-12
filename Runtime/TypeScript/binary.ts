@@ -51,41 +51,47 @@ enum WireTypeKind {
   Enum,
 }
 
-type Attributes = { [name: string]: Attribute };
-interface Attribute {
-  attributeName: string;
-  attributeValue: string | null;
-  isNumber: boolean;
+type Decorators = { [identifier: string]: Decorator };
+interface Decorator {
+  arguments?: { [identifier: string]: DecoratorArgument };
+}
+
+interface DecoratorArgument {
+  typeId: number;
+  value: string | number | bigint | Guid | null;
 }
 
 interface EnumMember {
   name: string;
-  attributes: Attributes;
-  value: number | BigInt | null;
+  decorators: Decorators;
+  value: number | bigint | null;
 }
 
 interface Field {
   name: string;
   typeId: number;
   fieldProperties: FieldTypes;
-  attributes: Attributes;
-  constantValue?: number | BigInt | null;
+  decorators: Decorators;
+  constantValue?: number | null;
 }
 
 interface Definition {
   index: number;
   name: string;
   kind: WireTypeKind;
-  attributes: Attributes;
+  minimalEncodeSize: number;
+  decorators: Decorators;
 }
 
 interface Enum extends Definition {
   baseType: WireBaseType;
+  isBitFlags: boolean;
   members: { [name: string]: EnumMember };
 }
 
 interface Struct extends Definition {
-  isReadOnly: boolean;
+  isMutable: boolean;
+  isFixedSize: boolean;
   fields: { [fieldName: string]: Field };
 }
 
@@ -105,22 +111,22 @@ interface Union extends Definition {
 
 interface Service {
   name: string;
-  attributes: Attributes;
+  decorators: Decorators;
   methods: { [methodName: string]: ServiceMethod };
 }
 
 interface ServiceMethod {
   name: string;
-  attributes: Attributes;
+  decorators: Decorators;
   requestTypeId: number;
   responseTypeId: number;
   methodType: WireMethodType;
   id: number;
 }
 
-interface ParsedSchema {
+interface SchemaAst {
   bebopVersion: number;
-  definedTypes: { [typeName: string]: Definition };
+  definitions: { [typeName: string]: Definition };
   services?: { [serviceName: string]: Service };
 }
 
@@ -182,7 +188,7 @@ export class RecordReader {
         throw new BebopRuntimeError(`Missing field ${field.name}`);
       }
     });
-    if (definition.isReadOnly) {
+    if (!definition.isMutable) {
       Object.freeze(record);
     }
     return record;
@@ -798,7 +804,7 @@ export class RecordWriter {
  * `BinarySchema` represents a class that allows parsing of a Bebop schema in binary form.
  *
  * This class holds the DataView representation of the binary data, its parsing position,
- * and contains methods to parse each specific type of Bebop schema structure.
+ * and contains methods to get each specific type of Bebop schema structure.
  */
 export class BinarySchema {
   private readonly view: DataView;
@@ -806,7 +812,7 @@ export class BinarySchema {
   private pos: number;
   private readonly ArrayType = -14;
   private readonly MapType = -15;
-  private parsedSchema?: ParsedSchema;
+  private parsedSchema?: SchemaAst;
   private indexToDefinition: { [index: number]: Definition } = {};
   private nameToDefinition: { [name: string]: Definition } = {};
   public reader: RecordReader;
@@ -836,7 +842,10 @@ export class BinarySchema {
           return target[Number(prop)];
         }
         // If prop is the name of a method of Uint8Array, return the function
-        if (typeof prop === 'string' && typeof (target as any)[prop] === 'function') {
+        if (
+          typeof prop === "string" &&
+          typeof (target as any)[prop] === "function"
+        ) {
           return (target as any)[prop].bind(target);
         }
         // Optionally, you can throw an error or return undefined for all other properties
@@ -849,42 +858,46 @@ export class BinarySchema {
   }
 
   /**
-   * Parse the schema.
+   * Get the schema.
    * This method should only be called once per instance.
    */
-  public parse(): void {
+  public get(): void {
     if (this.parsedSchema !== undefined) {
       return;
     }
 
-    const schemaVersion = this.parseUint8();
-    const numDefinedTypes = this.parseUint32();
+    const schemaVersion = this.getUint8();
+    const numDefinedTypes = this.getUint32();
 
     let definedTypes: { [typeName: string]: Definition } = {};
     for (let i = 0; i < numDefinedTypes; i++) {
-      const def = this.parseDefinedType(i);
+      const def = this.getDefinedType(i);
       definedTypes[def.name] = def;
       this.indexToDefinition[i] = def;
       this.nameToDefinition[def.name] = def;
     }
 
-    const serviceCount = this.parseUint32();
+    const serviceCount = this.getUint32();
     let services: { [serviceName: string]: Service } = {};
 
     for (let i = 0; i < serviceCount; i++) {
-      const service = this.parseServiceDefinition();
+      const service = this.getServiceDefinition();
       services[service.name] = service;
     }
-    this.parsedSchema = { bebopVersion: schemaVersion, definedTypes, services };
+    this.parsedSchema = {
+      bebopVersion: schemaVersion,
+      definitions: definedTypes,
+      services,
+    };
     Object.freeze(this.parsedSchema);
   }
 
   /**
-   * Returns the parsed schema.
+   * Returns the getd schema.
    */
-  public get ast(): ParsedSchema {
+  public get ast(): Readonly<SchemaAst> {
     if (this.parsedSchema === undefined) {
-      this.parse();
+      this.get();
     }
     return this.parsedSchema!;
   }
@@ -912,205 +925,207 @@ export class BinarySchema {
     return definition;
   }
 
-  private parseDefinedType(index: number): Definition {
-    const typeName = this.parseString();
-    const typeKind = this.parseUint8() as WireTypeKind;
-    const typeAttributes = this.parseAttributes();
-
-    switch (typeKind) {
+  private getDefinedType(index: number): Definition {
+    const name = this.getString();
+    const kind = this.getUint8() as WireTypeKind;
+    const decorators = this.getDecorators();
+    switch (kind) {
       case WireTypeKind.Enum:
-        return this.parseEnumDefinition(
-          typeName,
-          typeKind,
-          typeAttributes,
-          index
-        );
+        return this.getEnumDefinition(name, kind, decorators, index);
       case WireTypeKind.Union:
-        return this.parseUnionDefinition(
-          typeName,
-          typeKind,
-          typeAttributes,
-          index
-        );
+        return this.getUnionDefinition(name, kind, decorators, index);
       case WireTypeKind.Struct:
-        return this.parseStructDefinition(
-          typeName,
-          typeKind,
-          typeAttributes,
-          index
-        );
+        return this.getStructDefinition(name, kind, decorators, index);
       case WireTypeKind.Message:
-        return this.parseMessageDefinition(
-          typeName,
-          typeKind,
-          typeAttributes,
-          index
-        );
+        return this.getMessageDefinition(name, kind, decorators, index);
       default:
-        throw new BebopRuntimeError(`Unknown type kind: ${typeKind}`);
+        throw new BebopRuntimeError(`Unknown type kind: ${kind}`);
     }
   }
 
-  private parseAttributes() {
-    const numAttributes = this.parseUint8();
-    const attributes: { [name: string]: Attribute } = {};
-    for (let i = 0; i < numAttributes; i++) {
-      const attribute = this.parseAttribute();
-      attributes[attribute.attributeName] = attribute;
+  private getDecorators() {
+    const decoratorCount = this.getUint8();
+    const decorators: Decorators = {};
+    if (decoratorCount === 0) {
+      return decorators;
     }
-    return attributes;
+    for (let i = 0; i < decoratorCount; i++) {
+      const identifier = this.getString();
+      decorators[identifier] = this.getDecorator();
+    }
+    return decorators;
   }
 
-  private parseAttribute(): Attribute {
-    const attributeName = this.parseString();
-    const hasValue = this.parseBool();
-    const attributeValue = hasValue ? this.parseString() : null;
-    const isNumber = this.parseBool();
-    return { attributeName, attributeValue, isNumber };
+  private getDecorator(): Decorator {
+    const argCount = this.getUint8();
+    const args: { [name: string]: DecoratorArgument } = {};
+    for (let i = 0; i < argCount; i++) {
+      const identifier = this.getString();
+      const typeId = this.getTypeId();
+      const argumentValue = this.getConstantValue(typeId);
+      args[identifier] = {
+        typeId,
+        value: argumentValue,
+      };
+    }
+    return { arguments: args };
   }
 
-  private parseEnumDefinition(
-    typeName: string,
-    typeKind: WireTypeKind,
-    typeAttributes: Attributes,
+  private getEnumDefinition(
+    name: string,
+    kind: WireTypeKind,
+    decorators: Decorators,
     index: number
   ): Enum {
-    const baseType = this.parseTypeId();
-    const memberCount = this.parseUint8();
+    const baseType = this.getTypeId();
+    const isBitFlags = this.getBool();
+    const minimalEncodeSize = this.getInt32();
+    const memberCount = this.getUint8();
     const members: { [name: string]: EnumMember } = {};
     for (let i = 0; i < memberCount; i++) {
-      const member = this.parseEnumMember(baseType);
+      const member = this.getEnumMember(baseType);
       members[member.name] = member;
     }
     return {
       index,
-      name: typeName,
-      kind: typeKind,
-      attributes: typeAttributes,
+      name: name,
+      isBitFlags,
+      kind: kind,
+      decorators: decorators,
+      minimalEncodeSize,
       baseType,
       members,
     };
   }
 
-  private parseEnumMember(baseType: number): EnumMember {
-    const name = this.parseString();
-    const attributes = this.parseAttributes();
-    const value = this.parseConstantValue(baseType);
-    return { name, attributes, value };
+  private getEnumMember(baseType: number): EnumMember {
+    const name = this.getString();
+    const decorators = this.getDecorators();
+    const value = this.getConstantValue(baseType) as number;
+    return { name, decorators, value };
   }
 
-  private parseUnionDefinition(
-    typeName: string,
-    typeKind: WireTypeKind,
-    typeAttributes: { [name: string]: Attribute },
+  private getUnionDefinition(
+    name: string,
+    kind: WireTypeKind,
+    decorators: { [name: string]: Decorator },
     index: number
   ): Union {
-    const branchCount = this.parseUint8();
+    const minimalEncodeSize = this.getInt32();
+    const branchCount = this.getUint8();
     const branches = new Array(branchCount)
       .fill(null)
-      .map(() => this.parseUnionBranch());
+      .map(() => this.getUnionBranch());
     return {
       index,
-      name: typeName,
-      kind: typeKind,
-      attributes: typeAttributes,
+      name: name,
+      kind: kind,
+      decorators: decorators,
+      minimalEncodeSize,
       branchCount,
       branches,
     };
   }
 
-  private parseUnionBranch(): UnionBranch {
-    const discriminator = this.parseUint8();
-    const typeId = this.parseTypeId();
+  private getUnionBranch(): UnionBranch {
+    const discriminator = this.getUint8();
+    const typeId = this.getTypeId();
     return { discriminator, typeId };
   }
 
-  private parseStructDefinition(
-    typeName: string,
-    typeKind: WireTypeKind,
-    typeAttributes: { [name: string]: Attribute },
+  private getStructDefinition(
+    name: string,
+    kind: WireTypeKind,
+    decorators: { [name: string]: Decorator },
     index: number
   ): Struct {
-    const isReadOnly = this.parseBool();
-    const fields = this.parseFields(typeKind);
+    const isMutable = this.getBool();
+    const minimalEncodeSize = this.getInt32();
+    const isFixedSize = this.getBool();
+    const fields = this.getFields(kind);
     return {
       index,
-      name: typeName,
-      kind: typeKind,
-      attributes: typeAttributes,
-      isReadOnly,
+      name: name,
+      kind: kind,
+      decorators: decorators,
+      isMutable,
+      minimalEncodeSize,
+      isFixedSize,
       fields,
     };
   }
 
-  private parseMessageDefinition(
-    typeName: string,
-    typeKind: WireTypeKind,
-    typeAttributes: { [name: string]: Attribute },
+  private getMessageDefinition(
+    name: string,
+    kind: WireTypeKind,
+    decorators: { [name: string]: Decorator },
     index: number
   ): Message {
-    const fields = this.parseFields(typeKind);
+    const minimalEncodeSize = this.getInt32();
+    const fields = this.getFields(kind);
     return {
       index,
-      name: typeName,
-      kind: typeKind,
-      attributes: typeAttributes,
+      minimalEncodeSize,
+      name: name,
+      kind: kind,
+      decorators: decorators,
       fields,
     };
   }
 
-  private parseFields(parentKind: WireTypeKind): { [name: string]: Field } {
-    const numFields = this.parseUint8();
+  private getFields(parentKind: WireTypeKind): { [name: string]: Field } {
+    const numFields = this.getUint8();
     const fields: { [name: string]: Field } = {};
     for (let i = 0; i < numFields; i++) {
-      const field = this.parseField(parentKind);
+      const field = this.getField(parentKind);
       fields[field.name] = field;
     }
     return fields;
   }
 
-  private parseField(parentKind: WireTypeKind): Field {
-    const fieldName = this.parseString();
-    let fieldTypeId = this.parseTypeId();
+  private getField(parentKind: WireTypeKind): Field {
+    const fieldName = this.getString();
+    let fieldTypeId = this.getTypeId();
     let fieldProperties: FieldTypes;
 
     if (fieldTypeId === this.ArrayType || fieldTypeId === this.MapType) {
-      fieldProperties = this.parseNestedType(
+      fieldProperties = this.getNestedType(
         fieldTypeId === this.ArrayType ? "array" : "map"
       );
     } else {
       fieldProperties = { type: "scalar" };
     }
 
-    const attributes = this.parseAttributes();
-    const constantValue =
+    const decorators = this.getDecorators();
+    const constantValue = (
       parentKind === WireTypeKind.Message
-        ? this.parseConstantValue(WireBaseType.Byte)
-        : null;
+        ? this.getConstantValue(WireBaseType.Byte)
+        : null
+    ) as any;
 
     return {
       name: fieldName,
       typeId: fieldTypeId,
       fieldProperties,
-      attributes,
+      decorators: decorators,
       constantValue,
     };
   }
 
-  private parseNestedType(parentType: string): FieldTypes {
+  private getNestedType(parentType: string): FieldTypes {
     if (parentType === "array") {
-      const depth = this.parseUint8();
-      const memberTypeId = this.parseTypeId();
+      const depth = this.getUint8();
+      const memberTypeId = this.getTypeId();
       return { type: parentType, memberTypeId: memberTypeId, depth };
     }
 
     if (parentType === "map") {
-      const keyTypeId = this.parseTypeId();
-      const valueTypeId = this.parseTypeId();
+      const keyTypeId = this.getTypeId();
+      const valueTypeId = this.getTypeId();
 
       let nestedType: FieldTypes | undefined;
       if (valueTypeId === this.ArrayType || valueTypeId === this.MapType) {
-        nestedType = this.parseNestedType(
+        nestedType = this.getNestedType(
           valueTypeId === this.ArrayType ? "array" : "map"
         );
       }
@@ -1125,48 +1140,54 @@ export class BinarySchema {
     throw new BebopRuntimeError("Invalid initial type");
   }
 
-  private parseConstantValue(typeId: number): number | BigInt | null {
+  private getConstantValue(
+    typeId: number
+  ): string | number | bigint | Guid | null {
     switch (typeId) {
       case WireBaseType.Bool:
-        return this.parseBool() ? 1 : 0;
+        return this.getBool() ? 1 : 0;
       case WireBaseType.Byte:
-        return this.parseUint8();
+        return this.getUint8();
       case WireBaseType.UInt16:
-        return this.parseUint16();
+        return this.getUint16();
       case WireBaseType.Int16:
-        return this.parseInt16();
+        return this.getInt16();
       case WireBaseType.UInt32:
-        return this.parseUint32();
+        return this.getUint32();
       case WireBaseType.Int32:
-        return this.parseInt32();
+        return this.getInt32();
       case WireBaseType.UInt64:
-        return BigInt(this.parseUint64());
+        return BigInt(this.getUint64()) as bigint;
       case WireBaseType.Int64:
-        return BigInt(this.parseInt64());
+        return BigInt(this.getInt64());
       case WireBaseType.Float32:
-        return this.parseFloat32();
+        return this.getFloat32();
       case WireBaseType.Float64:
-        return this.parseFloat64();
+        return this.getFloat64();
+      case WireBaseType.String:
+        return this.getString();
+      case WireBaseType.Guid:
+        return Guid.fromBytes(this.getGuid(), 0);
       default:
         throw new BebopRuntimeError(`Unsupported constant type ID: ${typeId}`);
     }
   }
 
-  private parseServiceDefinition(): Service {
-    let name = this.parseString();
-    let attributes = this.parseAttributes();
+  private getServiceDefinition(): Service {
+    let name = this.getString();
+    let decorators = this.getDecorators();
     let methods: { [name: string]: ServiceMethod } = {};
-    let methodCount = this.parseUint32();
+    let methodCount = this.getUint32();
     for (let i = 0; i < methodCount; i++) {
-      let methodName = this.parseString();
-      let methodAttributes = this.parseAttributes();
-      let methodType = this.parseUint8() as WireMethodType;
-      let requestTypeId = this.parseTypeId();
-      let responseTypeId = this.parseTypeId();
-      let id = this.parseUint32();
+      let methodName = this.getString();
+      let methodDecorators = this.getDecorators();
+      let methodType = this.getUint8() as WireMethodType;
+      let requestTypeId = this.getTypeId();
+      let responseTypeId = this.getTypeId();
+      let id = this.getUint32();
       methods[methodName] = {
         name: methodName,
-        attributes: methodAttributes,
+        decorators: methodDecorators,
         methodType: methodType,
         requestTypeId: requestTypeId,
         responseTypeId: responseTypeId,
@@ -1175,12 +1196,12 @@ export class BinarySchema {
     }
     return {
       name: name,
-      attributes: attributes,
+      decorators: decorators,
       methods: methods,
     };
   }
 
-  private parseString(): string {
+  private getString(): string {
     const start = this.pos;
     while (this.pos < this.data.length && this.data[this.pos] !== 0) {
       this.pos++;
@@ -1193,67 +1214,73 @@ export class BinarySchema {
     return decoder.decode(strBytes);
   }
 
-  private parseUint8() {
+  private getUint8() {
     let value = this.view.getUint8(this.pos);
     this.pos++;
     return value;
   }
 
-  private parseUint16() {
+  private getUint16() {
     let value = this.view.getUint16(this.pos, true);
     this.pos += 2;
     return value;
   }
 
-  private parseInt16() {
+  private getInt16() {
     let value = this.view.getInt16(this.pos, true);
     this.pos += 2;
     return value;
   }
 
-  private parseUint32() {
+  private getUint32() {
     let value = this.view.getUint32(this.pos, true);
     this.pos += 4;
     return value;
   }
 
-  private parseInt32() {
+  private getInt32() {
     let value = this.view.getInt32(this.pos, true);
     this.pos += 4;
     return value;
   }
 
-  private parseUint64() {
+  private getUint64() {
     let value = this.view.getBigUint64(this.pos, true);
     this.pos += 8;
     return Number(value);
   }
 
-  private parseInt64() {
+  private getInt64() {
     let value = this.view.getBigInt64(this.pos, true);
     this.pos += 8;
     return Number(value);
   }
 
-  private parseFloat32() {
+  private getFloat32() {
     let value = this.view.getFloat32(this.pos, true);
     this.pos += 4;
     return value;
   }
 
-  private parseFloat64() {
+  private getFloat64() {
     let value = this.view.getFloat64(this.pos, true);
     this.pos += 8;
     return value;
   }
 
-  private parseBool() {
-    return this.parseUint8() !== 0;
+  private getBool() {
+    return this.getUint8() !== 0;
   }
 
-  private parseTypeId() {
+  private getTypeId() {
     let typeId = this.view.getInt32(this.pos, true);
     this.pos += 4;
     return typeId;
+  }
+
+  private getGuid() {
+    let value = this.data.subarray(this.pos, this.pos + 16);
+    this.pos += 16;
+    return value;
   }
 }

@@ -1,0 +1,64 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PublishAot>true</PublishAot>
+    <StripSymbols>true</StripSymbols>
+    <OptimizationPreference>Size</OptimizationPreference>
+    <TrimMode>full</TrimMode>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <AssemblyVersion>0.0.0.1</AssemblyVersion>
+    <Version>0.0.1-alpha</Version>
+  </PropertyGroup>
+
+   <ItemGroup>
+    <ProjectReference Include="..\chord.common\chord.common.csproj" />
+     <ProjectReference Include="..\chord.runtime\chord.runtime.csproj" />
+  </ItemGroup>
+
+   <ItemGroup>
+     <PackageReference Include="Errata" Version="0.12.0" />
+     <PackageReference Include="Spectre.Console" Version="0.48.0" />
+     <PackageReference Include="Spectre.Console.Json" Version="0.48.0" />
+   </ItemGroup>
+
+     <!-- Detect OS for build -->
+  <PropertyGroup>
+    <BUILD_OS Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true'">Windows</BUILD_OS>
+    <BUILD_OS Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::OSX)))' == 'true'">OSX</BUILD_OS>
+    <BUILD_OS Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true'">Linux</BUILD_OS>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)'=='Release' ">
+    <DefineConstants>$(DefineConstants);RELEASE</DefineConstants>
+    <TrimmerRemoveSymbols>true</TrimmerRemoveSymbols>
+    <DebuggerSupport>false</DebuggerSupport>
+    <EnableUnsafeBinaryFormatterSerialization>false</EnableUnsafeBinaryFormatterSerialization>
+    <EnableUnsafeUTF7Encoding>false</EnableUnsafeUTF7Encoding>
+    <EventSourceSupport>false</EventSourceSupport>
+    <HttpActivityPropagationSupport>false</HttpActivityPropagationSupport>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <MetadataUpdaterSupport>false</MetadataUpdaterSupport>
+    <StackTraceSupport>false</StackTraceSupport>
+    <UseNativeHttpHandler>true</UseNativeHttpHandler>
+    <UseSystemResourceKeys>true</UseSystemResourceKeys>
+  </PropertyGroup>
+
+
+    <!-- Set OS vars -->
+  <PropertyGroup Condition="'$(BUILD_OS)' == 'Windows'">
+    <DefineConstants>$(DefineConstants);OS_WINDOWS</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(BUILD_OS)' == 'OSX'">
+    <DefineConstants>$(DefineConstants);OS_OSX</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(BUILD_OS)' == 'Linux'">
+    <DefineConstants>$(DefineConstants);OS_LINUX</DefineConstants>
+  </PropertyGroup>
+
+</Project>

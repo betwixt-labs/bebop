@@ -1,0 +1,85 @@
+---
+title: Getting started (TypeScript)
+---
+
+import {Tabs, TabItem, LinkCard} from "@astrojs/starlight/components";
+
+| Package                                        | Downloads                                                                                   
+| :--------------------------------------------- | :------------------------------------------------------------------------------------------ |
+| [bebop](https://www.npmjs.com/package/bebop)   | ![bebop](https://img.shields.io/npm/dt/bebop)
+| [bebop-tools](https://www.npmjs.com/package/bebop) | ![bebop](https://img.shields.io/npm/dt/bebop-tools)
+
+
+First, install the Bebop runtime:
+<Tabs>
+  <TabItem label="npm">
+  ```bash
+  npm add bebop
+  ```
+  </TabItem>
+
+  <TabItem label="yarn">
+  ```bash
+  yarn add bebop
+  ```
+  </TabItem>
+</Tabs>
+
+Followed by the Bebop compiler:
+<Tabs>
+  <TabItem label="npm">
+  ```bash
+  npm add bebop-tools
+  ```
+  </TabItem>
+
+  <TabItem label="yarn">
+  ```bash
+  yarn add bebop-tools
+  ```
+  </TabItem>
+</Tabs>
+
+Next, init your project:
+<Tabs>
+  <TabItem label="npm">
+  ```bash
+  npx bebopc init
+  ```
+  </TabItem>
+
+  <TabItem label="yarn">
+  ```bash
+  yarn bebopc init
+  ```
+  </TabItem>
+</Tabs>
+
+Open the generated `bebop.json` file and add a TypeScript generator:
+```json
+{                
+   "include": [  
+     "**/*.bop" 
+   ],
+   "generators": {
+    "ts": {
+        "outFile": "src/bops.gen.ts"
+    }
+   }        
+}
+```
+
+Now, you can compile your Bebop schemas to TypeScript:
+<Tabs>
+  <TabItem label="npm">
+  ```bash
+  npx bebopc build
+  ```
+  </TabItem>
+
+  <TabItem label="yarn">
+  ```bash
+  yarn bebopc build
+  ```
+  </TabItem>
+</Tabs>

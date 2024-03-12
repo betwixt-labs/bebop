@@ -1,0 +1,17 @@
+---
+title: Import
+---
+
+A Bebop schema may include all the definitions of other schemas, by listing `import` statements at the top of the schema.
+
+Such a statement consists of `import`, followed by a quoted relative path:
+    
+```go
+import "../other.bop"
+
+struct MyStruct {
+    OtherType other;
+}
+```
+
+The imported schema is then available for use in the current schema.

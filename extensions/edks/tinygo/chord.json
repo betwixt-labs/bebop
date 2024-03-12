@@ -1,0 +1,55 @@
+{
+  "$schema": "../../src/jsonschema.json",
+  "name": "tinygo-template",
+  "private": false,
+  "description": "A template for chords built with tinygo",
+  "version": "1.0.0",
+  "repository": "https://github.com/betwixt-labs/bebopc",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Betwixt Labs",
+    "email": "code@betwixtlabs.com"
+  },
+  "bin": "build/main.wasm",
+  "build": {
+    "script": "./build.sh",
+    "compiler": "tinygo",
+    "env": {
+      "FOO": "bar"
+    }
+  },
+  "pack": {
+    "acme": {
+      "auxiliaryFile": "./auxiliary.txt"
+    }
+  },
+  "contributes": {
+    "generator": {
+      "alias": "acme",
+      "name": "ACME Generator"
+    },
+    "decorators": {
+      "min": {
+        "description": "Sets the min of something idk",
+        "parameters": {
+          "floor": {
+            "description": "Specifies the floor of something idk",
+            "type": "int32",
+            "required": true
+          },
+          "ceiling": {
+            "description": "Specifies the ceiling of something idk",
+            "type": "int32",
+            "required": false,
+            "default": 100
+          }
+        },
+        "targets": "all"
+      }
+    }
+  },
+  "engine": {
+    "bebopc": "^3.0.0"
+  },
+  "readme": "README.md"
+}

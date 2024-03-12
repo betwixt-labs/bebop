@@ -1,0 +1,48 @@
+{
+  "$schema": "../../src/jsonschema.json",
+  "name": "acme",
+  "description": "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout.",
+  "version": "1.0.0",
+  "repository": "https://github.com/betwixt-labs/bebopc",
+  "bin": "./build/release.wasm",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Betwixt Labs",
+    "email": "hello@invalid.com"
+  },
+  "build": {
+    "script": "yarn asbuild:release",
+    "compiler": "as",
+    "env": {
+      "FOO": "bar"
+    }
+  },
+  "contributes": {
+    "generator": {
+      "alias": "acme",
+      "name": "ACME Generator"
+    },
+    "decorators": {
+      "min": {
+        "description": "Sets the min of something idk",
+        "parameters": {
+          "floor": {
+            "description": "Specifies the floor of something idk",
+            "type": "int32",
+            "required": true
+          },
+          "ceiling": {
+            "description": "Specifies the ceiling of something idk",
+            "type": "int32",
+            "required": false,
+            "default": 100
+          }
+        },
+        "targets": "all"
+      }
+    }
+  },
+  "engine": {
+    "bebopc": "^3.0.0"
+  }
+}

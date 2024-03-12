@@ -19,6 +19,7 @@
             <LogFormat>MSBuild</LogFormat>
             <OutputFile/>
             <Namespace/>
+            <LangVersion>9.0</LangVersion>
         </Bebop>
     </ItemDefinitionGroup>
 
@@ -44,6 +45,7 @@
     <Message Importance="high" Text="Bebop Output Directory = %(Bebop.OutputDir)" />
     <Message Importance="high" Text="Bebop Output File = %(Bebop.OutputFile)" />
     <Message Importance="high" Text="Bebop Target Language = %(Bebop.Language)" />
+    <Message Importance="high" Text="Bebop LangVersion = %(Bebop.LangVersion)" />
     <Message Importance="high" Text="Bebop Log Format = %(Bebop.Logformat)" />
     <Message Importance="high" Text="Bebop Namespace = %(Bebop.Namespace)" Condition="'%(Bebop.Namespace)' != '' "/>
     <Message Importance="high" Text="Input Schemas = $(_BebopSchemas)" Condition="'$(_BebopSchemas)' != '' "/>
@@ -62,7 +64,7 @@
     <Target Name="CompileBops" BeforeTargets="CoreCompile" DependsOnTargets="PrepareForBuild;ValidateBebopcCommandLine" Condition="'$(_BebopSchemas)' != '' " >
 
         <Exec
-            Command="&quot;$(_Bebopc)&quot; --log-format %(Bebop.LogFormat) --%(Bebop.Language) &quot;$(_BebopOutput)&quot; --namespace %(Bebop.Namespace) --files $(_BebopSchemas)"
+            Command="&quot;$(_Bebopc)&quot; --include $(_BebopSchemas) -df %(Bebop.LogFormat) build --generator &quot;%(Bebop.Language):$(_BebopOutput),namespace=%(Bebop.Namespace),langVersion=%(Bebop.LangVersion)&quot;"
             EchoOff='true'
             StandardErrorImportance='high'
             StandardOutputImportance='low'

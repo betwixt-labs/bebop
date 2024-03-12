@@ -1,0 +1,3 @@
+This is just an example file.
+
+It shows that we can pack a file into the extension.

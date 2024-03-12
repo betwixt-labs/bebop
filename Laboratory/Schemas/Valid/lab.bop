@@ -1,12 +1,12 @@
-struct Int32s { int32[] a; }
-struct Uint32s { uint32[] a; }
-struct Float32s { float32[] a; }
-struct Int64s { int64[] a; }
-struct Uint64s { uint64[] a; }
-struct Float64s { float64[] a; }
+mut struct Int32s { int32[] a; }
+mut struct Uint32s { uint32[] a; }
+mut struct Float32s { float32[] a; }
+mut struct Int64s { int64[] a; }
+mut struct Uint64s { uint64[] a; }
+mut struct Float64s { float64[] a; }
 
 enum VideoCodec { H264=0; H265=1; }
-struct VideoData { float64 time; uint32 width; uint32 height; byte[] fragment; }
+mut struct VideoData { float64 time; uint32 width; uint32 height; byte[] fragment; }
 message MediaMessage { 1 -> VideoCodec codec; 2 -> VideoData data; }
 
 // Should be able to decode a "SkipTestNewContainer" as a "SkipTestOldContainer".

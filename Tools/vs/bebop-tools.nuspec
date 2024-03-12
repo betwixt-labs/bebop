@@ -10,7 +10,7 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <license type="expression">Apache-2.0</license>
     <licenseUrl>https://licenses.nuget.org/Apache-2.0</licenseUrl>
-    <projectUrl>https://github.com/RainwayApp/bebop</projectUrl>
+    <projectUrl>https://github.com/betwixt-labs/bebop</projectUrl>
     <description>The Bebop compiler for managed C# projects and native C++ projects.
 
 Add this package to a project that contains .bop files to be compiled to code.

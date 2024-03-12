@@ -15,26 +15,35 @@ jobs:
           - os: macos-latest
             IDENTIFIER: osx
             ARTIFACT: bebopc
+            CHORD_ARTIFACT: chordc
 
           - os: windows-latest
             IDENTIFIER: win
             ARTIFACT: bebopc.exe
+            CHORD_ARTIFACT: chordc.exe
 
           - os: ubuntu-22.04
             IDENTIFIER: linux
             ARTIFACT: bebopc
+            CHORD_ARTIFACT: chordc
+            BUILD_WASI: true
     env:
       CONFIGURATION: Release
       BUILD_ARTIFACT_X86_64: ./bin/compiler/Release/publish/${{matrix.IDENTIFIER}}-x64/${{matrix.ARTIFACT}}
       BUILD_ARTIFACT_ARM64: ./bin/compiler/Release/publish/${{matrix.IDENTIFIER}}-arm64/${{matrix.ARTIFACT}}
       BUILD_ZIP_ARTIFACT_X86_64: ./bin/compiler/Release/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-x64.zip
       BUILD_ZIP_ARTIFACT_ARM64: ./bin/compiler/Release/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-arm64.zip
+      BUILD_ARTIFACT_WASI: ./bin/compiler/Release/artifacts/wasi-wasm/AppBundle/${{matrix.ARTIFACT}}.wasm
+      CHORD_ARTIFACT_X86_64: ./extensions/chordc/bin/Release/net8.0/${{matrix.IDENTIFIER}}-x64/publish/${{matrix.CHORD_ARTIFACT}}
+      CHORD_ARTIFACT_ARM64: ./extensions/chordc/bin/Release/net8.0/${{matrix.IDENTIFIER}}-arm64/publish/${{matrix.CHORD_ARTIFACT}}
+      CHORD_ZIP_ARTIFACT_X86_64: ./extensions/chordc/bin/Release/net8.0/${{matrix.IDENTIFIER}}-x64/publish/chordc-${{matrix.IDENTIFIER}}-x64.zip
+      CHORD_ZIP_ARTIFACT_ARM64:  ./extensions/chordc/bin/Release/net8.0/${{matrix.IDENTIFIER}}-arm64/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-arm64.zip
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
 
       - name: Get Environment Variables
         id: dotenv
-        uses: falti/dotenv-action@v0.2.5
+        uses: falti/dotenv-action@v1.0.4
 
       # ubuntu is the fastest OS to spin up and if one fails they all fail.
       - if: matrix.os == 'ubuntu-22.04'
@@ -48,21 +57,46 @@ jobs:
       - if: matrix.os == 'ubuntu-22.04'
         name: Install Dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install clang zlib1g-dev libkrb5-dev libtinfo5
+          sudo dpkg --add-architecture arm64
+          sudo bash -c 'cat > /etc/apt/sources.list.d/arm64.list <<EOF
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ jammy main restricted
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ jammy-updates main restricted
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ jammy-backports main restricted universe multiverse
+          EOF'
+          sudo sed -i -e 's/deb http/deb [arch=amd64] http/g' /etc/apt/sources.list
+          sudo sed -i -e 's/deb mirror/deb [arch=amd64] mirror/g' /etc/apt/sources.list
+          sudo apt update
+          sudo apt install -y clang llvm binutils-aarch64-linux-gnu gcc-aarch64-linux-gnu zlib1g-dev zlib1g-dev:arm64 libkrb5-dev libtinfo5
+
+      - if: matrix.os == 'ubuntu-22.04' && matrix.BUILD_WASI
+        name: Install WASI Dependencies
+        run: ./install-wasi.sh
+        working-directory: ./scripts/
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v1
+        uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: "7.0.x" # SDK Version to use; x will use the latest version of the 7.0 channel
-          include-prerelease: true
+          dotnet-version: "8.0.x"
+          dotnet-quality: "preview"
 
       - name: Build bebopc
         run: |
           dotnet restore
-          dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-x64 -p:ReleaseVersion=${{ steps.dotenv.outputs.version }} -p:PublishTrimmed=false -p:PublishSingleFile=true --self-contained
-          dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-arm64 -p:ReleaseVersion=${{ steps.dotenv.outputs.version }} -p:PublishTrimmed=false -p:PublishSingleFile=true --self-contained
+          dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-x64 -p:ReleaseVersion=${{ steps.dotenv.outputs.version }} -p:PublishTrimmed=true -p:TrimMode=partial -p:PublishSingleFile=true --self-contained
+          dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-arm64 -p:ReleaseVersion=${{ steps.dotenv.outputs.version }} -p:PublishTrimmed=true -p:TrimMode=partial -p:PublishSingleFile=true --self-contained
         working-directory: ./Compiler/
+
+      - if: matrix.os == 'ubuntu-22.04' && matrix.BUILD_WASI
+        name: Build bebopc for WASI
+        run: ./build-wasi.sh
+        working-directory: ./scripts/
+
+      - name: Build chordc
+        run: |
+          dotnet restore
+          dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-x64
+          dotnet publish -c ${{env.CONFIGURATION}} -r ${{matrix.IDENTIFIER}}-arm64
+        working-directory: ./extensions/chordc
 
       - if: matrix.os == 'macos-latest'
         name: Import Code-Signing Certificates
@@ -95,11 +129,24 @@ jobs:
           zip -j ${{env.BUILD_ZIP_ARTIFACT_ARM64}} ./bebopc
           rm -f ./bebopc
 
+      - if: matrix.os == 'macos-latest'
+        name: Zip chordc macOS Binary
+        run: |
+          zip -j ${{env.CHORD_ZIP_ARTIFACT_X86_64}} ${{env.CHORD_ARTIFACT_X86_64}}
+          zip -j ${{env.CHORD_ZIP_ARTIFACT_ARM64}} ${{env.CHORD_ARTIFACT_ARM64}}
+
       - if: matrix.os == 'ubuntu-22.04'
         name: ZIP Linux Build
         run: |
           zip -j ${{env.BUILD_ZIP_ARTIFACT_X86_64}} ${{env.BUILD_ARTIFACT_X86_64}}
           zip -j ${{env.BUILD_ZIP_ARTIFACT_ARM64}} ${{env.BUILD_ARTIFACT_ARM64}}
+
+      - if: matrix.os == 'ubuntu-22.04'
+        name: ZIP chordc Linux Build
+        run: |
+          zip -j ${{env.CHORD_ZIP_ARTIFACT_X86_64}} ${{env.CHORD_ARTIFACT_X86_64}}
+          zip -j ${{env.CHORD_ZIP_ARTIFACT_ARM64}} ${{env.CHORD_ARTIFACT_ARM64}}
+
 
       - if: matrix.os == 'windows-latest'
         name: ZIP Windows Build
@@ -108,17 +155,43 @@ jobs:
           Compress-Archive -Path ${{env.BUILD_ARTIFACT_X86_64}} -DestinationPath ${{env.BUILD_ZIP_ARTIFACT_X86_64}}
           Compress-Archive -Path ${{env.BUILD_ARTIFACT_ARM64}} -DestinationPath ${{env.BUILD_ZIP_ARTIFACT_ARM64}}
 
+      - if: matrix.os == 'windows-latest'
+        name: ZIP chordc Windows Build
+        shell: powershell
+        run: |
+          Compress-Archive -Path ${{env.CHORD_ARTIFACT_X86_64}} -DestinationPath ${{env.CHORD_ZIP_ARTIFACT_X86_64}}
+          Compress-Archive -Path ${{env.CHORD_ARTIFACT_ARM64}} -DestinationPath ${{env.CHORD_ZIP_ARTIFACT_ARM64}}
+
       - name: Upload X86_64 Build
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: ${{matrix.IDENTIFIER}}-x64
           path: ${{env.BUILD_ZIP_ARTIFACT_X86_64}}
 
       - name: Upload ARM64 Build
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: ${{matrix.IDENTIFIER}}-arm64
           path: ${{env.BUILD_ZIP_ARTIFACT_ARM64}}
+
+      - if: matrix.os == 'ubuntu-22.04' && matrix.BUILD_WASI
+        name: Upload WASI_WASM Build
+        uses: actions/upload-artifact@v3
+        with:
+          name: wasi-wasm
+          path: ${{env.BUILD_ARTIFACT_WASI}}
+
+      - name: Upload chordc X86_64 Build
+        uses: actions/upload-artifact@v3
+        with:
+          name: chordc-${{matrix.IDENTIFIER}}-x64
+          path: ${{env.CHORD_ZIP_ARTIFACT_X86_64}}
+
+      - name: Upload chordc ARM64 Build
+        uses: actions/upload-artifact@v3
+        with:
+          name: chordc-${{matrix.IDENTIFIER}}-arm64
+          path: ${{env.CHORD_ZIP_ARTIFACT_ARM64}}
 
   build-runtimes:
     env:
@@ -131,7 +204,7 @@ jobs:
     runs-on: ubuntu-22.04
     needs: build-compiler
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
       - uses: actions/setup-node@v1
         with:
           node-version: "18.16.0" # LTS
@@ -141,15 +214,15 @@ jobs:
         uses: falti/dotenv-action@v0.2.5
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v1
+        uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: "7.0.x" # SDK Version to use; x will use the latest version of the 7.0 channel
-          include-prerelease: true
+          dotnet-version: "8.0.x"
+          dotnet-quality: "preview"
 
       - name: Test .NET Runtime
         run: |
-          dotnet run --project ../../../Compiler/ --cs "../GeneratedTestCode/Output.g.cs" --namespace Bebop.Codegen --files $(ls -p ../../Schemas/Valid/*.bop | tr '\n' ' ')
-          dotnet test -c Release -f net7.0
+          dotnet run --project ../../../Compiler/ --include $(ls -p ../../Schemas/Valid/*.bop | tr '\n' ' ') build --generator "cs:../GeneratedTestCode/Output.g.cs,namespace=Bebop.Codegen"
+          dotnet test -c Release -f net8.0
         working-directory: ${{env.NET_TEST_ROOT}}
 
       - name: Build .NET Runtime
@@ -159,7 +232,7 @@ jobs:
         working-directory: ${{env.NET_RUNTIME_ROOT}}
 
       - name: Upload .NET Runtime Package
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: bebop-runtime-cs-${{ steps.dotenv.outputs.version }}
           path: ${{env.NET_RUNTIME_ROOT}}/bin/Release/bebop.${{ steps.dotenv.outputs.version }}.nupkg
@@ -198,7 +271,7 @@ jobs:
           mv tmp Cargo.toml
           cargo package --allow-dirty
       - name: Upload Rust Runtime
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: bebop-runtime-rust-${{steps.dotenv.outputs.version}}
           path: ${{ env.RUST_RUNTIME_ROOT }}/target/package/bebop-${{ steps.dotenv.outputs.version }}.crate
@@ -225,22 +298,10 @@ jobs:
         working-directory: ${{env.TS_RUNTIME_ROOT}}
 
       - name: Upload TypeScript Runtime Package
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: bebop-runtime-ts-${{ steps.dotenv.outputs.version }}
           path: ${{env.TS_RUNTIME_ROOT}}/bebop-v${{ steps.dotenv.outputs.version }}.tgz
-
-      - name: Build REPL
-        run: |
-          dotnet restore
-          dotnet publish -c Release -p:ReleaseVersion=${{ steps.dotenv.outputs.version }}
-        working-directory: ./Repl/
-
-      - name: Upload REPL Artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: bebop-repl-${{ steps.dotenv.outputs.version }}
-          path: ./bin/repl/Release/publish/wwwroot/
 
   build-tools:
     env:
@@ -249,7 +310,7 @@ jobs:
     needs: build-compiler
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -275,13 +336,14 @@ jobs:
           unzip -j -o ./osx-arm64/bebopc-osx-arm64.zip -d ${{env.BEBOPC_PATH}}/macos/arm64
           unzip -j -o ./linux-x64/bebopc-linux-x64.zip -d ${{env.BEBOPC_PATH}}/linux/x64
           unzip -j -o ./linux-arm64/bebopc-linux-arm64.zip -d ${{env.BEBOPC_PATH}}/linux/arm64
+          cp ./wasi-wasm/bebopc.wasm ${{env.BEBOPC_PATH}}/wasi/wasm
 
       - name: Build NuGet Package
         run: bash build.sh ${{ steps.dotenv.outputs.version }}
         working-directory: ${{env.TOOLS_ROOT}}/vs
 
       - name: Upload Nuget Artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: bebop-tools-nuget-${{ steps.dotenv.outputs.version }}
           path: ${{env.TOOLS_ROOT}}/vs/packages/bebop-tools.${{ steps.dotenv.outputs.version }}.nupkg
@@ -294,7 +356,7 @@ jobs:
           cargo package --allow-dirty
 
       - name: Upload Cargo Tools
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: bebop-tools-cargo-${{ steps.dotenv.outputs.version }}
           path: ${{ env.TOOLS_ROOT }}/cargo/target/package/bebop-tools-${{ steps.dotenv.outputs.version }}.crate
@@ -311,7 +373,7 @@ jobs:
         working-directory: ${{env.TOOLS_ROOT}}/node
 
       - name: Upload NPM Artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: bebop-tools-npm-${{ steps.dotenv.outputs.version }}
           path: ${{env.TOOLS_ROOT}}/node/bebop-tools-v${{ steps.dotenv.outputs.version }}.tgz
@@ -322,10 +384,18 @@ jobs:
 
       - name: Build VSCode extension
         run: |
-          jq '.version = "${{ steps.dotenv.outputs.version }}"' package.json > tmp && mv tmp package.json
+          VERSION=$(echo ${{ steps.dotenv.outputs.version }} | sed 's/-.*//')
+          jq '.version = "'"$VERSION"'"' package.json > tmp && mv tmp package.json
           npm install --global @vscode/vsce
           yarn install
           vsce package
+          if [[ $GITHUB_REF == refs/heads/vnext ]] || [[ $GITHUB_REF == refs/tags/*rc* ]] || [[ $GITHUB_REF == refs/tags/*alpha* ]] || [[ $GITHUB_REF == refs/tags/*beta* ]]; then
+            echo "Building pre-release package"
+            vsce package --pre-release
+          else
+            echo "Building standard package"
+            vsce package
+          fi
         working-directory: ./vscode-bebop
 
       - name: Upload VSCode artifact
@@ -341,7 +411,7 @@ jobs:
     runs-on: ubuntu-22.04
     needs: [build-compiler, build-runtimes, build-tools]
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
       - uses: actions/setup-node@v1
         with:
           node-version: "18.16.0" # LTS
@@ -351,10 +421,19 @@ jobs:
         id: dotenv
         uses: falti/dotenv-action@v0.2.5
 
+      - id: release-info
+        name: Set Release Info
+        run: |
+          if [[ $GITHUB_REF == refs/heads/vnext ]] || [[ $GITHUB_REF == refs/tags/*rc* ]] || [[ $GITHUB_REF == refs/tags/*alpha* ]] || [[ $GITHUB_REF == refs/tags/*beta* ]]; then
+            echo "PRERELEASE=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "PRERELEASE=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: "7.0.x" # SDK Version to use; x will use the latest version of the 7.0 channel
+          dotnet-version: "8.0.x" # SDK Version to use; x will use the latest version of the 7.0 channel
           include-prerelease: true
 
       - name: Setup Rust
@@ -389,24 +468,40 @@ jobs:
         working-directory: ${{env.RUST_RUNTIME_ROOT}}
 
       - name: Publish NodeJS Tools
-        run: npm publish "./bebop-tools-npm-${{ steps.dotenv.outputs.version }}/bebop-tools-v${{ steps.dotenv.outputs.version }}.tgz" --access public
+        run: npm publish "./bebop-tools-npm-${{ steps.dotenv.outputs.version }}/bebop-tools-v${{ steps.dotenv.outputs.version }}.tgz" --access public ${{ steps.release-info.outputs.PRERELEASE == 'true' && '--tag next' || '' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
 
       - name: Publish TypeScript Runtime
-        run: npm publish "./bebop-runtime-ts-${{ steps.dotenv.outputs.version }}/bebop-v${{ steps.dotenv.outputs.version }}.tgz" --access public
+        run: npm publish "./bebop-runtime-ts-${{ steps.dotenv.outputs.version }}/bebop-v${{ steps.dotenv.outputs.version }}.tgz" --access public ${{ steps.release-info.outputs.PRERELEASE == 'true' && '--tag next' || '' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
 
       - name: Publish VSCode Extension
+        continue-on-error: true
         run: |
           npm install --global @vscode/vsce
-          vsce publish --packagePath ./vscode-bebop/bebop-lang-${{ steps.dotenv.outputs.version }}.vsix -p ${{ secrets.VSCE_TOKEN }}
-          
+          VERSION=$(echo ${{ steps.dotenv.outputs.version }} | sed 's/-.*//')
+          if [[ $GITHUB_REF == refs/heads/vnext ]] || [[ $GITHUB_REF == refs/tags/*rc* ]] || [[ $GITHUB_REF == refs/tags/*alpha* ]] || [[ $GITHUB_REF == refs/tags/*beta* ]]; then
+            echo "Publishing vscode pre-release package"
+            vsce publish --pre-release --packagePath ./vscode-bebop/bebop-lang-$VERSION.vsix -p ${{ secrets.VSCE_TOKEN }}
+          else
+            echo "Publishing vscode standard package"
+            vsce publish --packagePath ./vscode-bebop/bebop-lang-$VERSION.vsix -p ${{ secrets.VSCE_TOKEN }}
+          fi
+
       - name: Publish Open VSX Extension
+        continue-on-error: true
         run: |
           npm i -g ovsx
-          npx ovsx publish ./vscode-bebop/bebop-lang-${{ steps.dotenv.outputs.version }}.vsix -p ${{ secrets.OPENVSX }}
+          VERSION=$(echo ${{ steps.dotenv.outputs.version }} | sed 's/-.*//')
+          if [[ $GITHUB_REF == refs/heads/vnext ]] || [[ $GITHUB_REF == refs/tags/*rc* ]] || [[ $GITHUB_REF == refs/tags/*alpha* ]] || [[ $GITHUB_REF == refs/tags/*beta* ]]; then
+            echo "Publishing ovsx pre-release package"
+            npx ovsx publish --pre-release ./vscode-bebop/bebop-lang-$VERSION.vsix -p ${{ secrets.OPENVSX }}
+          else
+            echo "Publishing ovsx standard package"
+            npx ovsx publish ./vscode-bebop/bebop-lang-$VERSION.vsix -p ${{ secrets.OPENVSX }}
+          fi
 
       - name: Create Release
         id: create_release
@@ -417,7 +512,7 @@ jobs:
           tag_name: ${{ github.ref }}
           release_name: Bebop ${{ github.ref }}
           draft: false
-          prerelease: false
+          prerelease: ${{ steps.release-info.outputs.PRERELEASE == 'true' }}
 
       - name: Upload Compiler for Windows x64
         uses: actions/upload-release-asset@v1
@@ -477,4 +572,75 @@ jobs:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./linux-arm64/bebopc-linux-arm64.zip
           asset_name: bebopc-linux-arm64.zip
+          asset_content_type: application/zip
+
+      - name: Upload Compiler for WASM
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./wasi-wasm/bebopc.wasm
+          asset_name: bebopc.wasm
+          asset_content_type: application/wasm
+
+
+      - name: Upload chordc for Windows x64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./chordc-win-x64/chordc.exe-win-x64.zip
+          asset_name: chordc-windows-x64.zip
+          asset_content_type: application/zip
+
+      - name: Upload chordc for Windows ARM64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./chordc-win-arm64/chordc.exe-win-arm64.zip
+          asset_name: chordc-windows-arm64.zip
+          asset_content_type: application/zip
+
+      - name: Upload chordc for Mac x64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./chordc-osx-x64/chordc-osx-x64.zip
+          asset_name: chordc-macos-x64.zip
+          asset_content_type: application/zip
+
+      - name: Upload chordc for Mac ARM64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./chordc-osx-arm64/chordc-osx-arm64.zip
+          asset_name: chordc-macos-arm64.zip
+          asset_content_type: application/zip
+
+      - name: Upload chordc for Linux x64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./chordc-linux-x64/chordc-linux-x64.zip
+          asset_name: chordc-linux-x64.zip
+          asset_content_type: application/zip
+
+      - name: Upload chordc for Linux ARM64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./chordc-linux-arm64/chordc-linux-arm64.zip
+          asset_name: chordc-linux-arm64.zip
           asset_content_type: application/zip

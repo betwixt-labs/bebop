@@ -1,79 +1,76 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Core.Generators;
-using Core.Logging;
+using System.Threading;
 using Core.Meta;
+using Core.Exceptions;
 using Core.Parser;
+using Core.Generators;
+using System.IO;
+using Core;
 
 namespace Compiler;
 
-public class BebopCompiler
+public class BebopCompiler(CompilerHost Host)
 {
     public const int Ok = 0;
     public const int Err = 1;
 
-    public CommandLineFlags Flags { get; }
 
-    public BebopCompiler(CommandLineFlags flags)
+    public BebopSchema ParseSchema(IEnumerable<string> schemaPaths)
     {
-        Flags = flags;
-    }
-
-    private async Task<BebopSchema> ParseAndValidateSchema(List<string> schemaPaths, string nameSpace)
-    {
-        var parser = new SchemaParser(schemaPaths, nameSpace);
-        var schema = await parser.Parse();
+        var parser = new SchemaParser(schemaPaths, Host);
+        var schema = parser.Parse();
         schema.Validate();
         return schema;
     }
 
-    public async Task<int> CompileSchema(Func<BebopSchema, BaseGenerator> makeGenerator,
-        List<string> schemaPaths,
-        FileInfo outputFile,
-        string nameSpace, TempoServices services, Version? langVersion)
+    public static void EmitGeneratedFiles(List<GeneratedFile> generatedFiles, BebopConfig config)
     {
-        if (outputFile.Directory is not null && !outputFile.Directory.Exists)
+        foreach (var generatedFile in generatedFiles)
         {
-            outputFile.Directory.Create();
+            var outFile = generatedFile.Name;
+
+            // Normalize the path
+            if (!Path.IsPathRooted(outFile))
+            {
+                outFile = Path.GetFullPath(Path.Combine(config.WorkingDirectory, outFile));
+            }
+
+            var outDirectory = Path.GetDirectoryName(outFile) ?? throw new CompilerException("Could not determine output directory.");
+            if (!Directory.Exists(outDirectory))
+            {
+                Directory.CreateDirectory(outDirectory);
+            }
+
+            File.WriteAllText(outFile, generatedFile.Content);
+
+            if (generatedFile.AuxiliaryFile is not null)
+            {
+                var auxiliaryOutFile = Path.GetFullPath(Path.Combine(outDirectory, generatedFile.AuxiliaryFile.Name));
+                File.WriteAllBytes(auxiliaryOutFile, generatedFile.AuxiliaryFile.Content);
+            }
         }
-        if (outputFile.Exists)
+    }
+
+
+    public async ValueTask<GeneratedFile> BuildAsync(GeneratorConfig generatorConfig, BebopSchema schema, BebopConfig config, CancellationToken cancellationToken)
+    {
+        if (!Host.TryGetGenerator(generatorConfig.Alias, out var generator))
         {
-            File.Delete(outputFile.FullName);
+            throw new CompilerException($"Could not find generator with alias '{generatorConfig.Alias}'.");
         }
 
-        var schema = await ParseAndValidateSchema(schemaPaths, nameSpace);
-        var result = await ReportSchemaDiagnostics(schema);
-        if (result == Err) return Err;
-        var generator = makeGenerator(schema);
-        generator.WriteAuxiliaryFiles(outputFile.DirectoryName ?? string.Empty);
-        var compiled = generator.Compile(langVersion, services: services, writeGeneratedNotice: Flags?.SkipGeneratedNotice ?? false, emitBinarySchema: Flags?.EmitBinarySchema ?? false);
-        await File.WriteAllTextAsync(outputFile.FullName, compiled);
-        return Ok;
+        var compiled = await generator.Compile(schema, generatorConfig, cancellationToken);
+        var auxiliary = generator.GetAuxiliaryFile();
+        return new GeneratedFile(generatorConfig.OutFile, compiled, generator.Alias, auxiliary);
     }
 
-    private async Task<int> ReportSchemaDiagnostics(BebopSchema schema)
+    public static (List<SpanException> Warnings, List<SpanException> Errors) GetSchemaDiagnostics(BebopSchema schema, int[] supressWarningCodes)
     {
-        var noWarn = Flags?.NoWarn ?? new List<string>();
-        var loudWarnings = schema.Warnings.Where(x => !noWarn.Contains(x.ErrorCode.ToString()));
-        var errors = loudWarnings.Concat(schema.Errors).ToList();
-        DiagnosticLogger.Instance.WriteSpanDiagonstics(errors);
-        return schema.Errors.Count > 0 ? Err : Ok;
-    }
-
-    public async Task<int> CheckSchema(string textualSchema)
-    {
-        var parser = new SchemaParser(textualSchema, "CheckNameSpace");
-        var schema = await parser.Parse();
-        schema.Validate();
-        return await ReportSchemaDiagnostics(schema);
-    }
-
-    public async Task<int> CheckSchemas(List<string> schemaPaths)
-    {
-        var schema = await ParseAndValidateSchema(schemaPaths, "CheckNameSpace");
-        return await ReportSchemaDiagnostics(schema);
+        var noWarn = supressWarningCodes;
+        var loudWarnings = schema.Warnings.Where(x => !noWarn.Contains(x.ErrorCode)).ToList();
+        return (loudWarnings, schema.Errors);
     }
 }

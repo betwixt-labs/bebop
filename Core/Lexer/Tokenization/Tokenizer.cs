@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Core.Exceptions;
 using Core.IO;
@@ -41,14 +42,14 @@ namespace Core.Lexer.Tokenization
             }
         }
 
-        public async Task AddFile(string absolutePath)
+        public void AddFile(string absolutePath)
         {
-            if (await _reader.AddFile(absolutePath))
+            if (_reader.AddFile(absolutePath))
             {
                 _newFilesToTokenize = true;
             }
         }
-        
+
         /// <summary>
         /// Add an arbitrary bebop string to the token stream.
         /// </summary>
@@ -157,9 +158,6 @@ namespace Core.Lexer.Tokenization
             _ when IsLiteral(surrogate, out var l) => l,
             _ => null
         };
-
-
-
 
         /// <summary>
         /// Determines if a surrogate leads into a block comment.

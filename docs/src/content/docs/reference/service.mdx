@@ -1,0 +1,48 @@
+---
+title: Service
+---
+
+In Bebop a `service` defines an aggregate of methods that can be called by a client. 
+
+There are for different types of service methods:
+
+- `unary` - a single request and response
+```proto
+service Greeter {
+    sayHello(MyRequest): MyResponse ;
+}
+```
+- `server streaming` - a single request and a stream of responses from the server
+```proto ins="stream"
+service Greeter {
+    sayHello(MyRequest): stream MyResponse;
+}
+```
+- `client streaming` - a stream of requests and a single response from the server
+```proto ins="stream"
+service Greeter {
+    sayHello(stream MyRequest): MyResponse;
+}
+```
+:::note
+Client streaming is not supported in browser environments.
+:::
+- `duplex streaming` - a stream of requests and a stream of responses from the server
+```proto ins="stream"
+service Greeter {
+    sayHello(stream MyRequest): stream MyResponse;
+}
+``` 
+
+## Code Generation
+
+[Tempo](https://github.com/betwixt-labs/tempo) is the offical RPC library for Bebop. 
+
+When the compiler emits code related to services, it will do so to match the implementation of Tempo in the target language.
+
+For more information see the [Tempo documentation]().
+
+To control the types of service code that are generated (client vs. server) you can use 
+
+```json
+```

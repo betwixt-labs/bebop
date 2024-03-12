@@ -1,0 +1,36 @@
+name: Bebop Playground
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "playground/**"
+  pull_request:
+    paths:
+      - "playground/**"
+jobs:
+  build-repl:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get Enviorment Variables
+        id: dotenv
+        uses: falti/dotenv-action@v1.0.4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: "8.0.x"
+          dotnet-quality: 'preview'
+      - name: Build Playground
+        run: |
+          ../scripts/install-wasi.sh
+          yarn install
+          yarn build:site
+        working-directory: ./playground/
+
+      - name: Upload Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: bebop-playground-latest
+          path: ${{github.workspace}}/playground/dist/

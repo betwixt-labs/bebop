@@ -5,6 +5,7 @@ using System.Numerics;
 using Core.Exceptions;
 using Core.IO;
 using Core.Lexer.Tokenization.Models;
+using Core.Meta.Decorators;
 using Core.Meta.Extensions;
 using Core.Parser;
 using Core.Parser.Extensions;
@@ -30,9 +31,8 @@ namespace Core.Meta
 
         public List<string> Imports { get; }
 
-        public BebopSchema(string nameSpace, Dictionary<string, Definition> definitions, HashSet<(Token, Token)> typeReferences, List<SpanException>? parsingErrors = null, List<SpanException>? parsingWarnings = null, List<string>? imports = null)
+        public BebopSchema(Dictionary<string, Definition> definitions, HashSet<(Token, Token)> typeReferences, List<SpanException>? parsingErrors = null, List<SpanException>? parsingWarnings = null, List<string>? imports = null)
         {
-            Namespace = nameSpace;
             Definitions = definitions;
             Imports = imports ?? new List<string>();
 
@@ -43,10 +43,7 @@ namespace Core.Meta
             _parsingWarnings = parsingWarnings ?? new();
             _typeReferences = typeReferences;
         }
-        /// <summary>
-        /// An optional namespace that is provided to the compiler.
-        /// </summary>
-        public string Namespace { get; }
+
         /// <summary>
         /// All Bebop definitions in this schema, keyed by their name.
         /// </summary>
@@ -122,6 +119,67 @@ namespace Core.Meta
             return _sortedDefinitions;
         }
 
+        private readonly List<SpanException> ValidateDefinitionDecorators(List<SchemaDecorator> decorators, Definition definition)
+        {
+            var validationErrors = new List<SpanException>();
+            foreach (var decorator in decorators)
+            {
+                if (!decorator.IsUsableOn())
+                {
+                    validationErrors.Add(new InvalidDecoratorUsageException(decorator.Identifier, $"Decorator '{decorator.Identifier}' cannot be applied to {definition.Name.ToLowerInvariant()} '{definition.Name}'", decorator.Span));
+                }
+                if (!decorator.Definition.TryValidate(out var reason, decorator))
+                {
+                    if (decorator.Identifier == "opcode")
+                    {
+                        validationErrors.Add(new InvalidOpcodeDecoratorValueException(definition, reason));
+                    }
+                    else
+                    {
+                        validationErrors.Add(new DecoratorValidationException(decorator.Identifier, reason, decorator.Span));
+                    }
+                }
+                if (decorator.Identifier == "opcode")
+                {
+                    if (definition is RecordDefinition td && td.OpcodeDecorator is not null)
+                    {
+                        if (Definitions.Values.Count(d => d is RecordDefinition td2 && td2.OpcodeDecorator is not null && td2.OpcodeDecorator.Arguments["fourcc"].Equals(td.OpcodeDecorator.Arguments["fourcc"])) > 1)
+                        {
+                            validationErrors.Add(new DuplicateOpcodeException(td));
+                        }
+                    }
+                }
+                if (!decorator.Definition.AllowMultiple && decorators.Count(a => a.Identifier == decorator.Identifier) > 1)
+                {
+                    validationErrors.Add(new MultipleDecoratorsException(decorator.Identifier, decorator.Span));
+                }
+            }
+            return validationErrors;
+        }
+
+        private static List<SpanException> ValidateFieldDecorators(List<SchemaDecorator> decorators, Field field, Definition parent)
+        {
+            var validationErrors = new List<SpanException>();
+            foreach (var decorator in decorators)
+            {
+
+                if (!decorator.IsUsableOn())
+                {
+                    var hint = parent is StructDefinition && decorator.Identifier == "deprecated" ? "deprecated decorator cannot be applied to struct fields" : "";
+                    validationErrors.Add(new InvalidDecoratorUsageException(decorator.Identifier, $"Decorator '{decorator.Identifier}' cannot be applied to '{parent.Name}.{field.Name}'", decorator.Span, hint));
+                }
+                if (!decorator.Definition.TryValidate(out var reason, decorator))
+                {
+                    validationErrors.Add(new DecoratorValidationException(decorator.Identifier, reason, decorator.Span));
+                }
+                if (!decorator.Definition.AllowMultiple && decorators.Count(a => a.Identifier == decorator.Identifier) > 1)
+                {
+                    validationErrors.Add(new MultipleDecoratorsException(decorator.Identifier, decorator.Span));
+                }
+            }
+            return validationErrors;
+        }
+
         /// <summary>
         /// Validates that the schema is made up of well-formed values.
         /// </summary>
@@ -140,8 +198,9 @@ namespace Core.Meta
                 // TODO figure out why this is happening
                 //  it is obvious that the ServiceDefinition isn't being added
                 //  but it remains to be seen why it is still being picked up by _typeReferences
-                if (!Definitions.ContainsKey(definitionToken.Lexeme)) {
-                 //   errors.Add(new UnrecognizedTypeException(definitionToken, typeToken.Lexeme));
+                if (!Definitions.ContainsKey(definitionToken.Lexeme))
+                {
+                    //   errors.Add(new UnrecognizedTypeException(definitionToken, typeToken.Lexeme));
                     continue;
                 }
                 var definition = Definitions[definitionToken.Lexeme];
@@ -168,28 +227,27 @@ namespace Core.Meta
                 {
                     errors.Add(new ReservedIdentifierException(definition.Name, definition.Span));
                 }
-                if (definition is RecordDefinition td && td.OpcodeAttribute != null)
-                {
-                    if (!td.OpcodeAttribute.TryValidate(out var opcodeReason))
-                    {
-                        errors.Add(new InvalidOpcodeAttributeValueException(td, opcodeReason));
-                    }
-                    if (Definitions.Values.Count(d => d is RecordDefinition td2 && td2.OpcodeAttribute != null && td2.OpcodeAttribute.Value.Equals(td.OpcodeAttribute.Value)) > 1)
-                    {
-                        errors.Add(new DuplicateOpcodeException(td));
-                    }
-                }
                 if (definition is FieldsDefinition fd)
                 {
+                    var fieldDefinitionDecorators = fd.Decorators;
+                    if (fieldDefinitionDecorators.Count is > 0)
+                    {
+                        errors.AddRange(ValidateDefinitionDecorators(fieldDefinitionDecorators, fd));
+                    }
+                    if (fd.Fields.Count > byte.MaxValue)
+                    {
+                        errors.Add(new StackSizeExceededException("A definition cannot have more than 255 fields", fd.Span));
+                    }
                     foreach (var field in fd.Fields)
                     {
+                        var fieldDecorators = field.Decorators;
+                        if (fieldDecorators.Count is > 0)
+                        {
+                            errors.AddRange(ValidateFieldDecorators(fieldDecorators, field, fd));
+                        }
                         if (ReservedWords.Identifiers.Contains(field.Name))
                         {
                             errors.Add(new ReservedIdentifierException(field.Name, field.Span));
-                        }
-                        if (field.DeprecatedAttribute != null && fd is StructDefinition)
-                        {
-                            errors.Add(new InvalidDeprecatedAttributeUsageException(field));
                         }
                         if (fd.Fields.Count(f => f.Name.Equals(field.Name, StringComparison.OrdinalIgnoreCase)) > 1)
                         {
@@ -216,6 +274,11 @@ namespace Core.Meta
                                     errors.Add(new InvalidFieldException(field, "Message member index must start at 1"));
                                     break;
                                 }
+                            case MessageDefinition when field.ConstantValue > byte.MaxValue:
+                                {
+                                    errors.Add(new InvalidFieldException(field, "Message index must be less than or equal to 255"));
+                                    break;
+                                }
                             case MessageDefinition when field.ConstantValue > fd.Fields.Count:
                                 {
                                     errors.Add(new InvalidFieldException(field, "Message index is greater than field count"));
@@ -228,11 +291,26 @@ namespace Core.Meta
                 }
                 if (definition is ServiceDefinition sd)
                 {
+                    var serviceDecorators = sd.Decorators;
+                    if (serviceDecorators.Count is > 0)
+                    {
+                        errors.AddRange(ValidateDefinitionDecorators(serviceDecorators, sd));
+                    }
                     var usedMethodNames = new HashSet<string>();
                     var usedMethodIds = new HashSet<uint>();
+                    if (sd.Methods.Count > byte.MaxValue)
+                    {
+                        errors.Add(new StackSizeExceededException("A service cannot have more than 255 methods", sd.Span));
+                    }
                     foreach (var b in sd.Methods)
                     {
+
                         var fnd = b.Definition;
+                        var methodDecorators = b.Decorators;
+                        if (methodDecorators.Count is > 0)
+                        {
+                            errors.AddRange(ValidateDefinitionDecorators(methodDecorators, fnd));
+                        }
                         if (!usedMethodNames.Add(fnd.Name.ToSnakeCase()))
                         {
                             errors.Add(new DuplicateServiceMethodNameException(sd.Name, fnd.Name, fnd.Span));
@@ -245,9 +323,9 @@ namespace Core.Meta
                         {
                             errors.Add(new InvalidServiceRequestTypeException(sd.Name, fnd.Name, fnd.RequestDefinition, fnd.Span));
                         }
-                        if (fnd.ReturnDefintion.IsDefined(this) && !fnd.ReturnDefintion.IsAggregate(this))
+                        if (fnd.ResponseDefintion.IsDefined(this) && !fnd.ResponseDefintion.IsAggregate(this))
                         {
-                            errors.Add(new InvalidServiceReturnTypeException(sd.Name, fnd.Name, fnd.ReturnDefintion, fnd.Span));
+                            errors.Add(new InvalidServiceReturnTypeException(sd.Name, fnd.Name, fnd.ResponseDefintion, fnd.Span));
                         }
 
                         if (fnd.Parent != sd)
@@ -258,10 +336,25 @@ namespace Core.Meta
                 }
                 if (definition is EnumDefinition ed)
                 {
+                    var enumDecorators = ed.Decorators;
+                    if (enumDecorators.Count is > 0)
+                    {
+                        errors.AddRange(ValidateDefinitionDecorators(enumDecorators, ed));
+                    }
                     var values = new HashSet<BigInteger>();
                     var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    if (ed.Members.Count > byte.MaxValue)
+                    {
+                        errors.Add(new StackSizeExceededException("An enum cannot have more than 255 members", ed.Span));
+                    }
                     foreach (var field in ed.Members)
                     {
+
+                        var fieldDecorators = field.Decorators;
+                        if (fieldDecorators.Count is > 0)
+                        {
+                            errors.AddRange(ValidateFieldDecorators(fieldDecorators, field, ed));
+                        }
                         if (!ed.IsBitFlags && values.Contains(field.ConstantValue))
                         {
                             errors.Add(new InvalidFieldException(field, "Enum value must be unique if the enum is not a [flags] enum"));
@@ -287,6 +380,18 @@ namespace Core.Meta
                         names.Add(field.Name);
                     }
                 }
+                if (definition is UnionDefinition ud)
+                {
+                    var unionDecorators = ud.Decorators;
+                    if (unionDecorators.Count is > 0)
+                    {
+                        errors.AddRange(ValidateDefinitionDecorators(unionDecorators, ud));
+                    }
+                    if (ud.Branches.Count > byte.MaxValue)
+                    {
+                        errors.Add(new StackSizeExceededException("A union cannot have more than 255 members", ud.Span));
+                    }
+                }
             }
             var methodIds = new Dictionary<uint, (string serviceName, string methodName)>();
 
@@ -304,8 +409,9 @@ namespace Core.Meta
             _validationErrors = errors;
             return errors;
         }
-        
-        public readonly byte[] ToBinary() {
+
+        public readonly byte[] ToBinary()
+        {
             using var writer = new BinarySchemaWriter(this);
             return writer.Encode();
         }

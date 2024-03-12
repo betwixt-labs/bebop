@@ -102,14 +102,16 @@ pub fn build_schema(schema: impl AsRef<Path>, destination: impl AsRef<Path>, con
     println!("cargo:rerun-if-changed={}", schema.to_str().unwrap());
 
     let mut cmd = Command::new(compiler_path);
-    if config.skip_generated_notice {
-        cmd.arg("--skip-generated-notice");
-    }
     let output = cmd
-        .arg("--files")
+        .arg("-i")
         .arg(schema)
-        .arg("--rust")
-        .arg(destination.to_str().unwrap())
+        .arg("build")
+        .arg("--generator")
+        .arg(format!(
+            "rust:{},noEmitNotice={}",
+            destination.to_str().unwrap(),
+            config.skip_generated_notice
+        ))
         .output()
         .expect("Could not run bebopc");
 

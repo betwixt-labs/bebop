@@ -8,17 +8,18 @@ jobs:
   test-csharp:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
-      - uses: actions/setup-dotnet@v1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v3
         with:
           dotnet-version: |
             5.0.x
             6.0.x
             7.0.x
-          include-prerelease: true
+            8.0.x
+          dotnet-quality: 'preview'
       - name: Build and run tests
         shell: bash
         run: |
-          dotnet run --project ../../Compiler/ --cs "./GeneratedTestCode/Output.g.cs" --namespace Bebop.Codegen --files $(ls -p ../Schemas/Valid/*.bop | tr '\n' ' ')
+          dotnet run --project ../../Compiler/ --trace -i $(ls -p ../Schemas/Valid/*.bop | tr '\n' ' ') build -g "cs:./GeneratedTestCode/Output.g.cs,namespace=Bebop.Codegen"
           dotnet test -nowarn:CS0618
         working-directory: "./Laboratory/C#"

@@ -1,4 +1,4 @@
-﻿struct BasicTypes2 {
+mut struct BasicTypes2 {
     bool a_bool;
     byte a_byte;
     int16 a_int16;
@@ -14,7 +14,7 @@
     date a_date;
 }
 
-struct BasicArrays2 {
+mut struct BasicArrays2 {
     bool[] a_bool;
     byte[] a_byte;
     int16[] a_int16;
@@ -29,33 +29,33 @@ struct BasicArrays2 {
     guid[] a_guid;
 }
 
-readonly struct S2 { int32 x; int32 y; }
+struct S2 { int32 x; int32 y; }
 
-struct SomeMaps2 {
+mut struct SomeMaps2 {
     map[bool, bool] m1;
     map[string, map[string, string]] m2;
     map[int32, map[bool, S2][]][] m3;
     array[map[string, array[float32]]] m4;
 }
 
-struct TestInt32Array2 { int32[] a; }
+mut struct TestInt32Array2 { int32[] a; }
 
-struct ArrayOfStrings2 {
+mut struct ArrayOfStrings2 {
     string[] strings;
 }
 
-struct StructOfStructs {
+mut struct StructOfStructs {
     BasicTypes2 basicTypes;
     BasicArrays2 basicArrays;
 }
 
-struct EmptyStruct {}
+mut struct EmptyStruct {}
 
-[opcode("WRLD")]
-struct OpcodeStruct {
+@opcode("WRLD")
+mut struct OpcodeStruct {
     int32 x;
 }
 
-struct ShouldNotHaveLifetime {
+mut struct ShouldNotHaveLifetime {
     OpcodeStruct[] v;
 }

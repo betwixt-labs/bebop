@@ -73,6 +73,13 @@
           "*bebop.json"
         ],
         "url": "./schemas/bebop-schema.json"
+      },
+      {
+        "fileMatch": [
+          "chord.json",
+          "*chord.json"
+        ],
+        "url": "./schemas/chord-schema.json"
       }
     ],
     "grammars": [

@@ -1,12 +1,14 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using Core.Lexer.Extensions;
 
 namespace Core.Meta.Extensions
 {
-    public static class StringExtensions
+    public static partial class StringExtensions
     {
         private const char SnakeSeparator = '_';
         private const char KebabSeparator = '-';
@@ -290,5 +292,199 @@ namespace Core.Meta.Extensions
 
             return builder.ToString();
         }
+
+
+        public static bool IsLegalPath(this string path, out int index)
+        {
+            index = -1;
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return false;
+            }
+            // Check for invalid path characters
+            var invalidPathChars = Path.GetInvalidPathChars();
+            var invalidPathCharIndex = path.IndexOfAny(invalidPathChars);
+            if (invalidPathCharIndex >= 0)
+            {
+                index = invalidPathCharIndex;
+                return false;
+            }
+            return true;
+        }
+
+        public static bool IsLegalFilePath(this string filePath, out int index)
+        {
+            index = -1;
+            if (string.IsNullOrWhiteSpace(filePath))
+            {
+                return false;
+            }
+
+            // Check for invalid path characters in the entire filePath
+            if (!IsLegalPath(filePath, out index))
+            {
+                return false;
+            }
+
+            // Extract the file name from the path and check for invalid file name characters
+            var fileName = Path.GetFileName(filePath);
+            var invalidFileNameChars = Path.GetInvalidFileNameChars();
+            var invalidFileNameCharIndex = fileName.IndexOfAny(invalidFileNameChars);
+            if (invalidFileNameCharIndex >= 0)
+            {
+                // Adjust the index to be in the context of the full filePath, not just fileName
+                index = filePath.LastIndexOf(fileName) + invalidFileNameCharIndex;
+                return false;
+            }
+            return true;
+        }
+
+        public static bool IsLegalPathGlob(this string pathOrGlob)
+        {
+            if (string.IsNullOrWhiteSpace(pathOrGlob))
+            {
+                return false;
+            }
+            if (LegalPathGlobRegex().IsMatch(pathOrGlob))
+            {
+                return true;
+            }
+            return true;
+        }
+
+        public static bool IsLegalFileGlobal(this string fileGlob)
+        {
+            if (string.IsNullOrWhiteSpace(fileGlob))
+            {
+                return false;
+            }
+            if (LegalFileGlobRegex().IsMatch(fileGlob))
+            {
+                return true;
+            }
+            return true;
+        }
+
+        public static bool IsValidNamespace(this string @namespace)
+        {
+            if (string.IsNullOrWhiteSpace(@namespace))
+            {
+                return false;
+            }
+            return NamespaceRegex().IsMatch(@namespace);
+        }
+
+        public static bool IsLegalPathOrGlob(this string pathOrGlob, out int invalidIndex)
+        {
+            invalidIndex = -1;
+            if (string.IsNullOrWhiteSpace(pathOrGlob))
+            {
+                return false;
+            }
+            if (IsLegalPathGlob(pathOrGlob))
+            {
+                return true;
+            }
+            if (IsLegalPath(pathOrGlob, out invalidIndex))
+            {
+                return true;
+            }
+            return false;
+        }
+        public static bool IsLegalFilePathOrGlob(this string filePathOrGlob, out int invalidIndex)
+        {
+            invalidIndex = -1;
+            if (string.IsNullOrWhiteSpace(filePathOrGlob))
+            {
+                return false;
+            }
+            if (IsLegalFileGlobal(filePathOrGlob))
+            {
+                return true;
+            }
+            if (IsLegalFilePath(filePathOrGlob, out invalidIndex))
+            {
+                return true;
+            }
+            return false;
+        }
+
+        public static bool IsPathAttemptingTraversal(this string path)
+        {
+            // Split the path into segments
+            var segments = path.Split(new char[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }, StringSplitOptions.None);
+
+            // Keep track of the depth
+            int depth = 0;
+
+            foreach (var segment in segments)
+            {
+                if (segment == "..")
+                {
+                    // Going up one directory
+                    depth--;
+
+                    // If depth goes negative, it's attempting to go above the root
+                    if (depth < 0)
+                    {
+                        return true;
+                    }
+                }
+                else if (!string.IsNullOrEmpty(segment) && segment != ".")
+                {
+                    // Normal directory, go one level deeper
+                    depth++;
+                }
+            }
+
+            return false;
+        }
+
+
+        /// <summary>
+        /// Escapes a string with \u0000 style escape sequences
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public static string EscapeString(this string? value)
+        {
+            ArgumentNullException.ThrowIfNull(value);
+
+            StringBuilder escaped = new StringBuilder();
+            foreach (char c in value)
+            {
+                switch (c)
+                {
+                    case '\\': escaped.Append(@"\\"); break;
+                    case '\"': escaped.Append("\\\""); break;
+                    case '\b': escaped.Append("\\b"); break;
+                    case '\f': escaped.Append("\\f"); break;
+                    case '\n': escaped.Append("\\n"); break;
+                    case '\r': escaped.Append("\\r"); break;
+                    case '\t': escaped.Append("\\t"); break;
+                    default:
+                        if (c < 32 || c > 127)
+                        {
+                            escaped.AppendFormat("\\u{0:x4}", (int)c);
+                        }
+                        else
+                        {
+                            escaped.Append(c);
+                        }
+                        break;
+                }
+            }
+            return escaped.ToString();
+        }
+
+
+        [GeneratedRegex(@"^(\*\*\/|.*\/)$")]
+        private static partial Regex LegalPathGlobRegex();
+
+        [GeneratedRegex(@"^.*[\*\?\[\]].*(\.[a-zA-Z0-9]+)?$")]
+        private static partial Regex LegalFileGlobRegex();
+
+        [GeneratedRegex(@"^[a-zA-Z]+(\.[a-zA-Z]+)*$")]
+        private static partial Regex NamespaceRegex();
     }
 }

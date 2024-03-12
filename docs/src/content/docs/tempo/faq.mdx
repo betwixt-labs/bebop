@@ -1,0 +1,40 @@
+---
+title: Tempo FAQ
+---
+
+Learn about the motivations and design choices behind Tempo.
+
+# Why We Created Tempo
+
+A few years ago, the team at Rainway needed a fast, memory-efficient, and low-latency way to serialize data. Existing solutions like Protocol Buffers couldn't meet their performance requirements (especially in the browser), so they created [Bebop](https://github.com/betwixt-labs/bebop).
+
+Before Tempo, the only way to utilize Bebop for communication between apps and services was to build a custom RPC around it. This pattern was so common among Bebop users that some runtimes included special functionality to facilitate it, like [Bebop Mirroring](../../guide/getting-started-csharp#using-bebop-mirroring).
+
+Forcing users of a technology, which should ideally be their go-to choice, to implement complex systems results in a poor developer experience (DX) and doesn't scale well. With an ever-growing demand among Bebop users for a formalized RPC mechanism, we created Tempo to address this need, while providing clear and immediate performance gains for your applications, APIs, and services. 🚀
+
+
+# Schemas & Code Generation vs. the World
+
+Code generation, especially in the JavaScript ecosystem, often gets a bad rap. It's hard to blame anyone for being hesitant to adopt it – if your first exposure as a developer to the idea of "code gen" was working with Protocol Buffers and gRPC, you've experienced one of the worst developer experiences in modern development paradigms. Rising projects like [tRPC](https://github.com/trpc/trpc) even tout their lack of code generation as a feature.
+
+Ultimately, whether you write a TypeScript interface or a struct in your Bebop schema, you're doing the same thing – defining the structure of data. The question we ask ourselves in this situation is: how portable and accurate are those definitions?
+
+In the case of something like tRPC, where interfaces (object literals) are the norm, you get _some_ type guarantees during development, but you won't receive any type checking or guarantees during runtime. This is to be expected due to the dynamic nature of JavaScript and JSON; a call to `JSON.parse` is naive and can't validate the data it's parsing. Your code must assume (hopefully with caution) that the object returned matches the structure of data you defined elsewhere.
+
+This yields another issue – in many JavaScript runtimes, certain types (such as Map, Set, etc.) are not natively serializable by `JSON.stringify`. As a result, data must be transformed to even be sent on the wire. This means the data will deviate from its definition (even if only temporarily) and introduces further complexity and considerations into the manually written deserialization step of an RPC, potentially leading to hard-to-diagnose bugs of varying severity.
+
+The surface area of (de)serialization issues increases in tandem with the complexity of your application and its stack. Your browser app might communicate with a serverless function written in Go, which itself communicates with a microservice written in C# (a real example from yours truly). If you're modifying data to go on the wire, then you have to consider this in every language that might touch that data.
+
+In contrast, Tempo, by utilizing Bebop's code generation and runtimes, avoids these issues. We get the benefits of development and runtime type safety (even in JavaScript), a single wire-format that is interoperable between environments and domains, and highly efficient (de)serialization that is CPU cacheable due to the single scan nature of the data, making it perfect for serverless environments with memory and CPU constraints. Of course, the biggest benefit is that the definition of the data and its serialized format is constant, effectively allowing you to encode a message once and have it repeated across any number of services in an application's stack reliably.
+
+All of this is to say that any significantly complex application will eventually need some sort of code generation, and when it does, Tempo and, by extension, Bebop will be there to provide the DX you deserve. 🚀
+
+
+# The Right Abstraction
+
+If you haven't read it already, we highly recommend reading ["The Wrong Abstraction"](https://sandimetz.com/blog/2016/1/20/the-wrong-abstraction) by Sandi Metz.
+
+To achieve the right abstraction, both for Tempo and RPC as a whole, we're not committed to any particular design prior to 1.0; breaking changes should be expected. The goals of Tempo's abstraction are:
+- To be consistent across languages. If you've ever implemented Tempo on the server-side in TypeScript, it should be just as straightforward in C#.
+- To avoid ambiguity. Names for types should be clear. Implementing extended functionality such as authorization should be obvious. Adding support for new backends should be consistently painless.
+- To ensure most of a user's time is spent on building the services for their API, rather than wrestling with complex configurations or unnecessary overhead. 🎯

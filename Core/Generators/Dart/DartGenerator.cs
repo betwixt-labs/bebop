@@ -5,6 +5,8 @@ using System.Reflection;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using Core.Meta;
 using Core.Meta.Extensions;
 
@@ -14,7 +16,7 @@ namespace Core.Generators.Dart
     {
         const int indentStep = 2;
 
-        public DartGenerator(BebopSchema schema) : base(schema) { }
+        public DartGenerator() : base() { }
 
         private string FormatDocumentation(string documentation, int spaces)
         {
@@ -49,7 +51,7 @@ namespace Core.Generators.Dart
             builder.AppendLine($"final start = view.length;");
             foreach (var field in definition.Fields)
             {
-                if (field.DeprecatedAttribute != null)
+                if (field.DeprecatedDecorator != null)
                 {
                     continue;
                 }
@@ -277,12 +279,11 @@ namespace Core.Generators.Dart
 
         private static string EscapeStringLiteral(string value)
         {
-            // Dart accepts \u0000 style escape sequences, so we can escape the string JSON-style.
-            var options = new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
-            return JsonSerializer.Serialize(value, options);
+            return $@"""{value.EscapeString()}""";
         }
 
-        private string EmitLiteral(Literal literal) {
+        private string EmitLiteral(Literal literal)
+        {
             return literal switch
             {
                 BoolLiteral bl => bl.Value ? "true" : "false",
@@ -301,8 +302,10 @@ namespace Core.Generators.Dart
         /// Generate code for a Bebop schema.
         /// </summary>
         /// <returns>The generated code.</returns>
-        public override string Compile(Version? languageVersion, TempoServices services = TempoServices.Both, bool writeGeneratedNotice = true, bool emitBinarySchema = false)
+        public override ValueTask<string> Compile(BebopSchema schema, GeneratorConfig config, CancellationToken cancellationToken = default)
         {
+            Schema = schema;
+            Config = config;
             var builder = new StringBuilder();
             builder.AppendLine("import 'dart:typed_data';");
             builder.AppendLine("import 'package:meta/meta.dart';");
@@ -329,9 +332,9 @@ namespace Core.Generators.Dart
                             {
                                 builder.Append(FormatDocumentation(field.Documentation, 2));
                             }
-                            if (field.DeprecatedAttribute != null)
+                            if (field.DeprecatedDecorator is not null && field.DeprecatedDecorator.TryGetValue("reason", out var reason))
                             {
-                                builder.AppendLine($"  /// @deprecated {field.DeprecatedAttribute.Value}");
+                                builder.AppendLine($"  /// @deprecated {reason}");
                             }
                             builder.AppendLine($"  static const {field.Name} = {ed.Name}.fromRawValue({field.ConstantValue});");
                         }
@@ -347,11 +350,11 @@ namespace Core.Generators.Dart
                             {
                                 builder.Append(FormatDocumentation(field.Documentation, 2));
                             }
-                            if (field.DeprecatedAttribute != null)
+                            if (field.DeprecatedDecorator is not null && field.DeprecatedDecorator.TryGetValue("reason", out var reason))
                             {
-                                builder.AppendLine($"  /// @deprecated {field.DeprecatedAttribute.Value}");
+                                builder.AppendLine($"  /// @deprecated {reason}");
                             }
-                            var final = fd is StructDefinition { IsReadOnly: true } ? "final " : "";
+                            var final = fd is StructDefinition { IsMutable: false } ? "final " : "";
                             var optional = fd is MessageDefinition ? "?" : "";
                             builder.AppendLine($"  {final}{type}{optional} {field.Name};");
                         }
@@ -361,7 +364,7 @@ namespace Core.Generators.Dart
                         }
                         else
                         {
-                            builder.AppendLine($"  {(fd is StructDefinition { IsReadOnly: true } ? "const " : "")}{fd.Name}({{");
+                            builder.AppendLine($"  {(fd is StructDefinition { IsMutable: false } ? "const " : "")}{fd.Name}({{");
                             foreach (var field in fd.Fields)
                             {
                                 builder.AppendLine($"    required this.{field.Name},");
@@ -369,9 +372,9 @@ namespace Core.Generators.Dart
                             builder.AppendLine("  });");
                         }
                         builder.AppendLine("");
-                        if (fd.OpcodeAttribute != null)
+                        if (fd.OpcodeDecorator is not null && fd.OpcodeDecorator.TryGetValue("fourcc", out var fourcc))
                         {
-                            builder.AppendLine($"  static const int opcode = {fd.OpcodeAttribute.Value};");
+                            builder.AppendLine($"  static const int opcode = {fourcc};");
                             builder.AppendLine("");
                         }
                         builder.AppendLine($"  static Uint8List encode({fd.Name} message) {{");
@@ -406,12 +409,16 @@ namespace Core.Generators.Dart
                 }
             }
 
-            return builder.ToString();
+            return ValueTask.FromResult(builder.ToString());
         }
 
-        public override void WriteAuxiliaryFiles(string outputPath)
+        public override AuxiliaryFile? GetAuxiliaryFile() => null;
+        public override void WriteAuxiliaryFile(string outputPath)
         {
             // There is nothing to do here.
         }
+
+        public override string Alias { get => "dart"; set => throw new NotImplementedException(); }
+        public override string Name { get => "Dart"; set => throw new NotImplementedException(); }
     }
 }

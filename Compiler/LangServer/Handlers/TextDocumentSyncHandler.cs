@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Core;
 using Core.Exceptions;
 using Core.Meta;
 using Core.Parser;
@@ -19,6 +20,7 @@ namespace Compiler.LangServer
 {
     public sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
     {
+        private readonly CompilerHost _compilerHost;
         private readonly ILanguageServerFacade _router;
         private readonly BufferManager _bufferManager;
         private readonly BebopDiagnosticPublisher _publisher;
@@ -31,8 +33,10 @@ namespace Compiler.LangServer
             ILanguageServerFacade router,
             BufferManager bufferManager,
             BebopDiagnosticPublisher publisher,
-            BebopLangServerLogger logger)
+            BebopLangServerLogger logger,
+            CompilerHost compilerHost)
         {
+            _compilerHost = compilerHost ?? throw new ArgumentNullException(nameof(compilerHost));
             _router = router ?? throw new ArgumentNullException(nameof(router));
             _bufferManager = bufferManager ?? throw new ArgumentNullException(nameof(bufferManager));
             _publisher = publisher ?? throw new ArgumentNullException(nameof(publisher));
@@ -57,20 +61,19 @@ namespace Compiler.LangServer
             };
         }
 
-        public override async Task<Unit> Handle(DidOpenTextDocumentParams request, CancellationToken cancellationToken)
+        public override Task<Unit> Handle(DidOpenTextDocumentParams request, CancellationToken cancellationToken)
         {
             _logger.LogInfo($"Opening document: {request.TextDocument.Uri}");
 
-            await UpdateBufferAsync(request.TextDocument.Uri, request.TextDocument.Text, request.TextDocument.Version);
-            return Unit.Value;
+            UpdateBuffer(request.TextDocument.Uri, request.TextDocument.Text, request.TextDocument.Version);
+            return Task.FromResult(Unit.Value);
         }
 
-        public override async Task<Unit> Handle(DidChangeTextDocumentParams request, CancellationToken cancellationToken)
+        public override Task<Unit> Handle(DidChangeTextDocumentParams request, CancellationToken cancellationToken)
         {
             var text = request.ContentChanges.FirstOrDefault()?.Text ?? string.Empty;
-            await UpdateBufferAsync(request.TextDocument.Uri, text, request.TextDocument.Version);
-
-            return Unit.Value;
+            UpdateBuffer(request.TextDocument.Uri, text, request.TextDocument.Version);
+            return Task.FromResult(Unit.Value);
         }
 
         public override Task<Unit> Handle(DidSaveTextDocumentParams request, CancellationToken cancellationToken)
@@ -110,11 +113,11 @@ namespace Compiler.LangServer
             return Unit.Task;
         }
 
-        private async Task UpdateBufferAsync(DocumentUri uri, string text, int? version)
+        private void UpdateBuffer(DocumentUri uri, string text, int? version)
         {
             try
             {
-                var schema = await ParseSchemaAsync(uri, text, version);
+                var schema = ParseSchema(uri, text, version);
                 _bufferManager.UpdateBuffer(uri, new Buffer(schema, text, version));
             }
             catch (Exception ex)
@@ -127,9 +130,9 @@ namespace Compiler.LangServer
             }
         }
 
-        private async Task<BebopSchema> ParseSchemaAsync(DocumentUri uri, string text, int? version)
+        private BebopSchema ParseSchema(DocumentUri uri, string text, int? version)
         {
-            var (schema, errors) = await ParseSchemaAsync(uri, text);
+            var (schema, errors) = ParseSchema(uri, text);
 
             // TODO: Don't count indirect errors here.
             // If there only is indirect errors (from an import),
@@ -148,18 +151,18 @@ namespace Compiler.LangServer
             return schema;
         }
 
-        private async Task<(BebopSchema, List<BebopDiagnostic>)> ParseSchemaAsync(DocumentUri uri, string text)
+        private (BebopSchema, List<BebopDiagnostic>) ParseSchema(DocumentUri uri, string text)
         {
             var diagnostics = new List<BebopDiagnostic>();
 
             try
             {
-                var parser = new SchemaParser(text, DocumentUri.GetFileSystemPath(uri) ?? string.Empty)
+                var parser = new SchemaParser(text, _compilerHost)
                 {
                     ImportResolver = new BebopLangServerImportResolver(uri, _logger)
                 };
 
-                var schema = await parser.Parse();
+                var schema = parser.Parse();
 
                 // Perform validation
                 PerformValidation(ref schema);

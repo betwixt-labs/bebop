@@ -3,9 +3,9 @@
   <PropertyGroup>
     <TypeScriptCompileBlocked>true</TypeScriptCompileBlocked>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
-    <LangVersion>11.0</LangVersion>
+    <LangVersion>preview</LangVersion>
     <AssemblyName>bebopc</AssemblyName>
     <Version Condition="'$(ReleaseVersion)' != ''">$(ReleaseVersion)</Version>
     <VersionPrefix Condition="'$(ReleaseVersion)' == ''">0.0.1</VersionPrefix>
@@ -18,14 +18,21 @@
     <PublishDir>../bin/compiler/$(Configuration)/publish/$(RuntimeIdentifier)</PublishDir>
     <Platforms>AnyCPU</Platforms>
     <Configurations>Debug;Release</Configurations>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <CheckEolTargetFramework>false</CheckEolTargetFramework>
-    <InvariantGlobalization>true</InvariantGlobalization>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
 
+   <ItemGroup>
+    <ProjectReference Include="..\Core\Core.csproj" />
+  </ItemGroup>
+
 	<ItemGroup>
-		<PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="7.0.0" />
+		<PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="8.0.0" />
 		<PackageReference Include="OmniSharp.Extensions.LanguageServer" Version="0.19.5" />
-		<PackageReference Include="Spectre.Console" Version="0.46.0" />
+		<PackageReference Include="Spectre.Console" Version="0.48.0" />
+		<PackageReference Include="Spectre.Console.Json" Version="0.48.0" />
+		<PackageReference Include="System.CommandLine" Version="2.0.0-beta4.23407.1" />
 	</ItemGroup>
 
    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
@@ -41,14 +48,28 @@
     <PublishReadyToRun>false</PublishReadyToRun>
     <SelfContained>true</SelfContained>
     <PublishTrimmed>true</PublishTrimmed>
+    <AutoreleasePoolSupport>false</AutoreleasePoolSupport>
+    <DebuggerSupport>false</DebuggerSupport>
+    <EnableUnsafeBinaryFormatterSerialization>false</EnableUnsafeBinaryFormatterSerialization>
+    <EnableUnsafeUTF7Encoding>false</EnableUnsafeUTF7Encoding>
+    <EventSourceSupport>false</EventSourceSupport>
+    <HttpActivityPropagationSupport>false</HttpActivityPropagationSupport>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <MetadataUpdaterSupport>false</MetadataUpdaterSupport>
+    <StackTraceSupport>true</StackTraceSupport>
+    <UseNativeHttpHandler>true</UseNativeHttpHandler>
+    <UseSystemResourceKeys>true</UseSystemResourceKeys>
   </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Core\Core.csproj" />
-  </ItemGroup>
+
+ 
 
 	<ItemGroup>
 		<EmbeddedResource Include="..\Runtime\C++\src\bebop.hpp" />
 	</ItemGroup>
+
+   <PropertyGroup Condition="'$(RuntimeIdentifier)' == 'wasi-wasm'">
+        <DefineConstants>$(DefineConstants);WASI_WASM_BUILD</DefineConstants>
+    </PropertyGroup>
 
 </Project>
