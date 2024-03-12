@@ -68,6 +68,7 @@ jobs:
           dotnet-quality: "preview"
       - name: Restore Solution
         run: dotnet restore
+        working-directory: ./extensions/chordc
 
       - name: Build chordc
         run: |
@@ -97,11 +98,11 @@ jobs:
       - name: Upload chordc X86_64 Build
         uses: actions/upload-artifact@v4
         with:
-          name: ${{matrix.IDENTIFIER}}-x64
+          name: chordc-${{matrix.IDENTIFIER}}-x64
           path: ${{env.CHORD_ZIP_ARTIFACT_X86_64}}
 
       - name: Upload chordc ARM64 Build
         uses: actions/upload-artifact@v4
         with:
-          name: ${{matrix.IDENTIFIER}}-arm64
+          name: chordc-${{matrix.IDENTIFIER}}-arm64
           path: ${{env.CHORD_ZIP_ARTIFACT_ARM64}}
