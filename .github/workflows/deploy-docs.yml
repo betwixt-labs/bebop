@@ -1,5 +1,5 @@
 # Simple workflow for deploying static content to Cloudflare Pages
-name: Deploy Playground
+name: Deploy Docs
 
 on:
   # Runs on pushes targeting the default branch
@@ -40,3 +40,4 @@ jobs:
           directory: ${{github.workspace}}/docs/dist
           # Optional: Enable this if you want to have GitHub Deployments triggered
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          branch: master
