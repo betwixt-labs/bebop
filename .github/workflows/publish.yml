@@ -248,6 +248,16 @@ jobs:
       - name: Download Compiler Artifacts
         uses: actions/download-artifact@v2
 
+      - name: List Chordc Artifacts
+        continue-on-error: true
+        run: |
+          ls ./chordc-osx-x64
+          ls ./chordc-osx-arm64
+          ls ./chordc-linux-x64
+          ls ./chordc-linux-arm64
+          ls ./chordc-win-x64
+          ls ./chordc-win-arm64
+
       - name: Extract Compiler Artifacts
         run: |
           mkdir -p ${{github.workspace}}/bin/compiler/Debug/artifacts
@@ -586,6 +596,7 @@ jobs:
 
 
       - name: Upload chordc for Windows x64
+        continue-on-error: true
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -596,6 +607,7 @@ jobs:
           asset_content_type: application/zip
 
       - name: Upload chordc for Windows ARM64
+        continue-on-error: true
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -606,6 +618,7 @@ jobs:
           asset_content_type: application/zip
 
       - name: Upload chordc for Mac x64
+        continue-on-error: true
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -616,6 +629,7 @@ jobs:
           asset_content_type: application/zip
 
       - name: Upload chordc for Mac ARM64
+        continue-on-error: true
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -626,6 +640,7 @@ jobs:
           asset_content_type: application/zip
 
       - name: Upload chordc for Linux x64
+        continue-on-error: true
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -636,6 +651,7 @@ jobs:
           asset_content_type: application/zip
 
       - name: Upload chordc for Linux ARM64
+        continue-on-error: true
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -37,7 +37,7 @@ namespace Compiler.Options
         /// <returns>A <see cref="GeneratorConfig"/> object if the token could be parsed; otherwise, null.</returns>
         private static GeneratorConfig? ParseGeneratorToken(string token, ArgumentResult result)
         {
-            var parts = token.Split(':');
+            var parts = token.Split(':', 2);
             if (parts.Length != 2)
             {
                 result.AddError($"Incomplete generator token specified '{token}'.");
@@ -47,6 +47,11 @@ namespace Compiler.Options
             var generatorAlias = parts[0].Trim().ToLower();
             var remaining = parts[1].Split(',');
             var outputPath = remaining[0] ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(outputPath))
+            {
+                result.AddError($"Output path not specified for generator '{generatorAlias}'.");
+                return null;
+            }
 
 
             // If the output path is 'stdout', no need to validate it as a file path
