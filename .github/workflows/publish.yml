@@ -37,7 +37,7 @@ jobs:
       CHORD_ARTIFACT_X86_64: ./extensions/chordc/bin/Release/net8.0/${{matrix.IDENTIFIER}}-x64/publish/${{matrix.CHORD_ARTIFACT}}
       CHORD_ARTIFACT_ARM64: ./extensions/chordc/bin/Release/net8.0/${{matrix.IDENTIFIER}}-arm64/publish/${{matrix.CHORD_ARTIFACT}}
       CHORD_ZIP_ARTIFACT_X86_64: ./extensions/chordc/bin/Release/net8.0/${{matrix.IDENTIFIER}}-x64/publish/chordc-${{matrix.IDENTIFIER}}-x64.zip
-      CHORD_ZIP_ARTIFACT_ARM64:  ./extensions/chordc/bin/Release/net8.0/${{matrix.IDENTIFIER}}-arm64/publish/${{matrix.ARTIFACT}}-${{matrix.IDENTIFIER}}-arm64.zip
+      CHORD_ZIP_ARTIFACT_ARM64:  ./extensions/chordc/bin/Release/net8.0/${{matrix.IDENTIFIER}}-arm64/publish/chordc-${{matrix.IDENTIFIER}}-arm64.zip
     steps:
       - uses: actions/checkout@v4
 
@@ -602,7 +602,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./chordc-win-x64/chordc.exe-win-x64.zip
+          asset_path: ./chordc-win-x64/chordc-win-x64.zip
           asset_name: chordc-windows-x64.zip
           asset_content_type: application/zip
 
@@ -613,7 +613,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./chordc-win-arm64/chordc.exe-win-arm64.zip
+          asset_path: ./chordc-win-arm64/chordc-win-arm64.zip
           asset_name: chordc-windows-arm64.zip
           asset_content_type: application/zip
 
