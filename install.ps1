@@ -199,7 +199,7 @@ function Invoke-Install {
     Write-Color "Installing bebopc" -Color White
 
     $compilerPath = Join-Path $env:PROGRAMDATA "bebop"
-    Expand-Archive -Path $downloadPath -DestinationPath "$compilerPath"
+    Expand-Archive -Path $downloadPath -DestinationPath "$compilerPath" -Force
 
     if (!(Test-Path -Path "$env:PROGRAMDATA\bebop\bebopc.exe")) {
         Write-Color "$ERROR_UTF8 bebopc failed to install." -Color Red
