@@ -51,9 +51,19 @@ enum class GuidStyle {
 };
 
 struct MalformedPacketException : public std::exception {
-    const char* what () const throw () {
-        return "malformed Bebop packet";
+    MalformedPacketException(size_t start_pos, size_t step, size_t length) noexcept
+        : std::exception()
+    {
+        char buf[200];
+        sprintf(buf, "malformed Bebop packet: (0x%04x,+%u,0x%04x)", (unsigned)start_pos, (unsigned)step, (unsigned)length);
+        msg = buf;
     }
+
+    const char* what () const throw () {
+        return msg.c_str();
+    }
+
+    std::string msg;
 };
 
 #pragma pack(push, 1)
@@ -213,12 +223,12 @@ public:
     void skip(size_t amount) { m_pointer += amount; }
 
     uint8_t readByte() {
-        if (m_pointer + sizeof(uint8_t) > m_end) throw MalformedPacketException();
+        if (m_pointer + sizeof(uint8_t) > m_end) throw MalformedPacketException(m_pointer - m_start, sizeof(uint8_t), m_end - m_start);
         return *m_pointer++;
     }
 
     uint16_t readUint16() {
-        if (m_pointer + sizeof(uint16_t) > m_end) throw MalformedPacketException();
+        if (m_pointer + sizeof(uint16_t) > m_end) throw MalformedPacketException(m_pointer - m_start, sizeof(uint16_t), m_end - m_start);
 #if BEBOP_ASSUME_LITTLE_ENDIAN
         uint16_t v;
         memcpy(&v, m_pointer, sizeof(uint16_t));
@@ -232,7 +242,7 @@ public:
     }
 
     uint32_t readUint32() {
-        if (m_pointer + sizeof(uint32_t) > m_end) throw MalformedPacketException();
+        if (m_pointer + sizeof(uint32_t) > m_end) throw MalformedPacketException(m_pointer - m_start, sizeof(uint32_t), m_end - m_start);
 #if BEBOP_ASSUME_LITTLE_ENDIAN
         uint32_t v;
         memcpy(&v, m_pointer, sizeof(uint32_t));
@@ -248,7 +258,7 @@ public:
     }
 
     uint64_t readUint64() {
-        if (m_pointer + sizeof(uint64_t) > m_end) throw MalformedPacketException();
+        if (m_pointer + sizeof(uint64_t) > m_end) throw MalformedPacketException(m_pointer - m_start, sizeof(uint64_t), m_end - m_start);
 #if BEBOP_ASSUME_LITTLE_ENDIAN
         uint64_t v;
         memcpy(&v, m_pointer, sizeof(uint64_t));
@@ -272,7 +282,7 @@ public:
     int64_t readInt64() { return static_cast<uint64_t>(readUint64()); }
 
     float readFloat32() {
-        if (m_pointer + sizeof(float) > m_end) throw MalformedPacketException();
+        if (m_pointer + sizeof(float) > m_end) throw MalformedPacketException(m_pointer - m_start, sizeof(float), m_end - m_start);
         float f;
         const uint32_t v = readUint32();
         memcpy(&f, &v, sizeof(float));
@@ -280,7 +290,7 @@ public:
     }
 
     double readFloat64() {
-        if (m_pointer + sizeof(double) > m_end) throw MalformedPacketException();
+        if (m_pointer + sizeof(double) > m_end) throw MalformedPacketException(m_pointer - m_start, sizeof(double), m_end - m_start);
         double f;
         const uint64_t v = readUint64();
         memcpy(&f, &v, sizeof(double));
@@ -294,7 +304,7 @@ public:
     uint32_t readLengthPrefix() {
         const auto length = readUint32();
         if (m_pointer + length > m_end) {
-            throw MalformedPacketException();
+            throw MalformedPacketException(m_pointer - m_start, length, m_end - m_start);
         }
         return length;
     }
@@ -314,7 +324,7 @@ public:
     }
 
     Guid readGuid() {
-        if (m_pointer + sizeof(Guid) > m_end) throw MalformedPacketException();
+        if (m_pointer + sizeof(Guid) > m_end) throw MalformedPacketException(m_pointer - m_start, sizeof(Guid), m_end - m_start);
         Guid guid { m_pointer };
         m_pointer += sizeof(Guid);
         return guid;
