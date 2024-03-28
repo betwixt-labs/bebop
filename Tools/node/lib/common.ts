@@ -10,7 +10,6 @@ const supportedCpuArchitectures = ["x64", "arm64"];
 const supportedPlatforms = ["win32", "darwin", "linux"];
 
 const isWebContainer = (() => {
-  return true;
   const isStackblitz =
     process.env.SHELL === "/bin/jsh" && process.versions.webcontainer != null;
   if (isStackblitz) {
