@@ -99,38 +99,12 @@ jobs:
         working-directory: ./extensions/chordc
 
       - if: matrix.os == 'macos-latest'
-        name: Sign macOS (x64) Binary
-        uses: lando/code-sign-action@v2
-        with:
-          file: ${{env.BUILD_ARTIFACT_X86_64}}
-          certificate-data: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_P12_BASE64 }}
-          certificate-password: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_PASSWORD }}
-          apple-notary-user: ${{ secrets.AC_USERNAME }}
-          apple-notary-password: ${{ secrets.AC_PASSWORD }}
-          apple-product-id: "sh.bebop"
-          apple-team-id: FB328BC574FB712798E2C79A237759ADB0839AAF
-          options: --options runtime --entitlements bebopc.entitlements
+        name: ZIP macOS (x64) Binary
+        run: zip -j ${{env.BUILD_ZIP_ARTIFACT_X86_64}} ${{env.BUILD_ARTIFACT_X86_64}}
 
       - if: matrix.os == 'macos-latest'
-        name: Zip notarized macOS (x64) Binary
-        run: zip -j ${{env.BUILD_ZIP_ARTIFACT_X86_64}} ${{ steps.code-sign-action.outputs.file }}
-
-      - if: matrix.os == 'macos-latest'
-        name: Sign macOS (arm64) Binary
-        uses: lando/code-sign-action@v2
-        with:
-          file: ${{env.BUILD_ARTIFACT_ARM64}}
-          certificate-data: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_P12_BASE64 }}
-          certificate-password: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_PASSWORD }}
-          apple-notary-user: ${{ secrets.AC_USERNAME }}
-          apple-notary-password: ${{ secrets.AC_PASSWORD }}
-          apple-product-id: "sh.bebop"
-          apple-team-id: FB328BC574FB712798E2C79A237759ADB0839AAF
-          options: --options runtime --entitlements bebopc.entitlements
-
-      - if: matrix.os == 'macos-latest'
-        name: Zip notarized macOS (arm64) Binary
-        run: zip -j ${{env.BUILD_ZIP_ARTIFACT_ARM64}} ${{ steps.code-sign-action.outputs.file }}
+        name: ZIP macOS (arm64) Binary
+        run: zip -j ${{env.BUILD_ZIP_ARTIFACT_ARM64}} ${{env.BUILD_ARTIFACT_ARM64}}
 
       - if: matrix.os == 'macos-latest'
         name: Zip chordc macOS Binary
