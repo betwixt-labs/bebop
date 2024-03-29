@@ -108,7 +108,7 @@ jobs:
           apple-notary-user: ${{ secrets.AC_USERNAME }}
           apple-notary-password: ${{ secrets.AC_PASSWORD }}
           apple-product-id: "sh.bebop"
-          apple-team-id: ${{ secrets.APPLE_TEAM_ID }}
+          apple-team-id: FB328BC574FB712798E2C79A237759ADB0839AAF
           options: --options runtime --entitlements bebopc.entitlements
 
       - if: matrix.os == 'macos-latest'
@@ -125,7 +125,7 @@ jobs:
           apple-notary-user: ${{ secrets.AC_USERNAME }}
           apple-notary-password: ${{ secrets.AC_PASSWORD }}
           apple-product-id: "sh.bebop"
-          apple-team-id: ${{ secrets.APPLE_TEAM_ID }}
+          apple-team-id: FB328BC574FB712798E2C79A237759ADB0839AAF
           options: --options runtime --entitlements bebopc.entitlements
 
       - if: matrix.os == 'macos-latest'
