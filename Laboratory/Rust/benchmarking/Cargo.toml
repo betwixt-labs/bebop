@@ -11,10 +11,6 @@ harness = false
 name = "flamegraph"
 required-features = ["pprof"]
 
-[profile.bench]
-lto = true
-codegen-units = 1
-
 # Use exact versions for all things being tested
 [dependencies]
 bebop = { path = "../../../Runtime/Rust" }

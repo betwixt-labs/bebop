@@ -5,3 +5,7 @@ members = [
     "functionality-testing",
     "benchmarking"
 ]
+
+[profile.bench]
+lto = true
+codegen-units = 1
