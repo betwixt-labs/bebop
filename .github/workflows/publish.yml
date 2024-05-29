@@ -466,7 +466,7 @@ jobs:
         working-directory: ${{github.workspace}}/Runtime/TypeScript
         run: |
           jq '.version = "${{ steps.dotenv.outputs.version }}"' jsr.json > tmp && mv tmp jsr.json
-          npx jsr publish
+          npx jsr publish --allow-dirty
 
       - name: Publish TypeScript Runtime (NPM)
         run: npm publish "./bebop-runtime-ts-${{ steps.dotenv.outputs.version }}/bebop-v${{ steps.dotenv.outputs.version }}.tgz" --access public ${{ steps.release-info.outputs.PRERELEASE == 'true' && '--tag next' || '' }}
