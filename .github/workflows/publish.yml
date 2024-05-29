@@ -396,7 +396,7 @@ jobs:
       TOOLS_ROOT: ${{github.workspace}}/Tools
     runs-on: ubuntu-22.04
     permissions:
-      contents: read
+      contents: write
       id-token: write
     needs: [build-compiler, build-runtimes, build-tools]
     steps:

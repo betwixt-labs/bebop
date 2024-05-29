@@ -1,7 +1,7 @@
 ﻿import { BinarySchema } from "./binary";
 
-const hexDigits = "0123456789abcdef";
-const asciiToHex = [
+const hexDigits: string = "0123456789abcdef";
+const asciiToHex: Array<number> = [
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -12,12 +12,12 @@ const asciiToHex = [
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 ];
 
-const guidDelimiter = "-";
-const ticksBetweenEpochs = 621355968000000000n;
-const dateMask = 0x3fffffffffffffffn;
-const emptyByteArray = new Uint8Array(0);
-const emptyString = "";
-const byteToHex: string[] = []; // A lookup table: ['00', '01', ..., 'ff']
+const guidDelimiter: string = "-";
+const ticksBetweenEpochs: bigint = 621355968000000000n;
+const dateMask: bigint = 0x3fffffffffffffffn;
+const emptyByteArray: Uint8Array = new Uint8Array(0);
+const emptyString: string = "";
+const byteToHex: Array<string> = []; // A lookup table: ['00', '01', ..., 'ff']
 for (const x of hexDigits) {
     for (const y of hexDigits) {
         byteToHex.push(x + y);
@@ -36,13 +36,13 @@ export class BebopRuntimeError extends Error {
  * Represents a globally unique identifier (GUID).
  */
 export class Guid {
-   public static readonly empty = new Guid("00000000-0000-0000-0000-000000000000");
+    public static readonly empty: Guid = new Guid("00000000-0000-0000-0000-000000000000");
     /**
        * Constructs a new Guid object with the specified value.
        * @param value The value of the GUID.
        */
     private constructor(private readonly value: string) { }
-    
+
     /**
      * Gets the string value of the Guid.
      * @returns The string representation of the Guid.
@@ -51,12 +51,12 @@ export class Guid {
         return this.value;
     }
 
-   /**
-     * Checks if the Guid is empty.
-     * @returns true if the Guid is empty, false otherwise.
-     */
+    /**
+      * Checks if the Guid is empty.
+      * @returns true if the Guid is empty, false otherwise.
+      */
     public isEmpty(): boolean {
-       return this.value === Guid.empty.value;
+        return this.value === Guid.empty.value;
     }
 
     /**
@@ -87,12 +87,12 @@ export class Guid {
                 count++;
             } else if (ch !== '-') {
                 // If the character is not a hexadecimal digit or a hyphen, it's invalid
-                throw new BebopRuntimeError(`Invalid GUID: ${value}`)
+                throw new BebopRuntimeError(`Invalid GUID: ${value}`);
             }
         }
         // If the count is not 32, the input is not a valid GUID
         if (count !== 32) {
-            throw new BebopRuntimeError(`Invalid GUID: ${value}`)
+            throw new BebopRuntimeError(`Invalid GUID: ${value}`);
         }
         // Insert hyphens to make it a 8-4-4-4-12 character pattern
         const guidString =
@@ -247,11 +247,11 @@ export class Guid {
         return new Guid(s);
     }
 
-     /**
-     * Converts the Guid to a string when it's used as a primitive.
-     * @returns The string representation of the Guid.
-     */
-     [Symbol.toPrimitive](hint: string): string {
+    /**
+    * Converts the Guid to a string when it's used as a primitive.
+    * @returns The string representation of the Guid.
+    */
+    [Symbol.toPrimitive](hint: string): string {
         if (hint === "string" || hint === "default") {
             return this.toString();
         }
@@ -635,9 +635,9 @@ export class BebopView {
     }
 
     readGuid(): Guid {
-      const guid = Guid.fromBytes(this.buffer, this.index);
-      this.index += 16;
-      return guid;
+        const guid = Guid.fromBytes(this.buffer, this.index);
+        this.index += 16;
+        return guid;
     }
 
 
@@ -705,18 +705,18 @@ const stringTag = 8;
 const numberTag = 9;
 
 const castScalarByTag = (value: any, tag: number): any => {
-  switch (tag) {
-    case bigIntTag:
-      return BigInt(value);
-    case boolTag:
-      return Boolean(value);
-    case stringTag:
-      return value;
-    case numberTag:
-      return Number(value);
-    default:
-      throw new BebopRuntimeError(`Unknown scalar tag: ${tag}`);
-  }
+    switch (tag) {
+        case bigIntTag:
+            return BigInt(value);
+        case boolTag:
+            return Boolean(value);
+        case stringTag:
+            return value;
+        case numberTag:
+            return Number(value);
+        default:
+            throw new BebopRuntimeError(`Unknown scalar tag: ${tag}`);
+    }
 };
 
 
@@ -827,7 +827,7 @@ const replacer = (_key: string | number, value: any): any => {
  * @returns The modified value for the property, or the original value if not a marked type.
  */
 const reviver = (_key: string | number, value: any): any => {
-    if (_key === "__proto__" || _key === "prototype" || _key === "constructor") 
+    if (_key === "__proto__" || _key === "prototype" || _key === "constructor")
         throw new BebopRuntimeError("potential prototype pollution");
     if (value && typeof value === "object" && !Array.isArray(value)) {
         if (value[typeMarker]) {
@@ -889,7 +889,7 @@ export const BebopJson = {
      * @returns The modified value for the property, or the original value if not a marked type.
      */
     reviver,
-}
+};
 
 /**
  * Ensures that the given value is a valid boolean.
@@ -900,7 +900,7 @@ const ensureBoolean = (value: any): void => {
     if (!(value === false || value === true || value instanceof Boolean || typeof value === "boolean")) {
         throw new BebopRuntimeError(`Invalid value for Boolean: ${value} / typeof ${typeof value}`);
     }
-}
+};
 
 /**
  * Ensures that the given value is a valid Uint8 number (0 to 255).
@@ -911,7 +911,7 @@ const ensureUint8 = (value: any): void => {
     if (!Number.isInteger(value) || value < 0 || value > 255) {
         throw new BebopRuntimeError(`Invalid value for Uint8: ${value}`);
     }
-}
+};
 
 
 /**
@@ -923,7 +923,7 @@ const ensureInt16 = (value: any): void => {
     if (!Number.isInteger(value) || value < -32768 || value > 32767) {
         throw new BebopRuntimeError(`Invalid value for Int16: ${value}`);
     }
-}
+};
 
 /**
  * Ensures that the given value is a valid Uint16 number (0 to 65535).
@@ -934,7 +934,7 @@ const ensureUint16 = (value: any): void => {
     if (!Number.isInteger(value) || value < 0 || value > 65535) {
         throw new BebopRuntimeError(`Invalid value for Uint16: ${value}`);
     }
-}
+};
 /**
  * Ensures that the given value is a valid Int32 number (-2147483648 to 2147483647).
  * @param value - The value to check.
@@ -944,7 +944,7 @@ const ensureInt32 = (value: any): void => {
     if (!Number.isInteger(value) || value < -2147483648 || value > 2147483647) {
         throw new BebopRuntimeError(`Invalid value for Int32: ${value}`);
     }
-}
+};
 
 /**
 * Ensures that the given value is a valid Uint32 number (0 to 4294967295).
@@ -955,7 +955,7 @@ const ensureUint32 = (value: any): void => {
     if (!Number.isInteger(value) || value < 0 || value > 4294967295) {
         throw new BebopRuntimeError(`Invalid value for Uint32: ${value}`);
     }
-}
+};
 /**
 * Ensures that the given value is a valid Int64 number (-9223372036854775808 to 9223372036854775807).
 * @param value - The value to check.
@@ -968,7 +968,7 @@ const ensureInt64 = (value: bigint | number): void => {
     if (value < min || value > max) {
         throw new BebopRuntimeError(`Invalid value for Int64: ${value}`);
     }
-}
+};
 /**
 * Ensures that the given value is a valid Uint64 number (0 to 18446744073709551615).
 * @param value - The value to check.
@@ -980,7 +980,7 @@ const ensureUint64 = (value: bigint | number): void => {
     if (value < BigInt(0) || value > max) {
         throw new BebopRuntimeError(`Invalid value for Uint64: ${value}`);
     }
-}
+};
 
 /**
  * Ensures that the given value is a valid BigInt number.
@@ -991,7 +991,7 @@ const ensureBigInt = (value: any): void => {
     if (typeof value !== 'bigint') {
         throw new BebopRuntimeError(`Invalid value for BigInt: ${value}`);
     }
-}
+};
 
 
 /**
@@ -1003,7 +1003,7 @@ const ensureFloat = (value: any): void => {
     if (typeof value !== 'number' || !Number.isFinite(value)) {
         throw new BebopRuntimeError(`Invalid value for Float: ${value}`);
     }
-}
+};
 
 
 /**
@@ -1021,7 +1021,7 @@ const ensureMap = (value: any, keyTypeValidator: (key: any) => void, valueTypeVa
         keyTypeValidator(k);
         valueTypeValidator(v);
     }
-}
+};
 
 /**
  * Ensures that the given value is a valid Array object, with elements that pass the specified validator.
@@ -1036,7 +1036,7 @@ const ensureArray = (value: any, elementTypeValidator: (element: any) => void): 
     for (let element of value) {
         elementTypeValidator(element);
     }
-}
+};
 
 /**
  * Ensures that the given value is a valid Date object.
@@ -1047,7 +1047,7 @@ const ensureDate = (value: any): void => {
     if (!(value instanceof Date)) {
         throw new BebopRuntimeError(`Invalid value for Date: ${value}`);
     }
-}
+};
 
 /**
  * Ensures that the given value is a valid Uint8Array object.
@@ -1058,7 +1058,7 @@ const ensureUint8Array = (value: any): void => {
     if (!(value instanceof Uint8Array)) {
         throw new BebopRuntimeError(`Invalid value for Uint8Array: ${value}`);
     }
-}
+};
 
 /**
  * Ensures that the given value is a valid string.
@@ -1069,7 +1069,7 @@ const ensureString = (value: any): void => {
     if (typeof value !== 'string') {
         throw new BebopRuntimeError(`Invalid value for String: ${value}`);
     }
-}
+};
 
 
 /**
@@ -1085,7 +1085,7 @@ const ensureEnum = (value: any, enumValue: object): void => {
     if (!(value in enumValue)) {
         throw new BebopRuntimeError(`Invalid value for enum, not in enum: ${value}`);
     }
-}
+};
 
 /**
  * Ensures that the given value is a valid Guid object.
@@ -1096,7 +1096,7 @@ const ensureGuid = (value: any): void => {
     if (!(value instanceof Guid)) {
         throw new BebopRuntimeError(`Invalid value for Guid: ${value}`);
     }
-}
+};
 
 
 /**
@@ -1209,6 +1209,6 @@ export const BebopTypeGuard = {
      * @throws {BebopRuntimeError} - If the value is not a valid GUID string.
      */
     ensureGuid
-}
+};
 
-export { BinarySchema } ;
+export { BinarySchema };
