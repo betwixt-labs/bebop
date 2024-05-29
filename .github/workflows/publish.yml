@@ -395,6 +395,9 @@ jobs:
       RUST_RUNTIME_ROOT: ${{github.workspace}}/Runtime/Rust
       TOOLS_ROOT: ${{github.workspace}}/Tools
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      id-token: write
     needs: [build-compiler, build-runtimes, build-tools]
     steps:
       - uses: actions/checkout@v4
@@ -458,7 +461,14 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
 
-      - name: Publish TypeScript Runtime
+      - name: Publish TypeScript Runtime (JSR)
+        continue-on-error: true
+        working-directory: ${{github.workspace}}/Runtime/TypeScript
+        run: |
+          jq '.version = "${{ steps.dotenv.outputs.version }}"' jsr.json > tmp && mv tmp jsr.json
+          npx jsr publish
+
+      - name: Publish TypeScript Runtime (NPM)
         run: npm publish "./bebop-runtime-ts-${{ steps.dotenv.outputs.version }}/bebop-v${{ steps.dotenv.outputs.version }}.tgz" --access public ${{ steps.release-info.outputs.PRERELEASE == 'true' && '--tag next' || '' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
