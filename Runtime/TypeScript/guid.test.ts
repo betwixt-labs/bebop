@@ -3,7 +3,7 @@ import { BebopJson, BebopRuntimeError, Guid, GuidMap } from "./index";
 import { describe, expect, it } from "vitest";
 
 describe("Guid class", () => {
- it("should create an empty GUID", () => {
+  it("should create an empty GUID", () => {
     const guid = Guid.empty;
     expect(guid.toString()).toBe("00000000-0000-0000-0000-000000000000");
   });
@@ -64,7 +64,7 @@ describe("Guid class", () => {
     expect(readGuid.equals(guid)).toBe(true);
   });
 
-  it("it should parse uuid" ,() => {
+  it("it should parse uuid", () => {
     const guid = Guid.parseGuid("f70ff985-a4ef-4643-bbbc-4a0ed4fc8415");
     const view = new DataView(new ArrayBuffer(16));
     guid.writeToView(view, 0);
@@ -294,7 +294,12 @@ describe("GuidMap", () => {
 
   it("should convert to a string primitive correctly", () => {
     const guid = Guid.newGuid();
-    const primitive = guid+"";
+    const primitive = guid + "";
     expect(primitive).toBe(guid.toString());
+  });
+
+  it("should create a secure guid", () => {
+    const guid = Guid.newSecureGuid();
+    expect(Guid.isGuid(guid)).toBe(true);
   });
 });

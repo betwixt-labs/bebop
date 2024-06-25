@@ -2,60 +2,85 @@
 title: Getting started (TypeScript)
 ---
 
-import {Tabs, TabItem, LinkCard} from "@astrojs/starlight/components";
+import { Tabs, TabItem, LinkCard } from "@astrojs/starlight/components";
+
+# Getting Started with Bebop in TypeScript
+
+Bebop is a high-performance serialization framework designed for efficient data transfer. This guide will walk you through setting up Bebop in your TypeScript project, creating schemas, and using the generated code.
+
+## Installation
+
+First, let's install the necessary packages:
 
 | Package                                        | Downloads                                                                                   
 | :--------------------------------------------- | :------------------------------------------------------------------------------------------ |
 | [bebop](https://www.npmjs.com/package/bebop)   | ![bebop](https://img.shields.io/npm/dt/bebop)
-| [bebop-tools](https://www.npmjs.com/package/bebop) | ![bebop](https://img.shields.io/npm/dt/bebop-tools)
+| [bebop-tools](https://www.npmjs.com/package/bebop-tools) | ![bebop-tools](https://img.shields.io/npm/dt/bebop-tools)
 
+### Install Bebop Runtime
 
-First, install the Bebop runtime:
 <Tabs>
   <TabItem label="npm">
-  ```bash
-  npm add bebop
-  ```
+  
+```bash
+npm add bebop
+```
+
   </TabItem>
 
   <TabItem label="yarn">
-  ```bash
-  yarn add bebop
-  ```
+  
+```bash
+yarn add bebop
+```
+
   </TabItem>
 </Tabs>
 
-Followed by the Bebop compiler:
+### Install Bebop Compiler
+
 <Tabs>
   <TabItem label="npm">
-  ```bash
-  npm add bebop-tools
-  ```
+  
+```bash
+npm add bebop-tools
+```
+
   </TabItem>
 
   <TabItem label="yarn">
-  ```bash
-  yarn add bebop-tools
-  ```
+  
+```bash
+yarn add bebop-tools
+```
+
   </TabItem>
 </Tabs>
 
-Next, init your project:
+## Project Initialization
+
+Initialize your Bebop project:
+
 <Tabs>
   <TabItem label="npm">
-  ```bash
-  npx bebopc init
-  ```
+  
+```bash
+npx bebopc init
+```
+
   </TabItem>
 
   <TabItem label="yarn">
-  ```bash
-  yarn bebopc init
-  ```
+  
+```bash
+yarn bebopc init
+```
+
   </TabItem>
 </Tabs>
 
-Open the generated `bebop.json` file and add a TypeScript generator:
+This command creates a `bebop.json` file in your project root. Open this file and add a TypeScript generator:
+
 ```json
 {                
    "include": [  
@@ -69,17 +94,85 @@ Open the generated `bebop.json` file and add a TypeScript generator:
 }
 ```
 
-Now, you can compile your Bebop schemas to TypeScript:
+This configuration tells Bebop to:
+- Include all `.bop` files in your project
+- Generate TypeScript code
+- Output the generated code to `src/bops.gen.ts`
+
+## Creating Bebop Schemas
+
+Bebop uses its own schema language to define data structures. Create a new file with a `.bop` extension (e.g., `schemas.bop`) and define your schemas:
+
+```bebop
+struct Person {
+  string name;
+  uint32 age;
+}
+
+struct Team {
+  string name;
+  Person[] members;
+}
+```
+
+## Generating TypeScript Code
+
+After defining your schemas, generate the TypeScript code:
+
 <Tabs>
   <TabItem label="npm">
-  ```bash
-  npx bebopc build
-  ```
+  
+```bash
+npx bebopc build
+```
+
   </TabItem>
 
   <TabItem label="yarn">
-  ```bash
-  yarn bebopc build
-  ```
+  
+```bash
+yarn bebopc build
+```
+
   </TabItem>
 </Tabs>
+
+This command will generate TypeScript code based on your Bebop schemas.
+
+## Using Generated Code
+
+Now you can use the generated code in your TypeScript project. Here's an example of how to create and encode a `Person` object:
+
+```typescript
+import { Person } from './src/bops.gen';
+
+const person = new Person({
+    name: "Spike Spiegel",
+    age: 27
+});
+
+// Encode the person object to a Uint8Array
+const encoded = person.encode();
+
+// Decode the Uint8Array back to a Person object
+const decoded = Person.decode(encoded);
+
+console.log(decoded.name); // Output: Spike Spiegel
+console.log(decoded.age);  // Output: 27
+```
+
+### JSON Serialization (JSON-Over-Bebop)
+
+Bebop supports JSON serialization using JSON-Over-Bebop. This format allows for efficient serialization and deserialization of Bebop objects to and from JSON.
+
+For more information on JSON-Over-Bebop, refer to the [JSON-Over-Bebop specification](../reference/json-over-bebop).
+
+Here's how to use JSON serialization:
+
+```typescript
+// Serialize to JSON-Over-Bebop
+const jsonString = person.stringify();
+
+// Deserialize from JSON-Over-Bebop
+const fromJson = Person.fromJSON(jsonString);
+```
