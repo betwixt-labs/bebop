@@ -24,12 +24,17 @@ for (const x of hexDigits) {
     }
 }
 
+// Cache the check for Crypto.getRandomValues
+const hasCryptoGetRandomValues = typeof crypto !== 'undefined' &&
+    typeof crypto.getRandomValues === 'function';
+
 export class BebopRuntimeError extends Error {
     constructor(message: string) {
         super(message);
         this.name = "BebopRuntimeError";
     }
 }
+
 
 
 /**
@@ -106,7 +111,7 @@ export class Guid {
     }
 
     /**
-    * Creates a new Guid.
+    * Creates a an insecure new Guid using Math.random.
     * @returns A new Guid.
     */
     public static newGuid(): Guid {
@@ -138,6 +143,29 @@ export class Guid {
         }
         // Construct a new Guid object with the generated string and return it
         return new Guid(guid);
+    }
+
+    /**
+    * Creates a new cryptographically secure Guid using Crypto.getRandomValues.
+    * @returns A new secure Guid.
+    * @throws {BebopRuntimeError} If Crypto.getRandomValues is not available.
+    */
+    public static newSecureGuid(): Guid {
+        if (!hasCryptoGetRandomValues) {
+            throw new BebopRuntimeError(
+                "Crypto.getRandomValues is not available. " +
+                "Please include a polyfill or use in an environment that supports it."
+            );
+        }
+
+        const bytes = new Uint8Array(16);
+        crypto.getRandomValues(bytes);
+
+        // Set the version (4) and variant (RFC4122)
+        bytes[6] = (bytes[6] & 0x0f) | 0x40;
+        bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+        return Guid.fromBytes(bytes, 0);
     }
 
     /**
