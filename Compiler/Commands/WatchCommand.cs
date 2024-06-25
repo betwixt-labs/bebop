@@ -19,7 +19,7 @@ public class WatchCommand : CliCommand
         config.Validate();
         using var host = CompilerHost.CompilerHostBuilder.Create(config.WorkingDirectory)
        .WithDefaults()
-#if !WASI_WASM_BUILD
+#if !WASI_WASM_BUILD && !WIN_ARM64
        .WithExtensions(config.Extensions)
 #endif
        .Build();

@@ -21,12 +21,18 @@ public class LanguageServerCommand : CliCommand
     private async Task<int> HandleCommandAsync(ParseResult result, CancellationToken token)
     {
 #if !WASI_WASM_BUILD
-        Dictionary<string, string> extensions = [];
         var config = result.GetValue<BebopConfig>(CliStrings.ConfigFlag)!;
-        extensions = config.Extensions;
-        using var host = CompilerHost.CompilerHostBuilder.Create(config.WorkingDirectory).WithDefaultDecorators().WithExtensions(extensions).Build();
+        var builder = CompilerHost.CompilerHostBuilder.Create(config.WorkingDirectory).WithDefaultDecorators();
+
+#if !WIN_ARM64
+        builder = builder.WithExtensions(config.Extensions);
+#endif
+
+        using var host = builder.Build();
+
         await BebopLangServer.RunAsync(host, token);
 #endif
+
         return BebopCompiler.Ok;
     }
 }

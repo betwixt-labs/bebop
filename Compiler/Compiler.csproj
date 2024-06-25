@@ -72,4 +72,9 @@
         <DefineConstants>$(DefineConstants);WASI_WASM_BUILD</DefineConstants>
     </PropertyGroup>
 
+    <PropertyGroup Condition="'$(RuntimeIdentifier)' == 'win-arm64'">
+    <DefineConstants>$(DefineConstants);WIN_ARM64</DefineConstants>
+  </PropertyGroup>
+
+
 </Project>
