@@ -4,7 +4,7 @@ import WASI, { createFileSystem } from "wasi-js";
 import browserBindings from "wasi-js/dist/bindings/browser";
 import { WASIExitError, WASIFileSystem } from "wasi-js/dist/types";
 
-import bebopcWasmUrl from "./bebopc.wasm?url";
+import bebopcWasmUrl from "./bebopc.bin?url";
 import { WorkerResponse } from "./types";
 
 const decoder = new TextDecoder();
