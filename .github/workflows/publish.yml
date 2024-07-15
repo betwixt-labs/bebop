@@ -501,150 +501,28 @@ jobs:
             npx ovsx publish ./vscode-bebop/bebop-lang-$VERSION.vsix -p ${{ secrets.OPENVSX }}
           fi
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Move and Rename Files
+        run: |
+          mv ./win-x64/bebopc.exe-win-x64.zip ./bebopc-windows-x64.zip
+          mv ./win-arm64/bebopc.exe-win-arm64.zip ./bebopc-windows-arm64.zip
+          mv ./osx-x64/bebopc-osx-x64.zip ./bebopc-macos-x64.zip
+          mv ./osx-arm64/bebopc-osx-arm64.zip ./bebopc-macos-arm64.zip
+          mv ./linux-x64/bebopc-linux-x64.zip ./bebopc-linux-x64.zip
+          mv ./linux-arm64/bebopc-linux-arm64.zip ./bebopc-linux-arm64.zip
+          mv ./wasi-wasm/bebopc.wasm ./bebopc.wasm
+          mv ./chordc-win-x64/chordc-win-x64.zip ./chordc-windows-x64.zip
+          mv ./chordc-win-arm64/chordc-win-arm64.zip ./chordc-windows-arm64.zip
+          mv ./chordc-osx-x64/chordc-osx-x64.zip ./chordc-macos-x64.zip
+          mv ./chordc-osx-arm64/chordc-osx-arm64.zip ./chordc-macos-arm64.zip
+          mv ./chordc-linux-x64/chordc-linux-x64.zip ./chordc-linux-x64.zip
+          mv ./chordc-linux-arm64/chordc-linux-arm64.zip ./chordc-linux-arm64.zip
+
+      - uses: ncipollo/release-action@v1
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Bebop ${{ github.ref }}
+          tag: ${{ github.ref }}
+          name: Bebop ${{ github.ref }}
+          artifacts: "bebopc-windows-x64.zip,bebopc-windows-arm64.zip,bebopc-macos-x64.zip,bebopc-macos-arm64.zip,bebopc-linux-x64.zip,bebopc-linux-arm64.zip,bebopc.wasm,chordc-windows-x64.zip,chordc-windows-arm64.zip,chordc-macos-x64.zip,chordc-macos-arm64.zip,chordc-linux-x64.zip,chordc-linux-arm64.zip"
+          artifactContentType: "application/zip"
+          generateReleaseNotes: true
           draft: false
           prerelease: ${{ steps.release-info.outputs.PRERELEASE == 'true' }}
-
-      - name: Upload Compiler for Windows x64
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./win-x64/bebopc.exe-win-x64.zip
-          asset_name: bebopc-windows-x64.zip
-          asset_content_type: application/zip
-
-      - name: Upload Compiler for Windows ARM64
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./win-arm64/bebopc.exe-win-arm64.zip
-          asset_name: bebopc-windows-arm64.zip
-          asset_content_type: application/zip
-
-      - name: Upload Compiler for Mac x64
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./osx-x64/bebopc-osx-x64.zip
-          asset_name: bebopc-macos-x64.zip
-          asset_content_type: application/zip
-
-      - name: Upload Compiler for Mac ARM64
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./osx-arm64/bebopc-osx-arm64.zip
-          asset_name: bebopc-macos-arm64.zip
-          asset_content_type: application/zip
-
-      - name: Upload Compiler for Linux x64
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./linux-x64/bebopc-linux-x64.zip
-          asset_name: bebopc-linux-x64.zip
-          asset_content_type: application/zip
-
-      - name: Upload Compiler for Linux ARM64
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./linux-arm64/bebopc-linux-arm64.zip
-          asset_name: bebopc-linux-arm64.zip
-          asset_content_type: application/zip
-
-      - name: Upload Compiler for WASM
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./wasi-wasm/bebopc.wasm
-          asset_name: bebopc.wasm
-          asset_content_type: application/wasm
-
-
-      - name: Upload chordc for Windows x64
-        continue-on-error: true
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./chordc-win-x64/chordc-win-x64.zip
-          asset_name: chordc-windows-x64.zip
-          asset_content_type: application/zip
-
-      - name: Upload chordc for Windows ARM64
-        continue-on-error: true
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./chordc-win-arm64/chordc-win-arm64.zip
-          asset_name: chordc-windows-arm64.zip
-          asset_content_type: application/zip
-
-      - name: Upload chordc for Mac x64
-        continue-on-error: true
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./chordc-osx-x64/chordc-osx-x64.zip
-          asset_name: chordc-macos-x64.zip
-          asset_content_type: application/zip
-
-      - name: Upload chordc for Mac ARM64
-        continue-on-error: true
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./chordc-osx-arm64/chordc-osx-arm64.zip
-          asset_name: chordc-macos-arm64.zip
-          asset_content_type: application/zip
-
-      - name: Upload chordc for Linux x64
-        continue-on-error: true
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./chordc-linux-x64/chordc-linux-x64.zip
-          asset_name: chordc-linux-x64.zip
-          asset_content_type: application/zip
-
-      - name: Upload chordc for Linux ARM64
-        continue-on-error: true
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./chordc-linux-arm64/chordc-linux-arm64.zip
-          asset_name: chordc-linux-arm64.zip
-          asset_content_type: application/zip
