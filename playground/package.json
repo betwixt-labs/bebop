@@ -26,7 +26,7 @@
     "dist"
   ],
   "scripts": {
-    "build:compiler": "../scripts/build-wasi.sh && cp -f ../bin/compiler/Release/artifacts/wasi-wasm/AppBundle/bebopc.wasm ./src/bebopc/bebopc.wasm",
+    "build:compiler": "../scripts/build-wasi.sh && cp -f ../bin/compiler/Release/artifacts/wasi-wasm/AppBundle/bebopc.wasm ./src/bebopc/bebopc.bin",
     "dev": "vite",
     "build:site": "NODE_ENV=production yarn build:compiler && vite build",
     "preview:site": "vite preview",
