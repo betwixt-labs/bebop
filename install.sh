@@ -20,7 +20,7 @@ if [ -z "${BASH_VERSION:-}" ]; then
 fi
 
 ### Constants
-readonly BEBOPC_VERSION="${1:-3.0.10}"
+readonly BEBOPC_VERSION="${1:-3.0.11}"
 readonly BEBOP_RELEASE_URL="https://api.github.com/repos/betwixt-labs/bebop/releases/tags/v${BEBOPC_VERSION}"
 
 ### string formatters
