@@ -10,6 +10,51 @@ using Bebop.Extensions;
 
 namespace Bebop.Runtime
 {
+
+    /// <summary>
+    /// Provides a contract for decoding various byte-based data representations into instances of Bebop records of type <typeparamref name="T"/>.
+    /// </summary>
+    /// <typeparam name="T">The type of Bebop record that implements the decoding methods, constrained to <see cref="BaseBebopRecord"/>.</typeparam>
+    public interface IDecodable<T> where T : BaseBebopRecord
+    {
+        /// <summary>
+        /// Decodes the specified byte array into an instance of the Bebop record <typeparamref name="T"/>.
+        /// </summary>
+        /// <param name="record">The byte array containing the encoded Bebop record data.</param>
+        /// <returns>An instance of the Bebop record <typeparamref name="T"/> decoded from the byte array.</returns>
+        static abstract T Decode(byte[] record);
+
+        /// <summary>
+        /// Decodes the specified read-only span of bytes into an instance of the Bebop record <typeparamref name="T"/>.
+        /// </summary>
+        /// <param name="record">The read-only span of bytes containing the encoded Bebop record data.</param>
+        /// <returns>An instance of the Bebop record <typeparamref name="T"/> decoded from the read-only span of bytes.</returns>
+        static abstract T Decode(ReadOnlySpan<byte> record);
+
+        /// <summary>
+        /// Decodes the specified read-only memory of bytes into an instance of the Bebop record <typeparamref name="T"/>.
+        /// </summary>
+        /// <param name="record">The read-only memory of bytes containing the encoded Bebop record data.</param>
+        /// <returns>An instance of the Bebop record <typeparamref name="T"/> decoded from the read-only memory of bytes.</returns>
+        static abstract T Decode(ReadOnlyMemory<byte> record);
+
+        /// <summary>
+        /// Decodes the specified array segment of bytes into an instance of the Bebop record <typeparamref name="T"/>.
+        /// </summary>
+        /// <param name="record">The array segment of bytes containing the encoded Bebop record data.</param>
+        /// <returns>An instance of the Bebop record <typeparamref name="T"/> decoded from the array segment of bytes.</returns>
+        static abstract T Decode(ArraySegment<byte> record);
+
+        /// <summary>
+        /// Decodes the specified immutable array of bytes into an instance of the Bebop record <typeparamref name="T"/>.
+        /// </summary>
+        /// <param name="record">The immutable array of bytes containing the encoded Bebop record data.</param>
+        /// <returns>An instance of the Bebop record <typeparamref name="T"/> decoded from the immutable array of bytes.</returns>
+        static abstract T Decode(ImmutableArray<byte> record);
+    }
+
+
+
     /// <summary>
     /// A base class which is implemented by all bebopc generated classes. 
     /// </summary>
@@ -39,6 +84,7 @@ namespace Bebop.Runtime
         /// <para><see cref="ByteCount"/> calculates the exact number of bytes that will be produced when the current record is encoded.</para>
         /// </remarks>
         public abstract int ByteCount { get; }
+
         /// <summary>
         /// Encodes the current record.
         /// </summary>
@@ -281,7 +327,7 @@ namespace Bebop.Runtime
             if (methodInfo.IsValueTask())
             {
                 _handlerValueTaskDelegate =
-                    (Func<object, T, ValueTask>) (isStaticHandler
+                    (Func<object, T, ValueTask>)(isStaticHandler
                         ? Delegate.CreateDelegate(delegateType,
                             methodInfo)
                         : Delegate.CreateDelegate(delegateType, handlerInstance,
@@ -290,7 +336,7 @@ namespace Bebop.Runtime
             else if (methodInfo.IsTask())
             {
                 _handlerTaskDelegate =
-                    (Func<object, T, Task>) (isStaticHandler
+                    (Func<object, T, Task>)(isStaticHandler
                         ? Delegate.CreateDelegate(delegateType,
                             methodInfo)
                         : Delegate.CreateDelegate(delegateType, handlerInstance, methodInfo));
@@ -298,7 +344,7 @@ namespace Bebop.Runtime
             else
             {
                 _handlerVoidDelegate =
-                    (Action<object, T>) (isStaticHandler
+                    (Action<object, T>)(isStaticHandler
                         ? Delegate.CreateDelegate(delegateType,
                             methodInfo)
                         : Delegate.CreateDelegate(delegateType, handlerInstance, methodInfo));

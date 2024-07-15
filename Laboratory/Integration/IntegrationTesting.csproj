@@ -3,7 +3,7 @@
   <PropertyGroup>
      
     <OutputType>Exe</OutputType>
-    <LangVersion>12</LangVersion>
+    <LangVersion>preview</LangVersion>
     <TargetFramework>net8.0</TargetFramework>
     <CheckEolTargetFramework>false</CheckEolTargetFramework>
       <NoWarn>$(NoWarn);CS9193</NoWarn>
