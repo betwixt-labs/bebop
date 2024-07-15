@@ -121,7 +121,7 @@ namespace Core.Generators.CSharp
                             _ => string.Empty
                         };
                         builder.AppendLine(recordAttribute);
-                        builder.AppendLine($"public partial class {definition.ClassName()} : {BebopRecord}, global::System.IEquatable<{definition.ClassName()}> {{");
+                        builder.AppendLine($"public partial class {definition.ClassName()} : {BebopRecord}, {IDecodable}<{definition.ClassName()}>, global::System.IEquatable<{definition.ClassName()}> {{");
                         builder.Indent(indentStep);
 
                         if (fd is MessageDefinition)
@@ -646,7 +646,7 @@ namespace Core.Generators.CSharp
                 builder.AppendLine("/// <inheritdoc />");
                 builder.AppendLine(GeneratedAttribute);
                 builder.AppendLine(recordAttribute);
-                builder.AppendLine($"public partial class {ud.ClassName()} : {PrefixNamespace(ud.BaseClassName())}<{genericTypeArguments}> {{").Indent(indentStep).AppendLine();
+                builder.AppendLine($"public partial class {ud.ClassName()} : {PrefixNamespace(ud.BaseClassName())}<{genericTypeArguments}>, {IDecodable}<{ud.ClassName()}> {{").Indent(indentStep).AppendLine();
                 if (ud.OpcodeDecorator is not null && ud.OpcodeDecorator.Arguments.TryGetValue("fourcc", out var fourcc))
                 {
                     builder.AppendLine($"public const uint OpCode = {fourcc};");
@@ -1346,6 +1346,7 @@ namespace Core.Generators.CSharp
         private const string StringGetByteCount = "global::System.Text.Encoding.UTF8.GetByteCount";
         private const string StringGetMaxByteCount = "global::System.Text.Encoding.UTF8.GetMaxByteCount";
         private const string BebopRecord = "global::Bebop.Runtime.BaseBebopRecord";
+        private const string IDecodable = "global::Bebop.Runtime.IDecodable";
 
         private static readonly string[] DecodeBufferTypes = { "byte[]", "global::System.ReadOnlySpan<byte>", "global::System.ReadOnlyMemory<byte>", "global::System.ArraySegment<byte>", ImmutableByteArrayType };
         /// <summary>

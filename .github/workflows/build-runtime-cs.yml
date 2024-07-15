@@ -25,29 +25,19 @@ jobs:
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: |
-            5.0.x
-            6.0.x
-            7.0.x
             8.0.x
+            9.0.x
           dotnet-quality: 'preview'
       - name: Generate Output.g.cs
         working-directory: "./Laboratory/C#"
         run: dotnet run --project ../../Compiler/ --include $(ls -p ../Schemas/Valid/*.bop | tr '\n' ' ') build --generator "cs:./GeneratedTestCode/Output.g.cs,namespace=Bebop.Codegen"
 
-      - name: Run Test .NET 6
-        run: dotnet test -c Release -f net6.0
+      - name: Run Test .NET 8
+        run: dotnet test -c Release -f net8.0
         working-directory: ${{env.TEST_ROOT}}
 
-      - name: Run Test .NET 5
-        run: dotnet test -c Release -f net5.0
-        working-directory: ${{env.TEST_ROOT}}
-
-      - name: Run Test .NET Framework 4.7.2
-        run: dotnet test -c Release -f net472
-        working-directory: ${{env.TEST_ROOT}}
-
-      - name: Run Test .NET Framework 4.8
-        run: dotnet test -c Release -f net48
+      - name: Run Test .NET 9
+        run: dotnet test -c Release -f net9.0
         working-directory: ${{env.TEST_ROOT}}
 
       - name: Restore Project
