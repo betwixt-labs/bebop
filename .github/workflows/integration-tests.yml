@@ -30,7 +30,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v1
         with:
-          node-version: "18.16.0" # LTS
+          node-version: "20.15.0" # LTS
       - name: Setup C++
         run: |
           sudo apt update
