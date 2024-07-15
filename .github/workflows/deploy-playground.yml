@@ -1,19 +1,13 @@
-# Simple workflow for deploying static content to Cloudflare Pages
 name: Deploy Playground
 
 on:
-  # Runs on pushes targeting the default branch
   push:
     branches: ["master"]
-
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
 jobs:
-  # Single deploy job since we're just deploying
   deploy:
     runs-on: ubuntu-latest
-    # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
     permissions:
       contents: read
       deployments: write
@@ -28,7 +22,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: "8.0.x" # SDK Version to use; x will use the latest version of the 7.0 channel
+          dotnet-version: "8.0.x"
           dotnet-quality: 'preview'
 
       - name: Build Playground
@@ -38,13 +32,11 @@ jobs:
           yarn build:site
         working-directory: ./playground/
 
-      - name: Deploy Playground
-        uses: cloudflare/pages-action@v1
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: bebopc-playground
-          directory: ${{github.workspace}}/playground/dist
-          # Optional: Enable this if you want to have GitHub Deployments triggered
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          branch: master
+      - name: Install Wrangler
+        run: npm install -g wrangler
+
+      - name: Deploy with Wrangler
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          wrangler pages publish ./playground/dist --project-name bebopc-playground --branch master
