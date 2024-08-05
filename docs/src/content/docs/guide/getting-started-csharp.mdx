@@ -2,86 +2,204 @@
 title: Getting started (C#)
 ---
 
-import {Tabs, TabItem, LinkCard} from "@astrojs/starlight/components";
+import { Tabs, TabItem, LinkCard } from "@astrojs/starlight/components";
 
-##  Supported Runtimes 
+# Getting Started with Bebop in C#
+
+Bebop is a high-performance serialization framework designed for efficient data transfer. This guide will walk you through setting up Bebop in your C# project, creating schemas, and using the generated code.
+
+## Supported Runtimes
 - .NET Framework 4.7.2
 - .NET Framework 4.8
 - .NET Core 3.1
 - .NET 5+
 
-##  Install the Runtime
-To install the Bebop .NET runtime you can use the following commands:
+## Installation
 
-```
+First, let's install the necessary packages:
+
+| Package | NuGet Stable | Downloads |
+| :------ | :----------- | :-------- |
+| [bebop](https://www.nuget.org/packages/bebop/) | [![bebop](https://img.shields.io/nuget/v/bebop.svg)](https://www.nuget.org/packages/bebop/) | [![bebop](https://img.shields.io/nuget/dt/bebop.svg)](https://www.nuget.org/packages/bebop/) |
+| [bebop-tools](https://www.nuget.org/packages/bebop-tools/) | [![bebop-tools](https://img.shields.io/nuget/v/bebop-tools.svg)](https://www.nuget.org/packages/bebop-tools/) | [![bebop-tools](https://img.shields.io/nuget/dt/bebop-tools.svg)](https://www.nuget.org/packages/bebop-tools/) |
+
+### Install Bebop Runtime
+
+```bash
 dotnet add package bebop
 ```
 
-| Package                                        | NuGet Stable                                                                                | Downloads                                                                                    |
-| :--------------------------------------------- | :------------------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------- |
-| [bebop](https://www.nuget.org/packages/bebop/) | [![bebop](https://img.shields.io/nuget/v/bebop.svg)](https://www.nuget.org/packages/bebop/) | [![bebop](https://img.shields.io/nuget/dt/bebop.svg)](https://www.nuget.org/packages/bebop/) |
+### Install Bebop Compiler Tools
 
-##  Install the Compiler Tools
-To install the Bebop Compiler tools you can use the following command:
-
-```
+```bash
 dotnet add package bebop-tools
 ```
-| Package                                                    | NuGet Stable                                                                                                  | Downloads                                                                                                      |
-| :--------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------- |
-| [bebop-tools](https://www.nuget.org/packages/bebop-tools/) | [![bebop-tools](https://img.shields.io/nuget/v/bebop-tools.svg)](https://www.nuget.org/packages/bebop-tools/) | [![bebop-tools](https://img.shields.io/nuget/dt/bebop-tools.svg)](https://www.nuget.org/packages/bebop-tools/) |
 
-## Configuring the Compiler Tools
+## Project Configuration
 
-Inside of your project file add a new `ItemGroup`
+To configure Bebop in your project, add the following `ItemGroup` to your `.csproj` file:
 
 ```xml
 <ItemGroup>
-  <Bebop Include="**/*.bop" OutputDir="./Models/" OutputFile="IpcModels.g.cs" Namespace="RainwayIPC.Models" />
+  <Bebop Include="**/*.bop" OutputDir="./Models/" OutputFile="IpcModels.g.cs" Namespace="YourNamespace.Models" />
 </ItemGroup>
 ```
 
-When the `<Bebop>` item group is present in your project all schemas that match the provided `Include` path are compiled in accordance with the output parameters defined whenever you build your project (meaning that schema changes reflect immediately in your project.)
+This configuration tells Bebop to:
+- Include all `.bop` files in your project
+- Generate C# code
+- Output the generated code to `./Models/IpcModels.g.cs`
+- Use the specified namespace for the generated code
 
-Any issues encountered while compiling your schemas can now also be inspected from the error list.
-![](https://i.imgur.com/H5jTYtJ.png)
+## Creating Bebop Schemas
 
-## Using Bebop Mirroring
+Bebop uses its own schema language to define data structures. Create a new file with a `.bop` extension (e.g., `schemas.bop`) and define your schemas:
 
-Mirroring is a Bebop feature supported by the .NET runtime implementation that allows for records to be access and handled dynamically. For instance, you can define a class as a `RecordHandler` and bind it's methods to be invoked whenever a record of a certain type is decoded.
+```bebop
+struct Person {
+  string name;
+  uint32 age;
+}
 
-It takes advantage of the [opcode](../reference/decorators#opcode) decorator to determine which method to invoke.
-
-```csharp
-    [RecordHandler]
-    public class ExampleHandler
-    {
-
-        [BindRecord(typeof(BebopRecord<ChatMessage>))]
-        public async Task HandleChat(object state, ChatMessage chat)
-        {
-            ...
-        }
-    }
-```
-Arbitrary data can then be decoded dynamically by leveraging the records opcode, and the method bound to it is fired.
-
-```csharp
-// fired when a message is received from the network.
-public void OnMessage(byte[] data) {
-  // decodes our network messages
-  var networkMessage = NetworkMessage.Decode(data);
-  // decodes and invokes the handler (if any) for the decoded record
-  // if the record is ChatMessage then HandleChat is invoked..
-  BebopMirror.HandleRecord(networkMessage.IncomingRecordData, networkMessage.IncomingOpcode, stateObject);
+struct Team {
+  string name;
+  Person[] members;
 }
 ```
-:::note
-- **If your `RecordHandler` is non-static the Bebop runtime will create a new instance of that class and hold onto the reference.**
-- **Bound methods currently cannot return any values and use an event driven pattern. Invoked methods do not block.**
-- **Mirroring uses reflection and may not be AOT friendly**
-:::
-:::caution
-Mirroring is a feature that will likely be removed in the future in favor of a C# implementation of [Tempo](../tempo).
-:::
+
+## Generating C# Code
+
+After defining your schemas, the C# code will be automatically generated when you build your project. Any issues encountered during compilation will be displayed in the error list.
+
+## Using Generated Code
+
+Now you can use the generated code in your C# project. Here's an example of how to create and encode a `Person` object:
+
+```csharp
+using YourNamespace.Models;
+using Bebop.Runtime;
+
+// Create a new Person object
+var person = new Person
+{
+    Name = "Spike Spiegel",
+    Age = 27
+};
+
+// Encode the person object to a byte array
+byte[] encoded = BebopSerializer.Encode(person);
+
+// Decode the byte array back to a Person object
+Person decoded = BebopSerializer.Decode<Person>(encoded);
+
+Console.WriteLine(decoded.Name); // Output: Spike Spiegel
+Console.WriteLine(decoded.Age);  // Output: 27
+```
+
+## Using the BebopSerializer
+
+The `BebopSerializer` class provides static methods for encoding and decoding Bebop records. Here are some examples:
+
+```csharp
+using Bebop.Runtime;
+
+// Encoding
+byte[] encoded = BebopSerializer.Encode(person);
+byte[] encodedWithCapacity = BebopSerializer.Encode(person, 1024); // With initial capacity
+ImmutableArray<byte> encodedImmutable = BebopSerializer.EncodeImmutably(person);
+
+// Decoding
+Person decodedFromArray = BebopSerializer.Decode<Person>(encoded);
+Person decodedFromSpan = BebopSerializer.Decode<Person>(new ReadOnlySpan<byte>(encoded));
+Person decodedFromMemory = BebopSerializer.Decode<Person>(new ReadOnlyMemory<byte>(encoded));
+Person decodedFromImmutable = BebopSerializer.Decode<Person>(encodedImmutable);
+```
+
+## Working with Unions
+
+Bebop supports unions, which allow you to define a type that can be one of several possible structures. Here's an example of how to work with unions in C#.
+
+### Defining a Union in Bebop
+
+First, let's look at how a union is defined in a Bebop schema file (`.bop`):
+
+```bebop
+union Person {
+  1 -> struct John {
+    int32 x;
+    int32 y;
+  }
+  2 -> struct Doe {
+    int32 age;
+    string name;
+  }
+}
+```
+
+### Using the Generated Union in C#
+
+After generating the C# code from this Bebop schema, you can use the union like this:
+
+```csharp
+using YourNamespace.Models; // Replace with your actual namespace
+using Bebop.Runtime;
+
+// Creating instances of the union
+var john = new Person(new John { X = 10, Y = 20 });
+var doe = new Person(new Doe { Age = 30, Name = "Jane Doe" });
+
+// Checking the type and accessing fields
+if (john.IsJohn)
+{
+    Console.WriteLine($"John's coordinates: ({john.AsJohn.X}, {john.AsJohn.Y})");
+}
+
+if (doe.IsDoe)
+{
+    Console.WriteLine($"Doe's name: {doe.AsDoe.Name}, Age: {doe.AsDoe.Age}");
+}
+
+// Using pattern matching
+static void PrintPerson(Person person)
+{
+    switch (person.Discriminator)
+    {
+        case 1:
+            var john = person.AsJohn;
+            Console.WriteLine($"John at ({john.X}, {john.Y})");
+            break;
+        case 2:
+            var doe = person.AsDoe;
+            Console.WriteLine($"Doe named {doe.Name}, aged {doe.Age}");
+            break;
+    }
+}
+
+// Encoding and decoding unions
+byte[] encodedJohn = BebopSerializer.Encode(john);
+Person decodedJohn = BebopSerializer.Decode<Person>(encodedJohn);
+
+// Using the Match method for type-safe handling
+string description = person.Match(
+    john => $"John at ({john.X}, {john.Y})",
+    doe => $"Doe named {doe.Name}, aged {doe.Age}"
+);
+Console.WriteLine(description);
+
+// Using the Switch method for side effects
+person.Switch(
+    john => Console.WriteLine($"Processing John: ({john.X}, {john.Y})"),
+    doe => Console.WriteLine($"Processing Doe: {doe.Name}, {doe.Age}")
+);
+```
+
+### Key Points About Unions
+
+1. The union type (`Person` in this case) has properties like `IsJohn` and `IsDoe` to check which variant it currently represents.
+2. Use `AsJohn` and `AsDoe` to access the specific fields of each variant.
+3. The `Discriminator` property tells you which variant the union currently represents (1 for John, 2 for Doe in this case).
+4. You can use pattern matching or the `Switch` and `Match` methods for type-safe handling of the union.
+5. Encoding and decoding work seamlessly with unions, just like with regular Bebop structures.
+
+Unions are particularly useful when you need to represent data that can be one of several types, providing a type-safe way to handle different cases in your application.
 
