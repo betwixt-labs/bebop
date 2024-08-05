@@ -203,3 +203,46 @@ person.Switch(
 
 Unions are particularly useful when you need to represent data that can be one of several types, providing a type-safe way to handle different cases in your application.
 
+
+## Advanced Usage: Zero-Allocation Network Writing with EncodeIntoBuffer
+
+For high-performance scenarios, especially when writing to a network stream, you can use the `EncodeIntoBuffer` method along with `System.Buffers.ArrayPool<T>` to achieve zero-allocation encoding. This approach is particularly useful in situations where you're sending many objects rapidly and want to avoid any overhead from memory allocations.
+
+### Concept: Using EncodeIntoBuffer for Network Writing
+
+Here's the core concept of how to use `EncodeIntoBuffer` with `ArrayPool<T>` to write directly to a network stream without allocations:
+
+```csharp
+try 
+{
+    if (_buffer == null || _buffer.Length < person.MaxByteCount) 
+    {
+        if (_buffer != null)
+            ArrayPool<byte>.Shared.Return(_buffer);
+        _buffer = ArrayPool<byte>.Shared.Rent(person.MaxByteCount);
+    }
+    
+    int bytesWritten = person.EncodeIntoBuffer(_buffer);
+    stream.Write(_buffer, 0, bytesWritten);
+} 
+finally 
+{
+    // Ensure the buffer is returned to the pool if an exception occurs
+    // Note: In a real implementation, you'd want to be more careful about when to return the buffer
+    ArrayPool<byte>.Shared.Return(_buffer);
+}
+```
+
+### Key Concepts
+
+1. **Use of ArrayPool**: We rent a buffer from `ArrayPool<byte>.Shared` instead of allocating a new array each time.
+
+2. **Sizing with MaxByteCount**: We use `person.MaxByteCount` to ensure our buffer is large enough for the current instance of the Person record. This value can vary between instances, especially for records with variable-length fields like strings or arrays.
+
+3. **Zero-Allocation Encoding**: `EncodeIntoBuffer` writes directly into the rented buffer, avoiding additional allocations.
+
+4. **Direct Stream Writing**: We write the exact number of bytes used in encoding directly to the stream.
+
+5. **Resource Management**: The `finally` block ensures that the buffer is always returned to the pool, even if an exception occurs.
+
+This pattern allows for efficient, zero-allocation serialization and network writing, which can significantly improve performance in high-throughput scenarios. It adapts to the specific size requirements of each record instance, ensuring optimal buffer usage.
