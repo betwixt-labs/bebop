@@ -28,6 +28,11 @@ namespace Bebop.Runtime
         /// </summary>
         public int Position { get; set; }
 
+        /// <summary>
+        /// The length of the underlying buffer.
+        /// </summary>
+        public int Length { get; }
+
 
         /// <summary>
         /// Creates a new <see cref="BebopReader"/> from the specified <paramref name="buffer"/>
@@ -77,6 +82,7 @@ namespace Bebop.Runtime
             }
             _buffer = buffer;
             Position = 0;
+            Length = buffer.Length;
         }
 
         /// <summary>
@@ -207,9 +213,9 @@ namespace Bebop.Runtime
             Position += stringByteCount;
 
 
-        #if AGGRESSIVE_OPTIMIZE
+#if AGGRESSIVE_OPTIMIZE
             return UTF8.GetString(stringSpan);
-        #else
+#else
             unsafe
             {
                 fixed (byte* bytePtr = stringSpan)
@@ -217,7 +223,7 @@ namespace Bebop.Runtime
                     return UTF8.GetString(bytePtr, stringByteCount);
                 }
             }
-        #endif
+#endif
         }
 
         /// <summary>
@@ -249,7 +255,7 @@ namespace Bebop.Runtime
         [MethodImpl(BebopConstants.HotPath)]
         public ImmutableArray<byte> ReadBytes()
         {
-            var length = unchecked((int) ReadUInt32());
+            var length = unchecked((int)ReadUInt32());
             if (length == 0)
             {
                 return ImmutableArray<byte>.Empty;
