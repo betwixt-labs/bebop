@@ -22,8 +22,8 @@ namespace Test
         [Test]
         public void WriteRead()
         {
-            var testBytes = new byte[] {0x1, 0x2, 0x3};
-            var testFloats = new float[] {float.MinValue, float.MaxValue};
+            var testBytes = new byte[] { 0x1, 0x2, 0x3 };
+            var testFloats = new float[] { float.MinValue, float.MaxValue };
             var testDoubles = new double[] { double.MinValue, double.MaxValue };
             var testGuid = Guid.Parse("81c6987b-48b7-495f-ad01-ec20cc5f5be1");
             const string testString = @"Hello 明 World!😊";
@@ -65,7 +65,7 @@ namespace Test
             // test float / double
             Assert.AreEqual(float.MaxValue, output.ReadFloat32());
             Assert.AreEqual(double.MaxValue, output.ReadFloat64());
-             // test float array
+            // test float array
             var floatArrayLength = output.ReadUInt32();
             Assert.AreEqual(testFloats.Length, floatArrayLength);
             var parsedFloats = new float[floatArrayLength];
@@ -88,7 +88,10 @@ namespace Test
             // test guid
             Assert.AreEqual(testGuid, output.ReadGuid());
             // test date
-            Assert.AreEqual(testDate, output.ReadDate());
+            var readDate = output.ReadDate();
+            Console.WriteLine($"Read date: {readDate:O}");
+            Assert.That(readDate, Is.EqualTo(testDate).Within(TimeSpan.FromMilliseconds(1)),
+                $"Dates should match within 1ms. Difference: {(readDate - testDate).TotalMilliseconds}ms");
             // test byte array
             CollectionAssert.AreEqual(testBytes, output.ReadBytes());
 
@@ -109,7 +112,7 @@ namespace Test
                     new Musician {Name = "Miles Davis", Plays = Instrument.Trumpet}
                 }
             };
-            var library = new Library {Songs = new Dictionary<Guid, Song> {{testGuid, song}}};
+            var library = new Library { Songs = new Dictionary<Guid, Song> { { testGuid, song } } };
             var decodedLibrary = Library.Decode(library.EncodeImmutably());
             Assert.AreEqual(library, decodedLibrary);
         }

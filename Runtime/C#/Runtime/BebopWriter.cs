@@ -13,6 +13,9 @@ namespace Bebop.Runtime
     /// </summary>
     public ref struct BebopWriter
     {
+        const long TicksBetweenEpochs = 621355968000000000L;
+        const long DateMask = 0x3fffffffffffffffL;
+
         // ReSharper disable once InconsistentNaming
         private static readonly UTF8Encoding UTF8 = new();
 
@@ -287,7 +290,9 @@ namespace Bebop.Runtime
         [MethodImpl(BebopConstants.HotPath)]
         public void WriteDate(DateTime date)
         {
-            WriteInt64(date.ToUniversalTime().ToBinary());
+            long ms = (long)(date.ToUniversalTime() - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
+            long ticks = ms * 10000L + TicksBetweenEpochs;
+            WriteInt64(ticks & DateMask);
         }
 
         /// <summary>
@@ -321,7 +326,7 @@ namespace Bebop.Runtime
                 fixed (char* c = value)
                 {
                     var size = UTF8.GetByteCount(c, value.Length);
-                    WriteUInt32(unchecked((uint) size));
+                    WriteUInt32(unchecked((uint)size));
                     var index = Length;
                     GrowBy(size);
                     fixed (byte* o = _buffer.Slice(index, size))
@@ -365,7 +370,7 @@ namespace Bebop.Runtime
         [MethodImpl(BebopConstants.HotPath)]
         public void WriteFloat32S(float[] value)
         {
-            WriteUInt32(unchecked((uint) value.Length));
+            WriteUInt32(unchecked((uint)value.Length));
             var index = Length;
             var floatBytes = AsBytes<float>(value);
             if (floatBytes.IsEmpty)
@@ -382,7 +387,7 @@ namespace Bebop.Runtime
         [MethodImpl(BebopConstants.HotPath)]
         public void WriteFloat64S(double[] value)
         {
-            WriteUInt32(unchecked((uint) value.Length));
+            WriteUInt32(unchecked((uint)value.Length));
             var index = Length;
             var doubleBytes = AsBytes<double>(value);
             if (doubleBytes.IsEmpty)
@@ -417,7 +422,7 @@ namespace Bebop.Runtime
         [MethodImpl(BebopConstants.HotPath)]
         public void WriteBytes(byte[] value)
         {
-            WriteUInt32(unchecked((uint) value.Length));
+            WriteUInt32(unchecked((uint)value.Length));
             if (value.Length == 0)
             {
                 return;
