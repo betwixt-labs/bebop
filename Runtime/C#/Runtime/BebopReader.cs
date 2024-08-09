@@ -14,9 +14,6 @@ namespace Bebop.Runtime
     /// </summary>
     public ref struct BebopReader
     {
-        private const long TicksBetweenEpochs = 621355968000000000L;
-        private const ulong DateMask = 0x3fffffffffffffffUL;
-
         // ReSharper disable once InconsistentNaming
         private static readonly UTF8Encoding UTF8 = new();
 
@@ -196,13 +193,9 @@ namespace Bebop.Runtime
         /// </summary>
         /// <returns>A UTC <see cref="DateTime"/> instance.</returns>
         [MethodImpl(BebopConstants.HotPath)]
-        public DateTime ReadDate()
-        {
-            ulong rawTicks = ReadUInt64() & DateMask;
-            long ticks = unchecked((long)rawTicks);
-            long ms = (ticks - TicksBetweenEpochs) / 10000L;
-            return new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMilliseconds(ms);
-        }
+        public DateTime ReadDate() =>
+            // make sure it always reads it as UTC by setting the first bits to `01`.
+            DateTime.FromBinary((ReadInt64() & 0x7fffffffffffffff) | 0x4000000000000000);
 
         /// <summary>
         ///     Reads a length prefixed string from the underlying buffer and advances the current position by that many bytes.
