@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.Encodings.Web;
@@ -121,7 +122,25 @@ namespace Core.Generators.CSharp
                             _ => string.Empty
                         };
                         builder.AppendLine(recordAttribute);
-                        builder.AppendLine($"public partial class {definition.ClassName()} : {BebopRecord}, {IDecodable}<{definition.ClassName()}>, global::System.IEquatable<{definition.ClassName()}> {{");
+
+                        var implementedInterfaces = new List<string>
+                        {
+                            BebopRecord,
+                            $"{IDecodable}<{definition.ClassName()}>",
+                            $"global::System.IEquatable<{definition.ClassName()}>"
+                        };
+
+                        // Check if the definition's parent is a UnionDefinition
+                        if (definition.Parent is UnionDefinition ud)
+                        {
+                            // Add the union interface to the list of implemented interfaces
+                            implementedInterfaces.Add($"I{ud.ClassName()}Member");
+                        }
+
+                        // Join the interfaces with commas
+                        var interfaceList = string.Join(", ", implementedInterfaces);
+
+                        builder.AppendLine($"public partial class {definition.ClassName()} : {interfaceList} {{");
                         builder.Indent(indentStep);
 
                         if (fd is MessageDefinition)
@@ -475,10 +494,14 @@ namespace Core.Generators.CSharp
             var genericConstraints = string.Join(' ', ud.Branches.Select(b => $"where T{b.GenericIndex()}: {PrefixNamespace(b.Definition.ClassName())}")).Trim();
 
             var structName = $"{ud.ClassName()}Union";
+            var interfaceName = $"I{ud.ClassName()}Member";
+
 
             var nullCheck = LanguageVersion == CSharpNine ? "is null" : "== null";
             var notNullCheck = LanguageVersion == CSharpNine ? "is not null" : "!= null";
             var isCheck = LanguageVersion == CSharpNine ? "is" : "==";
+
+
 
             void CompileValueProperty()
             {
@@ -573,6 +596,18 @@ namespace Core.Generators.CSharp
                 CompileHashCode();
                 builder.AppendLine("#endregion");
             }
+
+            void CompileUnionInterface()
+            {
+                builder.AppendLine("/// <summary>");
+                builder.AppendLine($"/// Interface for members of the {ud.ClassName()} union");
+                builder.AppendLine("/// </summary>");
+                builder.AppendLine(GeneratedAttribute);
+                builder.AppendLine($"public partial interface ${interfaceName} {{").Indent(indentStep);
+
+                builder.Dedent(indentStep).AppendLine("}").AppendLine();
+            }
+
             // Compiles a read-only struct which holds our union. 
             void CompileUnionStruct()
             {
@@ -722,7 +757,7 @@ namespace Core.Generators.CSharp
 
                 builder.Dedent(indentStep).AppendLine("}").AppendLine();
             }
-
+            CompileUnionInterface();
             CompileUnionBaseClass();
             CompileUnionConcreteClass();
             CompileUnionStruct();
