@@ -488,6 +488,8 @@ namespace Core.Generators.CSharp
         /// </summary>
         private void CompileUnionFamily(IndentedStringBuilder builder, UnionDefinition ud)
         {
+
+
             var recordAttribute = "[global::Bebop.Attributes.BebopRecord(global::Bebop.Runtime.BebopKind.Union)]";
             var genericPositionalArguments = string.Join(", ", ud.Branches.Select(b => $"T{b.GenericIndex()}")).Trim();
             var genericTypeArguments = string.Join(", ", ud.Branches.Select(b => $"{PrefixNamespace(b.Definition.ClassName())}")).Trim();
@@ -495,6 +497,7 @@ namespace Core.Generators.CSharp
 
             var structName = $"{ud.ClassName()}Union";
             var interfaceName = $"I{ud.ClassName()}Member";
+
 
 
             var nullCheck = LanguageVersion == CSharpNine ? "is null" : "== null";
@@ -603,7 +606,7 @@ namespace Core.Generators.CSharp
                 builder.AppendLine($"/// Interface for members of the {ud.ClassName()} union");
                 builder.AppendLine("/// </summary>");
                 builder.AppendLine(GeneratedAttribute);
-                builder.AppendLine($"public partial interface ${interfaceName} {{").Indent(indentStep);
+                builder.AppendLine($"public partial interface {interfaceName} {{").Indent(indentStep);
 
                 builder.Dedent(indentStep).AppendLine("}").AppendLine();
             }
@@ -757,10 +760,11 @@ namespace Core.Generators.CSharp
 
                 builder.Dedent(indentStep).AppendLine("}").AppendLine();
             }
-            CompileUnionInterface();
+
             CompileUnionBaseClass();
             CompileUnionConcreteClass();
             CompileUnionStruct();
+            CompileUnionInterface();
         }
 
         #endregion
