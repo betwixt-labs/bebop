@@ -678,9 +678,7 @@ namespace Core.Generators.TypeScript
 
             if (Config.EmitBinarySchema)
             {
-
-                builder.AppendLine($"export {Schema.ToBinary().ConvertToTypeScriptUInt8ArrayInitializer("BEBOP_SCHEMA")}");
-                builder.AppendLine();
+                builder.AppendLine(Schema.ToBinary().ConvertToString("export const BEBOP_SCHEMA = new Uint8Array ([", "]);"));
             }
 
             foreach (var definition in Schema.Definitions.Values)

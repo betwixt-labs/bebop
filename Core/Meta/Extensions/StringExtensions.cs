@@ -258,10 +258,10 @@ namespace Core.Meta.Extensions
             }
         }
 
-        public static string ConvertToTypeScriptUInt8ArrayInitializer(this byte[] byteArray, string propertyName = "schema")
+        public static string ConvertToString(this byte[] byteArray, string leftBrace = "[", string rightBrace = "];")
         {
             StringBuilder builder = new StringBuilder();
-            builder.AppendLine($"const {propertyName} = new Uint8Array([");
+            builder.AppendLine(leftBrace);
 
             int printWidth = 60; // Prettier default print width
             int currentLineWidth = 0;
@@ -288,7 +288,7 @@ namespace Core.Meta.Extensions
 
             // Append a new line to de-indent the closing brackets.
             builder.AppendLine();
-            builder.AppendLine("]);");
+            builder.Append(rightBrace);
 
             return builder.ToString();
         }
