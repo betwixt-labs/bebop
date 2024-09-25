@@ -46,12 +46,17 @@ namespace Core.Generators.CSharp
                 builder.Indent(indentStep).AppendLine();
             }
 
-            if (Schema.Definitions.Values.Any(d => d is ConstDefinition))
+            if (Config.EmitBinarySchema || Schema.Definitions.Values.Any(d => d is ConstDefinition))
             {
                 builder.AppendLine(ConstantSummary);
                 builder.AppendLine(GeneratedAttribute);
                 builder.AppendLine($"public static class BopConstants {{");
                 builder.Indent(indentStep);
+
+                if (Config.EmitBinarySchema)
+                {
+                    builder.AppendLine(Schema.ToBinary().ConvertToString("public static readonly byte[] BEBOP_SCHEMA = new byte[] {", "};"));
+                }
 
                 foreach (ConstDefinition cd in Schema.Definitions.Values.Where(d => d is ConstDefinition))
                 {
@@ -65,9 +70,6 @@ namespace Core.Generators.CSharp
                 builder.Dedent(indentStep);
                 builder.AppendLine("}").AppendLine();
             }
-
-
-
 
             foreach (var definition in Schema.Definitions.Values)
             {
