@@ -15,18 +15,32 @@ internal sealed partial class RegistryClient
             throw new ArgumentException("Value cannot be null or whitespace.", nameof(chord));
         }
 
-        var parts = chord.Split('@');
-        requestedChord = parts[0];
-        requestedVersion = parts.Length > 1 ? parts[1] : "latest";
+        // Split the chord by '@', but only at the last occurrence to ensure versions with '@' in names are handled.
+        int atIndex = chord.LastIndexOf('@');
 
+        if (atIndex > 0)
+        {
+            requestedChord = chord[..atIndex];
+            requestedVersion = chord[(atIndex + 1)..];
+        }
+        else
+        {
+            requestedChord = chord;
+            requestedVersion = "latest"; // Default to 'latest' if no version is specified.
+        }
+
+        // Ensure requestedChord is not null or whitespace, even after trimming the '@' symbol.
         if (string.IsNullOrWhiteSpace(requestedChord))
         {
             throw new InvalidDataException("Chord ID cannot be null or whitespace.");
         }
     }
 
+
     private static RegistryVersion? FindRegistryVersion(RegistryCatalog versions, string requestedVersion)
     {
+
+
         return requestedVersion == "latest"
             ? versions.Versions.FirstOrDefault(v => v.Version == versions.Latest)
             : versions.Versions.FirstOrDefault(v => v.Version == requestedVersion);
@@ -34,17 +48,42 @@ internal sealed partial class RegistryClient
 
     private static string GetDestinationPath(string chord, string version)
     {
-        var destinationPath = Path.Combine(StoragePath.BebopcData, chord, version, "chord.wasm");
-        var destinationDirectory = Path.GetDirectoryName(destinationPath);
+        string? scope = null;
+        string name = chord;
 
+        // Check if 'chord' contains a scope (i.e., starts with '@')
+        if (chord.StartsWith("@"))
+        {
+            var parts = chord.Split('/', 2); // Split into scope and name
+            if (parts.Length == 2)
+            {
+                scope = parts[0]; // '@betwixt'
+                name = parts[1];  // 'example'
+            }
+            else
+            {
+                throw new InvalidOperationException("Invalid chord format. Expected '@scope/name'.");
+            }
+        }
+
+        // Construct the full path
+        var basePath = StoragePath.BebopcData;
+        var destinationPath = scope != null
+            ? Path.Combine(basePath, scope, name, version, "chord.wasm")  // With scope
+            : Path.Combine(basePath, name, version, "chord.wasm");         // Without scope
+
+        // Ensure the directory exists
+        var destinationDirectory = Path.GetDirectoryName(destinationPath);
         if (string.IsNullOrEmpty(destinationDirectory))
         {
             throw new InvalidOperationException("Destination directory cannot be null or empty.");
         }
+
         if (!Directory.Exists(destinationDirectory))
         {
             Directory.CreateDirectory(destinationDirectory);
         }
+
         return destinationPath;
     }
 

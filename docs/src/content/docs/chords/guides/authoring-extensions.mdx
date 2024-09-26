@@ -1,0 +1,161 @@
+---
+title: Authoring Extensions
+---
+import { Tabs, TabItem, LinkCard } from "@astrojs/starlight/components";
+
+This guide will walk you through the process of creating a Bebop extension. Bebop supports multiple languages for extension development, and the creation process is interactive and user-friendly.
+
+## Getting Started
+
+### Run the Extension Creator Script
+
+To start creating your Bebop extension, run the following command in your terminal:
+
+<Tabs>
+ <TabItem label="bash">
+ ```bash
+ bash -c "$(curl https://edk.bebop.sh)"
+ ```
+ </TabItem>
+</Tabs>
+
+This script will guide you through an interactive process to set up your extension project.
+
+### Interactive Setup Process
+
+The Extension Creator script will walk you through the following steps:
+
+1. **Choose Directory**: 
+   - You'll be prompted to enter a directory name for your extension.
+   - This name will also be used as the extension name.
+   - If you don't provide a name, a default name with a timestamp will be used.
+
+2. **Select EDK (Extension Development Kit)**:
+   - You'll be presented with options to choose your preferred EDK:
+     - TypeScript
+     - TinyGo
+     - AssemblyScript
+   - Select the EDK that best fits your development preferences.
+
+3. **Download and Extract EDK**:
+   - The script will download and extract the selected EDK into your chosen directory.
+
+4. **Finalize Setup**:
+   - The script will modify the `chord.json` file in your project, setting the correct name and initial version.
+
+### Post-Setup
+
+After the script completes, you'll find your new extension project in the directory you specified. The script will provide you with next steps, including:
+
+1. Changing to your new extension directory:
+   ```bash
+   cd your-extension-directory
+   ```
+2. A reminder to visit the Bebop documentation for more information on developing extensions.
+
+## Understanding the Extension Structure
+
+Let's explore the structure of your new extension project, using TypeScript as an example.
+
+The main file for your extension is typically `src/index.ts`. Here's its basic structure:
+
+```typescript
+import { CompilerContext, IndentedStringBuilder, commitResult, readContext } from "./kernel";
+
+export function chordCompile() {
+  const input = readContext();
+  commitResult(generateCode(input));
+}
+
+function generateCode(context: CompilerContext): string {
+  // Your generator logic here
+}
+```
+
+- `chordCompile` is the entry point for your extension. It's called by the Bebop compiler.
+- `readContext()` provides the `CompilerContext`, which contains all the information about the Bebop schemas being processed.
+- `generateCode` is where you'll implement your custom logic to generate code based on the input schemas.
+- `commitResult` sends the generated code back to the Bebop compiler.
+
+## Developing Your Extension
+
+Let's walk through an example of creating a simple generator extension. This extension will generate basic validation functions for structs.
+
+1. First, ensure your `chord.json` includes the necessary contribution definitions:
+
+```json
+{
+  "contributes": {
+    "generator": {
+      "alias": "simple-validator",
+      "name": "Simple Validator Generator"
+    },
+    "decorators": {
+      "validate": {
+        "description": "Indicates that a validator should be generated for this struct",
+        "allowMultiple": false,
+        "targets": "struct"
+      }
+    }
+  }
+}
+```
+
+2. Now, let's implement the `generateCode` function:
+
+```typescript
+function generateCode(context: CompilerContext): string {
+  const builder = new IndentedStringBuilder();
+
+  for (const [name, definition] of Object.entries(context.definitions)) {
+    if (definition.kind === "struct" && definition.decorators?.validate) {
+      builder.appendLine(`export function validate${name}(record: I${name}): boolean {`);
+      builder.indent();
+      builder.appendLine(`return Object.values(record).every(value => value !== null && value !== undefined);`);
+      builder.dedent();
+      builder.appendLine('}');
+      builder.appendLine();
+    }
+  }
+
+  return builder.toString();
+}
+```
+
+This simple generator creates a basic validation function for each struct marked with the `@validate` decorator, checking if all fields have non-null values.
+
+## Understanding the Generator Context
+
+The `CompilerContext` provides access to all the information about the Bebop schemas being processed. Key properties include:
+
+- `definitions`: A map of all type definitions (structs, enums, etc.) in the schema.
+- `services`: A map of all service definitions.
+- `options`: Compiler options and metadata.
+
+## Building Your Extension
+
+To build your extension, use the `chordc` command-line tool:
+
+```bash
+chordc build
+```
+
+This command uses the configuration in your `chord.json` file to build your extension.
+
+## Testing Your Extension
+
+To test your extension locally:
+
+1. Create a test Bebop schema that uses your decorators.
+2. Run the Bebop compiler with your extension on this schema.
+3. Verify that the output matches your expectations.
+
+## Next Steps
+
+Once you've developed and tested your extension, you're ready to publish it!
+
+<LinkCard title="Learn how to publish your extension" href="publishing-extensions" />
+
+By publishing your extension, you can share your work with the Bebop community and allow others to use your custom generators and decorators in their projects.
+
+Remember, extensions are a powerful way to extend Bebop's capabilities. They allow you to create custom code generation logic, add new decorators, and tailor Bebop to specific use cases.

@@ -185,13 +185,13 @@ declare module 'astro:content' {
 
 	type ContentEntryMap = {
 		"docs": {
-"chords/chord-json.md": {
-	id: "chords/chord-json.md";
+"chords/chord-json.mdx": {
+	id: "chords/chord-json.mdx";
   slug: "chords/chord-json";
   body: string;
   collection: "docs";
   data: InferEntrySchema<"docs">
-} & { render(): Render[".md"] };
+} & { render(): Render[".mdx"] };
 "chords/chordc.mdx": {
 	id: "chords/chordc.mdx";
   slug: "chords/chordc";
@@ -199,16 +199,23 @@ declare module 'astro:content' {
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".mdx"] };
-"chords/installing.mdx": {
-	id: "chords/installing.mdx";
-  slug: "chords/installing";
+"chords/guides/authoring-extensions.mdx": {
+	id: "chords/guides/authoring-extensions.mdx";
+  slug: "chords/guides/authoring-extensions";
   body: string;
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".mdx"] };
-"chords/publishing.mdx": {
-	id: "chords/publishing.mdx";
-  slug: "chords/publishing";
+"chords/guides/publishing-extensions.mdx": {
+	id: "chords/guides/publishing-extensions.mdx";
+  slug: "chords/guides/publishing-extensions";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".mdx"] };
+"chords/installing.mdx": {
+	id: "chords/installing.mdx";
+  slug: "chords/installing";
   body: string;
   collection: "docs";
   data: InferEntrySchema<"docs">

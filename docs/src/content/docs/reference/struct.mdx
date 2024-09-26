@@ -4,7 +4,7 @@ title: Struct
 
 A `struct` defines an aggregation of "fields", containing typed values in a fixed order. All values are always present. It is used much like a struct in C.
 
-```go
+```bebop
 struct Point { 
     int32 x; 
     int32 y; 
@@ -19,7 +19,7 @@ When you define a `struct`, you're promising to never add or remove fields from 
 
 By default all fields of a `struct` are immutable. You can make a field mutable by adding the `mut` keyword before its type.
 
-```go ins="mut"
+```bebop ins="mut"
 mut struct Point { 
     int32 x; 
     int32 y; 

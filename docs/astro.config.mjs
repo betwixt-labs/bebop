@@ -1,6 +1,8 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 
+const bebop = JSON.parse(fs.readFileSync('../vscode-bebop/syntaxes/bebop.tmLanguage.json', 'utf8'));
+
 // https://astro.build/config
 export default defineConfig({
   site: "https://bebop.sh",
@@ -9,16 +11,6 @@ export default defineConfig({
       title: "Bebop Docs",
       favicon: "./src/assets/favicon-32.png",
       expressiveCode: true,
-      /* head: [
-        {
-          tag: "script",
-          attrs: {
-            src: "https://scripts.simpleanalyticscdn.com/latest.js",
-            defer: true,
-            "data-domain": "docs.bebop.sh",
-          },
-        },
-      ],*/
 
       logo: {
         light: "./src/assets/logo.svg",
@@ -70,7 +62,37 @@ export default defineConfig({
         },
         {
           label: "Chords (Extensions)",
-          autogenerate: { directory: "chords" },
+          items: [
+            {
+              label: "What are Chords?",
+              link: "/chords/what-are-chords",
+            },
+            { label: "Installing Extensions", link: "/chords/installing" },
+            {
+              label: "Guides", items: [
+                {
+                  label: "Authoring Extensions",
+                  link: "/chords/guides/authoring-extensions",
+                },
+                {
+                  label: "Publishing Extensions",
+                  link: "/chords/guides/publishing-extensions",
+                }
+              ]
+            },
+            {
+              label: "References", items: [
+                {
+                  label: "chord.json",
+                  link: "/chords/chord-json",
+                },
+                {
+                  label: "chordc",
+                  link: "/chords/chordc",
+                },
+              ]
+            }
+          ],
         },
         {
           label: "Tempo (RPC)",
@@ -81,4 +103,16 @@ export default defineConfig({
       ],
     }),
   ],
+  markdown: {
+    shikiConfig: {
+      langs: [
+        {
+          id: 'bebop',
+          scopeName: 'source.bebop',
+          grammar: bebop,
+          aliases: ['bop'],
+        },
+      ],
+    },
+  },
 });

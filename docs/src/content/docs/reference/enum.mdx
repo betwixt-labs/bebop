@@ -4,7 +4,7 @@ title: Enum
 
 An `enum` defines a type that acts as a wrapper around an integer type (defaults to `uint32`), with certain named constants, each having a corresponding underlying integer value. It is used much like an enum in C.
 
-```csharp
+```bebop
 enum Flavor
 { 
     Vanilla = 1; 
@@ -19,7 +19,7 @@ By default, a Bebop enum type is not supposed to represent any underlying values
 
 If you want a more C-like, bitflags-like behavior, add a `flags` decorator to the enum:
 
-```csharp ins="@flags"
+```bebop ins="@flags"
 @flags
 enum Permissions {
     Read = 0x01;
@@ -33,7 +33,7 @@ Defined this way, `Permissions` values like `0` (no permissions) and `3` (`Read`
 
 By default, an enum is backed by a `uint32`. You can change this by specifying a different underlying type:
 
-```csharp ins="uint8"
+```bebop ins="uint8"
 enum Flavor : uint8
 { 
     Vanilla = 1; 
@@ -47,7 +47,7 @@ With the above definition, `Flavor` values can only be in the range `0` to `255`
 ## Best Practices
 - Unlike in C, all constants must be explicitly given an integer literal value.
 - You should never change or remove a constant from an enum definition. Instead, put `deprecated` decorator in front of the member.
-```csharp ins="@deprecated("eat Mint instead")"
+```bebop ins="@deprecated("eat Mint instead")"
 enum Flavor
 { 
     Vanilla = 1;
@@ -76,7 +76,7 @@ enum Flavor
 <tr><th>Discouraged</th><th>Encouraged</th></tr>
 <tr><td>
 
-```c
+```bebop
 enum UserType {
     Admin = 0;  // uh-oh
     Musician = 1;
@@ -86,7 +86,7 @@ enum UserType {
 </td>
 <td>
 
-```c
+```bebop
 enum UserType {
     Invalid = 0;  // whew!
     Admin = 1;

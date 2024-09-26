@@ -1,17 +1,24 @@
 ---
 title: Installing
 ---
+To install an extension, you need to have `chordc` on your system. This is installed when you install Bebop.
 
-To install an extension you need to have `chordc` on your system. You can download it from the [releases page](https://github.com/betwixt-labs/bebop/releases)._createMdxContent
+Once you have `chordc` installed, you can use the following methods to install extensions:
 
-Then, you simply need to run the following command:
-
+1. Install a specific extension:
 ```sh
 chordc install <extension-name>
 ```
 
-Alternatively you can also install a specific version of an extension:
-    
+2. Install a specific version of an extension:
 ```sh
 chordc install <extension-name>@<version>
 ```
+
+3. Install all extensions listed in bebop.json:
+If you're in a directory containing a `bebop.json` file with listed extensions, simply run:
+```sh
+chordc install
+```
+
+This command will automatically install all extensions specified in the `bebop.json` file.

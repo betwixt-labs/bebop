@@ -4,7 +4,7 @@ title: Union
 
 A `union` defines a tagged union of one or more inline struct or message definitions. Each is preceded by a "discriminator" or "tag" value. This defines a type whose values may assume any one of the aggregate layouts defined inside. It corresponds to something like C++'s std::variant or Rust enum.
 
-```go
+```bebop
 union U { 
     1 -> message A { }
     2 -> struct B {  } 

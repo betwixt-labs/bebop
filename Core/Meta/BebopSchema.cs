@@ -126,7 +126,11 @@ namespace Core.Meta
             {
                 if (!decorator.IsUsableOn())
                 {
-                    validationErrors.Add(new InvalidDecoratorUsageException(decorator.Identifier, $"Decorator '{decorator.Identifier}' cannot be applied to {definition.Name.ToLowerInvariant()} '{definition.Name}'", decorator.Span));
+                    validationErrors.Add(new InvalidDecoratorUsageException(decorator.Identifier,
+                        $"Invalid usage of decorator '{decorator.Identifier}' on '{definition.Name}'. " +
+                        $"This decorator can only be applied to {decorator.GetValidTargetsString()}.",
+                        decorator.Span
+                    ));
                 }
                 if (!decorator.Definition.TryValidate(out var reason, decorator))
                 {
@@ -165,8 +169,24 @@ namespace Core.Meta
 
                 if (!decorator.IsUsableOn())
                 {
-                    var hint = parent is StructDefinition && decorator.Identifier == "deprecated" ? "deprecated decorator cannot be applied to struct fields" : "";
-                    validationErrors.Add(new InvalidDecoratorUsageException(decorator.Identifier, $"Decorator '{decorator.Identifier}' cannot be applied to '{parent.Name}.{field.Name}'", decorator.Span, hint));
+                    string validTargets = decorator.GetValidTargetsString();
+                    string currentTarget = $"field '{parent.Name}.{field.Name}'";
+                    string baseMessage = $"Invalid usage of decorator '{decorator.Identifier}' on {currentTarget}.";
+                    string targetMessage = $"This decorator can only be applied to {validTargets}.";
+
+                    string hint = "";
+                    if (parent is StructDefinition && decorator.Identifier.Equals("deprecated", StringComparison.OrdinalIgnoreCase))
+                    {
+                        hint = "Note: The 'deprecated' decorator cannot be applied to struct fields.";
+                    }
+
+                    string fullMessage = string.Join(" ", new[] { baseMessage, targetMessage, hint }.Where(s => !string.IsNullOrEmpty(s)));
+
+                    validationErrors.Add(new InvalidDecoratorUsageException(
+                        decorator.Identifier,
+                        fullMessage,
+                        decorator.Span
+                    ));
                 }
                 if (!decorator.Definition.TryValidate(out var reason, decorator))
                 {

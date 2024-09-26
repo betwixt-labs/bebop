@@ -370,7 +370,7 @@ namespace Core.Exceptions
     class InvalidDecoratorUsageException : SpanException
     {
         public InvalidDecoratorUsageException(string identifier, string reason, Span span, string? hint = null)
-             : base($"Decorator '{identifier}' cannot be applied to this target: {reason}." + (string.IsNullOrWhiteSpace(hint) ? "" : $" (Hint: {hint})"), span, 141)
+             : base(reason + (string.IsNullOrWhiteSpace(hint) ? "" : $" (Hint: {hint})"), span, 141)
         { }
     }
     class DecoratorValidationException : SpanException

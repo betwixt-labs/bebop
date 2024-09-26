@@ -1,9 +1,9 @@
 {
-  "name": "javascript-template",
-  "private": true,
-  "description": "A template for chords built with javascript",
-  "version": "1.0.0",
-  "repository": "https://github.com/betwixt-labs/bebopc",
+  "name": "@betwixt/typescript-template",
+  "private": false,
+  "description": "A template for chords built with TypeScript",
+  "version": "1.0.1",
+  "repository": "https://github.com/betwixt-labs/bebop",
   "license": "Apache-2.0",
   "author": {
     "name": "Betwixt Labs",
@@ -16,26 +16,32 @@
   },
   "contributes": {
     "generator": {
-      "alias": "acme",
-      "name": "ACME Generator"
+      "alias": "validators",
+      "name": "Record Validators"
     },
     "decorators": {
-      "min": {
-        "description": "Sets the min of something idk",
+      "validate": {
+        "description": "Validates a record",
+        "allowMultiple": false,
+        "targets": "struct"
+      },
+      "length": {
+        "description": "Validates the length of a field",
+        "allowMultiple": false,
+        "targets": "struct|field",
         "parameters": {
-          "floor": {
-            "description": "Specifies the floor of something idk",
+          "min": {
+            "description": "Specifies the minimum length of the field",
             "type": "int32",
             "required": true
           },
-          "ceiling": {
-            "description": "Specifies the ceiling of something idk",
+          "max": {
+            "description": "Specifies the maximum length of the field",
             "type": "int32",
             "required": false,
             "default": 100
           }
-        },
-        "targets": "all"
+        }
       }
     }
   },
