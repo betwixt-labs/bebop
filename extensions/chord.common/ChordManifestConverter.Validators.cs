@@ -53,10 +53,6 @@ internal sealed partial class ChordManifestConverter
         const string message = "Invalid extension name";
         if (string.IsNullOrWhiteSpace(pluginName))
             throw new JsonException(message, new FormatException("Extension name cannot be empty."));
-        if (pluginName.StartsWith("@", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new JsonException(message, new FormatException("Scoped extension name is not supported."));
-        }
         if (!ExtensionNameRegex().IsMatch(pluginName))
             throw new JsonException(message, new FormatException("Extension name is not in the correct format."));
         if (pluginName.Length > 214)
@@ -128,7 +124,7 @@ internal sealed partial class ChordManifestConverter
             throw new JsonException(message, new FormatException("Contributed alias cannot be empty."));
         if (!ContributedGeneratorAliasRegex().IsMatch(contributedAlias))
             throw new JsonException(message, new FormatException("Contributed alias cannot override a built-in generator."));
-        if (contributedAlias.Length > 7)
+        if (contributedAlias.Length > 255)
             throw new JsonException(message, new FormatException("Contributed alias is too long."));
         return contributedAlias;
     }
@@ -170,7 +166,7 @@ internal sealed partial class ChordManifestConverter
         var alias = generatorAlias.Trim();
         if (!GeneratorAliasRegex().IsMatch(generatorAlias))
             throw new JsonException(message, new FormatException("Generator alias is not in the correct format."));
-        if (generatorAlias.Length > 7)
+        if (generatorAlias.Length > 255)
             throw new JsonException(message, new FormatException("Generator alias is too long."));
         return alias;
     }
@@ -182,20 +178,18 @@ internal sealed partial class ChordManifestConverter
             throw new JsonException(message, new FormatException("Identifier cannot be empty."));
         if (!IdentifierRegex().IsMatch(indentifer))
             throw new JsonException(message, new FormatException("Identifier is not in the correct format."));
-        if (indentifer.Length > 32)
-            throw new JsonException(message, new FormatException("Identifier is too long."));
         return indentifer;
     }
 
     internal static ChordDecoratorTargets ValidateDecoratorTargets(string? decoratorTargets)
     {
         const string message = "Invalid decorator targets";
+
         if (string.IsNullOrWhiteSpace(decoratorTargets))
             throw new JsonException(message, new FormatException("Decorator targets cannot be empty."));
 
         if (!DecoratorTargetRegex().IsMatch(decoratorTargets))
             throw new JsonException(message, new FormatException("Decorator targets is not in the correct format."));
-
 
         if (decoratorTargets.Equals("all", StringComparison.OrdinalIgnoreCase))
         {
@@ -207,7 +201,8 @@ internal sealed partial class ChordManifestConverter
         var values = decoratorTargets.Split('|');
         foreach (var value in values)
         {
-            result |= value.Trim().ToLower() switch
+            var trimmedValue = value.Trim().ToLower();
+            ChordDecoratorTargets target = trimmedValue switch
             {
                 "enum" => ChordDecoratorTargets.Enum,
                 "message" => ChordDecoratorTargets.Message,
@@ -218,7 +213,10 @@ internal sealed partial class ChordManifestConverter
                 "method" => ChordDecoratorTargets.Method,
                 _ => throw new JsonException(message, new FormatException("Unknown decorator targets value."))
             };
+
+            result |= target;
         }
+
         if (result == ChordDecoratorTargets.None)
             throw new JsonException(message, new FormatException("Decorator targets cannot be None."));
 
@@ -229,20 +227,20 @@ internal sealed partial class ChordManifestConverter
     [GeneratedRegex(@"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")]
     private static partial Regex EmailRegex();
 
-    [GeneratedRegex(@"^(?:(?:@(?:[a-z0-9-*~][a-z0-9-*._~]*)?/[a-z0-9-._~])|[a-z0-9-~])[a-z0-9-._~]*$")]
+    [GeneratedRegex(@"^(?:(?:@(?:[a-z0-9-*~][a-z0-9-*._~]*)?/[a-z0-9-._~])|[a-z0-9-~])[a-z0-9-._~]*[a-z0-9-._~]$")]
     private static partial Regex ExtensionNameRegex();
 
-    [GeneratedRegex(@"^(?!cs$|py$|ts$|rust$|dart$|cpp$)[a-z]+$")]
+    [GeneratedRegex(@"^(?!cs$|py$|ts$|rust$|dart$|cpp$)[a-z]{1,255}$")]
     private static partial Regex ContributedGeneratorAliasRegex();
 
-    [GeneratedRegex(@"^[a-z]{1,7}$")]
+    [GeneratedRegex(@"^[a-z]{1,255}$")]
     private static partial Regex GeneratorAliasRegex();
 
     [GeneratedRegex(@"^[a-zA-Z ]+$")]
     internal static partial Regex AlphabeticalRegex();
 
 
-    [GeneratedRegex(@"^(all|((enum|message|struct|union|field|service|method)(\\|(enum|message|struct|union|field|service|method))*))$")]
+    [GeneratedRegex(@"^(all|enum|message|struct|union|field|service|method)(\|(enum|message|struct|union|field|service|method))*$", RegexOptions.Compiled)]
     private static partial Regex DecoratorTargetRegex();
 
     [GeneratedRegex(@"^[a-z]+([A-Z][a-z]+)*$")]

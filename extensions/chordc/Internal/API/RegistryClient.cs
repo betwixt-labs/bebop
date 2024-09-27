@@ -8,7 +8,7 @@ namespace Chord.Compiler.Internal.API;
 
 internal sealed partial class RegistryClient : IDisposable
 {
-    private const string RegistryUrl = "https://chord-publish.andrew-03e.workers.dev";
+    private const string RegistryUrl = "https://console.betwixtlabs.com";
 
     private readonly HttpClientHandler _httpClientHandler;
     private readonly HttpClient _httpClient;
@@ -47,9 +47,9 @@ internal sealed partial class RegistryClient : IDisposable
                 }, linkedToken);
 
 
-                contentStream.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/charm-package");
+                contentStream.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/chord-package");
 
-                var requestMessage = new HttpRequestMessage(HttpMethod.Post, $"{RegistryUrl}/publish") { Content = contentStream };
+                var requestMessage = new HttpRequestMessage(HttpMethod.Post, $"{RegistryUrl}/api/extension/publish") { Content = contentStream };
                 var response = await _httpClient.SendAsync(requestMessage, linkedToken);
                 var publishResponse = await response.Content.ReadFromJsonAsync<PublishResponse>(
                         JsonContext.Default.PublishResponse, cancellationToken: linkedToken);
@@ -107,13 +107,14 @@ internal sealed partial class RegistryClient : IDisposable
     public async Task<RegistryCatalog?> FetchRegistryCatalog(string chord, ProgressTask progressTask, CancellationToken cancellationToken)
     {
         var versionsUrl = $"{ContentUrl}/{chord}/versions.json";
+
         try
         {
             return await _httpClient.GetFromJsonAsync(versionsUrl, JsonContext.Default.RegistryCatalog, cancellationToken);
         }
         catch (HttpRequestException ex)
         {
-            HandleHttpRequestException(ex, $"fetching version info for [bold]{chord}[/] ({ex.StatusCode})", progressTask);
+            HandleHttpRequestException(ex, $"error fetching version info for [bold]{chord}[/] ({ex.StatusCode})", progressTask);
             return null;
         }
     }

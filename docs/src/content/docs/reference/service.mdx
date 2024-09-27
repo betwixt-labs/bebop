@@ -7,19 +7,19 @@ In Bebop a `service` defines an aggregate of methods that can be called by a cli
 There are for different types of service methods:
 
 - `unary` - a single request and response
-```proto
+```bebop
 service Greeter {
     sayHello(MyRequest): MyResponse ;
 }
 ```
 - `server streaming` - a single request and a stream of responses from the server
-```proto ins="stream"
+```bebop ins="stream"
 service Greeter {
     sayHello(MyRequest): stream MyResponse;
 }
 ```
 - `client streaming` - a stream of requests and a single response from the server
-```proto ins="stream"
+```bebop ins="stream"
 service Greeter {
     sayHello(stream MyRequest): MyResponse;
 }
@@ -28,7 +28,7 @@ service Greeter {
 Client streaming is not supported in browser environments.
 :::
 - `duplex streaming` - a stream of requests and a stream of responses from the server
-```proto ins="stream"
+```bebop ins="stream"
 service Greeter {
     sayHello(stream MyRequest): stream MyResponse;
 }

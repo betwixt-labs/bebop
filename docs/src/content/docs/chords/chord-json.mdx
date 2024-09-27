@@ -1,0 +1,274 @@
+---
+title: What is a chord.json
+---
+
+import { Tabs, TabItem, LinkCard } from "@astrojs/starlight/components";
+
+## Introduction
+
+`chord.json` is the manifest file for Chord extensions in the Bebop ecosystem. Similar to `package.json` in JavaScript projects, it contains crucial metadata about the extension, build instructions, and defines the contributions the extension makes to the Bebop compiler. This document serves as a comprehensive reference for developers creating or maintaining Bebop extensions.
+
+## File Structure
+
+The `chord.json` file is a JSON document with several key sections:
+
+1. Metadata
+2. Build Configuration
+3. Contributions (Generator and Decorators)
+4. Engine Compatibility
+5. Additional Fields
+
+Let's explore each section in detail.
+
+## 1. Metadata
+
+These fields provide basic information about your extension:
+
+```json
+{
+  "name": "@namespace/extension-name",
+  "private": false,
+  "description": "A brief description of your extension",
+  "version": "1.0.0",
+  "repository": "https://github.com/your-repo/extension-name",
+  "license": "MIT",
+  "author": {
+    "name": "Your Name",
+    "email": "your.email@example.com",
+    "url": "https://your-website.com"
+  }
+}
+```
+
+- `name`: (Required) String. Must be URL-safe, lowercase, and max 214 characters.
+- `private`: (Optional) Boolean. If true, the extension won't be published to a registry.
+- `description`: (Required) String. Max 280 characters.
+- `version`: (Required) String. Must follow semver format.
+- `repository`: (Optional) String. HTTPS URL of the extension's repository.
+- `license`: (Required) String. The license identifier or a custom license string.
+- `author`: (Optional) Object containing `name` (required), `email` (optional), and `url` (optional).
+
+## 2. Build Configuration
+
+This section specifies how to build your extension:
+
+```json
+{
+  "bin": "./dist/extension.wasm",
+  "build": {
+    "script": "npm run build",
+    "compiler": "tinygo",
+    "args": ["--optimize"],
+    "env": {
+      "DEBUG": "false"
+    }
+  }
+}
+```
+
+- `bin`: (Required) String. Path to the compiled WASM file.
+- `build`: (Required) Object containing:
+  - `script`: (Required) String. The command to build the extension.
+  - `compiler`: (Required) String. Options: "as" (AssemblyScript), "tinygo", or "javy".
+  - `args`: (Optional) Array of strings. Additional arguments for the build command.
+  - `env`: (Optional) Object. Environment variables for the build process.
+
+## 3. Contributions
+
+This crucial section defines what your extension contributes to Bebop:
+
+```json
+{
+  "contributes": {
+    "generator": {
+      "alias": "mycodegen",
+      "name": "My Code Generator"
+    },
+    "decorators": {
+      "validate": {
+        "description": "Adds validation to a struct or field",
+        "allowMultiple": false,
+        "targets": "struct|field",
+        "parameters": {
+          "type": {
+            "description": "Type of validation",
+            "type": "string",
+            "required": true
+          },
+          "message": {
+            "description": "Custom error message",
+            "type": "string",
+            "required": false
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### Generator
+
+If your extension provides a code generator:
+
+- `alias`: (Required) String. A unique, lowercase identifier for your generator.
+- `name`: (Required) String. A human-readable name for your generator.
+
+### Decorators
+
+Each decorator you define becomes available in Bebop schemas. Here's a detailed breakdown of the decorator properties:
+
+- Key: The name of the decorator (e.g., `validate`).
+- `description`: (Required) String. Explains the decorator's purpose.
+- `allowMultiple`: (Optional) Boolean. Whether the decorator can be used multiple times on the same target.
+- `targets`: (Required) String. Specifies where the decorator can be used. This is a crucial property that determines the valid contexts for the decorator.
+- `parameters`: (Optional) Object. Defines the parameters the decorator accepts:
+  - Key: The parameter name.
+  - `description`: (Required) String. Explains the parameter.
+  - `type`: (Required) String. The parameter's type (e.g., "string", "int32", "bool").
+  - `required`: (Optional) Boolean. Whether the parameter is mandatory.
+  - `default`: (Optional) The default value if not provided.
+
+#### Understanding Decorator Targets
+
+The `targets` property is a powerful feature that allows you to control where your decorator can be applied in Bebop schemas. It uses a flag-based system to specify valid targets.
+
+Valid target options:
+- `"all"`: Can be used on all possible targets.
+- `"enum"`: Can be used on enum definitions.
+- `"message"`: Can be used on message definitions.
+- `"struct"`: Can be used on struct definitions.
+- `"union"`: Can be used on union definitions.
+- `"field"`: Can be used on fields within structs, messages, or unions.
+- `"service"`: Can be used on service definitions.
+- `"method"`: Can be used on methods within services.
+
+You can combine multiple targets using the `|` character. For example, `"struct|field"` means the decorator can be used on both struct definitions and fields.
+
+The runtime behavior of target validation is sophisticated:
+
+1. If `targets` is set to `"all"`, the decorator can be used anywhere, with a special exception for the `deprecated` decorator, which cannot be used on structs or fields.
+
+2. For specific targets, the system distinguishes between "container" targets (enum, message, struct, union, service) and "member" targets (field, method).
+
+3. A decorator can be valid for:
+   - Only container types (e.g., `"struct|message"`)
+   - Only member types (e.g., `"field|method"`)
+   - Both container and member types (e.g., `"struct|field"`)
+
+4. When both container and member types are specified, the decorator is only valid when used on a member within a valid container. For example, if `targets` is `"struct|field"`, the decorator can be used on fields within structs, but not on fields within messages or enums.
+
+This flexible system allows you to create highly specific decorators that are only valid in certain contexts, enhancing the type safety and expressiveness of your Bebop schemas.
+
+Example usage in a Bebop schema:
+
+```bebop
+@validate(type: "email", message: "Invalid email format")
+struct User {
+  email: string;
+}
+```
+
+In this example, the `@validate` decorator is applied to a struct, which is valid because its `targets` include `"struct"`.
+
+## 4. Engine Compatibility
+
+Specifies compatible versions of the Bebop compiler:
+
+```json
+{
+  "engine": {
+    "bebopc": "^3.0.0"
+  }
+}
+```
+
+- `bebopc`: (Required) String. A semver range of compatible Bebop compiler versions.
+
+## 5. Additional Fields
+
+Other useful fields you might include:
+
+```json
+{
+  "readme": "README.md"
+}
+```
+
+- `readme`: (Optional) String. Path to your README file.
+- `dependencies`: (Optional) Object. Any dependencies your extension requires.
+
+## Impact on Bebop Compilation
+
+Understanding how `chord.json` affects Bebop is crucial:
+
+1. **Extension Loading**: Bebop uses this file to load and initialize your extension.
+2. **Code Generation**: If you define a generator, Bebop integrates it as an option for code generation.
+3. **Schema Enhancement**: Decorators you define become available in Bebop schemas, extending the language's capabilities.
+4. **Build Process**: Bebop follows your build configuration to compile the extension.
+5. **Version Checking**: Bebop ensures compatibility based on the `engine` field.
+
+By carefully crafting your `chord.json`, you're not just configuring an extension - you're extending Bebop itself, giving developers new tools and capabilities in their schemas and code generation processes.
+
+## Example
+
+Here's a complete example of a `chord.json` file:
+
+```json
+{
+  "name": "@betwixt/typescript-template",
+  "private": false,
+  "description": "A template for chords built with TypeScript",
+  "version": "1.0.1",
+  "repository": "https://github.com/betwixt-labs/bebop",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Betwixt Labs",
+    "email": "code@betwixtlabs.com"
+  },
+  "bin": "dist/index.wasm",
+  "build": {
+    "script": "yarn build",
+    "compiler": "javy"
+  },
+  "contributes": {
+    "generator": {
+      "alias": "validators",
+      "name": "Record Validators"
+    },
+    "decorators": {
+      "validate": {
+        "description": "Validates a record",
+        "allowMultiple": false,
+        "targets": "struct"
+      },
+      "length": {
+        "description": "Validates the length of a field",
+        "allowMultiple": false,
+        "targets": "struct|field",
+        "parameters": {
+          "min": {
+            "description": "Specifies the minimum length of the field",
+            "type": "int32",
+            "required": true
+          },
+          "max": {
+            "description": "Specifies the maximum length of the field",
+            "type": "int32",
+            "required": false,
+            "default": 100
+          }
+        }
+      }
+    }
+  },
+  "engine": {
+    "bebopc": "^3.0.0"
+  },
+  "readme": "README.md"
+}
+```
+
+This example demonstrates a fully configured `chord.json` file for a Bebop extension that provides a code generator and two decorators. It includes all the necessary metadata, build configuration, and contribution definitions.
+
+<LinkCard title="Learn how to author your extension" href="guides/authoring-extensions" />

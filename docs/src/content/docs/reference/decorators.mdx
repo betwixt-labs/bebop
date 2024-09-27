@@ -15,7 +15,7 @@ You use the `deprecated` decorator to mark a definition, field, or method as dep
 
 Further, when placed on a `message` field, during encoding that field will be skipped.
 
-```go ins="@deprecated("We no longer use this")"
+```bebop ins="@deprecated("We no longer use this")"
 message Song { 
     @deprecated("We no longer use this")
     1 -> string title; 
@@ -31,7 +31,7 @@ The `deprecated` decorator cannot be used on the fields of a struct, but only on
 
 Use the `opcode` decorator before a record definition to associate an identifying "opcode" with it. You can either specify a 32-bit unsigned integer:
 
-```go ins="@opcode(0x12345678)"
+```bebop ins="@opcode(0x12345678)"
 @opcode(0x12345678)
 message Song { 
     1 -> string title; 
@@ -41,7 +41,7 @@ message Song {
 
 Or a [FourCC](https://en.wikipedia.org/wiki/FourCC) string:
     
-```go ins="@opcode("SONG")" 
+```bebop ins="@opcode("SONG")" 
 @opcode("SONG")
 message Song { 
     1 -> string title; 
@@ -59,4 +59,4 @@ See [Flags](../enum/#flags) in the `enum` reference.
 
 ## Contributed Decorators
 
-Extensions can contribute their own decorators. See the [Extensions](../extensions/chord-json) section for more information.
+Extensions can contribute their own decorators. See the [Extensions](/chords/chord-json) section for more information.

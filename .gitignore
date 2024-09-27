@@ -295,3 +295,5 @@ go.work
 dist
 *.chord
 playground/src/bebopc/bebopc.bin
+*.tgz
+extensions/edks/typescript/javy-cli

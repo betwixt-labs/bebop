@@ -8,7 +8,7 @@ Currently, valid const types are: `boolean`, `integers`, `floats` (including `in
 
 For example:
 
-```typescript
+```bebop
 const int32 PianoKeys = 88;
 const guid ImportantProductID = "a3628ec7-28d4-4546-ad4a-f6ebf5375c96";
 ```
@@ -19,7 +19,7 @@ A `const` definition can also be used to define a string that is substituted at 
 
 For example:
 
-```typescript
+```bebop
 const string ApiUrl = ${API_URL};
 ```
 
@@ -27,7 +27,7 @@ When you compile this schema, the compiler will look for the `API_URL` environme
 
 You can also use string substitution to build strings which contain environment variables. For example:
 
-```typescript
+```bebop
 const string ApiUrl = "${BASE_API_URL}/v1";
 ```
 
