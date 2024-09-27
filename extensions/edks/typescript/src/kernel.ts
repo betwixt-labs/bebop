@@ -183,14 +183,15 @@ export type BaseType = "uint8" | "uint16" | "uint32" | "uint64" | "int8" | "int1
 export type Kind = "enum" | "struct" | "message" | "union" | "service" | "const";
 
 
+export type DecoratorArgument = {
+  type: BaseType;
+  value: string;
+};
+
 export type Decorator = {
-  [key: string]: {
-    arguments?: {
-      [key: string]: {
-        type: BaseType;
-        value: string;
-      };
-    };
+  identifier: string;
+  arguments?: {
+    [key: string]: DecoratorArgument;
   };
 };
 
@@ -209,7 +210,7 @@ export type MapType = {
 
 export type Field<T extends BaseType | "array" | "map"> = {
   documentation?: string;
-  decorators?: Decorator;
+  decorators?: Decorator[];
   type: T;
   index?: number;
   array?: T extends "array" ? ArrayType : never;
@@ -218,14 +219,14 @@ export type Field<T extends BaseType | "array" | "map"> = {
 
 export type EnumMember = {
   documentation?: string;
-  decorators?: Decorator;
+  decorators?: Decorator[];
   value: string;
 };
 
 export type BaseDefinition<K extends Kind> = {
   kind: K;
   documentation?: string;
-  decorators?: Decorator;
+  decorators?: Decorator[];
   minimalEncodedSize: number;
   discriminatorInParent?: number;
   parent?: string;
@@ -260,7 +261,7 @@ export type UnionDefinition = BaseDefinition<"union"> & {
 };
 
 export type Method = {
-  decorators?: Decorator;
+  decorators?: Decorator[];
   documentation?: string;
   type: "Unary" | "DuplexStream" | "ClientStream" | "ServerStream";
   requestType: string;
