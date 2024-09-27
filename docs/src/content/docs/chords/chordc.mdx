@@ -1,18 +1,21 @@
+Here's the updated content with a caution note added at the top:
+
 ---
 title: chordc
 ---
 
-`chordc` is a standalone command line tool for building, testing, packaging, publishing, and installing extensions. 
+:::caution
+`chordc` is only installed when you install Bebop via the install script. It is not distributed as part of bebop-tools packages on various registries.
+:::
 
+`chordc` is a standalone command line tool for building, testing, packaging, publishing, and installing extensions.
 Until the extension ABI is stable, `chordc` will remain seperate from `bebopc`.
-
 ```
 Usage: chordc [command] [options]
-
 Commands:
-  build     Build the chord extension
-  pack      Package the chord extension
-  test      Test the chord extension
-  install  Install the chord extension
-  help      Display help
+ build Build the chord extension
+ pack Package the chord extension
+ test Test the chord extension
+ install Install the chord extension
+ help Display help
 ```
