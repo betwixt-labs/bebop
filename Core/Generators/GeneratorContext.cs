@@ -349,10 +349,11 @@ internal class GeneratorContextConverter : JsonConverter<GeneratorContext>
         {
             return;
         }
-        writer.WriteStartObject("decorators");
+        writer.WriteStartArray("decorators");
         foreach (var decorator in decorators)
         {
-            writer.WriteStartObject(decorator.Identifier);
+            writer.WriteStartObject();
+            writer.WriteString("identifier", decorator.Identifier);
             if (decorator.Arguments.Count > 0)
             {
                 writer.WriteStartObject("arguments");
@@ -368,7 +369,7 @@ internal class GeneratorContextConverter : JsonConverter<GeneratorContext>
             }
             writer.WriteEndObject();
         }
-        writer.WriteEndObject();
+        writer.WriteEndArray();
     }
 
     private static string GetDefinitionKind(Definition def)
