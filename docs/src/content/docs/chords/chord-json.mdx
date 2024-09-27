@@ -163,63 +163,9 @@ This flexible system allows you to create highly specific decorators that are on
 Example usage in a Bebop schema:
 
 ```bebop
-import "example.bop"
-const string test = "Hello";
-const string envvar = ${TEST};
-const string another = "Hello ${TEST}";
-const guid id = "12345678-1234-1234-1234-123456789012";
-// The playground makes it easy for you to safely experiment
-// with ideas in Bebop by making it trivial to share
-// these projects. The URL for this page is everything
-// required to load the project for someone else.
-@opcode(1999)
-struct Hello {
-int32 x;
-int32 y;
-}
-// An enum defines a type that acts as a wrapper around an integer type
-// The default underlying type is uint32 (or 4-bytes)
-enum Me {
-Drive = 1;
-}
-// To save size on the wire you can control the underlying type:
-enum SmallerEnum : uint8 {
-Max = 255;
- // Trying to set a member higher than the max value
- // of the underlying type will result in an error:
- //Overflow = 256;
-}
-// By default, a Bebop enum type is not supposed to represent
-// any underlying values outside of the ones listed.
-// If you want a more C-like, bitflags-like behavior, add a
-// @flags decorator before the enum:
-@flags
-enum Permissions : uint8 {
-Read = 0x01;
-Write = 0x02;
-Comment = 0x04;
-}
-@validate("email", message: "Invalid email format")
-union MyUnion {
-1 -> struct Do {
-/** Yoooo */
-int32 x;
- }
-2 -> message Go {
-@length(min: 10, 200)
-1 -> int32 x;
- }
-}
-struct Empty {
-
-}
-
-service Books {
-
-fire(Empty): stream Empty;
-water(stream Empty): stream Empty;
-earth( Empty): Empty;
-
+@validate(type: "email", message: "Invalid email format")
+struct User {
+  email: string;
 }
 ```
 
