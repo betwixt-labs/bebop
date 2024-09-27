@@ -224,7 +224,7 @@ jobs:
         run: cargo login ${{ secrets.CRATES_TOKEN  }}
 
       - name: Download Compiler Artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
 
       - name: List Chordc Artifacts
         continue-on-error: true
@@ -313,7 +313,7 @@ jobs:
         uses: falti/dotenv-action@v0.2.5
 
       - name: Download Compiler Artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
 
       - name: Extract Compiler Artifacts
         run: |
@@ -436,7 +436,7 @@ jobs:
         run: cargo login ${{ secrets.CRATES_TOKEN  }}
 
       - name: Download Artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
 
       - name: Publish .NET Tools
         run: dotnet nuget push bebop-tools-nuget-${{ steps.dotenv.outputs.version }}/bebop-tools.${{ steps.dotenv.outputs.version }}.nupkg -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json --skip-duplicate
