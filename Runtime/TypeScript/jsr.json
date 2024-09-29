@@ -1,5 +1,6 @@
 {
     "name": "@betwixtlabs/bebop",
     "version": "0.1.0",
-    "exports": "./index.ts"
+    "exports": "./index.ts",
+    "license": "Apache-2.0"
 }

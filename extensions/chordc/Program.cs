@@ -76,14 +76,47 @@ async Task<int> Run(CancellationTokenSource cts)
 
 async Task<int> InstallAsync(Dictionary<string, object> flags, CancellationToken token)
 {
-    if (!flags.TryGetValue("extensions", out var extensions))
+    List<string> extensionList = [];
+
+    if (flags.TryGetValue("extensions", out var extensions) && extensions is List<string> list && list.Count > 0)
     {
-        Logger.Error.MarkupLine("[maroon]No extensions specified to install.[/]");
-        return 1;
+        extensionList = list;
     }
-    if (extensions is not List<string> extensionList || extensionList.Count == 0)
+    else
     {
-        Logger.Error.MarkupLine("[maroon]Invalid or no extensions specified to install.[/]");
+        // Try to find bebop.json and parse extensions from it
+        var bebopConfigPath = FindBebopConfig();
+        if (!string.IsNullOrEmpty(bebopConfigPath))
+        {
+            try
+            {
+                var jsonContent = File.ReadAllText(bebopConfigPath);
+                using var document = JsonDocument.Parse(jsonContent);
+
+                if (document.RootElement.TryGetProperty("extensions", out var extensionsElement))
+                {
+                    foreach (var extension in extensionsElement.EnumerateObject())
+                    {
+                        extensionList.Add($"{extension.Name}@{extension.Value}");
+                    }
+                }
+            }
+            catch (JsonException ex)
+            {
+                Logger.Error.MarkupLine($"[maroon]Error parsing bebop.json: {ex.Message}[/]");
+                return 1;
+            }
+            catch (IOException ex)
+            {
+                Logger.Error.MarkupLine($"[maroon]Error reading bebop.json: {ex.Message}[/]");
+                return 1;
+            }
+        }
+    }
+
+    if (extensionList.Count == 0)
+    {
+        Logger.Error.MarkupLine("[maroon]No extensions specified to install and none found in bebop.json.[/]");
         return 1;
     }
 
@@ -303,7 +336,7 @@ async Task<int> PublishAsync(string workingDirectory, CancellationToken cancella
         return packResults;
     }
     using var client = new RegistryClient(authToken);
-    var archiveName = $"{manifest.Name}-{manifest.Version}.chord";
+    var archiveName = MakeSafeFileName($"{manifest.Name}-v{manifest.Version}.chord");
     var zipFilePath = Path.Combine(workingDirectory, archiveName);
     try
     {
@@ -313,16 +346,14 @@ async Task<int> PublishAsync(string workingDirectory, CancellationToken cancella
             Logger.Error.MarkupLine($":stop_sign: [maroon]Error publishing extension:[/] no response from registry.");
             return 1;
         }
-        if (publishResponse.Success)
+        if (publishResponse.Error is not null)
         {
-            Logger.Out.MarkupLine($":party_popper: [green]Extension published successfully![/]");
-            return 0;
-        }
-        else
-        {
-            Logger.Error.MarkupLine($":stop_sign: [maroon]Error publishing extension:[/] {publishResponse.Message}");
+            Logger.Error.MarkupLine($":stop_sign: [maroon]Error publishing extension:[/] {publishResponse.Error}");
             return 1;
+
         }
+        Logger.Out.MarkupLine($":party_popper: [green]Extension published successfully![/]");
+        return 0;
     }
     catch (Exception e)
     {
@@ -340,8 +371,8 @@ int Pack(string workingDirectory)
     {
         return testResult;
     }
-    var binaryName = $"{manifest.Name}-{manifest.Version}.wasm";
-    var archiveName = $"{manifest.Name}-{manifest.Version}.chord";
+    var binaryName = MakeSafeFileName($"{manifest.Name}-v{manifest.Version}.wasm");
+    var archiveName = MakeSafeFileName($"{manifest.Name}-v{manifest.Version}.chord");
     var zipFilePath = Path.Combine(workingDirectory, archiveName);
     var tempZipPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
 
@@ -442,6 +473,33 @@ int Pack(string workingDirectory)
     return 0;
 }
 
+static string? FindBebopConfig()
+{
+    const string ConfigFileName = "bebop.json";
+    try
+    {
+        var workingDirectory = Directory.GetCurrentDirectory();
+        var configFile = Directory.GetFiles(workingDirectory, ConfigFileName).FirstOrDefault();
+        while (string.IsNullOrWhiteSpace(configFile))
+        {
+            if (Directory.GetParent(workingDirectory) is not { Exists: true } parent)
+            {
+                break;
+            }
+            workingDirectory = parent.FullName;
+            if (parent.GetFiles(ConfigFileName)?.FirstOrDefault() is { Exists: true } file)
+            {
+                configFile = file.FullName;
+            }
+        }
+        return configFile;
+    }
+    catch
+    {
+        return null;
+    }
+}
+
 (ChordManifest Manifest, string ManifestPath, string ManifestContent) LoadManifest()
 {
     //preamble nonsense
@@ -475,4 +533,14 @@ int Pack(string workingDirectory)
         ex.Render(sourceRepo, manifestPath);
         return default;
     }
+}
+
+static string MakeSafeFileName(string fileName)
+{
+    fileName = fileName.Replace("@", "");
+    foreach (var c in Path.GetInvalidFileNameChars())
+    {
+        fileName = fileName.Replace(c, '-');
+    }
+    return fileName;
 }

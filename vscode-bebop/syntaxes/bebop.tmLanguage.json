@@ -1,46 +1,334 @@
 {
 	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
-    "scopeName": "source.bebop",
+	"name": "bebop",
+	"scopeName": "source.bebop",
 	"patterns": [
 		{
-            "comment": "line comments",
-            "name": "comment.line.double-slash.bebop",
-            "match": "\\s*//.*"
+			"include": "#comments"
 		},
 		{
-			"include": "#block-comments"
+			"include": "#keywords"
 		},
 		{
-			"comment": "Strings",
-			"name": "string.quoted.double.bebop",
-			"begin": "\"",
-			"end": "\"",
-			"patterns": [
-				{
-					"name": "constant.character.escape.bebop",
-					"match": "\\\\."
-				}
-			]
+			"include": "#strings"
+		},
+		{
+			"include": "#constants"
+		},
+		{
+			"include": "#decorators"
+		},
+		{
+			"include": "#types"
+		},
+		{
+			"include": "#services"
+		},
+		{
+			"include": "#structs"
+		},
+		{
+			"include": "#enums"
+		},
+		{
+			"include": "#unions"
+		},
+		{
+			"include": "#operators"
+		},
+		{
+			"include": "#numbers"
 		}
 	],
 	"repository": {
-		"block-comments": {
+		"comments": {
 			"patterns": [
 				{
-					"comment": "empty block comments",
-					"name": "comment.block.bebop",
-					"match": "/\\*\\*/"
+					"name": "comment.line.double-slash.bebop",
+					"match": "//.*$"
 				},
 				{
-					"comment": "block comments",
-					"name": "comment.block.bebop",
-					"begin": "/\\**(?!\\*)",
+					"name": "comment.block.documentation.bebop",
+					"begin": "/\\*\\*",
 					"end": "\\*/",
 					"patterns": [
 						{
-							"include": "#block-comments"
+							"include": "#docTags"
 						}
 					]
+				},
+				{
+					"name": "comment.block.bebop",
+					"begin": "/\\*",
+					"end": "\\*/"
+				}
+			]
+		},
+		"docTags": {
+			"patterns": [
+				{
+					"name": "storage.type.class.jsdoc",
+					"match": "(@[a-zA-Z]+)"
+				}
+			]
+		},
+		"keywords": {
+			"patterns": [
+				{
+					"name": "keyword.control.bebop",
+					"match": "\\b(import|const|struct|enum|union|message|service|stream)\\b"
+				},
+				{
+					"name": "storage.modifier.bebop",
+					"match": "\\b(flags)\\b"
+				}
+			]
+		},
+		"strings": {
+			"patterns": [
+				{
+					"name": "string.quoted.double.bebop",
+					"begin": "\"",
+					"end": "\"",
+					"patterns": [
+						{
+							"name": "constant.character.escape.bebop",
+							"match": "\\\\."
+						},
+						{
+							"name": "variable.other.interpolated.bebop",
+							"match": "\\$\\{[^}]+\\}"
+						}
+					]
+				}
+			]
+		},
+		"constants": {
+			"patterns": [
+				{
+					"name": "constant.language.bebop",
+					"match": "\\b(true|false)\\b"
+				},
+				{
+					"name": "constant.numeric.bebop",
+					"match": "\\b([0-9]+|0x[0-9A-Fa-f]+)\\b"
+				},
+				{
+					"name": "constant.other.bebop",
+					"match": "\\$\\{[A-Z_]+\\}"
+				}
+			]
+		},
+		"decorators": {
+			"name": "meta.decorator.bebop",
+			"begin": "@",
+			"end": "(?=\\s|\\(|$)",
+			"patterns": [
+				{
+					"name": "entity.name.function.decorator.bebop",
+					"match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
+				},
+				{
+					"name": "meta.decorator.parameters.bebop",
+					"begin": "\\(",
+					"end": "\\)",
+					"patterns": [
+						{
+							"name": "variable.parameter.decorator.bebop",
+							"match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\s*(?=:)"
+						},
+						{
+							"include": "#strings"
+						},
+						{
+							"include": "#constants"
+						},
+						{
+							"include": "#numbers"
+						}
+					]
+				}
+			]
+		},
+		"types": {
+			"patterns": [
+				{
+					"name": "storage.type.bebop",
+					"match": "\\b(int32|uint8|string|guid|Empty)\\b"
+				}
+			]
+		},
+		"services": {
+			"name": "meta.service.bebop",
+			"begin": "\\b(service)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*\\{",
+			"beginCaptures": {
+				"1": {
+					"name": "keyword.control.bebop"
+				},
+				"2": {
+					"name": "entity.name.type.service.bebop"
+				}
+			},
+			"end": "\\}",
+			"patterns": [
+				{
+					"include": "#serviceMethods"
+				}
+			]
+		},
+		"serviceMethods": {
+			"name": "meta.method.bebop",
+			"match": "\\s*([A-Za-z_][A-Za-z0-9_]*)\\s*\\((stream)?\\s*([A-Za-z_][A-Za-z0-9_]*)\\)\\s*:\\s*(stream)?\\s*([A-Za-z_][A-Za-z0-9_]*)\\s*;",
+			"captures": {
+				"1": {
+					"name": "entity.name.function.bebop"
+				},
+				"2": {
+					"name": "keyword.control.bebop"
+				},
+				"3": {
+					"name": "storage.type.bebop"
+				},
+				"4": {
+					"name": "keyword.control.bebop"
+				},
+				"5": {
+					"name": "storage.type.bebop"
+				}
+			}
+		},
+		"structs": {
+			"name": "meta.struct.bebop",
+			"begin": "\\b(struct)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*\\{",
+			"beginCaptures": {
+				"1": {
+					"name": "keyword.control.bebop"
+				},
+				"2": {
+					"name": "entity.name.type.struct.bebop"
+				}
+			},
+			"end": "\\}",
+			"patterns": [
+				{
+					"include": "#types"
+				},
+				{
+					"include": "#comments"
+				}
+			]
+		},
+		"enums": {
+			"name": "meta.enum.bebop",
+			"begin": "\\b(enum)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*(:\\s*([A-Za-z_][A-Za-z0-9_]*))?\\s*\\{",
+			"beginCaptures": {
+				"1": {
+					"name": "keyword.control.bebop"
+				},
+				"2": {
+					"name": "entity.name.type.enum.bebop"
+				},
+				"4": {
+					"name": "storage.type.bebop"
+				}
+			},
+			"end": "\\}",
+			"patterns": [
+				{
+					"match": "\\b([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*([0-9]+|0x[0-9A-Fa-f]+)",
+					"captures": {
+						"1": {
+							"name": "variable.other.enummember.bebop"
+						},
+						"2": {
+							"name": "constant.numeric.bebop"
+						}
+					}
+				},
+				{
+					"include": "#comments"
+				}
+			]
+		},
+		"unions": {
+			"name": "meta.union.bebop",
+			"begin": "\\b(union)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*\\{",
+			"beginCaptures": {
+				"1": {
+					"name": "keyword.control.bebop"
+				},
+				"2": {
+					"name": "entity.name.type.union.bebop"
+				}
+			},
+			"end": "\\}",
+			"patterns": [
+				{
+					"match": "\\s*([0-9]+)\\s*->\\s*(struct|message)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*\\{",
+					"captures": {
+						"1": {
+							"name": "constant.numeric.bebop"
+						},
+						"2": {
+							"name": "keyword.control.bebop"
+						},
+						"3": {
+							"name": "entity.name.type.struct.bebop"
+						}
+					}
+				},
+				{
+					"include": "#structs"
+				},
+				{
+					"include": "#comments"
+				},
+				{
+					"include": "#decorators"
+				}
+			]
+		},
+		"operators": {
+			"patterns": [
+				{
+					"name": "keyword.operator.assignment.bebop",
+					"match": "="
+				},
+				{
+					"name": "keyword.operator.arithmetic.bebop",
+					"match": "[-+*/%]"
+				},
+				{
+					"name": "keyword.operator.logical.bebop",
+					"match": "&&|\\|\\||!"
+				},
+				{
+					"name": "keyword.operator.comparison.bebop",
+					"match": "==|!=|<|>|<=|>="
+				},
+				{
+					"name": "keyword.operator.type.bebop",
+					"match": ":"
+				},
+				{
+					"name": "keyword.operator.member.bebop",
+					"match": "\\."
+				},
+				{
+					"name": "keyword.operator.arrow.bebop",
+					"match": "->"
+				}
+			]
+		},
+		"numbers": {
+			"patterns": [
+				{
+					"name": "constant.numeric.decimal.bebop",
+					"match": "\\b\\d+(\\.\\d+)?\\b"
+				},
+				{
+					"name": "constant.numeric.hexadecimal.bebop",
+					"match": "\\b0x[0-9A-Fa-f]+\\b"
 				}
 			]
 		}

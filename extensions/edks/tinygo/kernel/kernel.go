@@ -165,7 +165,7 @@ func deserializeStruct(json gjson.Result) StructDefinition {
 			},
 			Fields: deserializeFields(json.Get("fields")),
 		},
-		IsReadOnly:  json.Get("readonly").Bool(),
+		Mutable:     json.Get("mutable").Bool(),
 		IsFixedSize: json.Get("isFixedSize").Bool(),
 	}
 }
@@ -283,27 +283,26 @@ func deserializeEnumMember(json gjson.Result) EnumMember {
 	}
 }
 
-func deserializeDecorators(json gjson.Result) map[string]Decorator {
-	decorators := make(map[string]Decorator)
-	json.ForEach(func(key, value gjson.Result) bool {
-		decorators[key.String()] = deserializeDecorator(value)
+func deserializeDecorators(json gjson.Result) []Decorator {
+	var decorators []Decorator
+	json.ForEach(func(_, value gjson.Result) bool {
+		decorators = append(decorators, deserializeDecorator(value))
 		return true
 	})
 	return decorators
 }
-
 func deserializeDecorator(json gjson.Result) Decorator {
 	decorator := Decorator{
-		Arguments: make(map[string]DecoratorArgument),
+		Identifier: json.Get("identifier").String(),
+		Arguments:  make(map[string]DecoratorArgument),
 	}
 	arguments := json.Get("arguments")
-	if !arguments.Exists() {
-		return decorator
+	if arguments.Exists() {
+		arguments.ForEach(func(key, value gjson.Result) bool {
+			decorator.Arguments[key.String()] = deserializeDecoratorArgument(value)
+			return true
+		})
 	}
-	arguments.ForEach(func(key, value gjson.Result) bool {
-		decorator.Arguments[key.String()] = deserializeDecoratorArgument(value)
-		return true
-	})
 	return decorator
 }
 
@@ -417,7 +416,8 @@ func (m MapType) IsBaseType() bool {
 }
 
 type Decorator struct {
-	Arguments map[string]DecoratorArgument
+	Identifier string
+	Arguments  map[string]DecoratorArgument
 }
 
 type DecoratorArgument struct {
@@ -432,7 +432,7 @@ type Definition interface {
 type BaseDefinition struct {
 	Kind          string
 	Documentation string
-	Decorators    map[string]Decorator
+	Decorators    []Decorator
 	Parent        string
 }
 
@@ -449,7 +449,7 @@ type FieldsDefinition struct {
 
 type StructDefinition struct {
 	FieldsDefinition
-	IsReadOnly  bool
+	Mutable     bool
 	IsFixedSize bool
 }
 
@@ -474,7 +474,7 @@ func (ed EnumDefinition) Kind() string { return "enum" }
 type EnumMember struct {
 	Documentation string
 	Value         string
-	Decorators    map[string]Decorator
+	Decorators    []Decorator
 }
 
 type UnionDefinition struct {
@@ -491,7 +491,7 @@ type ServiceDefinition struct {
 
 type MethodDefinition struct {
 	Documentation string
-	Decorators    map[string]Decorator
+	Decorators    []Decorator
 	Type          string
 	RequestType   string
 	ResponseType  string
@@ -505,7 +505,7 @@ type ConstantDefinition struct {
 
 type Field struct {
 	Documentation string
-	Decorators    map[string]Decorator
+	Decorators    []Decorator
 	Type          FieldType
 	Index         int
 }

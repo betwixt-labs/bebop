@@ -157,6 +157,7 @@ const configureMonaco = () => {
         fileMatch: ["bebop.json"],
       },
     ],
+    schemaValidation: "error"
   });
 };
 
@@ -205,6 +206,8 @@ const createEditor = (
     formatOnPaste: true,
     formatOnType: true,
   });
+  editor.updateOptions({ wordWrap: "on" });
+
 
   return {
     editor,

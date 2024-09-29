@@ -58,23 +58,32 @@ export async function activate(context: vscode.ExtensionContext) {
       context.subscriptions.push(watcher);
       watcher.onDidChange(async (e) => {
         channel.appendLine(
-          `bebop.json file changed at ${e.fsPath}. Restarting language server.`
+          `bebop.json file changed at ${e.fsPath}. Checking for diagnostics...`
         );
-        if (client !== null) {
-          await client.stop();
-          client = startLanguageServer(context, bebopConfigPath);
+
+        // Check for diagnostics in the config file
+        const document = await vscode.workspace.openTextDocument(e);
+        const diagnostics = vscode.languages.getDiagnostics(document.uri);
+
+        if (diagnostics.length === 0) {
+          channel.appendLine("No diagnostics found. Restarting language server.");
           if (client !== null) {
-            await client.onReady();
+            await client.stop();
+            client = startLanguageServer(context, bebopConfigPath);
+            if (client !== null) {
+              await client.onReady();
+            }
           }
+        } else {
+          channel.appendLine("Diagnostics found in the config file. Not restarting the language server.");
+          vscode.window.showWarningMessage("Bebop config file has errors. Please fix them before the language server can be restarted.");
         }
       });
     }
   }
-
   // Hide the status bar
   statusBar.hide();
 }
-
 function createStatusBar(
   context: vscode.ExtensionContext
 ): vscode.StatusBarItem {
@@ -172,4 +181,4 @@ function getCompilerPlatformPath() {
   return `compiler/${osName()}/${cpu}/bebopc${os === "win32" ? ".exe" : ""}`;
 }
 
-export function deactivate() {}
+export function deactivate() { }

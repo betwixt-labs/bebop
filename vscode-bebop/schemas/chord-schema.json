@@ -1,16 +1,16 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://json.schemastore.org/chord",
   "title": "JSON schema for chord.json files",
   "$defs": {
     "url": {
       "type": "string",
-      "format": "uri",
-      "pattern": "^https://.+",
-      "patternErrorMessage": "Must be an HTTPS URL."
+      "pattern": "^https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$",
+      "patternErrorMessage": "Must be a valid HTTPS URL."
     },
     "email": {
       "type": "string",
-      "format": "email",
+      "pattern": "^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$",
       "maxLength": 254
     },
     "license": {
@@ -44,11 +44,11 @@
   "properties": {
     "name": {
       "type": "string",
-      "description": "The name of the extension, part of URL, command line argument, and folder name. Must be URL-safe, no uppercase, <= 214 characters.",
+      "description": "The name of the extension, part of URL, command line argument, and folder name. Must be URL-safe, no uppercase, <= 214 characters, cannot end with a forward slash, and cannot contain backslashes.",
       "minLength": 1,
       "maxLength": 214,
-      "pattern": "^(?:(?:@(?:[a-z0-9-*~][a-z0-9-*._~]*)?/[a-z0-9-._~])|[a-z0-9-~])[a-z0-9-._~]*$",
-      "patternErrorMessage": "Must be URL-safe, no uppercase, <= 214 characters."
+      "pattern": "^(?:(?:@(?:[a-z0-9-*~][a-z0-9-*._~]*)?/[a-z0-9-._~])|[a-z0-9-~])[a-z0-9-._~]*[a-z0-9-._~]$",
+      "patternErrorMessage": "Must be URL-safe, no uppercase, <= 214 characters, cannot end with a forward slash, and cannot contain backslashes."
     },
     "private": {
       "type": "boolean",
@@ -90,7 +90,9 @@
           "$ref": "#/$defs/url"
         }
       },
-      "required": ["name"],
+      "required": [
+        "name"
+      ],
       "additionalProperties": false
     },
     "license": {
@@ -110,7 +112,9 @@
           "description": "The email to the issue tracker."
         }
       },
-      "required": ["url"],
+      "required": [
+        "url"
+      ],
       "additionalProperties": false
     },
     "homepage": {
@@ -162,15 +166,29 @@
         "shell": {
           "type": "string",
           "description": "The shell to use when running the build command.",
-          "enum": ["bash", "sh", "pwsh", "cmd", "powershell", "python"]
+          "enum": [
+            "bash",
+            "sh",
+            "pwsh",
+            "cmd",
+            "powershell",
+            "python"
+          ]
         },
         "compiler": {
           "type": "string",
           "description": "The compiler that is used to build the WASM binary.",
-          "enum": ["as", "tinygo"]
+          "enum": [
+            "as",
+            "tinygo",
+            "javy"
+          ]
         }
       },
-      "required": ["script", "compiler"],
+      "required": [
+        "script",
+        "compiler"
+      ],
       "additionalProperties": false
     },
     "pack": {
@@ -178,7 +196,7 @@
       "description": "Defines how to package the extension.",
       "minProperties": 1,
       "patternProperties": {
-        "^[a-z]{1,7}$": {
+        "^[a-z]{1,255}$": {
           "type": "object",
           "description": "Defines how to package the extension, including auxiliaryFile.",
           "properties": {
@@ -189,10 +207,10 @@
               "patternErrorMessage": "Must be a valid relative file path to an auxiliary file (e.g. ./auxiliary.txt)."
             }
           },
-          "required": ["auxiliaryFile"],
-          "patternErrorMessage": "Must be a valid generator alias.",
-          "minLength": 1,
-          "maxLength": 7
+          "required": [
+            "auxiliaryFile"
+          ],
+          "patternErrorMessage": "Must be a valid generator alias."
         }
       },
       "additionalProperties": false
@@ -202,10 +220,24 @@
       "description": "Defines what the extension contributes to bebopc, including generator, decorators, and extends.",
       "oneOf": [
         {
-          "required": ["generator"]
+          "required": [
+            "generator"
+          ],
+          "properties": {
+            "generator": {},
+            "decorators": {}
+          },
+          "additionalProperties": false
         },
         {
-          "required": ["extends"]
+          "required": [
+            "extends"
+          ],
+          "properties": {
+            "extends": {},
+            "decorators": {}
+          },
+          "additionalProperties": false
         }
       ],
       "properties": {
@@ -217,20 +249,23 @@
               "type": "string",
               "description": "The friendly name of the generator.",
               "minLength": 1,
-              "maxLength": 32,
-              "pattern": "^[a-zA-Z ]+$",
-              "patternErrorMessage": "Must be a valid friendly name (e.g. CSharp)."
+              "maxLength": 255,
+              "pattern": "^[a-zA-Z ]{1,255}$",
+              "patternErrorMessage": "Must be a valid friendly name (e.g. ACME Generator)."
             },
             "alias": {
               "type": "string",
               "description": "The alias of the generator.",
               "minLength": 1,
-              "maxLength": 7,
-              "pattern": "^(?!cs$|py$|ts$|rust$|dart$|cpp$)[a-z]+$",
-              "patternErrorMessage": "Alias cannot be the same as a built-in generator and must be lowercase (e.g. csharp)."
+              "maxLength": 255,
+              "pattern": "^(?!cs$|py$|ts$|rust$|dart$|cpp$)[a-z]{1,255}$",
+              "patternErrorMessage": "Alias cannot be the same as a built-in generator and must be lowercase (e.g. acme)."
             }
           },
-          "required": ["name", "alias"],
+          "required": [
+            "name",
+            "alias"
+          ],
           "additionalProperties": false
         },
         "decorators": {
@@ -250,8 +285,8 @@
                 "targets": {
                   "type": "string",
                   "description": "Flag of types the decorator is usable on.",
-                  "pattern": "^(all|((enum|message|struct|union|field|service|method)(\\|(enum|message|struct|union|field|service|method))*))$",
-                  "patternErrorMessage": "Must be a valid flag of types the decorator is valid on. (e.g. enum, message, struct, union, field, service, method) or 'all'."
+                  "pattern": "^(all|enum|message|struct|union|field|service|method)(\\|(enum|message|struct|union|field|service|method))*$",
+                  "patternErrorMessage": "Must be 'all' or a combination of unique types (enum, message, struct, union, field, service, method) separated by '|'."
                 },
                 "allowMultiple": {
                   "type": "boolean",
@@ -307,7 +342,10 @@
                           "description": "The error message to display when the validator fails."
                         }
                       },
-                      "required": ["description", "type"],
+                      "required": [
+                        "description",
+                        "type"
+                      ],
                       "additionalProperties": false,
                       "oneOf": [
                         {
@@ -453,7 +491,9 @@
                   "additionalProperties": false
                 }
               },
-              "required": ["description"],
+              "required": [
+                "description"
+              ],
               "additionalProperties": false
             }
           },
@@ -467,32 +507,39 @@
             "description": "Generator alias that the extension extends.",
             "anyOf": [
               {
-                "enum": ["cs", "py", "ts", "rust", "dart", "cpp"]
+                "enum": [
+                  "cs",
+                  "py",
+                  "ts",
+                  "rust",
+                  "dart",
+                  "cpp"
+                ]
               },
               {
-                "pattern": "^[a-z]{1,7}$",
+                "pattern": "^[a-z]{1,255}$",
                 "patternErrorMessage": "Must be a valid generator alias.",
                 "minLength": 1,
-                "maxLength": 7
+                "maxLength": 255
               }
             ]
           },
           "minItems": 1,
           "uniqueItems": true
-        },
-        "additionalProperties": false
-      }
+        }
+      },
+      "additionalProperties": false
     },
     "readme": {
       "type": "string",
       "description": "Path to the compiled extension, a valid relative file path.",
       "pattern": "^((\\.?\\.?\\/?)|(\\.?\\.?\\\\?))([\\w\\-\\s\\/\\\\]+\\/)*[\\w\\-\\s]+\\.md$",
       "patternErrorMessage": "Must be a valid relative file path to the README.md for the extension.",
-      "minLength": 1
+      "minLength": 4
     },
     "engine": {
       "type": "object",
-      "description": "An object containing at least the bebopc key matching the versions of Bebopc that the extension is compatible with. Cannot be *. For example: ^3.0.5 indicates compatibility with a minimum VS Code version of 3.0.5.",
+      "description": "An object containing at least the bebopc key matching the versions of Bebopc that the extension is compatible with.",
       "properties": {
         "bebopc": {
           "type": "string",
@@ -501,8 +548,10 @@
           "patternErrorMessage": "Must be a valid semver or semver range. (e.g. ^1.0.0 or >=1.0.0 <2.0.0)"
         }
       },
-      "additionalProperties": false,
-      "required": ["bebopc"]
+      "required": [
+        "bebopc"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [

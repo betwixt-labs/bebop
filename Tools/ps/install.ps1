@@ -106,7 +106,7 @@ function Install-Binary($install_args) {
     $ErrorActionPreference = $old_erroractionpreference
 }
 
-function Get-TargetArtifact() {
+function Get-TargetArtifacts() {
     try {
         # NOTE: this might return X64 on ARM64 Windows, which is OK since emulation is available.
         # It works correctly starting in PowerShell Core 7.3 and Windows PowerShell in Win 11 22H2.
@@ -118,29 +118,27 @@ function Get-TargetArtifact() {
         $p = $t.GetProperty("OSArchitecture")
         $arch = $p.GetValue($null).ToString();
         switch ($arch) {
-            "X64" { return "bebopc-windows-x64.zip" }
-            "Arm64" { return "bebopc-windows-arm64.zip" }
+            "X64" { return @("bebopc-windows-x64.zip", "chordc-windows-x64.zip") }
+            "Arm64" { return @("bebopc-windows-arm64.zip", "chordc-windows-arm64.zip") }
             default {
                 throw "Unsupported CPU architecture '$arch'"
             }
         }
     }
     catch {
-        # The above was added in .NET 4.7.1, so Windows PowerShell in versions of Windows
-        # prior to Windows 10 v1709 may not have this API.
-        Write-Verbose "Get-TargetArtifact: exception when trying to determine OS architecture."
+        Write-Verbose "Get-TargetArtifacts: exception when trying to determine OS architecture."
         Write-Verbose $_
     }
 
-    # This is available in .NET 4.0. We already checked for PS 5, which requires .NET 4.5.
-    Write-Verbose("Get-TargetArtifact: falling back to Is64BitOperatingSystem.")
+    Write-Verbose("Get-TargetArtifacts: falling back to Is64BitOperatingSystem.")
     if ([System.Environment]::Is64BitOperatingSystem) {
-        return "bebopc-windows-x64"
+        return @("bebopc-windows-x64.zip", "chordc-windows-x64.zip")
     }
     else {
         throw "Unsupported CPU architecture 'X86'"
     }
 }
+
 
 function Test-BebopcInstalled {
     [CmdletBinding()]
@@ -172,7 +170,7 @@ function Test-BebopcVersion {
         break
     }
     elseif ([System.Version]$installedVersion -lt [System.Version]$remoteVersion) {
-       Write-Color "bebopc $installedVersion will be upgraded to $remoteVersion." -Color White
+        Write-Color "bebopc $installedVersion will be upgraded to $remoteVersion." -Color White
     }
     else {
         # Installed version and version to install are the same
@@ -182,24 +180,31 @@ function Test-BebopcVersion {
 }
 
 function Invoke-Install {
-    Write-Color "Locating release...." -Color White
-    $artifact = Get-TargetArtifact
+    Write-Color "Locating releases...." -Color White
+    $artifacts = Get-TargetArtifacts
     $downloader = Get-Downloader
     $releaseData = $downloader.DownloadString($manifestUrl)
     $pattern = '"browser_download_url":\s*"([^"]+)"'
-    $downloadUrl = $releaseData | Select-String -Pattern $pattern -AllMatches | ForEach-Object { $_.Matches.Value } | ForEach-Object { $_.Split('"')[3] } | Where-Object { $_ -like "*$artifact" }
+    $downloadUrls = $releaseData | Select-String -Pattern $pattern -AllMatches | ForEach-Object { $_.Matches.Value } | ForEach-Object { $_.Split('"')[3] } | Where-Object { $_ -like "*$($artifacts[0])*" -or $_ -like "*$($artifacts[1])*" }
     
     Write-Host -NoNewline "$SUCCESS_UTF8"
-    Write-Color "Downloading $artifact..." -Color White
+    Write-Color "Downloading $($artifacts[0]) and $($artifacts[1])..." -Color White
     $tmp = [System.IO.Path]::GetTempPath()
-    $downloadPath = "$tmp\$artifact";
-    $downloader.DownloadFile($downloadUrl, $downloadPath)
+    $downloadPaths = @()
+    foreach ($url in $downloadUrls) {
+        $artifact = [System.IO.Path]::GetFileName($url)
+        $downloadPath = "$tmp\$artifact"
+        $downloader.DownloadFile($url, $downloadPath)
+        $downloadPaths += $downloadPath
+    }
 
     Write-Host -NoNewline "$SUCCESS_UTF8"
-    Write-Color "Installing bebopc" -Color White
+    Write-Color "Installing bebopc and chordc" -Color White
 
     $compilerPath = Join-Path $env:PROGRAMDATA "bebop"
-    Expand-Archive -Path $downloadPath -DestinationPath "$compilerPath" -Force
+    foreach ($path in $downloadPaths) {
+        Expand-Archive -Path $path -DestinationPath "$compilerPath" -Force
+    }
 
     if (!(Test-Path -Path "$env:PROGRAMDATA\bebop\bebopc.exe")) {
         Write-Color "$ERROR_UTF8 bebopc failed to install." -Color Red
@@ -218,10 +223,10 @@ function Invoke-Install {
         # Set the updated PATH value
         [Environment]::SetEnvironmentVariable("PATH", $newPath, "User")
     }
-    $env:Path = [System.Environment]::GetEnvironmentVariable("PATH","User")
+    $env:Path = [System.Environment]::GetEnvironmentVariable("PATH", "User")
     
     if (-not (Get-Command bebopc -CommandType Application -ErrorAction Ignore)) {
-       Write-Color "'$env:PROGRAMDATA\bebop\bebopc.exe' is not in the PATH environment variable." -Color Red
+        Write-Color "'$env:PROGRAMDATA\bebop\bebopc.exe' is not in the PATH environment variable." -Color Red
     }
 
     Write-Point "${ROCKET_UTF8} Installation successful!"
@@ -280,16 +285,18 @@ Write-Point "$GLASS_UTF8 Checking environment..."
 Initialize-Environment
 if (Test-BebopcInstalled) {
     Test-BebopcVersion
-} else {
+}
+else {
     Write-Point "$EYES_UTF8 This script will install:"
     Write-Host "- $env:PROGRAMDATA\bebop\bebopc.exe"
+    Write-Host "- $env:PROGRAMDATA\bebop\chordc.exe"
 }
 
-Write-Point "$UNICORN_UTF8 Downloading and installing bebopc $bebopcVersion..."
+Write-Point "$UNICORN_UTF8 Downloading and installing Bebop $bebopcVersion..."
 Invoke-Install
 Write-Point "Tempo, an RPC framework built on top of Bebop is in public preview. Check it out:"
 Write-Host "https://tempo.im"
 
 Write-Color "- Run bebopc --help to get started" -Color White
 Write-Host "- Further documentation: "
-Write-Color "  https://github.com/betwixt-labs/bebop/wiki" -Color White
+Write-Color "  https://docs.bebop.sh" -Color White

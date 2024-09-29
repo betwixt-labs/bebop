@@ -9,18 +9,18 @@ import {
 const decoder = new TextDecoder();
 
 type FieldTypes =
-  | { type: "scalar" }
+  | { type: "scalar"; }
   | {
-      type: "array";
-      memberTypeId: number;
-      depth: number;
-    }
+    type: "array";
+    memberTypeId: number;
+    depth: number;
+  }
   | {
-      type: "map";
-      keyTypeId: number;
-      valueTypeId: number;
-      nestedType?: FieldTypes;
-    };
+    type: "map";
+    keyTypeId: number;
+    valueTypeId: number;
+    nestedType?: FieldTypes;
+  };
 
 enum WireMethodType {
   Unary = 0,
@@ -51,9 +51,11 @@ enum WireTypeKind {
   Enum,
 }
 
-type Decorators = { [identifier: string]: Decorator };
+type Decorators = Decorator[];
+
 interface Decorator {
-  arguments?: { [identifier: string]: DecoratorArgument };
+  identifier: string;
+  arguments?: { [identifier: string]: DecoratorArgument; };
 }
 
 interface DecoratorArgument {
@@ -86,17 +88,17 @@ interface Definition {
 interface Enum extends Definition {
   baseType: WireBaseType;
   isBitFlags: boolean;
-  members: { [name: string]: EnumMember };
+  members: { [name: string]: EnumMember; };
 }
 
 interface Struct extends Definition {
   isMutable: boolean;
   isFixedSize: boolean;
-  fields: { [fieldName: string]: Field };
+  fields: { [fieldName: string]: Field; };
 }
 
 interface Message extends Definition {
-  fields: { [fieldName: string]: Field };
+  fields: { [fieldName: string]: Field; };
 }
 
 interface UnionBranch {
@@ -112,7 +114,7 @@ interface Union extends Definition {
 interface Service {
   name: string;
   decorators: Decorators;
-  methods: { [methodName: string]: ServiceMethod };
+  methods: { [methodName: string]: ServiceMethod; };
 }
 
 interface ServiceMethod {
@@ -126,8 +128,8 @@ interface ServiceMethod {
 
 interface SchemaAst {
   bebopVersion: number;
-  definitions: { [typeName: string]: Definition };
-  services?: { [serviceName: string]: Service };
+  definitions: { [typeName: string]: Definition; };
+  services?: { [serviceName: string]: Service; };
 }
 
 /**
@@ -138,7 +140,7 @@ export class RecordReader {
    * @param schema - BinarySchema object containing metadata about Bebop schemas.
    * @private
    */
-  private constructor(private readonly schema: BinarySchema) {}
+  private constructor(private readonly schema: BinarySchema) { }
 
   /**
    * Reads a Bebop encoded record from a buffer.
@@ -413,7 +415,7 @@ export class RecordWriter {
    * @param schema Binary schema used for encoding the data.
    * @private
    */
-  private constructor(private schema: BinarySchema) {}
+  private constructor(private schema: BinarySchema) { }
   /**
    * Encodes a given record according to a provided definition name and returns it as a Uint8Array.
    *
@@ -494,8 +496,7 @@ export class RecordWriter {
       }
       if (typeof field.constantValue !== "number") {
         throw new BebopRuntimeError(
-          `Expected number, got ${typeof field.constantValue} for field: ${
-            field.name
+          `Expected number, got ${typeof field.constantValue} for field: ${field.name
           }`
         );
       }
@@ -813,8 +814,8 @@ export class BinarySchema {
   private readonly ArrayType = -14;
   private readonly MapType = -15;
   private parsedSchema?: SchemaAst;
-  private indexToDefinition: { [index: number]: Definition } = {};
-  private nameToDefinition: { [name: string]: Definition } = {};
+  private indexToDefinition: { [index: number]: Definition; } = {};
+  private nameToDefinition: { [name: string]: Definition; } = {};
   public reader: RecordReader;
   public writer: RecordWriter;
 
@@ -869,7 +870,7 @@ export class BinarySchema {
     const schemaVersion = this.getUint8();
     const numDefinedTypes = this.getUint32();
 
-    let definedTypes: { [typeName: string]: Definition } = {};
+    let definedTypes: { [typeName: string]: Definition; } = {};
     for (let i = 0; i < numDefinedTypes; i++) {
       const def = this.getDefinedType(i);
       definedTypes[def.name] = def;
@@ -878,7 +879,7 @@ export class BinarySchema {
     }
 
     const serviceCount = this.getUint32();
-    let services: { [serviceName: string]: Service } = {};
+    let services: { [serviceName: string]: Service; } = {};
 
     for (let i = 0; i < serviceCount; i++) {
       const service = this.getServiceDefinition();
@@ -943,22 +944,22 @@ export class BinarySchema {
     }
   }
 
-  private getDecorators() {
+  private getDecorators(): Decorators {
     const decoratorCount = this.getUint8();
-    const decorators: Decorators = {};
-    if (decoratorCount === 0) {
-      return decorators;
-    }
+    const decorators: Decorators = [];
     for (let i = 0; i < decoratorCount; i++) {
       const identifier = this.getString();
-      decorators[identifier] = this.getDecorator();
+      decorators.push({
+        identifier,
+        ...this.getDecorator(),
+      });
     }
     return decorators;
   }
 
-  private getDecorator(): Decorator {
+  private getDecorator(): Omit<Decorator, 'identifier'> {
     const argCount = this.getUint8();
-    const args: { [name: string]: DecoratorArgument } = {};
+    const args: { [name: string]: DecoratorArgument; } = {};
     for (let i = 0; i < argCount; i++) {
       const identifier = this.getString();
       const typeId = this.getTypeId();
@@ -981,7 +982,7 @@ export class BinarySchema {
     const isBitFlags = this.getBool();
     const minimalEncodeSize = this.getInt32();
     const memberCount = this.getUint8();
-    const members: { [name: string]: EnumMember } = {};
+    const members: { [name: string]: EnumMember; } = {};
     for (let i = 0; i < memberCount; i++) {
       const member = this.getEnumMember(baseType);
       members[member.name] = member;
@@ -1008,7 +1009,7 @@ export class BinarySchema {
   private getUnionDefinition(
     name: string,
     kind: WireTypeKind,
-    decorators: { [name: string]: Decorator },
+    decorators: Decorators,
     index: number
   ): Union {
     const minimalEncodeSize = this.getInt32();
@@ -1036,7 +1037,7 @@ export class BinarySchema {
   private getStructDefinition(
     name: string,
     kind: WireTypeKind,
-    decorators: { [name: string]: Decorator },
+    decorators: Decorators,
     index: number
   ): Struct {
     const isMutable = this.getBool();
@@ -1058,7 +1059,7 @@ export class BinarySchema {
   private getMessageDefinition(
     name: string,
     kind: WireTypeKind,
-    decorators: { [name: string]: Decorator },
+    decorators: Decorators,
     index: number
   ): Message {
     const minimalEncodeSize = this.getInt32();
@@ -1073,9 +1074,9 @@ export class BinarySchema {
     };
   }
 
-  private getFields(parentKind: WireTypeKind): { [name: string]: Field } {
+  private getFields(parentKind: WireTypeKind): { [name: string]: Field; } {
     const numFields = this.getUint8();
-    const fields: { [name: string]: Field } = {};
+    const fields: { [name: string]: Field; } = {};
     for (let i = 0; i < numFields; i++) {
       const field = this.getField(parentKind);
       fields[field.name] = field;
@@ -1176,7 +1177,7 @@ export class BinarySchema {
   private getServiceDefinition(): Service {
     let name = this.getString();
     let decorators = this.getDecorators();
-    let methods: { [name: string]: ServiceMethod } = {};
+    let methods: { [name: string]: ServiceMethod; } = {};
     let methodCount = this.getUint32();
     for (let i = 0; i < methodCount; i++) {
       let methodName = this.getString();

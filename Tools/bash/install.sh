@@ -269,13 +269,13 @@ ${ERROR_UTF8}
 EOABORT
         )"
     fi
-
 }
 
-fetch_release_url() {
+fetch_release_urls() {
     local target_os_name="$1"
     local target_os_arch="$2"
-    readonly target="bebopc-${target_os_name}-${target_os_arch}.zip"
+    readonly bebopc_target="bebopc-${target_os_name}-${target_os_arch}.zip"
+    readonly chordc_target="chordc-${target_os_name}-${target_os_arch}.zip"
     local exit_code=1
     if result=$(
         if [[ -x "$(which wget)" ]]; then
@@ -284,10 +284,12 @@ fetch_release_url() {
             curl -fL "${BEBOP_RELEASE_URL}" 2>&1
         fi
     ); then
-        local release_url
-        release_url="$(echo "$result" | grep -E 'browser_download_url' | grep "${target}" | cut -d '"' -f 4)"
-        if [[ -n "$release_url" ]]; then
-            echo "$release_url"
+        local bebopc_url
+        local chordc_url
+        bebopc_url="$(echo "$result" | grep -E 'browser_download_url' | grep "${bebopc_target}" | cut -d '"' -f 4)"
+        chordc_url="$(echo "$result" | grep -E 'browser_download_url' | grep "${chordc_target}" | cut -d '"' -f 4)"
+        if [[ -n "$bebopc_url" && -n "$chordc_url" ]]; then
+            echo "$bebopc_url $chordc_url"
             exit 0
         fi
     else
@@ -300,11 +302,10 @@ fetch_release_url() {
     abort "$(
         cat <<EOABORT
 ${ERROR_UTF8} 
-   - ${tty_red}Unable to locate release artifact for bebopc${tty_reset} ${tty_underline}${tty_white}$BEBOPC_VERSION${tty_reset} (exit code ${exit_code}):
+   - ${tty_red}Unable to locate release artifacts for bebopc and chordc${tty_reset} ${tty_underline}${tty_white}$BEBOPC_VERSION${tty_reset} (exit code ${exit_code}):
      - $error_message
 EOABORT
     )"
-
 }
 
 extract() {
@@ -314,7 +315,7 @@ extract() {
         abort "$(
             cat <<EOABORT
 ${ERROR_UTF8} 
- - ${tty_red}Failed to install bebopc to ${BEBOPC_PREFIX}/bin${tty_reset}:
+ - ${tty_red}Failed to install to ${BEBOPC_PREFIX}/bin${tty_reset}:
    - ${result}
 EOABORT
         )"
@@ -416,48 +417,57 @@ else
     echo "- ${BEBOPC_PREFIX}/bin/bebopc"
 fi
 
-point "${UNICORN_UTF8} Downloading and installing bebopc (${BEBOPC_VERSION})..."
+point "${UNICORN_UTF8} Downloading and installing Bebop (${BEBOPC_VERSION})..."
 (
+    echo -ne "- ${tty_bold}Locating releases${tty_reset} "
 
-    echo -ne "- ${tty_bold}Locating release${tty_reset} "
-
-    if ! release_url=$(fetch_release_url "$os" "$os_arch"); then
-        # should be the error if fetch_release_url failed
-        abort "$release_url"
+    if ! release_urls=$(fetch_release_urls "$os" "$os_arch"); then
+        # should be the error if fetch_release_urls failed
+        abort "$release_urls"
     fi
+
+    read -r bebopc_url chordc_url <<<"$release_urls"
 
     echo -e "${SUCCESS_UTF8}"
 
-    echo -ne "- ${tty_bold}Creating temp file${tty_reset} "
+    echo -ne "- ${tty_bold}Creating temp files${tty_reset} "
 
-    temp_file=$(mktemp)
-    readonly temp_file
-    # Bail out if the temp file wasn't created successfully.
-    if [ ! -e "$temp_file" ]; then
+    bebopc_temp_file=$(mktemp)
+    chordc_temp_file=$(mktemp)
+    readonly bebopc_temp_file chordc_temp_file
+    # Bail out if the temp files weren't created successfully.
+    if [ ! -e "$bebopc_temp_file" ] || [ ! -e "$chordc_temp_file" ]; then
         abort "$(
             cat <<EOABORT
 ${ERROR_UTF8} 
-    ${tty_red}Failed to create temporary file${tty_reset}
+    ${tty_red}Failed to create temporary files${tty_reset}
 EOABORT
         )"
     fi
 
     echo -e "${SUCCESS_UTF8}"
-    echo -ne "- ${tty_bold}Downloading${tty_reset} "
+    echo -ne "- ${tty_bold}Downloading bebopc${tty_reset} "
 
-    download "${release_url}" "${temp_file}"
+    download "${bebopc_url}" "${bebopc_temp_file}"
 
     echo -e "${SUCCESS_UTF8}"
-    echo -ne "- ${tty_bold}Installing bebopc "
+    echo -ne "- ${tty_bold}Downloading chordc${tty_reset} "
 
-    extract "${temp_file}" "${BEBOPC_PREFIX}/bin"
+    download "${chordc_url}" "${chordc_temp_file}"
+
+    echo -e "${SUCCESS_UTF8}"
+    echo -ne "- ${tty_bold}Installing bebopc and chordc "
+
+    extract "${bebopc_temp_file}" "${BEBOPC_PREFIX}/bin"
+    extract "${chordc_temp_file}" "${BEBOPC_PREFIX}/bin"
 
     BEBOPC_PATH="${BEBOPC_PREFIX}/bin/bebopc"
-    if [ ! -f "${BEBOPC_PATH}" ]; then
+    CHORDC_PATH="${BEBOPC_PREFIX}/bin/chordc"
+    if [ ! -f "${BEBOPC_PATH}" ] || [ ! -f "${CHORDC_PATH}" ]; then
         abort "$(
             cat <<EOABORT
 ${ERROR_UTF8} 
-    ${tty_red}Could not locate \`${BEBOPC_PATH}\` after installation${tty_reset}
+    ${tty_red}Could not locate \`${BEBOPC_PATH}\` or \`${CHORDC_PATH}\` after installation${tty_reset}
 EOABORT
         )"
     fi
@@ -466,7 +476,7 @@ EOABORT
 
     if [[ ":${PATH}:" != *":${BEBOPC_PREFIX}/bin:"* ]]; then
         warn "${tty_underline}${tty_white}${BEBOPC_PREFIX}/bin${tty_reset} is not in your ${tty_underline}${tty_white}PATH${tty_reset}.
-  Instructions on how to configure your shell for bebopc
+  Instructions on how to configure your shell for bebopc and chordc
   can be found in the 'Next steps' section below."
     fi
 
@@ -500,17 +510,17 @@ EOS
 
     point "${HAPPY_UTF8} Next steps:"
     readonly additional_shellenv_commands="export PATH=\$PATH:$BEBOPC_PREFIX/bin"
-    echo "- Run this command in your terminal to add bebopc to your ${tty_underline}${tty_white}PATH${tty_reset}:"
+    echo "- Run this command in your terminal to add bebopc and chordc to your ${tty_underline}${tty_white}PATH${tty_reset}:"
     printf "${tty_bold}${tty_white}    echo '%s' >> ${shell_profile}${tty_reset}\n" "${additional_shellenv_commands[@]}"
     printf "${tty_bold}${tty_white}    %s${tty_reset}\n" "${additional_shellenv_commands[@]}"
-    if [[ ! -x "$BEBOPC_PATH" ]]; then
-        printf "${tty_bold}${tty_white}    %s${tty_reset}\n" "sudo chmod +x ${BEBOPC_PATH}"
+    if [[ ! -x "$BEBOPC_PATH" ]] || [[ ! -x "$CHORDC_PATH" ]]; then
+        printf "${tty_bold}${tty_white}    %s${tty_reset}\n" "sudo chmod +x ${BEBOPC_PATH} ${CHORDC_PATH}"
     fi
 
     cat <<EOS
 - Run ${tty_bold}bebopc --help${tty_reset} to get started
 - Further documentation:
-    ${tty_underline}${tty_white}https://github.com/betwixt-labs/bebop/wiki${tty_reset}
+    ${tty_underline}${tty_white}https://docs.bebop.sh${tty_reset}
 EOS
 
 ) ||

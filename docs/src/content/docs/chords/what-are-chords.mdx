@@ -1,28 +1,69 @@
 ---
-title: What are chords?
+title: What are Chords?
 ---
 
-Extensions for the Bebop compiler are known as chords. They are written in any programming language that compiles to WebAssembly. 
+# Understanding Chords: Bebop Compiler Extensions
 
-A chord can define a new generator, decorators, and extend the behavior of other generators.
+Chords are powerful extensions for the Bebop compiler, designed to enhance and customize its functionality. These extensions play a crucial role in expanding Bebop's capabilities and tailoring it to specific needs.
 
-When installing `bebopc` it also installs [chordc](../chordc), the official compiler for `chord` binaries which takes source code / WebAssembly modules and prepares them for use with `bebopc`.
+## Key Features of Chords
 
-In addition, `chordc` enables [publishing](../publishing) and [installing](../installing) of chords to and from the [Chord Registry]() respectively. 
+- **Language Flexibility**: Chords can be written in any programming language that compiles to WebAssembly, offering developers freedom in their choice of implementation.
+- **Extensibility**: A chord can define new generators, introduce custom decorators, and extend the behavior of existing generators.
+- **Seamless Integration**: Chords integrate smoothly with the Bebop ecosystem, leveraging the `chordc` compiler for preparation and distribution.
 
-If you're interested in writing an extension for the Bebop compiler, we provide extension development kits (EDKs) for:
+## The Chord Ecosystem
+
+### chordc: The Chord Compiler
+
+When you install `bebopc`, it comes bundled with [chordc](../chordc), the official compiler for chord binaries. `chordc` serves several critical functions:
+
+1. **Compilation**: It takes source code or WebAssembly modules and prepares them for use with `bebopc`.
+2. **Publishing**: Enables [publishing](../publishing) of chords to the [Chord Registry]().
+3. **Installation**: Facilitates [installing](../installing) chords from the Chord Registry.
+
+### Extension Development Kits (EDKs)
+
+To streamline the process of writing Bebop extensions, we provide EDKs for popular languages:
 
 - [TypeScript](https://github.com/betwixt-labs/bebop/tree/vnext/extensions/edks/typescript)
 - [TinyGo](https://github.com/betwixt-labs/bebop/tree/vnext/extensions/edks/tinygo/)
 - [AssemblyScript](https://github.com/betwixt-labs/bebop/tree/vnext/extensions/edks/assemblyscript)
 
+These EDKs offer a foundation and tools to help you get started quickly with chord development.
+
 :::note
-If you're interested in writing a chord in a language that isn't listed above, please [open an issue]() and we'll work with you to get it added.
+If you're interested in writing a chord in a language not listed above, please [open an issue](). We're committed to expanding language support and welcome community input.
 :::
+
+## Capabilities of Chords
+
+Chords can significantly enhance the Bebop compiler's functionality:
+
+1. **Custom Generators**: Create new code generators tailored to specific languages or frameworks.
+2. **Decorators**: Introduce custom decorators to add metadata or behavior to Bebop schemas.
+3. **Generator Extensions**: Modify or extend the behavior of existing generators to suit particular needs.
+
+## Use Cases
+
+- Generating code for specialized frameworks or libraries
+- Implementing custom validation logic
+- Creating language-specific optimizations
+- Extending Bebop's type system for specific domains
+
+## Getting Started
+
+To begin working with chords:
+
+1. Choose your preferred language and corresponding EDK.
+2. Set up your development environment using the EDK's guidelines.
+3. Familiarize yourself with the chord API and Bebop's extension points.
+4. Start developing your custom functionality.
+
+For detailed guides on creating, publishing, and using chords, refer to our [documentation](/chords/guides/authoring-extensions).
 
 :::caution
-Compiler extensions are still experimental and the ABI is subject to change.
+Compiler extensions are currently in an experimental phase. The ABI (Application Binary Interface) may undergo changes as we refine and stabilize the system.
 :::
 
-
-
+By leveraging chords, you can tailor Bebop to your specific needs, extending its capabilities and integrating it seamlessly into your development workflow.

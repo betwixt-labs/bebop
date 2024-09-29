@@ -72,7 +72,12 @@
                 "services": {
                   "description": "By default, bebopc generates a concrete client and a service base class. This property can be used to limit bebopc asset generation.",
                   "type": "string",
-                  "enum": ["none", "client", "server", "both"],
+                  "enum": [
+                    "none",
+                    "client",
+                    "server",
+                    "both"
+                  ],
                   "default": "both"
                 },
                 "emitNotice": {
@@ -98,7 +103,9 @@
                   }
                 }
               },
-              "required": ["outFile"],
+              "required": [
+                "outFile"
+              ],
               "additionalProperties": false
             }
           },
