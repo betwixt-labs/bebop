@@ -484,7 +484,7 @@ namespace Core.Meta.Extensions
         [GeneratedRegex(@"^.*[\*\?\[\]].*(\.[a-zA-Z0-9]+)?$")]
         private static partial Regex LegalFileGlobRegex();
 
-        [GeneratedRegex(@"^[a-zA-Z]+(\.[a-zA-Z]+)*$")]
+        [GeneratedRegex(@"^[a-zA-Z]+(\.[a-zA-Z]+|::[a-zA-Z]+)*$")]
         private static partial Regex NamespaceRegex();
     }
 }
