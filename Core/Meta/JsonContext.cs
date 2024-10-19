@@ -28,8 +28,8 @@ namespace Core.Meta;
 [JsonSerializable(typeof(CompilerOutput))]
 [JsonSerializable(typeof(GeneratedFile))]
 [JsonSerializable(typeof(AuxiliaryFile))]
-[JsonSerializable(typeof(SpanException))]
 [JsonSerializable(typeof(Exception))]
+[JsonSerializable(typeof(SpanException))]
 [JsonSerializable(typeof(DiagnosticLogger.Diagnostic))]
 [JsonSerializable(typeof(Span))]
 [JsonSerializable(typeof(GeneratorContext))]
@@ -80,7 +80,14 @@ class ExceptionConverter : JsonConverter<Exception>
         if (value.InnerException is not null)
         {
             writer.WritePropertyName("innerException");
-            JsonSerializer.Serialize(writer, value.InnerException, options);
+            if (value.InnerException is SpanException spanException)
+            {
+                JsonSerializer.Serialize(writer, spanException, JsonContext.Default.SpanException);
+            }
+            else
+            {
+                JsonSerializer.Serialize(writer, value.InnerException, JsonContext.Default.Exception);
+            }
         }
         writer.WriteEndObject();
     }

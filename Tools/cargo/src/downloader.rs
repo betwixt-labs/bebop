@@ -51,7 +51,7 @@ fn download_bebopc_internal(dest: impl AsRef<Path>) -> PathBuf {
     mkdir_p(&root_path);
     let zip_name = format!("bebopc-{}-{}.zip", std::env::consts::OS, exe_arch);
     let release_info = get_json(format!(
-        "https://api.github.com/repos/rainwayapp/bebop/releases/tags/v{}",
+        "https://api.github.com/repos/betwixt-labs/bebop/releases/tags/v{}",
         BEBOPC_VERSION
     ));
     let url = release_info["assets"]

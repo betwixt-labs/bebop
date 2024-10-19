@@ -3,11 +3,11 @@
 //
 //
 //   bebopc version:
-//       2.4.10
+//       3.0.14
 //
 //
 //   bebopc source:
-//       https://github.com/RainwayApp/bebop
+//       https://github.com/betwixt-labs/bebop
 //
 //
 // Changes to this file may cause incorrect behavior and will be lost if

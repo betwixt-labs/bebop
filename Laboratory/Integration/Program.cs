@@ -5,14 +5,13 @@ using System.IO;
 using Bebop.Runtime;
 
 
-if (args.Length == 1 && args[0] == "encode")
+if (args.Length == 2 && args[0] == "encode")
 {
     var lib = MakeLibrary();
     byte[] buffer = Library.Encode(lib);
-    using (var stdout = Console.OpenStandardOutput())
-    {
-        stdout.Write(buffer, 0, buffer.Length);
-    }
+    var path = Path.GetFullPath(args[1]);
+    Console.WriteLine($"Writing {buffer.Length} bytes to {path}");
+    File.WriteAllBytes(path, buffer);
 
     return 0;
 }

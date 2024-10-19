@@ -743,6 +743,8 @@ namespace Core.Generators.TypeScript
                             {
                                 // We codegen "1 as 1", "2 as 2"... because TypeScript otherwise infers the type "number" for this field, whereas a literal type is necessary to discriminate unions.
                                 builder.AppendLine($"public readonly discriminator: number = {td.DiscriminatorInParent} as {td.DiscriminatorInParent};");
+                                // back compaq for v2 usage where discriminator is a static field
+                                builder.AppendLine($"public static readonly discriminator: number = {td.DiscriminatorInParent} as {td.DiscriminatorInParent};");
                             }
                             for (var i = 0; i < fd.Fields.Count; i++)
                             {

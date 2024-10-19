@@ -13,7 +13,7 @@ namespace Compiler.LangServer
     public sealed class CompletionHandler : ICompletionHandler
     {
         private readonly BufferManager _bufferManager;
-        private readonly DocumentSelector _documentSelector;
+        private readonly TextDocumentSelector _documentSelector;
         private readonly HashSet<string> _keywords;
         private readonly HashSet<string> _decorators;
         private readonly HashSet<string> _constants;
@@ -21,8 +21,8 @@ namespace Compiler.LangServer
         public CompletionHandler(BufferManager bufferManager, CompilerHost compilerHost)
         {
             _bufferManager = bufferManager;
-            _documentSelector = new DocumentSelector(
-                new DocumentFilter()
+            _documentSelector = new TextDocumentSelector(
+                new TextDocumentFilter()
                 {
                     Pattern = "**/*.bop"
                 }
