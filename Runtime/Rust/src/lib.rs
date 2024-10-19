@@ -10,6 +10,3 @@ pub mod prelude {
     pub use crate::types::{Date, Guid};
     pub use crate::SliceWrapper;
 }
-
-#[cfg(feature = "cargo")]
-pub mod cargo;

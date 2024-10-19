@@ -1,10 +1,7 @@
 [workspace]
+resolver = "2"
 
-members = [
-    "auto-testing",
-    "functionality-testing",
-    "benchmarking"
-]
+members = ["auto-testing", "functionality-testing", "benchmarking"]
 
 [profile.bench]
 lto = true

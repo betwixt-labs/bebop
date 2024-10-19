@@ -14,7 +14,10 @@ if (
 }
 
 shell.echo("Generating encodings from each language...");
-shell.exec("dotnet run encode 1> cs.enc");
+shell.exec("dotnet run encode cs.enc");
+// Print contents of cs.enc as raw data
+shell.echo("Contents of cs.enc (raw data):");
+shell.exec("cat cs.enc");
 shell.exec("npx ts-node encode.ts > ts.enc");
 if (shell.exec(`${cxx} --std=c++17 encode.cpp`).code !== 0) {
   shell.echo(`Error: ${cxx} encode.cpp failed`);

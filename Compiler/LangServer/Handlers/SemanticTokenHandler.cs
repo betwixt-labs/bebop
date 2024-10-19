@@ -79,7 +79,7 @@ namespace Compiler.LangServer
         {
             return new SemanticTokensRegistrationOptions
             {
-                DocumentSelector = DocumentSelector.ForLanguage("bebop"),
+                DocumentSelector = TextDocumentSelector.ForLanguage("bebop"),
                 Legend = _legend,
                 Full = new SemanticTokensCapabilityRequestFull
                 {

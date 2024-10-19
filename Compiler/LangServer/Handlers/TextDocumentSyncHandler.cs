@@ -25,7 +25,7 @@ namespace Compiler.LangServer
         private readonly BufferManager _bufferManager;
         private readonly BebopDiagnosticPublisher _publisher;
         private readonly BebopLangServerLogger _logger;
-        private readonly DocumentSelector _documentSelector;
+        private readonly TextDocumentSelector _documentSelector;
 
         public TextDocumentSyncKind Change { get; } = TextDocumentSyncKind.Full;
 
@@ -41,7 +41,7 @@ namespace Compiler.LangServer
             _bufferManager = bufferManager ?? throw new ArgumentNullException(nameof(bufferManager));
             _publisher = publisher ?? throw new ArgumentNullException(nameof(publisher));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _documentSelector = new DocumentSelector(new DocumentFilter()
+            _documentSelector = new TextDocumentSelector(new TextDocumentFilter()
             {
                 Pattern = "**/*.bop",
             });
@@ -52,7 +52,7 @@ namespace Compiler.LangServer
             return new TextDocumentAttributes(uri, "bop");
         }
 
-        protected override TextDocumentSyncRegistrationOptions CreateRegistrationOptions(SynchronizationCapability capability, ClientCapabilities clientCapabilities)
+        protected override TextDocumentSyncRegistrationOptions CreateRegistrationOptions(TextSynchronizationCapability capability, ClientCapabilities clientCapabilities)
         {
             return new TextDocumentSyncRegistrationOptions()
             {
