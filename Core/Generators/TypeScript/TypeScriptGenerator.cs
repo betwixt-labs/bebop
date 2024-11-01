@@ -737,14 +737,13 @@ namespace Core.Generators.TypeScript
                         {
                             if (td.OpcodeDecorator is not null && td.OpcodeDecorator.TryGetValue("fourcc", out var fourcc))
                             {
-                                builder.AppendLine($"public static readonly opcode: number = {fourcc} as {fourcc};");
+                                builder.AppendLine($"public static readonly opcode = {fourcc} as const;");
                             }
                             if (td.DiscriminatorInParent != null)
                             {
-                                // We codegen "1 as 1", "2 as 2"... because TypeScript otherwise infers the type "number" for this field, whereas a literal type is necessary to discriminate unions.
-                                builder.AppendLine($"public readonly discriminator: number = {td.DiscriminatorInParent} as {td.DiscriminatorInParent};");
+                                builder.AppendLine($"public readonly discriminator = {td.DiscriminatorInParent} as const;");
                                 // back compaq for v2 usage where discriminator is a static field
-                                builder.AppendLine($"public static readonly discriminator: number = {td.DiscriminatorInParent} as {td.DiscriminatorInParent};");
+                                builder.AppendLine($"public static readonly discriminator = {td.DiscriminatorInParent} as const;");
                             }
                             for (var i = 0; i < fd.Fields.Count; i++)
                             {
