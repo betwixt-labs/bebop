@@ -378,7 +378,7 @@ namespace Core.Generators.CPlusPlus
 
             if (!string.IsNullOrWhiteSpace(Config.Namespace))
             {
-                builder.AppendLine($"namespace {ns} {{");
+                builder.AppendLine($"namespace {Config.Namespace} {{");
                 builder.AppendLine("");
             }
 
