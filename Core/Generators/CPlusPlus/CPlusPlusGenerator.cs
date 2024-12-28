@@ -376,13 +376,7 @@ namespace Core.Generators.CPlusPlus
             builder.AppendLine("#include \"bebop.hpp\"");
             builder.AppendLine("");
 
-            string[] namespaces = {};
             if (!string.IsNullOrWhiteSpace(Config.Namespace))
-            {
-                namespaces = Config.Namespace.Split("::");
-            }
-
-            foreach (string ns in namespaces)
             {
                 builder.AppendLine($"namespace {ns} {{");
                 builder.AppendLine("");
@@ -516,9 +510,9 @@ namespace Core.Generators.CPlusPlus
                 }
             }
 
-            foreach (string ns in namespaces)
+            if (!string.IsNullOrWhiteSpace(Config.Namespace))
             {
-                builder.AppendLine($"}} // namespace {ns}");
+                builder.AppendLine($"}} // namespace {Config.Namespace}");
                 builder.AppendLine("");
             }
 
