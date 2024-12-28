@@ -33,7 +33,7 @@ namespace Compiler.LangServer
 
         public HoverRegistrationOptions GetRegistrationOptions(HoverCapability capability, ClientCapabilities clientCapabilities)
         {
-            return new HoverRegistrationOptions() { DocumentSelector = DocumentSelector.ForLanguage("bebop") };
+            return new HoverRegistrationOptions() { DocumentSelector = TextDocumentSelector.ForLanguage("bebop") };
         }
 
         public Task<Hover?> Handle(HoverParams request, CancellationToken cancellationToken)
