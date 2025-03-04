@@ -43,6 +43,22 @@ pub trait Record<'raw>: SubRecord<'raw> {
     }
 
     /// Serialize this record. It is highly recommend to use a buffered writer.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// // For fixed-size types
+    /// let value: MyFixedSizeType = /* ... */;
+    /// let mut buf = Vec::with_capacity(MyFixedSizeType::SERIALIZED_SIZE);
+    /// let bytes_written = value.serialize(&mut buf).unwrap();
+    /// ```
+    /// ```rust
+    /// // For variable-size types
+    /// let value: MyVariableSizeType = /* ... */;
+    /// let size = value.serialized_size();
+    /// let mut buf = Vec::with_capacity(size);
+    /// let bytes_written = value.serialize(&mut buf)?;
+    /// ```
     #[inline(always)]
     fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
         Self::_serialize_chained(self, dest)
