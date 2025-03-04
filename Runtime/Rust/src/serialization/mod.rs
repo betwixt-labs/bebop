@@ -57,7 +57,7 @@ pub trait Record<'raw>: SubRecord<'raw> {
     /// let value: MyVariableSizeType = /* ... */;
     /// let size = value.serialized_size();
     /// let mut buf = Vec::with_capacity(size);
-    /// let bytes_written = value.serialize(&mut buf)?;
+    /// let bytes_written = value.serialize(&mut buf).unwrap();
     /// ```
     #[inline(always)]
     fn serialize<W: Write>(&self, dest: &mut W) -> SeResult<usize> {
