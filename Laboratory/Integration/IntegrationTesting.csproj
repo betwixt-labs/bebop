@@ -6,7 +6,6 @@
     <LangVersion>preview</LangVersion>
     <TargetFramework>net8.0</TargetFramework>
     <CheckEolTargetFramework>false</CheckEolTargetFramework>
-      <NoWarn>$(NoWarn);CS9193</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
