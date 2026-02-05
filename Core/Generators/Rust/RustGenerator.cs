@@ -577,7 +577,7 @@ namespace Core.Generators.Rust
             // message needs if let for each field to only serialize if present.
             foreach (var f in d.Fields.OrderBy((f) => f.ConstantValue))
             {
-                builder.CodeBlock($"if let Some(ref v) = {obj}{MakeAttrIdent(f.Name)}", _tab, () =>
+                builder.CodeBlock($"if let Some(v) = {obj}{MakeAttrIdent(f.Name)}.as_ref()", _tab, () =>
                 {
                     builder
                         .AppendLine($"{f.ConstantValue}u8._serialize_chained(dest)?;")
@@ -762,7 +762,7 @@ namespace Core.Generators.Rust
                             // matching against each possible union type
                             foreach (var b in d.Branches.OrderBy(b => b.Discriminator))
                             {
-                                WriteUnionDestructuringForBranch(builder, b, $"super::{ident}", false);
+                                WriteUnionDestructuringForBranch(builder, b, $"super::{ident}");
                                 var variantIdent = MakeEnumVariantIdent(b.Definition.Name);
                                 var obj = $"Self::{variantIdent}";
                                 builder.CodeBlock("=>", _tab, () =>
@@ -842,7 +842,7 @@ namespace Core.Generators.Rust
                         builder.AppendLine("let size = zelf.serialized_size();")
                             // the length and discriminators are not part of the body
                             .AppendLine("::bebop::write_len(dest, size - ::bebop::LEN_SIZE - 1)?;");
-                        builder.CodeBlock("match zelf", _tab, () =>
+                        builder.CodeBlock("match &zelf", _tab, () =>
                         {
                             builder.CodeBlock("Self::Unknown =>", _tab, () =>
                             {
@@ -945,11 +945,9 @@ namespace Core.Generators.Rust
         /// Write the destructuring for a given union branch. Names all attributes with a `_` prefix to avoid
         /// collisions. This does not write the "=>" opening.
         /// </summary>
-        private void WriteUnionDestructuringForBranch(IndentedStringBuilder builder, UnionBranch b, string obj = "Self",
-            bool byRef = true)
+        private void WriteUnionDestructuringForBranch(IndentedStringBuilder builder, UnionBranch b, string obj = "Self")
         {
             var branchName = MakeEnumVariantIdent(b.Definition.Name);
-            var refStr = byRef ? " ref" : "";
             builder.CodeBlock($"{obj}::{branchName}", _tab, () =>
             {
                 if (b.Definition is FieldsDefinition fd)
@@ -957,7 +955,7 @@ namespace Core.Generators.Rust
                     foreach (var field in fd.Fields)
                     {
                         var fieldName = MakeAttrIdent(field.Name);
-                        builder.AppendLine($"{fieldName}:{refStr} _{fieldName},");
+                        builder.AppendLine($"{fieldName}: _{fieldName},");
                     }
                 }
                 else
