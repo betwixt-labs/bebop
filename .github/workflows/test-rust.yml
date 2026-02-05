@@ -28,6 +28,16 @@ jobs:
       - name: Generator Compiliation Tests
         run: cargo check -p auto-testing
         working-directory: ./Laboratory/Rust
+      - name: Generator Compiliation Tests (Rust editions)
+        run: |
+          sed -i 's/edition = "[0-9]\+"/edition = "2024"/' auto-testing/Cargo.toml
+          cargo check -p auto-testing
+          sed -i 's/edition = "[0-9]\+"/edition = "2021"/' auto-testing/Cargo.toml
+          cargo check -p auto-testing
+          sed -i 's/edition = "[0-9]\+"/edition = "2018"/' auto-testing/Cargo.toml
+          cargo check -p auto-testing
+          git checkout -- auto-testing/Cargo.toml
+        working-directory: ./Laboratory/Rust
       - name: Generator Funcunality Tests
         run: cargo test -p functionality-testing
         working-directory: ./Laboratory/Rust
